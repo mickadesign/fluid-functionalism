@@ -23,7 +23,7 @@ export default function ThinkingIndicator() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 p-3">
+    <div className="flex items-center gap-2 p-2">
       <motion.svg
         width={20}
         height={20}

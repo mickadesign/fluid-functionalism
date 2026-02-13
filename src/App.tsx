@@ -4,6 +4,7 @@ import Dropdown from "./components/Dropdown";
 import MenuItem from "./components/MenuItem";
 import SubtleTab, { SubtleTabItem } from "./components/SubtleTab";
 import ThinkingIndicator from "./components/ThinkingIndicator";
+import CheckboxGroup, { CheckboxItem } from "./components/CheckboxGroup";
 
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
@@ -16,6 +17,7 @@ const items = [
 export default function App() {
   const [selectedMenuItem, setSelectedMenuItem] = useState<number | null>(0);
   const [selectedTab, setSelectedTab] = useState(0);
+  const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set([0]));
 
   return (
     <div className="flex flex-col items-start justify-center gap-16 min-h-screen mx-auto w-fit">
@@ -50,6 +52,25 @@ export default function App() {
           />
         ))}
       </Dropdown>
+
+      <CheckboxGroup checkedIndices={checkedItems}>
+        {items.map((item, i) => (
+          <CheckboxItem
+            key={item.label}
+            index={i}
+            label={item.label}
+            checked={checkedItems.has(i)}
+            onToggle={() => {
+              setCheckedItems((prev) => {
+                const next = new Set(prev);
+                if (next.has(i)) next.delete(i);
+                else next.add(i);
+                return next;
+              });
+            }}
+          />
+        ))}
+      </CheckboxGroup>
 
       <ThinkingIndicator />
     </div>
