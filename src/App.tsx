@@ -3,6 +3,7 @@ import { SquareLibrary, Clock, Star, Users, Lock } from "lucide-react";
 import Dropdown from "./components/Dropdown";
 import MenuItem from "./components/MenuItem";
 import SubtleTab, { SubtleTabItem } from "./components/SubtleTab";
+import ThinkingIndicator from "./components/ThinkingIndicator";
 
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
@@ -49,6 +50,8 @@ export default function App() {
           />
         ))}
       </Dropdown>
+
+      <ThinkingIndicator />
     </div>
   );
 }
