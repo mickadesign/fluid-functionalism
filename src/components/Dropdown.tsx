@@ -2,6 +2,7 @@ import {
   useRef,
   useState,
   useCallback,
+  useEffect,
   createContext,
   useContext,
   type ReactNode,
@@ -50,6 +51,27 @@ export default function Dropdown({ children, checkedIndex }: DropdownProps) {
     },
     []
   );
+
+  const measureItems = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const rects: ItemRect[] = [];
+    itemsRef.current.forEach((element, index) => {
+      const rect = element.getBoundingClientRect();
+      rects[index] = {
+        top: rect.top - containerRect.top,
+        height: rect.height,
+        left: rect.left - containerRect.left,
+        width: rect.width,
+      };
+    });
+    setItemRects(rects);
+  }, []);
+
+  useEffect(() => {
+    measureItems();
+  }, [measureItems, children]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const container = containerRef.current;
@@ -117,13 +139,7 @@ export default function Dropdown({ children, checkedIndex }: DropdownProps) {
           {checkedRect && (
             <motion.div
               className="absolute rounded-lg bg-neutral-300/50 pointer-events-none"
-              initial={{
-                top: checkedRect.top,
-                left: checkedRect.left,
-                width: checkedRect.width,
-                height: checkedRect.height,
-                opacity: 0,
-              }}
+              initial={false}
               animate={{
                 top: checkedRect.top,
                 left: checkedRect.left,

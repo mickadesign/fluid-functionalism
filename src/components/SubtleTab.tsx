@@ -136,6 +136,7 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
         {selectedRect && (
           <motion.div
             className="absolute rounded-full bg-neutral-300/50 pointer-events-none"
+            initial={false}
             animate={{
               left: selectedRect.left,
               width: selectedRect.width,

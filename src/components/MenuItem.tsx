@@ -13,6 +13,7 @@ interface MenuItemProps {
 
 export default function MenuItem({ icon: Icon, label, index, checked, onSelect }: MenuItemProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const hasMounted = useRef(false);
   const { registerItem, activeIndex } = useDropdown();
 
   useEffect(() => {
@@ -20,7 +21,12 @@ export default function MenuItem({ icon: Icon, label, index, checked, onSelect }
     return () => registerItem(index, null);
   }, [index, registerItem]);
 
+  useEffect(() => {
+    hasMounted.current = true;
+  }, []);
+
   const isActive = activeIndex === index;
+  const skipAnimation = !hasMounted.current;
 
   return (
     <div
@@ -76,7 +82,7 @@ export default function MenuItem({ icon: Icon, label, index, checked, onSelect }
           >
             <motion.path
               d="M4 12L9 17L20 6"
-              initial={{ pathLength: 0 }}
+              initial={{ pathLength: skipAnimation ? 1 : 0 }}
               animate={{ pathLength: 1, transition: { duration: 0.12, ease: "easeOut" } }}
               exit={{ pathLength: 0, transition: { duration: 0.06, ease: "easeIn" } }}
             />

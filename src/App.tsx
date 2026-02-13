@@ -17,13 +17,13 @@ export default function App() {
   const [selectedTab, setSelectedTab] = useState(0);
 
   return (
-    <div className="flex flex-col items-center justify-center gap-16 min-h-screen">
+    <div className="flex flex-col items-start justify-center gap-16 min-h-screen mx-auto w-fit">
       <div className="flex flex-col items-start gap-3">
         <h1
           className="text-[28px] text-neutral-900 leading-none pl-3 mb-2"
           style={{ fontVariationSettings: "'wght' 700" }}
         >
-          Liquid functionalism
+          Fluid functionalism
         </h1>
         <SubtleTab selectedIndex={selectedTab} onSelect={setSelectedTab}>
         {items.map((item, i) => (
