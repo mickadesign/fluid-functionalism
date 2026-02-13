@@ -213,7 +213,7 @@ export function RadioItem({ label, index, selected, onSelect }: RadioItemProps) 
     <div
       ref={ref}
       onClick={onSelect}
-      className="relative z-10 flex items-center gap-2.5 rounded-lg px-2 py-2 cursor-pointer"
+      className="relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer"
     >
       {/* Radio circle */}
       <div className="relative w-[18px] h-[18px] shrink-0">

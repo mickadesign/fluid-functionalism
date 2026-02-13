@@ -32,7 +32,7 @@ export default function MenuItem({ icon: Icon, label, index, checked, onSelect }
     <div
       ref={ref}
       onClick={onSelect}
-      className="relative z-10 flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer"
+      className="relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer"
     >
       <span className="inline-grid">
         <span className="col-start-1 row-start-1 invisible">

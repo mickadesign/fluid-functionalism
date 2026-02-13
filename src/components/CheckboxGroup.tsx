@@ -260,7 +260,7 @@ export function CheckboxItem({ label, index, checked, onToggle }: CheckboxItemPr
     <div
       ref={ref}
       onClick={onToggle}
-      className="relative z-10 flex items-center gap-2.5 rounded-lg px-2 py-2 cursor-pointer"
+      className="relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer"
     >
       {/* Checkbox */}
       <div className="relative w-[18px] h-[18px] shrink-0">

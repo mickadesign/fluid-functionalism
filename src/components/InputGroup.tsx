@@ -158,7 +158,7 @@ export function InputField({
       }`}
     >
       {/* Label */}
-      <span className="inline-grid text-[13px] pl-2">
+      <span className="inline-grid text-[13px] pl-3">
         <span
           className="col-start-1 row-start-1 invisible"
           style={{ fontVariationSettings: "'wght' 550" }}
@@ -180,7 +180,7 @@ export function InputField({
 
       {/* Input container */}
       <div
-        className={`flex items-center gap-2 rounded-lg p-2 ring-1 transition-all duration-150 ${bgClass} ${ringClass}`}
+        className={`flex items-center gap-2 rounded-lg px-3 py-2 ring-1 transition-all duration-150 ${bgClass} ${ringClass}`}
       >
         {Icon && (
           <Icon
