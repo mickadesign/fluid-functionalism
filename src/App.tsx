@@ -5,6 +5,7 @@ import MenuItem from "./components/MenuItem";
 import SubtleTab, { SubtleTabItem } from "./components/SubtleTab";
 import ThinkingIndicator from "./components/ThinkingIndicator";
 import CheckboxGroup, { CheckboxItem } from "./components/CheckboxGroup";
+import RadioGroup, { RadioItem } from "./components/RadioGroup";
 
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
@@ -18,6 +19,7 @@ export default function App() {
   const [selectedMenuItem, setSelectedMenuItem] = useState<number | null>(0);
   const [selectedTab, setSelectedTab] = useState(0);
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set([0]));
+  const [selectedRadio, setSelectedRadio] = useState(0);
 
   return (
     <div className="flex flex-col items-start justify-center gap-16 min-h-screen mx-auto w-fit">
@@ -71,6 +73,18 @@ export default function App() {
           />
         ))}
       </CheckboxGroup>
+
+      <RadioGroup selectedIndex={selectedRadio}>
+        {items.map((item, i) => (
+          <RadioItem
+            key={item.label}
+            index={i}
+            label={item.label}
+            selected={selectedRadio === i}
+            onSelect={() => setSelectedRadio(i)}
+          />
+        ))}
+      </RadioGroup>
 
       <ThinkingIndicator />
     </div>
