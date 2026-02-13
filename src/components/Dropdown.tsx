@@ -132,7 +132,7 @@ export default function Dropdown({ children, checkedIndex }: DropdownProps) {
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative flex flex-col gap-0.5 w-72 rounded-xl bg-white shadow-[0_8px_16px_rgba(0,0,0,0.08)] border border-neutral-200/60 p-1 select-none"
+        className="relative flex flex-col gap-0.5 w-72 max-w-full rounded-xl bg-white shadow-[0_8px_16px_rgba(0,0,0,0.08)] border border-neutral-200/60 p-1 select-none"
       >
         {/* Selected background */}
         <AnimatePresence>

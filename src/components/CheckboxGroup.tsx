@@ -166,7 +166,7 @@ export default function CheckboxGroup({ children, checkedIndices }: CheckboxGrou
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative flex flex-col gap-0.5 w-72 select-none"
+        className="relative flex flex-col gap-0.5 w-72 max-w-full select-none"
       >
         {/* Selected backgrounds (merged for contiguous checked items) */}
         <AnimatePresence>

@@ -56,11 +56,12 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
     const container = containerRef.current;
     if (!container) return;
     const containerRect = container.getBoundingClientRect();
+    const scrollLeft = container.scrollLeft;
     const rects: TabRect[] = [];
     tabsRef.current.forEach((element, index) => {
       const rect = element.getBoundingClientRect();
       rects[index] = {
-        left: rect.left - containerRect.left,
+        left: rect.left - containerRect.left + scrollLeft,
         width: rect.width,
         top: rect.top - containerRect.top,
         height: rect.height,
@@ -79,6 +80,7 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
     if (!container) return;
 
     const containerRect = container.getBoundingClientRect();
+    const scrollLeft = container.scrollLeft;
     const mouseX = e.clientX;
 
     let closestIndex: number | null = null;
@@ -88,7 +90,7 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
     tabsRef.current.forEach((element, index) => {
       const rect = element.getBoundingClientRect();
       rects[index] = {
-        left: rect.left - containerRect.left,
+        left: rect.left - containerRect.left + scrollLeft,
         width: rect.width,
         top: rect.top - containerRect.top,
         height: rect.height,
@@ -130,7 +132,7 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative flex items-center gap-1 select-none"
+        className="relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6"
       >
         {/* Selected pill */}
         {selectedRect && (

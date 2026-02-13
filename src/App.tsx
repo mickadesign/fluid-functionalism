@@ -22,10 +22,10 @@ export default function App() {
   const [selectedRadio, setSelectedRadio] = useState(0);
 
   return (
-    <div className="flex flex-col items-start justify-center gap-16 min-h-screen mx-auto w-fit">
-      <div className="flex flex-col items-start gap-3">
+    <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16">
+      <div className="flex flex-col items-start gap-3 w-full py-2">
         <h1
-          className="text-[28px] text-neutral-900 leading-none pl-3 mb-2"
+          className="text-[22px] sm:text-[28px] text-neutral-900 leading-none pl-3 mx-6 mb-1 sm:mb-2"
           style={{ fontVariationSettings: "'wght' 700" }}
         >
           Fluid functionalism
@@ -42,51 +42,59 @@ export default function App() {
         </SubtleTab>
       </div>
 
-      <Dropdown checkedIndex={selectedMenuItem ?? undefined}>
-        {items.map((item, i) => (
-          <MenuItem
-            key={item.label}
-            index={i}
-            icon={item.icon}
-            label={item.label}
-            checked={selectedMenuItem === i}
-            onSelect={() => setSelectedMenuItem(selectedMenuItem === i ? null : i)}
-          />
-        ))}
-      </Dropdown>
+      <div className="px-6 w-full">
+        <Dropdown checkedIndex={selectedMenuItem ?? undefined}>
+          {items.map((item, i) => (
+            <MenuItem
+              key={item.label}
+              index={i}
+              icon={item.icon}
+              label={item.label}
+              checked={selectedMenuItem === i}
+              onSelect={() => setSelectedMenuItem(selectedMenuItem === i ? null : i)}
+            />
+          ))}
+        </Dropdown>
+      </div>
 
-      <CheckboxGroup checkedIndices={checkedItems}>
-        {items.map((item, i) => (
-          <CheckboxItem
-            key={item.label}
-            index={i}
-            label={item.label}
-            checked={checkedItems.has(i)}
-            onToggle={() => {
-              setCheckedItems((prev) => {
-                const next = new Set(prev);
-                if (next.has(i)) next.delete(i);
-                else next.add(i);
-                return next;
-              });
-            }}
-          />
-        ))}
-      </CheckboxGroup>
+      <div className="px-6 w-full">
+        <CheckboxGroup checkedIndices={checkedItems}>
+          {items.map((item, i) => (
+            <CheckboxItem
+              key={item.label}
+              index={i}
+              label={item.label}
+              checked={checkedItems.has(i)}
+              onToggle={() => {
+                setCheckedItems((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(i)) next.delete(i);
+                  else next.add(i);
+                  return next;
+                });
+              }}
+            />
+          ))}
+        </CheckboxGroup>
+      </div>
 
-      <RadioGroup selectedIndex={selectedRadio}>
-        {items.map((item, i) => (
-          <RadioItem
-            key={item.label}
-            index={i}
-            label={item.label}
-            selected={selectedRadio === i}
-            onSelect={() => setSelectedRadio(i)}
-          />
-        ))}
-      </RadioGroup>
+      <div className="px-6 w-full">
+        <RadioGroup selectedIndex={selectedRadio}>
+          {items.map((item, i) => (
+            <RadioItem
+              key={item.label}
+              index={i}
+              label={item.label}
+              selected={selectedRadio === i}
+              onSelect={() => setSelectedRadio(i)}
+            />
+          ))}
+        </RadioGroup>
+      </div>
 
-      <ThinkingIndicator />
+      <div className="px-6">
+        <ThinkingIndicator />
+      </div>
     </div>
   );
 }
