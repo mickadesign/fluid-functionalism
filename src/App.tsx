@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { SquareLibrary, Clock, Star, Users, Lock } from "lucide-react";
+import { SquareLibrary, Clock, Star, Users, Lock, Search } from "lucide-react";
 import Dropdown from "./components/Dropdown";
 import MenuItem from "./components/MenuItem";
 import SubtleTab, { SubtleTabItem } from "./components/SubtleTab";
 import ThinkingIndicator from "./components/ThinkingIndicator";
 import CheckboxGroup, { CheckboxItem } from "./components/CheckboxGroup";
 import RadioGroup, { RadioItem } from "./components/RadioGroup";
+import InputGroup, { InputField } from "./components/InputGroup";
 
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
@@ -20,6 +21,7 @@ export default function App() {
   const [selectedTab, setSelectedTab] = useState(0);
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set([0]));
   const [selectedRadio, setSelectedRadio] = useState(0);
+  const [searchValue, setSearchValue] = useState("");
 
   return (
     <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16">
@@ -40,6 +42,23 @@ export default function App() {
           />
         ))}
         </SubtleTab>
+      </div>
+
+      <div className="px-6 w-full">
+        <InputGroup>
+          <InputField
+            index={0}
+            label="Search"
+            placeholder="Search teamspaces..."
+            icon={Search}
+            value={searchValue}
+            onChange={setSearchValue}
+          />
+        </InputGroup>
+      </div>
+
+      <div className="px-6">
+        <ThinkingIndicator />
       </div>
 
       <div className="px-6 w-full">
@@ -90,10 +109,6 @@ export default function App() {
             />
           ))}
         </RadioGroup>
-      </div>
-
-      <div className="px-6">
-        <ThinkingIndicator />
       </div>
     </div>
   );
