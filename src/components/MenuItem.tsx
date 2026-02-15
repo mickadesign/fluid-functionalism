@@ -20,7 +20,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
   ) => {
     const internalRef = useRef<HTMLDivElement>(null);
     const hasMounted = useRef(false);
-    const { registerItem, activeIndex } = useDropdown();
+    const { registerItem, activeIndex, checkedIndex } = useDropdown();
 
     useEffect(() => {
       registerItem(index, internalRef.current);
@@ -42,7 +42,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
-        tabIndex={0}
+        tabIndex={index === (checkedIndex ?? 0) ? 0 : -1}
         role="menuitem"
         aria-label={label}
         onClick={onSelect}
@@ -53,7 +53,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer outline-none",
+          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
           className
         )}
         {...props}

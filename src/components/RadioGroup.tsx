@@ -79,18 +79,28 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           setActiveIndex(null);
         }}
         onKeyDown={(e) => {
-          if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) return;
-          e.preventDefault();
           const items = Array.from(
             containerRef.current?.querySelectorAll('[role="radio"]') ?? []
           ) as HTMLElement[];
           const currentIdx = items.indexOf(e.target as HTMLElement);
           if (currentIdx === -1) return;
-          const next = ["ArrowDown", "ArrowRight"].includes(e.key)
-            ? (currentIdx + 1) % items.length
-            : (currentIdx - 1 + items.length) % items.length;
-          items[next].focus();
-          items[next].click();
+
+          if (["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) {
+            e.preventDefault();
+            const next = ["ArrowDown", "ArrowRight"].includes(e.key)
+              ? (currentIdx + 1) % items.length
+              : (currentIdx - 1 + items.length) % items.length;
+            items[next].focus();
+            items[next].click();
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            items[0]?.focus();
+            items[0]?.click();
+          } else if (e.key === "End") {
+            e.preventDefault();
+            items[items.length - 1]?.focus();
+            items[items.length - 1]?.click();
+          }
         }}
         role="radiogroup"
         className={cn(
@@ -222,7 +232,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
+          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
           className
         )}
         {...props}

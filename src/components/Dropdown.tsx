@@ -15,6 +15,7 @@ import { useProximityHover } from "../lib/use-proximity-hover";
 interface DropdownContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
+  checkedIndex?: number;
 }
 
 const DropdownContext = createContext<DropdownContextValue | null>(null);
@@ -54,7 +55,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       activeIndex !== null && activeIndex !== checkedIndex;
 
     return (
-      <DropdownContext.Provider value={{ registerItem, activeIndex }}>
+      <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
         <div
           ref={(node) => {
             (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -75,17 +76,25 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             setActiveIndex(null);
           }}
           onKeyDown={(e) => {
-            if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) return;
-            e.preventDefault();
             const items = Array.from(
               containerRef.current?.querySelectorAll('[role="menuitem"]') ?? []
             ) as HTMLElement[];
             const currentIdx = items.indexOf(e.target as HTMLElement);
             if (currentIdx === -1) return;
-            const next = ["ArrowDown", "ArrowRight"].includes(e.key)
-              ? (currentIdx + 1) % items.length
-              : (currentIdx - 1 + items.length) % items.length;
-            items[next].focus();
+
+            if (["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) {
+              e.preventDefault();
+              const next = ["ArrowDown", "ArrowRight"].includes(e.key)
+                ? (currentIdx + 1) % items.length
+                : (currentIdx - 1 + items.length) % items.length;
+              items[next].focus();
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              items[0]?.focus();
+            } else if (e.key === "End") {
+              e.preventDefault();
+              items[items.length - 1]?.focus();
+            }
           }}
           role="menu"
           className={cn(

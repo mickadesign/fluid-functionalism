@@ -114,6 +114,27 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
             if (containerRef.current?.contains(e.relatedTarget as Node)) return;
             setActiveIndex(null);
           }}
+          onKeyDown={(e) => {
+            const items = Array.from(
+              containerRef.current?.querySelectorAll('[role="checkbox"]') ?? []
+            ) as HTMLElement[];
+            const currentIdx = items.indexOf(e.target as HTMLElement);
+            if (currentIdx === -1) return;
+
+            if (["ArrowDown", "ArrowUp"].includes(e.key)) {
+              e.preventDefault();
+              const next = e.key === "ArrowDown"
+                ? (currentIdx + 1) % items.length
+                : (currentIdx - 1 + items.length) % items.length;
+              items[next].focus();
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              items[0]?.focus();
+            } else if (e.key === "End") {
+              e.preventDefault();
+              items[items.length - 1]?.focus();
+            }
+          }}
           role="group"
           className={cn(
             "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
@@ -237,7 +258,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
+          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
           className
         )}
         {...props}

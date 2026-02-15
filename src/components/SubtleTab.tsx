@@ -98,18 +98,25 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
             setHoveredIndex(null);
           }}
           onKeyDown={(e) => {
-            if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-            e.preventDefault();
             const items = Array.from(
               containerRef.current?.querySelectorAll('[role="tab"]') ?? []
             ) as HTMLElement[];
             const currentIdx = items.indexOf(e.target as HTMLElement);
             if (currentIdx === -1) return;
-            const next = ["ArrowRight", "ArrowDown"].includes(e.key)
-              ? (currentIdx + 1) % items.length
-              : (currentIdx - 1 + items.length) % items.length;
-            items[next].focus();
-            items[next].click();
+
+            if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+              e.preventDefault();
+              const next = ["ArrowRight", "ArrowDown"].includes(e.key)
+                ? (currentIdx + 1) % items.length
+                : (currentIdx - 1 + items.length) % items.length;
+              items[next].focus();
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              items[0]?.focus();
+            } else if (e.key === "End") {
+              e.preventDefault();
+              items[items.length - 1]?.focus();
+            }
           }}
           className={cn(
             "relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6",
@@ -216,7 +223,7 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
         tabIndex={selectedIndex === index ? 0 : -1}
         onClick={() => onSelect(index)}
         className={cn(
-          "relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
+          "relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
           className
         )}
         {...props}
