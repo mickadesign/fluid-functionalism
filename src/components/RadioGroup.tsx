@@ -1,5 +1,6 @@
 import {
   useRef,
+  useState,
   useEffect,
   createContext,
   useContext,
@@ -51,7 +52,10 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       measureItems();
     }, [measureItems, children]);
 
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
+    const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const selectedRect = itemRects[selectedIndex];
     const isHoveringOther =
       activeIndex !== null && activeIndex !== selectedIndex;
@@ -67,15 +71,20 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         onMouseMove={handlers.onMouseMove}
         onMouseLeave={handlers.onMouseLeave}
         onFocus={(e) => {
-          // Sync proximity hover with keyboard focus
-          const target = e.target as HTMLElement;
-          const indexAttr = target
+          const indexAttr = (e.target as HTMLElement)
             .closest("[data-proximity-index]")
             ?.getAttribute("data-proximity-index");
-          if (indexAttr != null) setActiveIndex(Number(indexAttr));
+          if (indexAttr != null) {
+            const idx = Number(indexAttr);
+            setActiveIndex(idx);
+            setFocusedIndex(
+              (e.target as HTMLElement).matches(":focus-visible") ? idx : null
+            );
+          }
         }}
         onBlur={(e) => {
           if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+          setFocusedIndex(null);
           setActiveIndex(null);
         }}
         onKeyDown={(e) => {
@@ -147,6 +156,27 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
                 left: activeRect.left,
                 width: activeRect.width,
                 height: activeRect.height,
+              }}
+              exit={{ opacity: 0 }}
+              transition={{
+                ...springs.default,
+                opacity: { duration: 0.15 },
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Focus ring */}
+        <AnimatePresence>
+          {focusRect && (
+            <motion.div
+              className="absolute rounded-lg pointer-events-none z-20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-background"
+              initial={false}
+              animate={{
+                left: focusRect.left,
+                top: focusRect.top,
+                width: focusRect.width,
+                height: focusRect.height,
               }}
               exit={{ opacity: 0 }}
               transition={{
@@ -232,7 +262,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
+          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
           className
         )}
         {...props}

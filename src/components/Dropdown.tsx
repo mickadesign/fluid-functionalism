@@ -1,5 +1,6 @@
 import {
   useRef,
+  useState,
   useEffect,
   createContext,
   useContext,
@@ -48,9 +49,12 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       measureItems();
     }, [measureItems, children]);
 
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const checkedRect =
       checkedIndex != null ? itemRects[checkedIndex] : null;
+    const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const isHoveringOther =
       activeIndex !== null && activeIndex !== checkedIndex;
 
@@ -69,15 +73,22 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             const indexAttr = (e.target as HTMLElement)
               .closest("[data-proximity-index]")
               ?.getAttribute("data-proximity-index");
-            if (indexAttr != null) setActiveIndex(Number(indexAttr));
+            if (indexAttr != null) {
+              const idx = Number(indexAttr);
+              setActiveIndex(idx);
+              setFocusedIndex(
+                (e.target as HTMLElement).matches(":focus-visible") ? idx : null
+              );
+            }
           }}
           onBlur={(e) => {
             if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+            setFocusedIndex(null);
             setActiveIndex(null);
           }}
           onKeyDown={(e) => {
             const items = Array.from(
-              containerRef.current?.querySelectorAll('[role="menuitem"]') ?? []
+              containerRef.current?.querySelectorAll('[role="menuitemradio"]') ?? []
             ) as HTMLElement[];
             const currentIdx = items.indexOf(e.target as HTMLElement);
             if (currentIdx === -1) return;
@@ -144,6 +155,27 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                   left: activeRect.left,
                   width: activeRect.width,
                   height: activeRect.height,
+                }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  ...springs.default,
+                  opacity: { duration: 0.15 },
+                }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Focus ring */}
+          <AnimatePresence>
+            {focusRect && (
+              <motion.div
+                className="absolute rounded-lg pointer-events-none z-20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-card"
+                initial={false}
+                animate={{
+                  left: focusRect.left,
+                  top: focusRect.top,
+                  width: focusRect.width,
+                  height: focusRect.height,
                 }}
                 exit={{ opacity: 0 }}
                 transition={{

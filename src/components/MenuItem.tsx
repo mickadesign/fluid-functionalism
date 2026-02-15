@@ -54,7 +54,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
+          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer outline-none",
           className
         )}
         {...props}

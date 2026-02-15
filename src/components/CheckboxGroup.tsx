@@ -1,5 +1,6 @@
 import {
   useRef,
+  useState,
   useEffect,
   createContext,
   useContext,
@@ -88,7 +89,10 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
     });
     prevGroupMap.current = newGroupMap;
 
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
+    const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const isHoveringUnchecked =
       activeIndex !== null && !checkedIndices.has(activeIndex);
 
@@ -107,11 +111,18 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
             const indexAttr = (e.target as HTMLElement)
               .closest("[data-proximity-index]")
               ?.getAttribute("data-proximity-index");
-            if (indexAttr != null) setActiveIndex(Number(indexAttr));
+            if (indexAttr != null) {
+              const idx = Number(indexAttr);
+              setActiveIndex(idx);
+              setFocusedIndex(
+                (e.target as HTMLElement).matches(":focus-visible") ? idx : null
+              );
+            }
           }}
           onBlur={(e) => {
             // Don't clear hover when focus moves to another item within the group
             if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+            setFocusedIndex(null);
             setActiveIndex(null);
           }}
           onKeyDown={(e) => {
@@ -204,6 +215,27 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
             )}
           </AnimatePresence>
 
+          {/* Focus ring */}
+          <AnimatePresence>
+            {focusRect && (
+              <motion.div
+                className="absolute rounded-lg pointer-events-none z-20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-background"
+                initial={false}
+                animate={{
+                  left: focusRect.left,
+                  top: focusRect.top,
+                  width: focusRect.width,
+                  height: focusRect.height,
+                }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  ...springs.default,
+                  opacity: { duration: 0.15 },
+                }}
+              />
+            )}
+          </AnimatePresence>
+
           {children}
         </div>
       </CheckboxGroupContext.Provider>
@@ -258,7 +290,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
+          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
           className
         )}
         {...props}

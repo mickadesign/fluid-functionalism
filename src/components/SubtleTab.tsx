@@ -1,6 +1,7 @@
 import {
   useId,
   useRef,
+  useState,
   useCallback,
   useEffect,
   createContext,
@@ -73,9 +74,12 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
       handlers.onMouseLeave();
     }, [handlers]);
 
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
     const selectedRect = tabRects[selectedIndex];
     const hoverRect =
       hoveredIndex !== null ? tabRects[hoveredIndex] : null;
+    const focusRect = focusedIndex !== null ? tabRects[focusedIndex] : null;
     const isHoveringSelected = hoveredIndex === selectedIndex;
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
@@ -95,10 +99,17 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
             const indexAttr = (e.target as HTMLElement)
               .closest("[data-proximity-index]")
               ?.getAttribute("data-proximity-index");
-            if (indexAttr != null) setHoveredIndex(Number(indexAttr));
+            if (indexAttr != null) {
+              const idx = Number(indexAttr);
+              setHoveredIndex(idx);
+              setFocusedIndex(
+                (e.target as HTMLElement).matches(":focus-visible") ? idx : null
+              );
+            }
           }}
           onBlur={(e) => {
             if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+            setFocusedIndex(null);
             if (isMouseInside.current) return;
             setHoveredIndex(null);
           }}
@@ -124,7 +135,7 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
             }
           }}
           className={cn(
-            "relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6",
+            "relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6 -my-1 py-1",
             className
           )}
           role="tablist"
@@ -187,6 +198,27 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
             )}
           </AnimatePresence>
 
+          {/* Focus ring */}
+          <AnimatePresence>
+            {focusRect && (
+              <motion.div
+                className="absolute rounded-full pointer-events-none z-20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-background"
+                initial={false}
+                animate={{
+                  left: focusRect.left,
+                  top: focusRect.top,
+                  width: focusRect.width,
+                  height: focusRect.height,
+                }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  ...springs.tab,
+                  opacity: { duration: 0.15 },
+                }}
+              />
+            )}
+          </AnimatePresence>
+
           {children}
         </div>
       </SubtleTabContext.Provider>
@@ -230,7 +262,7 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
         tabIndex={selectedIndex === index ? 0 : -1}
         onClick={() => onSelect(index)}
         className={cn(
-          "relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1",
+          "relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
           className
         )}
         {...props}
