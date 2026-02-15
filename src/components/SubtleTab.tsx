@@ -92,7 +92,11 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
               ?.getAttribute("data-proximity-index");
             if (indexAttr != null) setHoveredIndex(Number(indexAttr));
           }}
-          onBlur={() => setHoveredIndex(null)}
+          onBlur={(e) => {
+            if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+            if (isMouseInside.current) return;
+            setHoveredIndex(null);
+          }}
           onKeyDown={(e) => {
             if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
             e.preventDefault();

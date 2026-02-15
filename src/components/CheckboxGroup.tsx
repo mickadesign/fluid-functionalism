@@ -109,7 +109,11 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
               ?.getAttribute("data-proximity-index");
             if (indexAttr != null) setActiveIndex(Number(indexAttr));
           }}
-          onBlur={() => setActiveIndex(null)}
+          onBlur={(e) => {
+            // Don't clear hover when focus moves to another item within the group
+            if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+            setActiveIndex(null);
+          }}
           role="group"
           className={cn(
             "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
@@ -243,6 +247,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           checked={checked}
           onCheckedChange={() => onToggle()}
           tabIndex={-1}
+          aria-hidden
           className="relative w-[18px] h-[18px] shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer"
           onClick={(e) => e.stopPropagation()}
         >

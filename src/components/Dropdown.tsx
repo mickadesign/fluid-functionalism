@@ -70,7 +70,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
               ?.getAttribute("data-proximity-index");
             if (indexAttr != null) setActiveIndex(Number(indexAttr));
           }}
-          onBlur={() => setActiveIndex(null)}
+          onBlur={(e) => {
+            if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+            setActiveIndex(null);
+          }}
           onKeyDown={(e) => {
             if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) return;
             e.preventDefault();
