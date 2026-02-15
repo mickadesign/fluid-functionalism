@@ -219,13 +219,13 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className="absolute rounded-lg pointer-events-none z-20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-background"
+                className="absolute rounded-[10px] pointer-events-none z-20 border border-[#6B97FF]"
                 initial={false}
                 animate={{
-                  left: focusRect.left,
-                  top: focusRect.top,
-                  width: focusRect.width,
-                  height: focusRect.height,
+                  left: focusRect.left - 2,
+                  top: focusRect.top - 2,
+                  width: focusRect.width + 4,
+                  height: focusRect.height + 4,
                 }}
                 exit={{ opacity: 0 }}
                 transition={{

@@ -202,13 +202,13 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className="absolute rounded-full pointer-events-none z-20 ring-2 ring-foreground/20 ring-offset-1 ring-offset-background"
+                className="absolute rounded-full pointer-events-none z-20 border border-[#6B97FF]"
                 initial={false}
                 animate={{
-                  left: focusRect.left,
-                  top: focusRect.top,
-                  width: focusRect.width,
-                  height: focusRect.height,
+                  left: focusRect.left - 2,
+                  top: focusRect.top - 2,
+                  width: focusRect.width + 4,
+                  height: focusRect.height + 4,
                 }}
                 exit={{ opacity: 0 }}
                 transition={{
@@ -323,11 +323,8 @@ const SubtleTabPanel = forwardRef<HTMLDivElement, SubtleTabPanelProps>(
         role="tabpanel"
         aria-labelledby={`${idPrefix}-tab-${index}`}
         hidden={!isSelected}
-        tabIndex={0}
-        className={cn(
-          "outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 rounded-lg",
-          className
-        )}
+        tabIndex={-1}
+        className={cn("outline-none", className)}
         {...props}
       >
         {isSelected && children}
