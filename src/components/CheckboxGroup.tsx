@@ -222,6 +222,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         <CheckboxPrimitive.Root
           checked={checked}
           onCheckedChange={() => onToggle()}
+          tabIndex={-1}
           className="relative w-[18px] h-[18px] shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer"
           onClick={(e) => e.stopPropagation()}
         >
