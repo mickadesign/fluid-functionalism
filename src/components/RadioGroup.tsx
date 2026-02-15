@@ -75,6 +75,21 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           if (indexAttr != null) setActiveIndex(Number(indexAttr));
         }}
         onBlur={() => setActiveIndex(null)}
+        onKeyDown={(e) => {
+          if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) return;
+          e.preventDefault();
+          const items = Array.from(
+            containerRef.current?.querySelectorAll('[role="radio"]') ?? []
+          ) as HTMLElement[];
+          const currentIdx = items.indexOf(e.target as HTMLElement);
+          if (currentIdx === -1) return;
+          const next = ["ArrowDown", "ArrowRight"].includes(e.key)
+            ? (currentIdx + 1) % items.length
+            : (currentIdx - 1 + items.length) % items.length;
+          items[next].focus();
+          items[next].click();
+        }}
+        role="radiogroup"
         className={cn(
           "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
           className
@@ -192,9 +207,19 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
+        tabIndex={selected ? 0 : -1}
+        role="radio"
+        aria-checked={selected}
+        aria-label={label}
         onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer",
+          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
           className
         )}
         {...props}

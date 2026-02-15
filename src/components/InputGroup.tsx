@@ -142,6 +142,8 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
     const isActive = activeIndex === index;
     const labelActive = isActive || isFocused;
 
+    const errorId = error ? `input-error-${index}` : undefined;
+
     const handleFocus = () => {
       setIsFocused(true);
       setFocusedIndex(index);
@@ -242,6 +244,8 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
             onBlur={handleBlur}
             placeholder={placeholder}
             disabled={disabled}
+            aria-invalid={!!error || undefined}
+            aria-describedby={errorId}
             className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none font-[inherit]"
             style={{ fontVariationSettings: fontWeights.normal }}
             {...props}
@@ -251,6 +255,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
         {/* Error message */}
         {error && (
           <span
+            id={errorId}
             className="text-[12px] text-destructive pl-3"
             style={{ fontVariationSettings: fontWeights.medium }}
           >

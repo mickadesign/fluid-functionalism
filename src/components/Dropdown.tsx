@@ -35,6 +35,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const {
       activeIndex,
+      setActiveIndex,
       itemRects,
       sessionRef,
       handlers,
@@ -63,6 +64,27 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           onMouseEnter={handlers.onMouseEnter}
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
+          onFocus={(e) => {
+            const indexAttr = (e.target as HTMLElement)
+              .closest("[data-proximity-index]")
+              ?.getAttribute("data-proximity-index");
+            if (indexAttr != null) setActiveIndex(Number(indexAttr));
+          }}
+          onBlur={() => setActiveIndex(null)}
+          onKeyDown={(e) => {
+            if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)) return;
+            e.preventDefault();
+            const items = Array.from(
+              containerRef.current?.querySelectorAll('[role="menuitem"]') ?? []
+            ) as HTMLElement[];
+            const currentIdx = items.indexOf(e.target as HTMLElement);
+            if (currentIdx === -1) return;
+            const next = ["ArrowDown", "ArrowRight"].includes(e.key)
+              ? (currentIdx + 1) % items.length
+              : (currentIdx - 1 + items.length) % items.length;
+            items[next].focus();
+          }}
+          role="menu"
           className={cn(
             "relative flex flex-col gap-0.5 w-72 max-w-full rounded-xl bg-card shadow-[0_8px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none",
             className

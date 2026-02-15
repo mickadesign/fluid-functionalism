@@ -41,9 +41,19 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           if (typeof ref === "function") ref(node);
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
+        data-proximity-index={index}
+        tabIndex={0}
+        role="menuitem"
+        aria-label={label}
         onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            onSelect?.();
+          }
+        }}
         className={cn(
-          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer",
+          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer outline-none",
           className
         )}
         {...props}

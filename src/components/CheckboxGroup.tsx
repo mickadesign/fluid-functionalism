@@ -43,6 +43,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
 
     const {
       activeIndex,
+      setActiveIndex,
       itemRects,
       sessionRef,
       handlers,
@@ -102,6 +103,14 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           onMouseEnter={handlers.onMouseEnter}
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
+          onFocus={(e) => {
+            const indexAttr = (e.target as HTMLElement)
+              .closest("[data-proximity-index]")
+              ?.getAttribute("data-proximity-index");
+            if (indexAttr != null) setActiveIndex(Number(indexAttr));
+          }}
+          onBlur={() => setActiveIndex(null)}
+          role="group"
           className={cn(
             "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
             className
@@ -211,9 +220,20 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           if (typeof ref === "function") ref(node);
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
+        data-proximity-index={index}
+        tabIndex={0}
+        role="checkbox"
+        aria-checked={checked}
+        aria-label={label}
         onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer",
+          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
           className
         )}
         {...props}

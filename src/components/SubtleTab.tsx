@@ -43,6 +43,7 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
 
     const {
       activeIndex: hoveredIndex,
+      setActiveIndex: setHoveredIndex,
       itemRects: tabRects,
       handlers,
       registerItem: registerTab,
@@ -85,6 +86,27 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
           }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
+          onFocus={(e) => {
+            const indexAttr = (e.target as HTMLElement)
+              .closest("[data-proximity-index]")
+              ?.getAttribute("data-proximity-index");
+            if (indexAttr != null) setHoveredIndex(Number(indexAttr));
+          }}
+          onBlur={() => setHoveredIndex(null)}
+          onKeyDown={(e) => {
+            if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+            e.preventDefault();
+            const items = Array.from(
+              containerRef.current?.querySelectorAll('[role="tab"]') ?? []
+            ) as HTMLElement[];
+            const currentIdx = items.indexOf(e.target as HTMLElement);
+            if (currentIdx === -1) return;
+            const next = ["ArrowRight", "ArrowDown"].includes(e.key)
+              ? (currentIdx + 1) % items.length
+              : (currentIdx - 1 + items.length) % items.length;
+            items[next].focus();
+            items[next].click();
+          }}
           className={cn(
             "relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6",
             className
@@ -184,8 +206,10 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
           if (typeof ref === "function") ref(node);
           else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
         }}
+        data-proximity-index={index}
         role="tab"
         aria-selected={selectedIndex === index}
+        tabIndex={selectedIndex === index ? 0 : -1}
         onClick={() => onSelect(index)}
         className={cn(
           "relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
