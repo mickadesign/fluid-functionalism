@@ -93,7 +93,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringUnchecked =
+    const isHoveringOther =
       activeIndex !== null && !checkedIndices.has(activeIndex);
 
     return (
@@ -174,7 +174,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
                     left: mergedLeft,
                     width: mergedWidth,
                     height: mergedHeight,
-                    opacity: isHoveringUnchecked ? 0.8 : 1,
+                    opacity: isHoveringOther ? 0.8 : 1,
                   }}
                   exit={{ opacity: 0 }}
                   transition={{
