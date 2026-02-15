@@ -1,4 +1,5 @@
 import {
+  useId,
   useRef,
   useCallback,
   useEffect,
@@ -20,6 +21,7 @@ interface SubtleTabContextValue {
   hoveredIndex: number | null;
   selectedIndex: number;
   onSelect: (index: number) => void;
+  idPrefix: string;
 }
 
 const SubtleTabContext = createContext<SubtleTabContextValue | null>(null);
@@ -34,12 +36,15 @@ interface SubtleTabProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect"
   children: ReactNode;
   selectedIndex: number;
   onSelect: (index: number) => void;
+  idPrefix?: string;
 }
 
 const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
-  ({ children, selectedIndex, onSelect, className, ...props }, ref) => {
+  ({ children, selectedIndex, onSelect, idPrefix: idPrefixProp, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
+    const generatedId = useId();
+    const idPrefix = idPrefixProp || generatedId;
 
     const {
       activeIndex: hoveredIndex,
@@ -76,7 +81,7 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
 
     return (
       <SubtleTabContext.Provider
-        value={{ registerTab, hoveredIndex, selectedIndex, onSelect }}
+        value={{ registerTab, hoveredIndex, selectedIndex, onSelect, idPrefix }}
       >
         <div
           ref={(node) => {
@@ -200,7 +205,7 @@ interface SubtleTabItemProps extends HTMLAttributes<HTMLButtonElement> {
 const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
   ({ icon: Icon, label, index, className, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement>(null);
-    const { registerTab, hoveredIndex, selectedIndex, onSelect } =
+    const { registerTab, hoveredIndex, selectedIndex, onSelect, idPrefix } =
       useSubtleTab();
 
     useEffect(() => {
@@ -218,8 +223,10 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
         }}
         data-proximity-index={index}
+        id={`${idPrefix}-tab-${index}`}
         role="tab"
         aria-selected={selectedIndex === index}
+        aria-controls={`${idPrefix}-panel-${index}`}
         tabIndex={selectedIndex === index ? 0 : -1}
         onClick={() => onSelect(index)}
         className={cn(
@@ -266,5 +273,38 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
 
 SubtleTabItem.displayName = "SubtleTabItem";
 
-export { SubtleTab, SubtleTabItem };
+interface SubtleTabPanelProps extends HTMLAttributes<HTMLDivElement> {
+  index: number;
+  selectedIndex: number;
+  idPrefix: string;
+  children: ReactNode;
+}
+
+const SubtleTabPanel = forwardRef<HTMLDivElement, SubtleTabPanelProps>(
+  ({ index, selectedIndex, idPrefix, children, className, ...props }, ref) => {
+    const isSelected = selectedIndex === index;
+
+    return (
+      <div
+        ref={ref}
+        id={`${idPrefix}-panel-${index}`}
+        role="tabpanel"
+        aria-labelledby={`${idPrefix}-tab-${index}`}
+        hidden={!isSelected}
+        tabIndex={0}
+        className={cn(
+          "outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 rounded-lg",
+          className
+        )}
+        {...props}
+      >
+        {isSelected && children}
+      </div>
+    );
+  }
+);
+
+SubtleTabPanel.displayName = "SubtleTabPanel";
+
+export { SubtleTab, SubtleTabItem, SubtleTabPanel };
 export default SubtleTab;

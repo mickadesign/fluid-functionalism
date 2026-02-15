@@ -43,7 +43,8 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         }}
         data-proximity-index={index}
         tabIndex={index === (checkedIndex ?? 0) ? 0 : -1}
-        role="menuitem"
+        role="menuitemradio"
+        aria-checked={!!checked}
         aria-label={label}
         onClick={onSelect}
         onKeyDown={(e) => {

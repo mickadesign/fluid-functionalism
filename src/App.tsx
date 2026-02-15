@@ -5,6 +5,7 @@ import {
   MenuItem,
   SubtleTab,
   SubtleTabItem,
+  SubtleTabPanel,
   ThinkingIndicator,
   CheckboxGroup,
   CheckboxItem,
@@ -41,7 +42,7 @@ export default function App() {
         <p className="text-[13px] text-muted-foreground pl-3 mx-6 mb-4">
           Fluid components used exclusively in service of functional clarity.
         </p>
-        <SubtleTab selectedIndex={selectedTab} onSelect={setSelectedTab}>
+        <SubtleTab idPrefix="nav" selectedIndex={selectedTab} onSelect={setSelectedTab} aria-label="Navigation">
         {items.map((item, i) => (
           <SubtleTabItem
             key={item.label}
@@ -51,6 +52,18 @@ export default function App() {
           />
         ))}
         </SubtleTab>
+        {items.map((item, i) => (
+          <SubtleTabPanel
+            key={item.label}
+            index={i}
+            selectedIndex={selectedTab}
+            idPrefix="nav"
+          >
+            <span className="sr-only">
+              {item.label} section
+            </span>
+          </SubtleTabPanel>
+        ))}
       </div>
 
       <div className="px-6 w-full">
