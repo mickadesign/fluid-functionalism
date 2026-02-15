@@ -1,24 +1,22 @@
 import {
   useRef,
-  useState,
   useCallback,
   useEffect,
   createContext,
   useContext,
+  forwardRef,
   type ReactNode,
+  type HTMLAttributes,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-
-interface TabRect {
-  left: number;
-  width: number;
-  top: number;
-  height: number;
-}
+import { cn } from "../lib/utils";
+import { springs } from "../lib/springs";
+import { fontWeights } from "../lib/font-weight";
+import { useProximityHover } from "../lib/use-proximity-hover";
 
 interface SubtleTabContextValue {
-  registerTab: (index: number, element: HTMLButtonElement | null) => void;
+  registerTab: (index: number, element: HTMLElement | null) => void;
   hoveredIndex: number | null;
   selectedIndex: number;
   onSelect: (index: number) => void;
@@ -32,208 +30,206 @@ function useSubtleTab() {
   return ctx;
 }
 
-interface SubtleTabProps {
+interface SubtleTabProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> {
   children: ReactNode;
   selectedIndex: number;
   onSelect: (index: number) => void;
 }
 
-export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleTabProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const tabsRef = useRef(new Map<number, HTMLButtonElement>());
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [tabRects, setTabRects] = useState<TabRect[]>([]);
-  const isMouseInside = useRef(false);
-  const registerTab = useCallback((index: number, element: HTMLButtonElement | null) => {
-    if (element) {
-      tabsRef.current.set(index, element);
-    } else {
-      tabsRef.current.delete(index);
-    }
-  }, []);
+const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
+  ({ children, selectedIndex, onSelect, className, ...props }, ref) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isMouseInside = useRef(false);
 
-  const measureTabs = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const containerRect = container.getBoundingClientRect();
-    const scrollLeft = container.scrollLeft;
-    const rects: TabRect[] = [];
-    tabsRef.current.forEach((element, index) => {
-      const rect = element.getBoundingClientRect();
-      rects[index] = {
-        left: rect.left - containerRect.left + scrollLeft,
-        width: rect.width,
-        top: rect.top - containerRect.top,
-        height: rect.height,
-      };
-    });
-    setTabRects(rects);
-  }, []);
+    const {
+      activeIndex: hoveredIndex,
+      itemRects: tabRects,
+      handlers,
+      registerItem: registerTab,
+      measureItems: measureTabs,
+    } = useProximityHover(containerRef, { axis: "x" });
 
-  useEffect(() => {
-    measureTabs();
-  }, [measureTabs, children]);
+    useEffect(() => {
+      measureTabs();
+    }, [measureTabs, children]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    isMouseInside.current = true;
-    const container = containerRef.current;
-    if (!container) return;
+    // Wrap handlers to track isMouseInside
+    const handleMouseMove = useCallback(
+      (e: React.MouseEvent) => {
+        isMouseInside.current = true;
+        handlers.onMouseMove(e);
+      },
+      [handlers]
+    );
 
-    const containerRect = container.getBoundingClientRect();
-    const scrollLeft = container.scrollLeft;
-    const mouseX = e.clientX;
+    const handleMouseLeave = useCallback(() => {
+      isMouseInside.current = false;
+      handlers.onMouseLeave();
+    }, [handlers]);
 
-    let closestIndex: number | null = null;
-    let closestDistance = Infinity;
-    const rects: TabRect[] = [];
+    const selectedRect = tabRects[selectedIndex];
+    const hoverRect =
+      hoveredIndex !== null ? tabRects[hoveredIndex] : null;
+    const isHoveringSelected = hoveredIndex === selectedIndex;
+    const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
-    tabsRef.current.forEach((element, index) => {
-      const rect = element.getBoundingClientRect();
-      rects[index] = {
-        left: rect.left - containerRect.left + scrollLeft,
-        width: rect.width,
-        top: rect.top - containerRect.top,
-        height: rect.height,
-      };
-
-      const tabCenterX = rect.left + rect.width / 2;
-      const distance = Math.abs(mouseX - tabCenterX);
-
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    setTabRects(rects);
-    setHoveredIndex(closestIndex);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    isMouseInside.current = false;
-    setHoveredIndex(null);
-  }, []);
-
-  const selectedRect = tabRects[selectedIndex];
-  const hoverRect = hoveredIndex !== null ? tabRects[hoveredIndex] : null;
-  const isHoveringSelected = hoveredIndex === selectedIndex;
-  const isHovering = hoveredIndex !== null && !isHoveringSelected;
-
-  const spring = {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 40,
-    mass: 0.8,
-  };
-
-  return (
-    <SubtleTabContext.Provider value={{ registerTab, hoveredIndex, selectedIndex, onSelect }}>
-      <div
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        className="relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6"
+    return (
+      <SubtleTabContext.Provider
+        value={{ registerTab, hoveredIndex, selectedIndex, onSelect }}
       >
-        {/* Selected pill */}
-        {selectedRect && (
-          <motion.div
-            className="absolute rounded-full bg-neutral-300/50 dark:bg-neutral-600/40 pointer-events-none"
-            initial={false}
-            animate={{
-              left: selectedRect.left,
-              width: selectedRect.width,
-              top: selectedRect.top,
-              height: selectedRect.height,
-              opacity: isHovering ? 0.8 : 1,
-            }}
-            transition={{ ...spring, opacity: { duration: 0.15 } }}
-          />
-        )}
-
-        {/* Hover pill */}
-        <AnimatePresence>
-          {hoverRect && !isHoveringSelected && selectedRect && (
+        <div
+          ref={(node) => {
+            (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            if (typeof ref === "function") ref(node);
+            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          className={cn(
+            "relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6",
+            className
+          )}
+          role="tablist"
+          {...props}
+        >
+          {/* Selected pill */}
+          {selectedRect && (
             <motion.div
-              className="absolute rounded-full bg-neutral-200/60 dark:bg-neutral-600/30 pointer-events-none"
-              initial={{
-                left: selectedRect.left,
-                width: selectedRect.width,
-                top: selectedRect.top,
-                height: selectedRect.height,
-                opacity: 0,
-              }}
+              className="absolute rounded-full bg-selected/50 dark:bg-accent/40 pointer-events-none"
+              initial={false}
               animate={{
-                left: hoverRect.left,
-                width: hoverRect.width,
-                top: hoverRect.top,
-                height: hoverRect.height,
-                opacity: 0.4,
-              }}
-              exit={!isMouseInside.current && selectedRect ? {
                 left: selectedRect.left,
                 width: selectedRect.width,
                 top: selectedRect.top,
                 height: selectedRect.height,
-                opacity: 0,
-              } : { opacity: 0 }}
-              transition={{ ...spring, opacity: { duration: 0.15 } }}
+                opacity: isHovering ? 0.8 : 1,
+              }}
+              transition={{
+                ...springs.tab,
+                opacity: { duration: 0.15 },
+              }}
             />
           )}
-        </AnimatePresence>
 
-        {children}
-      </div>
-    </SubtleTabContext.Provider>
-  );
-}
+          {/* Hover pill */}
+          <AnimatePresence>
+            {hoverRect && !isHoveringSelected && selectedRect && (
+              <motion.div
+                className="absolute rounded-full bg-accent/60 dark:bg-accent/30 pointer-events-none"
+                initial={{
+                  left: selectedRect.left,
+                  width: selectedRect.width,
+                  top: selectedRect.top,
+                  height: selectedRect.height,
+                  opacity: 0,
+                }}
+                animate={{
+                  left: hoverRect.left,
+                  width: hoverRect.width,
+                  top: hoverRect.top,
+                  height: hoverRect.height,
+                  opacity: 0.4,
+                }}
+                exit={
+                  !isMouseInside.current && selectedRect
+                    ? {
+                        left: selectedRect.left,
+                        width: selectedRect.width,
+                        top: selectedRect.top,
+                        height: selectedRect.height,
+                        opacity: 0,
+                      }
+                    : { opacity: 0 }
+                }
+                transition={{
+                  ...springs.tab,
+                  opacity: { duration: 0.15 },
+                }}
+              />
+            )}
+          </AnimatePresence>
 
-interface SubtleTabItemProps {
+          {children}
+        </div>
+      </SubtleTabContext.Provider>
+    );
+  }
+);
+
+SubtleTab.displayName = "SubtleTab";
+
+interface SubtleTabItemProps extends HTMLAttributes<HTMLButtonElement> {
   icon: LucideIcon;
   label: string;
   index: number;
 }
 
-export function SubtleTabItem({ icon: Icon, label, index }: SubtleTabItemProps) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const { registerTab, hoveredIndex, selectedIndex, onSelect } = useSubtleTab();
+const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
+  ({ icon: Icon, label, index, className, ...props }, ref) => {
+    const internalRef = useRef<HTMLButtonElement>(null);
+    const { registerTab, hoveredIndex, selectedIndex, onSelect } =
+      useSubtleTab();
 
-  useEffect(() => {
-    registerTab(index, ref.current);
-    return () => registerTab(index, null);
-  }, [index, registerTab]);
+    useEffect(() => {
+      registerTab(index, internalRef.current);
+      return () => registerTab(index, null);
+    }, [index, registerTab]);
 
-  const isActive = hoveredIndex === index || selectedIndex === index;
+    const isActive = hoveredIndex === index || selectedIndex === index;
 
-  return (
-    <button
-      ref={ref}
-      onClick={() => onSelect(index)}
-      className="relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none"
-    >
-      <Icon
-        size={16}
-        strokeWidth={isActive ? 2 : 1.5}
-        className={`transition-[color,stroke-width] duration-120 ${
-          isActive ? "text-neutral-700 dark:text-neutral-200" : "text-neutral-400 dark:text-neutral-500"
-        }`}
-      />
-      <span className="inline-grid text-[13px] whitespace-nowrap">
-        <span
-          className="col-start-1 row-start-1 invisible"
-          style={{ fontVariationSettings: "'wght' 550" }}
-          aria-hidden="true"
-        >
-          {label}
+    return (
+      <button
+        ref={(node) => {
+          (internalRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+        }}
+        role="tab"
+        aria-selected={selectedIndex === index}
+        onClick={() => onSelect(index)}
+        className={cn(
+          "relative z-10 flex items-center gap-2 rounded-full px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
+          className
+        )}
+        {...props}
+      >
+        <Icon
+          size={16}
+          strokeWidth={isActive ? 2 : 1.5}
+          className={cn(
+            "transition-[color,stroke-width] duration-120",
+            isActive ? "text-foreground" : "text-muted-foreground"
+          )}
+        />
+        <span className="inline-grid text-[13px] whitespace-nowrap">
+          <span
+            className="col-start-1 row-start-1 invisible"
+            style={{ fontVariationSettings: fontWeights.semibold }}
+            aria-hidden="true"
+          >
+            {label}
+          </span>
+          <span
+            className={cn(
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120",
+              isActive ? "text-foreground" : "text-muted-foreground"
+            )}
+            style={{
+              fontVariationSettings:
+                selectedIndex === index
+                  ? fontWeights.semibold
+                  : fontWeights.normal,
+            }}
+          >
+            {label}
+          </span>
         </span>
-        <span
-          className={`col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120 ${
-            isActive ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-500 dark:text-neutral-400"
-          }`}
-          style={{ fontVariationSettings: `'wght' ${selectedIndex === index ? 550 : 400}` }}
-        >
-          {label}
-        </span>
-      </span>
-    </button>
-  );
-}
+      </button>
+    );
+  }
+);
+
+SubtleTabItem.displayName = "SubtleTabItem";
+
+export { SubtleTab, SubtleTabItem };
+export default SubtleTab;

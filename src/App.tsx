@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { SquareLibrary, Clock, Star, Users, Lock, Search } from "lucide-react";
-import Dropdown from "./components/Dropdown";
-import MenuItem from "./components/MenuItem";
-import SubtleTab, { SubtleTabItem } from "./components/SubtleTab";
-import ThinkingIndicator from "./components/ThinkingIndicator";
-import CheckboxGroup, { CheckboxItem } from "./components/CheckboxGroup";
-import RadioGroup, { RadioItem } from "./components/RadioGroup";
-import InputGroup, { InputField } from "./components/InputGroup";
+import {
+  Dropdown,
+  MenuItem,
+  SubtleTab,
+  SubtleTabItem,
+  ThinkingIndicator,
+  CheckboxGroup,
+  CheckboxItem,
+  RadioGroup,
+  RadioItem,
+  InputGroup,
+  InputField,
+} from "./components";
 
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
@@ -27,12 +33,12 @@ export default function App() {
     <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16">
       <div className="flex flex-col items-start gap-3 w-full py-2">
         <h1
-          className="text-[22px] sm:text-[28px] text-neutral-900 dark:text-neutral-100 leading-none pl-3 mx-6"
+          className="text-[22px] sm:text-[28px] text-foreground leading-none pl-3 mx-6"
           style={{ fontVariationSettings: "'wght' 700" }}
         >
           Fluid Functionalism
         </h1>
-        <p className="text-[13px] text-neutral-500 dark:text-neutral-400 pl-3 mx-6 mb-4">
+        <p className="text-[13px] text-muted-foreground pl-3 mx-6 mb-4">
           Fluid components used exclusively in service of functional clarity.
         </p>
         <SubtleTab selectedIndex={selectedTab} onSelect={setSelectedTab}>
@@ -114,13 +120,13 @@ export default function App() {
         </RadioGroup>
       </div>
 
-      <p className="text-[13px] text-neutral-400 dark:text-neutral-500 pl-3 mx-6">
+      <p className="text-[13px] text-muted-foreground pl-3 mx-6">
         Designed by{" "}
         <a
           href="https://x.com/micka_design"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors duration-150"
+          className="text-muted-foreground hover:text-foreground transition-colors duration-150"
         >
           @micka_design
         </a>

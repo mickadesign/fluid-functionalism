@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { forwardRef, useState, useEffect, type HTMLAttributes } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "../lib/utils";
+import { fontWeights } from "../lib/font-weight";
 
 const circleA =
   "M 12 8 C 14.21 8 16 9.79 16 12 C 16 14.21 14.21 16 12 16 C 9.79 16 8 14.21 8 12 C 8 9.79 9.79 8 12 8 Z";
@@ -12,7 +14,10 @@ const circleB =
 
 const words = ["Thinking", "Moonwalking", "Planning", "Refining"];
 
-export default function ThinkingIndicator() {
+const ThinkingIndicator = forwardRef<
+  HTMLDivElement,
+  HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -23,7 +28,11 @@ export default function ThinkingIndicator() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2">
+    <div
+      ref={ref}
+      className={cn("flex items-center gap-2 px-3 py-2", className)}
+      {...props}
+    >
       <motion.svg
         width={20}
         height={20}
@@ -33,7 +42,7 @@ export default function ThinkingIndicator() {
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-neutral-400 dark:text-neutral-500 shrink-0"
+        className="text-muted-foreground shrink-0"
       >
         <motion.path
           animate={{
@@ -49,8 +58,14 @@ export default function ThinkingIndicator() {
           }}
         />
       </motion.svg>
-      <span className="inline-grid text-[13px] overflow-hidden" style={{ fontVariationSettings: "'wght' 450" }}>
-        <span className="col-start-1 row-start-1 invisible shimmer-text" aria-hidden="true">
+      <span
+        className="inline-grid text-[13px] overflow-hidden"
+        style={{ fontVariationSettings: fontWeights.medium }}
+      >
+        <span
+          className="col-start-1 row-start-1 invisible shimmer-text"
+          aria-hidden="true"
+        >
           {words.reduce((a, b) => (a.length >= b.length ? a : b))}
         </span>
         <AnimatePresence mode="popLayout" initial={false}>
@@ -68,4 +83,9 @@ export default function ThinkingIndicator() {
       </span>
     </div>
   );
-}
+});
+
+ThinkingIndicator.displayName = "ThinkingIndicator";
+
+export { ThinkingIndicator };
+export default ThinkingIndicator;
