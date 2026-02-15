@@ -42,7 +42,7 @@ export default function MenuItem({ icon: Icon, label, index, checked, onSelect }
           size={16}
           strokeWidth={isActive || checked ? 2 : 1.5}
           className={`col-start-1 row-start-1 transition-[color,stroke-width] duration-120 ${
-            isActive || checked ? "text-neutral-700" : "text-neutral-400"
+            isActive || checked ? "text-neutral-700 dark:text-neutral-200" : "text-neutral-400 dark:text-neutral-500"
           }`}
         />
       </span>
@@ -56,7 +56,7 @@ export default function MenuItem({ icon: Icon, label, index, checked, onSelect }
         </span>
         <span
           className={`col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120 ${
-            isActive || checked ? "text-neutral-900" : "text-neutral-500"
+            isActive || checked ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-500 dark:text-neutral-400"
           }`}
           style={{ fontVariationSettings: `'wght' ${checked ? 550 : 400}` }}
         >
@@ -75,7 +75,7 @@ export default function MenuItem({ icon: Icon, label, index, checked, onSelect }
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="text-neutral-900 shrink-0"
+            className="text-neutral-900 dark:text-neutral-100 shrink-0"
             initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 1 }}

@@ -18,6 +18,12 @@ body {
   font-family: var(--font-sans);
 }
 
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #171717;
+  }
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -50,4 +56,20 @@ body {
   background-clip: text;
   -webkit-background-clip: text;
   animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .shimmer-text {
+    background: linear-gradient(
+      90deg,
+      #525252 0%,
+      #525252 35%,
+      #a3a3a3 50%,
+      #525252 65%,
+      #525252 100%
+    );
+    background-size: 300% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+  }
 }

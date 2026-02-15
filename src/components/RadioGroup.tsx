@@ -137,7 +137,7 @@ export default function RadioGroup({ children, selectedIndex }: RadioGroupProps)
         {/* Selected background */}
         {selectedRect && (
           <motion.div
-            className="absolute rounded-lg bg-neutral-300/50 pointer-events-none"
+            className="absolute rounded-lg bg-neutral-300/50 dark:bg-neutral-600/40 pointer-events-none"
             initial={false}
             animate={{
               top: selectedRect.top,
@@ -155,7 +155,7 @@ export default function RadioGroup({ children, selectedIndex }: RadioGroupProps)
           {activeRect && (
             <motion.div
               key={sessionRef.current}
-              className="absolute rounded-lg bg-neutral-200/40 pointer-events-none"
+              className="absolute rounded-lg bg-neutral-200/40 dark:bg-neutral-600/25 pointer-events-none"
               initial={{
                 opacity: 0,
                 top: activeRect.top,
@@ -223,8 +223,8 @@ export function RadioItem({ label, index, selected, onSelect }: RadioItemProps) 
             selected
               ? "border-[1.5px] border-transparent"
               : isActive
-              ? "border-[1.5px] border-neutral-400"
-              : "border-[1.5px] border-neutral-300"
+              ? "border-[1.5px] border-neutral-400 dark:border-neutral-500"
+              : "border-[1.5px] border-neutral-300 dark:border-neutral-600"
           }`}
         />
         {/* Dot */}
@@ -242,7 +242,7 @@ export function RadioItem({ label, index, selected, onSelect }: RadioItemProps) 
                 mass: 0.5,
               }}
             >
-              <div className="w-[8px] h-[8px] rounded-full bg-neutral-900" />
+              <div className="w-[8px] h-[8px] rounded-full bg-neutral-900 dark:bg-neutral-100" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -259,7 +259,7 @@ export function RadioItem({ label, index, selected, onSelect }: RadioItemProps) 
         </span>
         <span
           className={`col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120 ${
-            selected || isActive ? "text-neutral-900" : "text-neutral-500"
+            selected || isActive ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-500 dark:text-neutral-400"
           }`}
           style={{ fontVariationSettings: `'wght' ${selected ? 550 : 400}` }}
         >

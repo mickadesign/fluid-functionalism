@@ -181,7 +181,7 @@ export default function CheckboxGroup({ children, checkedIndices }: CheckboxGrou
             return (
               <motion.div
                 key={`group-${group.id}`}
-                className="absolute rounded-lg bg-neutral-300/50 pointer-events-none"
+                className="absolute rounded-lg bg-neutral-300/50 dark:bg-neutral-600/40 pointer-events-none"
                 initial={false}
                 animate={{
                   top: mergedTop,
@@ -202,7 +202,7 @@ export default function CheckboxGroup({ children, checkedIndices }: CheckboxGrou
           {activeRect && (
             <motion.div
               key={sessionRef.current}
-              className="absolute rounded-lg bg-neutral-200/40 pointer-events-none"
+              className="absolute rounded-lg bg-neutral-200/40 dark:bg-neutral-600/25 pointer-events-none"
               initial={{
                 opacity: 0,
                 top: activeRect.top,
@@ -270,8 +270,8 @@ export function CheckboxItem({ label, index, checked, onToggle }: CheckboxItemPr
             checked
               ? "border-[1.5px] border-transparent"
               : isActive
-              ? "border-[1.5px] border-neutral-400"
-              : "border-[1.5px] border-neutral-300"
+              ? "border-[1.5px] border-neutral-400 dark:border-neutral-500"
+              : "border-[1.5px] border-neutral-300 dark:border-neutral-600"
           }`}
         />
         {/* Check mark */}
@@ -282,11 +282,11 @@ export function CheckboxItem({ label, index, checked, onToggle }: CheckboxItemPr
               height={18}
               viewBox="0 0 24 24"
               fill="none"
-              stroke="rgb(23 23 23)"
+              stroke="currentColor"
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="absolute inset-0"
+              className="absolute inset-0 text-neutral-900 dark:text-neutral-100"
               initial={{ opacity: 1 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 1 }}
@@ -313,7 +313,7 @@ export function CheckboxItem({ label, index, checked, onToggle }: CheckboxItemPr
         </span>
         <span
           className={`col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120 ${
-            checked || isActive ? "text-neutral-900" : "text-neutral-500"
+            checked || isActive ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-500 dark:text-neutral-400"
           }`}
           style={{ fontVariationSettings: `'wght' ${checked ? 550 : 400}` }}
         >

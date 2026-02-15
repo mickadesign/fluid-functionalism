@@ -27,11 +27,14 @@ export default function App() {
     <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16">
       <div className="flex flex-col items-start gap-3 w-full py-2">
         <h1
-          className="text-[22px] sm:text-[28px] text-neutral-900 leading-none pl-3 mx-6 mb-1 sm:mb-2"
+          className="text-[22px] sm:text-[28px] text-neutral-900 dark:text-neutral-100 leading-none pl-3 mx-6"
           style={{ fontVariationSettings: "'wght' 700" }}
         >
-          Fluid functionalism
+          Fluid Functionalism
         </h1>
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400 pl-3 mx-6 mb-4">
+          Fluid components used exclusively in service of functional clarity.
+        </p>
         <SubtleTab selectedIndex={selectedTab} onSelect={setSelectedTab}>
         {items.map((item, i) => (
           <SubtleTabItem
@@ -110,6 +113,18 @@ export default function App() {
           ))}
         </RadioGroup>
       </div>
+
+      <p className="text-[13px] text-neutral-400 dark:text-neutral-500 pl-3 mx-6">
+        Designed by{" "}
+        <a
+          href="https://x.com/micka_design"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors duration-150"
+        >
+          @micka_design
+        </a>
+      </p>
     </div>
   );
 }

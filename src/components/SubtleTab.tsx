@@ -137,7 +137,7 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
         {/* Selected pill */}
         {selectedRect && (
           <motion.div
-            className="absolute rounded-full bg-neutral-300/50 pointer-events-none"
+            className="absolute rounded-full bg-neutral-300/50 dark:bg-neutral-600/40 pointer-events-none"
             initial={false}
             animate={{
               left: selectedRect.left,
@@ -154,7 +154,7 @@ export default function SubtleTab({ children, selectedIndex, onSelect }: SubtleT
         <AnimatePresence>
           {hoverRect && !isHoveringSelected && selectedRect && (
             <motion.div
-              className="absolute rounded-full bg-neutral-200/60 pointer-events-none"
+              className="absolute rounded-full bg-neutral-200/60 dark:bg-neutral-600/30 pointer-events-none"
               initial={{
                 left: selectedRect.left,
                 width: selectedRect.width,
@@ -214,7 +214,7 @@ export function SubtleTabItem({ icon: Icon, label, index }: SubtleTabItemProps) 
         size={16}
         strokeWidth={isActive ? 2 : 1.5}
         className={`transition-[color,stroke-width] duration-120 ${
-          isActive ? "text-neutral-700" : "text-neutral-400"
+          isActive ? "text-neutral-700 dark:text-neutral-200" : "text-neutral-400 dark:text-neutral-500"
         }`}
       />
       <span className="inline-grid text-[13px] whitespace-nowrap">
@@ -227,7 +227,7 @@ export function SubtleTabItem({ icon: Icon, label, index }: SubtleTabItemProps) 
         </span>
         <span
           className={`col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120 ${
-            isActive ? "text-neutral-900" : "text-neutral-500"
+            isActive ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-500 dark:text-neutral-400"
           }`}
           style={{ fontVariationSettings: `'wght' ${selectedIndex === index ? 550 : 400}` }}
         >
