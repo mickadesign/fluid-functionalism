@@ -33,7 +33,7 @@ export default function ThinkingIndicator() {
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="text-neutral-400 shrink-0"
+        className="text-neutral-400 dark:text-neutral-500 shrink-0"
       >
         <motion.path
           animate={{

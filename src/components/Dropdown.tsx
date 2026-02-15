@@ -132,13 +132,13 @@ export default function Dropdown({ children, checkedIndex }: DropdownProps) {
         onMouseEnter={handleMouseEnter}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative flex flex-col gap-0.5 w-72 max-w-full rounded-xl bg-white shadow-[0_8px_16px_rgba(0,0,0,0.08)] border border-neutral-200/60 p-1 select-none"
+        className="relative flex flex-col gap-0.5 w-72 max-w-full rounded-xl bg-white dark:bg-neutral-800 shadow-[0_8px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-neutral-200/60 dark:border-neutral-700/60 p-1 select-none"
       >
         {/* Selected background */}
         <AnimatePresence>
           {checkedRect && (
             <motion.div
-              className="absolute rounded-lg bg-neutral-300/50 pointer-events-none"
+              className="absolute rounded-lg bg-neutral-300/50 dark:bg-neutral-600/40 pointer-events-none"
               initial={false}
               animate={{
                 top: checkedRect.top,
@@ -158,7 +158,7 @@ export default function Dropdown({ children, checkedIndex }: DropdownProps) {
           {activeRect && (
             <motion.div
               key={sessionRef.current}
-              className="absolute rounded-lg bg-neutral-200/40 pointer-events-none"
+              className="absolute rounded-lg bg-neutral-200/40 dark:bg-neutral-600/25 pointer-events-none"
               initial={{
                 opacity: 0,
                 top: checkedRect?.top ?? activeRect.top,

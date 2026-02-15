@@ -135,16 +135,16 @@ export function InputField({
 
   if (disabled) {
     bgClass = "bg-transparent";
-    ringClass = "ring-neutral-200";
+    ringClass = "ring-neutral-200 dark:ring-neutral-700";
   } else if (error) {
-    bgClass = isFocused ? "bg-white" : "bg-red-50/60";
-    ringClass = "ring-red-300";
+    bgClass = isFocused ? "bg-white dark:bg-neutral-800" : "bg-red-50/60 dark:bg-red-950/40";
+    ringClass = "ring-red-300 dark:ring-red-500/50";
   } else if (isFocused) {
-    bgClass = "bg-white";
-    ringClass = "ring-neutral-200";
+    bgClass = "bg-white dark:bg-neutral-800";
+    ringClass = "ring-neutral-200 dark:ring-neutral-700";
   } else if (isActive) {
-    bgClass = "bg-neutral-100/50";
-    ringClass = "ring-neutral-200";
+    bgClass = "bg-neutral-100/50 dark:bg-neutral-700/50";
+    ringClass = "ring-neutral-200 dark:ring-neutral-700";
   } else {
     bgClass = "bg-transparent";
     ringClass = "ring-transparent";
@@ -168,7 +168,7 @@ export function InputField({
         </span>
         <span
           className={`col-start-1 row-start-1 ${
-            error ? "text-red-500" : "text-neutral-500"
+            error ? "text-red-500 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400"
           }`}
           style={{
             fontVariationSettings: "'wght' 400",
@@ -190,8 +190,8 @@ export function InputField({
               error
                 ? "text-red-400"
                 : labelActive
-                ? "text-neutral-700"
-                : "text-neutral-400"
+                ? "text-neutral-700 dark:text-neutral-200"
+                : "text-neutral-400 dark:text-neutral-500"
             }`}
           />
         )}
@@ -203,7 +203,7 @@ export function InputField({
           onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full bg-transparent text-[13px] text-neutral-900 placeholder:text-neutral-400 outline-none font-[inherit]"
+          className="w-full bg-transparent text-[13px] text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none font-[inherit]"
           style={{ fontVariationSettings: "'wght' 400" }}
         />
       </div>
@@ -211,7 +211,7 @@ export function InputField({
       {/* Error message */}
       {error && (
         <span
-          className="text-[12px] text-red-500 pl-3"
+          className="text-[12px] text-red-500 dark:text-red-400 pl-3"
           style={{ fontVariationSettings: "'wght' 450" }}
         >
           {error}
