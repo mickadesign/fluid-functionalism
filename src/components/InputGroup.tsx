@@ -217,7 +217,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
         {/* Input container */}
         <div
           className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2 ring-1 transition-all duration-150",
+            "flex items-center gap-2 rounded-lg px-3 py-2 ring-1 transition-all duration-80",
             bgClass,
             ringClass
           )}
@@ -227,7 +227,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
               size={16}
               strokeWidth={labelActive ? 2 : 1.5}
               className={cn(
-                "shrink-0 transition-[color,stroke-width] duration-120",
+                "shrink-0 transition-[color,stroke-width] duration-80",
                 error
                   ? "text-destructive"
                   : labelActive

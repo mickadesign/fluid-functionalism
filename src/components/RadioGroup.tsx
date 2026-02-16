@@ -131,8 +131,8 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
               opacity: isHoveringOther ? 0.8 : 1,
             }}
             transition={{
-              ...springs.default,
-              opacity: { duration: 0.15 },
+              ...springs.moderate,
+              opacity: { duration: 0.16 },
             }}
           />
         )}
@@ -157,10 +157,10 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
                 width: activeRect.width,
                 height: activeRect.height,
               }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
               transition={{
-                ...springs.default,
-                opacity: { duration: 0.15 },
+                ...springs.moderate,
+                opacity: { duration: 0.16 },
               }}
             />
           )}
@@ -178,10 +178,10 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
                 width: focusRect.width + 4,
                 height: focusRect.height + 4,
               }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
               transition={{
-                ...springs.default,
-                opacity: { duration: 0.15 },
+                ...springs.moderate,
+                opacity: { duration: 0.16 },
               }}
             />
           )}
@@ -272,7 +272,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           {/* Border */}
           <div
             className={cn(
-              "absolute inset-0 rounded-full border-solid transition-all duration-120",
+              "absolute inset-0 rounded-full border-solid transition-all duration-80",
               selected
                 ? "border-[1.5px] border-transparent"
                 : isActive
@@ -290,8 +290,8 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
                   scale: skipAnimation ? 1 : 0.3,
                 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.3 }}
-                transition={springs.radio}
+                exit={{ opacity: 0, scale: 0.3, transition: { duration: 0.04 } }}
+                transition={springs.fast}
               >
                 <div className="w-[8px] h-[8px] rounded-full bg-foreground" />
               </motion.div>
@@ -310,7 +310,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
               selected || isActive
                 ? "text-foreground"
                 : "text-muted-foreground"

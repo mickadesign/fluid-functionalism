@@ -1,20 +1,17 @@
 export const springs = {
-  default: {
+  fast: {
     type: "spring" as const,
-    stiffness: 500,
-    damping: 35,
-    mass: 0.8,
+    duration: 0.08,
+    bounce: 0,
   },
-  radio: {
+  moderate: {
     type: "spring" as const,
-    stiffness: 500,
-    damping: 30,
-    mass: 0.5,
+    duration: 0.16,
+    bounce: 0.15,
   },
-  tab: {
+  slow: {
     type: "spring" as const,
-    stiffness: 400,
-    damping: 40,
-    mass: 0.8,
+    duration: 0.24,
+    bounce: 0.15,
   },
 } as const;

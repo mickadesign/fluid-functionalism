@@ -154,8 +154,8 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
                 opacity: isHovering ? 0.8 : 1,
               }}
               transition={{
-                ...springs.tab,
-                opacity: { duration: 0.15 },
+                ...springs.moderate,
+                opacity: { duration: 0.16 },
               }}
             />
           )}
@@ -187,12 +187,13 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
                         top: selectedRect.top,
                         height: selectedRect.height,
                         opacity: 0,
+                        transition: { ...springs.moderate, opacity: { duration: 0.12 } },
                       }
-                    : { opacity: 0 }
+                    : { opacity: 0, transition: { duration: 0.12 } }
                 }
                 transition={{
-                  ...springs.tab,
-                  opacity: { duration: 0.15 },
+                  ...springs.moderate,
+                  opacity: { duration: 0.16 },
                 }}
               />
             )}
@@ -210,10 +211,10 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{
-                  ...springs.tab,
-                  opacity: { duration: 0.15 },
+                  ...springs.moderate,
+                  opacity: { duration: 0.16 },
                 }}
               />
             )}
@@ -271,7 +272,7 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
           size={16}
           strokeWidth={isActive ? 2 : 1.5}
           className={cn(
-            "transition-[color,stroke-width] duration-120",
+            "transition-[color,stroke-width] duration-80",
             isActive ? "text-foreground" : "text-muted-foreground"
           )}
         />
@@ -285,7 +286,7 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
               isActive ? "text-foreground" : "text-muted-foreground"
             )}
             style={{

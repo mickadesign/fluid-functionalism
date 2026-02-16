@@ -75,9 +75,8 @@ const ThinkingIndicator = forwardRef<
             key={words[index]}
             className="col-start-1 row-start-1 shimmer-text"
             initial={{ y: "80%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "-80%", opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            animate={{ y: 0, opacity: 1, transition: { duration: 0.24, ease: [0.4, 0, 0.2, 1] } }}
+            exit={{ y: "-80%", opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] } }}
           >
             {words[index]}
           </motion.span>

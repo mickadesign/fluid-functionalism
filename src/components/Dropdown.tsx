@@ -127,10 +127,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                   height: checkedRect.height,
                   opacity: isHoveringOther ? 0.8 : 1,
                 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{
-                  ...springs.default,
-                  opacity: { duration: 0.15 },
+                  ...springs.moderate,
+                  opacity: { duration: 0.16 },
                 }}
               />
             )}
@@ -156,10 +156,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                   width: activeRect.width,
                   height: activeRect.height,
                 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{
-                  ...springs.default,
-                  opacity: { duration: 0.15 },
+                  ...springs.moderate,
+                  opacity: { duration: 0.16 },
                 }}
               />
             )}
@@ -177,10 +177,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{
-                  ...springs.default,
-                  opacity: { duration: 0.15 },
+                  ...springs.moderate,
+                  opacity: { duration: 0.16 },
                 }}
               />
             )}

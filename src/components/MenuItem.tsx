@@ -67,7 +67,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
             size={16}
             strokeWidth={isActive || checked ? 2 : 1.5}
             className={cn(
-              "col-start-1 row-start-1 transition-[color,stroke-width] duration-120",
+              "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
               isActive || checked
                 ? "text-foreground"
                 : "text-muted-foreground"
@@ -84,7 +84,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-120",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
               isActive || checked
                 ? "text-foreground"
                 : "text-muted-foreground"
@@ -120,11 +120,11 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
                 initial={{ pathLength: skipAnimation ? 1 : 0 }}
                 animate={{
                   pathLength: 1,
-                  transition: { duration: 0.12, ease: "easeOut" },
+                  transition: { duration: 0.08, ease: "easeOut" },
                 }}
                 exit={{
                   pathLength: 0,
-                  transition: { duration: 0.06, ease: "easeIn" },
+                  transition: { duration: 0.04, ease: "easeIn" },
                 }}
               />
             </motion.svg>
