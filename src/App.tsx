@@ -15,6 +15,12 @@ import {
   InputField,
   Button,
   Switch,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
   Dialog,
   DialogTrigger,
   DialogContent,
@@ -199,6 +205,51 @@ function AppContent() {
           checked={switchChecked}
           onToggle={() => setSwitchChecked((prev) => !prev)}
         />
+      </div>
+
+      <div className="px-6 w-full">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Level</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Discovery</TableHead>
+              <TableHead>Delivery</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow index={0}>
+              <TableCell>0</TableCell>
+              <TableCell>The Handoff</TableCell>
+              <TableCell>Figma handoff</TableCell>
+              <TableCell>Figma handoff</TableCell>
+            </TableRow>
+            <TableRow index={1}>
+              <TableCell>1</TableCell>
+              <TableCell>The Sandbox</TableCell>
+              <TableCell>AI prototypes, outside the codebase</TableCell>
+              <TableCell>Figma handoff (still)</TableCell>
+            </TableRow>
+            <TableRow index={2}>
+              <TableCell>2</TableCell>
+              <TableCell>The Observer</TableCell>
+              <TableCell>Explores inside the real codebase</TableCell>
+              <TableCell>Local only — no PR rights</TableCell>
+            </TableRow>
+            <TableRow index={3}>
+              <TableCell>3</TableCell>
+              <TableCell>The Contributor</TableCell>
+              <TableCell>Builds new features in the codebase</TableCell>
+              <TableCell>Cosmetic and polish PRs</TableCell>
+            </TableRow>
+            <TableRow index={4}>
+              <TableCell>4</TableCell>
+              <TableCell>The Shipper</TableCell>
+              <TableCell>Full feature development, AI-assisted</TableCell>
+              <TableCell>Feature PRs, AI-assisted</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="px-6 w-full flex flex-col gap-4">

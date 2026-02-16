@@ -7,6 +7,7 @@ export { SubtleTab, SubtleTabItem, SubtleTabPanel } from "./SubtleTab";
 export { InputGroup, InputField } from "./InputGroup";
 export { ThinkingIndicator } from "./ThinkingIndicator";
 export { Button, buttonVariants, type ButtonProps } from "./Button";
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "./Table";
 export {
   Dialog,
   DialogTrigger,
