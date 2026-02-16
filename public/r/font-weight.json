@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "font-weight",
+  "title": "Font Weight Tokens",
+  "description": "Variable font weight tokens for Inter (normal, medium, semibold, bold) using font-variation-settings.",
+  "files": [
+    {
+      "path": "registry/default/lib/font-weight.ts",
+      "content": "export const fontWeights = {\n  normal: \"'wght' 400\",\n  medium: \"'wght' 450\",\n  semibold: \"'wght' 550\",\n  bold: \"'wght' 700\",\n} as const;\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}

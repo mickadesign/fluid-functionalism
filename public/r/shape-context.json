@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "shape-context",
+  "title": "Shape Context",
+  "description": "React context provider for runtime shape variant switching (pill or rounded). Controls border-radius across all Fluid Functionalism components.",
+  "files": [
+    {
+      "path": "registry/default/lib/shape-context.tsx",
+      "content": "\"use client\";\n\nimport {\n  createContext,\n  useContext,\n  useState,\n  type ReactNode,\n} from \"react\";\n\ntype ShapeVariant = \"pill\" | \"rounded\";\n\ninterface ShapeClasses {\n  item: string;\n  bg: string;\n  focusRing: string;\n  mergedBg: string;\n  container: string;\n  button: string;\n  input: string;\n}\n\nconst shapeMap: Record<ShapeVariant, ShapeClasses> = {\n  pill: {\n    item: \"rounded-[20px]\",\n    bg: \"rounded-[20px]\",\n    focusRing: \"rounded-[20px]\",\n    mergedBg: \"rounded-2xl\",\n    container: \"rounded-3xl\",\n    button: \"rounded-[20px]\",\n    input: \"rounded-[20px]\",\n  },\n  rounded: {\n    item: \"rounded-lg\",\n    bg: \"rounded-lg\",\n    focusRing: \"rounded-[10px]\",\n    mergedBg: \"rounded-lg\",\n    container: \"rounded-xl\",\n    button: \"rounded-lg\",\n    input: \"rounded-lg\",\n  },\n};\n\ninterface ShapeContextValue {\n  shape: ShapeVariant;\n  setShape: (shape: ShapeVariant) => void;\n  classes: ShapeClasses;\n}\n\nconst ShapeContext = createContext<ShapeContextValue | null>(null);\n\nfunction useShape(): ShapeClasses {\n  const ctx = useContext(ShapeContext);\n  if (!ctx) return shapeMap.pill;\n  return ctx.classes;\n}\n\nfunction useShapeContext() {\n  const ctx = useContext(ShapeContext);\n  if (!ctx) throw new Error(\"useShapeContext must be used within a ShapeProvider\");\n  return ctx;\n}\n\nfunction ShapeProvider({\n  children,\n  defaultShape = \"pill\",\n}: {\n  children: ReactNode;\n  defaultShape?: ShapeVariant;\n}) {\n  const [shape, setShape] = useState<ShapeVariant>(defaultShape);\n\n  return (\n    <ShapeContext.Provider value={{ shape, setShape, classes: shapeMap[shape] }}>\n      {children}\n    </ShapeContext.Provider>\n  );\n}\n\nexport { ShapeProvider, useShape, useShapeContext, shapeMap };\nexport type { ShapeVariant, ShapeClasses };\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}
