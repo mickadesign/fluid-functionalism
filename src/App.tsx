@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SquareLibrary, Clock, Star, Users, Lock, Search, Plus, ArrowRight, Loader } from "lucide-react";
 import {
   Dropdown,
@@ -48,6 +48,14 @@ function AppContent() {
   const [theme, setTheme] = useState<Theme>("system");
   const selectedThemeIndex = themeOptions.findIndex((o) => o.value === theme);
   const [searchValue, setSearchValue] = useState("");
+
+  const transitionSetting = useCallback((callback: () => void) => {
+    const root = document.documentElement;
+    root.classList.add("transitioning");
+    void root.offsetHeight;
+    callback();
+    setTimeout(() => root.classList.remove("transitioning"), 200);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -99,7 +107,7 @@ function AppContent() {
               index={i}
               label={option.label}
               selected={selectedThemeIndex === i}
-              onSelect={() => setTheme(option.value)}
+              onSelect={() => transitionSetting(() => setTheme(option.value))}
             />
           ))}
         </RadioGroup>
@@ -110,7 +118,7 @@ function AppContent() {
               index={i}
               label={option.label}
               selected={selectedShapeIndex === i}
-              onSelect={() => setShape(option.value)}
+              onSelect={() => transitionSetting(() => setShape(option.value))}
             />
           ))}
         </RadioGroup>

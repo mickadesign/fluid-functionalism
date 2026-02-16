@@ -19,13 +19,13 @@ interface ShapeClasses {
 
 const shapeMap: Record<ShapeVariant, ShapeClasses> = {
   pill: {
-    item: "rounded-full",
-    bg: "rounded-full",
-    focusRing: "rounded-full",
+    item: "rounded-[20px]",
+    bg: "rounded-[20px]",
+    focusRing: "rounded-[20px]",
     mergedBg: "rounded-2xl",
     container: "rounded-3xl",
-    button: "rounded-full",
-    input: "rounded-full",
+    button: "rounded-[20px]",
+    input: "rounded-[20px]",
   },
   rounded: {
     item: "rounded-lg",
