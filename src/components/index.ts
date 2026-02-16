@@ -5,3 +5,4 @@ export { RadioGroup, RadioItem } from "./RadioGroup";
 export { SubtleTab, SubtleTabItem, SubtleTabPanel } from "./SubtleTab";
 export { InputGroup, InputField } from "./InputGroup";
 export { ThinkingIndicator } from "./ThinkingIndicator";
+export { Button, buttonVariants, type ButtonProps } from "./Button";

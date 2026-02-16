@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SquareLibrary, Clock, Star, Users, Lock, Search } from "lucide-react";
+import { SquareLibrary, Clock, Star, Users, Lock, Search, Plus, ArrowRight, Loader } from "lucide-react";
 import {
   Dropdown,
   MenuItem,
@@ -13,6 +13,7 @@ import {
   RadioItem,
   InputGroup,
   InputField,
+  Button,
 } from "./components";
 
 const items = [
@@ -133,13 +134,38 @@ export default function App() {
         </RadioGroup>
       </div>
 
+      <div className="px-6 w-full flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary">Primary</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="tertiary">Tertiary</Button>
+          <Button variant="ghost">Ghost</Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm">Small</Button>
+          <Button size="md">Medium</Button>
+          <Button size="lg">Large</Button>
+          <Button size="icon"><Plus /></Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button leadingIcon={Plus}>Create</Button>
+          <Button variant="secondary" trailingIcon={ArrowRight}>Next</Button>
+          <Button variant="tertiary" leadingIcon={Search} trailingIcon={ArrowRight}>Search</Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button loading>Loading</Button>
+          <Button variant="secondary" loading leadingIcon={Loader}>Saving</Button>
+          <Button disabled>Disabled</Button>
+        </div>
+      </div>
+
       <p className="text-[13px] text-muted-foreground pl-3 mx-6">
         Designed by{" "}
         <a
           href="https://x.com/micka_design"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+          className="rounded text-muted-foreground hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] focus-visible:ring-offset-2"
         >
           @micka_design
         </a>
