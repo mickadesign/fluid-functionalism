@@ -23,6 +23,8 @@
     "lucide-react": "^0.564.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0",
+    "shiki": "^3.22.0",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
