@@ -1,6 +1,7 @@
 export { Dropdown, useDropdown } from "./Dropdown";
 export { MenuItem } from "./MenuItem";
 export { CheckboxGroup, CheckboxItem } from "./CheckboxGroup";
+export { Switch, type SwitchProps } from "./Switch";
 export { RadioGroup, RadioItem } from "./RadioGroup";
 export { SubtleTab, SubtleTabItem, SubtleTabPanel } from "./SubtleTab";
 export { InputGroup, InputField } from "./InputGroup";

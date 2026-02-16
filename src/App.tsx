@@ -14,6 +14,7 @@ import {
   InputGroup,
   InputField,
   Button,
+  Switch,
   Dialog,
   DialogTrigger,
   DialogContent,
@@ -56,6 +57,7 @@ function AppContent() {
   const [theme, setTheme] = useState<Theme>("system");
   const selectedThemeIndex = themeOptions.findIndex((o) => o.value === theme);
   const [searchValue, setSearchValue] = useState("");
+  const [switchChecked, setSwitchChecked] = useState(false);
 
   const transitionSetting = useCallback((callback: () => void) => {
     const root = document.documentElement;
@@ -189,6 +191,14 @@ function AppContent() {
             />
           ))}
         </CheckboxGroup>
+      </div>
+
+      <div className="px-6 w-full">
+        <Switch
+          label="Notifications"
+          checked={switchChecked}
+          onToggle={() => setSwitchChecked((prev) => !prev)}
+        />
       </div>
 
       <div className="px-6 w-full flex flex-col gap-4">
