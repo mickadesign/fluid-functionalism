@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../lib/utils";
 import { fontWeights } from "../lib/font-weight";
+import { useShape } from "../lib/shape-context";
 
 interface InputGroupContextValue {
   registerItem: (index: number, element: HTMLLabelElement | null) => void;
@@ -133,6 +134,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
     const { registerItem, activeIndex, setFocusedIndex } =
       useInputGroup();
     const [isFocused, setIsFocused] = useState(false);
+    const shape = useShape();
 
     useEffect(() => {
       registerItem(index, internalRef.current);
@@ -217,7 +219,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
         {/* Input container */}
         <div
           className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2 ring-1 transition-all duration-80",
+            `flex items-center gap-2 ${shape.input} px-3 py-2 ring-1 transition-all duration-80`,
             bgClass,
             ringClass
           )}

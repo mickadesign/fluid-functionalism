@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SquareLibrary, Clock, Star, Users, Lock, Search, Plus, ArrowRight, Loader } from "lucide-react";
 import {
   Dropdown,
@@ -14,7 +14,10 @@ import {
   InputGroup,
   InputField,
   Button,
+  ShapeProvider,
+  useShapeContext,
 } from "./components";
+import type { ShapeVariant } from "./components";
 
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
@@ -24,12 +27,33 @@ const items = [
   { icon: Lock, label: "Private" },
 ];
 
-export default function App() {
+const shapeOptions: { label: string; value: ShapeVariant }[] = [
+  { label: "Pill", value: "pill" },
+  { label: "Rounded", value: "rounded" },
+];
+
+type Theme = "system" | "light" | "dark";
+const themeOptions: { label: string; value: Theme }[] = [
+  { label: "System", value: "system" },
+  { label: "Light", value: "light" },
+  { label: "Dark", value: "dark" },
+];
+
+function AppContent() {
   const [selectedMenuItem, setSelectedMenuItem] = useState<number | null>(0);
   const [selectedTab, setSelectedTab] = useState(0);
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set([0]));
-  const [selectedRadio, setSelectedRadio] = useState(0);
+  const { shape, setShape } = useShapeContext();
+  const selectedShapeIndex = shapeOptions.findIndex((o) => o.value === shape);
+  const [theme, setTheme] = useState<Theme>("system");
+  const selectedThemeIndex = themeOptions.findIndex((o) => o.value === theme);
   const [searchValue, setSearchValue] = useState("");
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    if (theme !== "system") root.classList.add(theme);
+  }, [theme]);
 
   return (
     <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16">
@@ -65,6 +89,31 @@ export default function App() {
             </span>
           </SubtleTabPanel>
         ))}
+      </div>
+
+      <div className="px-6 w-full flex gap-6">
+        <RadioGroup selectedIndex={selectedThemeIndex}>
+          {themeOptions.map((option, i) => (
+            <RadioItem
+              key={option.value}
+              index={i}
+              label={option.label}
+              selected={selectedThemeIndex === i}
+              onSelect={() => setTheme(option.value)}
+            />
+          ))}
+        </RadioGroup>
+        <RadioGroup selectedIndex={selectedShapeIndex}>
+          {shapeOptions.map((option, i) => (
+            <RadioItem
+              key={option.value}
+              index={i}
+              label={option.label}
+              selected={selectedShapeIndex === i}
+              onSelect={() => setShape(option.value)}
+            />
+          ))}
+        </RadioGroup>
       </div>
 
       <div className="px-6 w-full">
@@ -120,20 +169,6 @@ export default function App() {
         </CheckboxGroup>
       </div>
 
-      <div className="px-6 w-full">
-        <RadioGroup selectedIndex={selectedRadio}>
-          {items.map((item, i) => (
-            <RadioItem
-              key={item.label}
-              index={i}
-              label={item.label}
-              selected={selectedRadio === i}
-              onSelect={() => setSelectedRadio(i)}
-            />
-          ))}
-        </RadioGroup>
-      </div>
-
       <div className="px-6 w-full flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary">Primary</Button>
@@ -145,7 +180,9 @@ export default function App() {
           <Button size="sm">Small</Button>
           <Button size="md">Medium</Button>
           <Button size="lg">Large</Button>
+          <Button size="icon-sm"><Plus /></Button>
           <Button size="icon"><Plus /></Button>
+          <Button size="icon-lg"><Plus /></Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button leadingIcon={Plus}>Create</Button>
@@ -171,5 +208,13 @@ export default function App() {
         </a>
       </p>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ShapeProvider>
+      <AppContent />
+    </ShapeProvider>
   );
 }

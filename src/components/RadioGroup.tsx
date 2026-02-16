@@ -14,6 +14,7 @@ import { cn } from "../lib/utils";
 import { springs } from "../lib/springs";
 import { fontWeights } from "../lib/font-weight";
 import { useProximityHover } from "../lib/use-proximity-hover";
+import { useShape } from "../lib/shape-context";
 
 interface RadioGroupContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
@@ -59,6 +60,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
     const selectedRect = itemRects[selectedIndex];
     const isHoveringOther =
       activeIndex !== null && activeIndex !== selectedIndex;
+    const shape = useShape();
 
     const content = (
       <div
@@ -121,7 +123,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         {/* Selected background */}
         {selectedRect && (
           <motion.div
-            className="absolute rounded-lg bg-selected/50 dark:bg-accent/40 pointer-events-none"
+            className={`absolute ${shape.bg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
             initial={false}
             animate={{
               top: selectedRect.top,
@@ -142,7 +144,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           {activeRect && (
             <motion.div
               key={sessionRef.current}
-              className="absolute rounded-lg bg-accent/40 dark:bg-accent/25 pointer-events-none"
+              className={`absolute ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none`}
               initial={{
                 opacity: 0,
                 top: activeRect.top,
@@ -170,7 +172,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         <AnimatePresence>
           {focusRect && (
             <motion.div
-              className="absolute rounded-[10px] pointer-events-none z-20 border border-[#6B97FF]"
+              className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
               initial={false}
               animate={{
                 left: focusRect.left - 2,
@@ -241,6 +243,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
 
     const isActive = activeIndex === index;
     const skipAnimation = !hasMounted.current;
+    const shape = useShape();
 
     return (
       <div
@@ -262,7 +265,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
+          `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 cursor-pointer outline-none`,
           className
         )}
         {...props}

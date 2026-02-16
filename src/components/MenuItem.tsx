@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDropdown } from "./Dropdown";
 import { cn } from "../lib/utils";
 import { fontWeights } from "../lib/font-weight";
+import { useShape } from "../lib/shape-context";
 
 interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   icon: LucideIcon;
@@ -33,6 +34,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     const isActive = activeIndex === index;
     const skipAnimation = !hasMounted.current;
+    const shape = useShape();
 
     return (
       <div
@@ -54,7 +56,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer outline-none",
+          `relative z-10 flex items-center gap-2 ${shape.item} px-2 py-2 cursor-pointer outline-none`,
           className
         )}
         {...props}

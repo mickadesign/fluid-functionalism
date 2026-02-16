@@ -14,6 +14,7 @@ import { cn } from "../lib/utils";
 import { springs } from "../lib/springs";
 import { fontWeights } from "../lib/font-weight";
 import { useProximityHover } from "../lib/use-proximity-hover";
+import { useShape } from "../lib/shape-context";
 
 interface CheckboxGroupContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
@@ -95,6 +96,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const isHoveringOther =
       activeIndex !== null && !checkedIndices.has(activeIndex);
+    const shape = useShape();
 
     return (
       <CheckboxGroupContext.Provider value={{ registerItem, activeIndex }}>
@@ -167,7 +169,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
               return (
                 <motion.div
                   key={`group-${group.id}`}
-                  className="absolute rounded-lg bg-selected/50 dark:bg-accent/40 pointer-events-none"
+                  className={`absolute ${shape.mergedBg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
                   initial={false}
                   animate={{
                     top: mergedTop,
@@ -191,7 +193,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
             {activeRect && (
               <motion.div
                 key={sessionRef.current}
-                className="absolute rounded-lg bg-accent/40 dark:bg-accent/25 pointer-events-none"
+                className={`absolute ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none`}
                 initial={{
                   opacity: 0,
                   top: activeRect.top,
@@ -219,7 +221,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className="absolute rounded-[10px] pointer-events-none z-20 border border-[#6B97FF]"
+                className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
                 initial={false}
                 animate={{
                   left: focusRect.left - 2,
@@ -269,6 +271,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
 
     const isActive = activeIndex === index;
     const skipAnimation = !hasMounted.current;
+    const shape = useShape();
 
     return (
       <div
@@ -290,7 +293,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           }
         }}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer outline-none",
+          `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 cursor-pointer outline-none`,
           className
         )}
         {...props}

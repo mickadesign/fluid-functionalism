@@ -43,7 +43,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #171717;
     --foreground: #F5F5F5;
     --card: #262626;
@@ -72,6 +72,26 @@
     --neutral-800: #262626;
     --neutral-900: #171717;
   }
+}
+
+.dark {
+  --background: #171717;
+  --foreground: #F5F5F5;
+  --card: #262626;
+  --card-foreground: #F5F5F5;
+  --muted: #262626;
+  --muted-foreground: #A3A3A3;
+
+  --accent: #525252;
+  --accent-foreground: #F5F5F5;
+  --selected: #525252;
+
+  --border: #404040;
+  --ring: #404040;
+  --input: #404040;
+
+  --destructive: #F87171;
+  --destructive-light: #450A0A;
 }
 
 @theme {
@@ -106,6 +126,23 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+.btn-label {
+  font-variation-settings: 'wght' 400;
+}
+
+.group:hover .btn-label {
+  font-variation-settings: 'wght' 500;
+}
+
+@keyframes spinner-move {
+  to { stroke-dashoffset: -100; }
+}
+
+@keyframes spinner-dash {
+  0%, 100% { stroke-dasharray: 15 85; }
+  50%      { stroke-dasharray: 40 60; }
 }
 
 @keyframes shimmer {
