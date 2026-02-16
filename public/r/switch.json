@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "switch",
+  "title": "Switch",
+  "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Built on Radix UI Switch.",
+  "dependencies": [
+    "framer-motion",
+    "@radix-ui/react-switch"
+  ],
+  "registryDependencies": [
+    "utils",
+    "springs",
+    "font-weight"
+  ],
+  "files": [
+    {
+      "path": "registry/default/switch.tsx",
+      "content": "\"use client\";\n\nimport { forwardRef, useRef, useEffect, type HTMLAttributes } from \"react\";\nimport { motion } from \"framer-motion\";\nimport * as SwitchPrimitive from \"@radix-ui/react-switch\";\nimport { cn } from \"@/lib/utils\";\nimport { springs } from \"@/lib/springs\";\nimport { fontWeights } from \"@/lib/font-weight\";\n\ninterface SwitchProps extends HTMLAttributes<HTMLDivElement> {\n  label: string;\n  checked: boolean;\n  onToggle: () => void;\n  disabled?: boolean;\n}\n\nconst TRACK_WIDTH = 34;\nconst TRACK_HEIGHT = 20;\nconst THUMB_SIZE = 16;\nconst THUMB_OFFSET = 2;\nconst THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - THUMB_OFFSET * 2;\n\nconst Switch = forwardRef<HTMLDivElement, SwitchProps>(\n  ({ label, checked, onToggle, disabled = false, className, ...props }, ref) => {\n    const hasMounted = useRef(false);\n\n    useEffect(() => {\n      hasMounted.current = true;\n    }, []);\n\n    return (\n      <div\n        ref={ref}\n        className={cn(\n          \"relative z-10 flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none\",\n          disabled && \"opacity-50 pointer-events-none\",\n          className\n        )}\n        onClick={() => !disabled && onToggle()}\n        {...props}\n      >\n        {/* Switch */}\n        <SwitchPrimitive.Root\n          checked={checked}\n          onCheckedChange={() => onToggle()}\n          disabled={disabled}\n          tabIndex={0}\n          className={cn(\n            \"relative shrink-0 rounded-full outline-none cursor-pointer\",\n            \"transition-colors duration-80\",\n            checked\n              ? \"bg-[#6B97FF]\"\n              : \"bg-accent\",\n            \"focus-visible:ring-1 focus-visible:ring-[#6B97FF] focus-visible:ring-offset-2 focus-visible:ring-offset-background\"\n          )}\n          style={{ width: TRACK_WIDTH, height: TRACK_HEIGHT }}\n          onClick={(e) => e.stopPropagation()}\n        >\n          <SwitchPrimitive.Thumb asChild>\n            <motion.span\n              className=\"absolute top-0 left-0 block rounded-full bg-white shadow-sm\"\n              style={{ width: THUMB_SIZE, height: THUMB_SIZE }}\n              initial={false}\n              animate={{\n                x: checked ? THUMB_OFFSET + THUMB_TRAVEL : THUMB_OFFSET,\n                y: THUMB_OFFSET,\n              }}\n              transition={hasMounted.current ? springs.fast : { duration: 0 }}\n            />\n          </SwitchPrimitive.Thumb>\n        </SwitchPrimitive.Root>\n\n        {/* Label */}\n        <span className=\"inline-grid text-[13px]\">\n          <span\n            className=\"col-start-1 row-start-1 invisible\"\n            style={{ fontVariationSettings: fontWeights.semibold }}\n            aria-hidden=\"true\"\n          >\n            {label}\n          </span>\n          <span\n            className={cn(\n              \"col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80\",\n              checked ? \"text-foreground\" : \"text-muted-foreground\"\n            )}\n            style={{\n              fontVariationSettings: checked\n                ? fontWeights.semibold\n                : fontWeights.normal,\n            }}\n          >\n            {label}\n          </span>\n        </span>\n      </div>\n    );\n  }\n);\n\nSwitch.displayName = \"Switch\";\n\nexport { Switch };\nexport type { SwitchProps };\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

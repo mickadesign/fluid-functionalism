@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "thinking-indicator",
+  "title": "Thinking Indicator",
+  "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through customizable status words.",
+  "dependencies": [
+    "framer-motion"
+  ],
+  "registryDependencies": [
+    "utils",
+    "font-weight"
+  ],
+  "files": [
+    {
+      "path": "registry/default/thinking-indicator.tsx",
+      "content": "\"use client\";\n\nimport { forwardRef, useState, useEffect, type HTMLAttributes } from \"react\";\nimport { motion, AnimatePresence } from \"framer-motion\";\nimport { cn } from \"@/lib/utils\";\nimport { fontWeights } from \"@/lib/font-weight\";\n\nconst circleA =\n  \"M 12 8 C 14.21 8 16 9.79 16 12 C 16 14.21 14.21 16 12 16 C 9.79 16 8 14.21 8 12 C 8 9.79 9.79 8 12 8 Z\";\n\nconst infinity =\n  \"M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z\";\n\nconst circleB =\n  \"M 12 16 C 14.21 16 16 14.21 16 12 C 16 9.79 14.21 8 12 8 C 9.79 8 8 9.79 8 12 C 8 14.21 9.79 16 12 16 Z\";\n\nconst words = [\"Thinking\", \"Moonwalking\", \"Planning\", \"Refining\"];\n\nconst ThinkingIndicator = forwardRef<\n  HTMLDivElement,\n  HTMLAttributes<HTMLDivElement>\n>(({ className, ...props }, ref) => {\n  const [index, setIndex] = useState(0);\n\n  useEffect(() => {\n    const interval = setInterval(() => {\n      setIndex((i) => (i + 1) % words.length);\n    }, 4000);\n    return () => clearInterval(interval);\n  }, []);\n\n  return (\n    <div\n      ref={ref}\n      role=\"status\"\n      className={cn(\"flex items-center gap-2 px-3 py-2\", className)}\n      {...props}\n    >\n      <motion.svg\n        aria-hidden\n        width={20}\n        height={20}\n        viewBox=\"0 0 24 24\"\n        fill=\"none\"\n        stroke=\"currentColor\"\n        strokeWidth={1.5}\n        strokeLinecap=\"round\"\n        strokeLinejoin=\"round\"\n        className=\"text-muted-foreground shrink-0\"\n      >\n        <motion.path\n          animate={{\n            d: [circleA, infinity, circleB, infinity, circleA],\n          }}\n          transition={{\n            d: {\n              duration: 6,\n              ease: \"easeInOut\",\n              repeat: Infinity,\n              times: [0, 0.25, 0.5, 0.75, 1.0],\n            },\n          }}\n        />\n      </motion.svg>\n      <span\n        className=\"inline-grid text-[13px] overflow-hidden\"\n        style={{ fontVariationSettings: fontWeights.medium }}\n      >\n        <span\n          className=\"col-start-1 row-start-1 invisible shimmer-text\"\n          aria-hidden=\"true\"\n        >\n          {words.reduce((a, b) => (a.length >= b.length ? a : b))}\n        </span>\n        <AnimatePresence mode=\"popLayout\" initial={false}>\n          <motion.span\n            key={words[index]}\n            className=\"col-start-1 row-start-1 shimmer-text\"\n            initial={{ y: \"80%\", opacity: 0 }}\n            animate={{ y: 0, opacity: 1, transition: { duration: 0.24, ease: [0.4, 0, 0.2, 1] } }}\n            exit={{ y: \"-80%\", opacity: 0, transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] } }}\n          >\n            {words[index]}\n          </motion.span>\n        </AnimatePresence>\n      </span>\n    </div>\n  );\n});\n\nThinkingIndicator.displayName = \"ThinkingIndicator\";\n\nexport { ThinkingIndicator };\nexport default ThinkingIndicator;\n",
+      "type": "registry:ui"
+    }
+  ],
+  "type": "registry:ui"
+}

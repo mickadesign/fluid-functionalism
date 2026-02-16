@@ -1,0 +1,250 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "fluid-functionalism",
+  "homepage": "https://github.com/mickadesign/fluid-functionalism",
+  "items": [
+    {
+      "name": "utils",
+      "type": "registry:lib",
+      "title": "Utilities",
+      "description": "Utility function for merging Tailwind CSS classes with clsx and tailwind-merge.",
+      "dependencies": ["clsx", "tailwind-merge"],
+      "files": [
+        {
+          "path": "registry/default/lib/utils.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "springs",
+      "type": "registry:lib",
+      "title": "Spring Animations",
+      "description": "Spring animation token presets for Framer Motion (fast, moderate, slow).",
+      "files": [
+        {
+          "path": "registry/default/lib/springs.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "font-weight",
+      "type": "registry:lib",
+      "title": "Font Weight Tokens",
+      "description": "Variable font weight tokens for Inter (normal, medium, semibold, bold) using font-variation-settings.",
+      "files": [
+        {
+          "path": "registry/default/lib/font-weight.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "shape-context",
+      "type": "registry:lib",
+      "title": "Shape Context",
+      "description": "React context provider for runtime shape variant switching (pill or rounded). Controls border-radius across all Fluid Functionalism components.",
+      "files": [
+        {
+          "path": "registry/default/lib/shape-context.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "use-proximity-hover",
+      "type": "registry:hook",
+      "title": "useProximityHover",
+      "description": "React hook for proximity-based hover detection. Tracks the closest item to the mouse cursor within a container, enabling smooth animated background indicators.",
+      "files": [
+        {
+          "path": "registry/default/hooks/use-proximity-hover.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-slot",
+        "class-variance-authority",
+        "lucide-react"
+      ],
+      "registryDependencies": ["utils", "font-weight", "shape-context"],
+      "files": [
+        {
+          "path": "registry/default/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dropdown",
+      "type": "registry:ui",
+      "title": "Dropdown",
+      "description": "Dropdown menu with proximity-based hover tracking, animated selection indicator, and animated focus ring. Includes MenuItem sub-component.",
+      "dependencies": ["framer-motion"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/dropdown.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/default/menu-item.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "checkbox-group",
+      "type": "registry:ui",
+      "title": "Checkbox Group",
+      "description": "Animated checkbox group with proximity hover, contiguous selection merging, and spring-animated check marks. Built on Radix UI Checkbox.",
+      "dependencies": ["framer-motion", "@radix-ui/react-checkbox"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/checkbox-group.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "radio-group",
+      "type": "registry:ui",
+      "title": "Radio Group",
+      "description": "Animated radio group with proximity hover, spring-animated selection dot, and optional Radix UI integration. Supports both controlled index and value-based APIs.",
+      "dependencies": ["framer-motion", "@radix-ui/react-radio-group"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/radio-group.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "type": "registry:ui",
+      "title": "Dialog",
+      "description": "Animated modal dialog with spring-based scale and opacity transitions. Built on Radix UI Dialog with overlay, header, footer, title, and description sub-components.",
+      "dependencies": ["framer-motion", "@radix-ui/react-dialog", "lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "shape-context",
+        "button"
+      ],
+      "files": [
+        {
+          "path": "registry/default/dialog.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "input-group",
+      "type": "registry:ui",
+      "title": "Input Group",
+      "description": "Grouped input fields with proximity-based highlighting, animated label transitions, optional icons, and error states.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["utils", "font-weight", "shape-context"],
+      "files": [
+        {
+          "path": "registry/default/input-group.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "subtle-tab",
+      "type": "registry:ui",
+      "title": "Subtle Tab",
+      "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Supports icons and keyboard navigation.",
+      "dependencies": ["framer-motion", "lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/subtle-tab.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "switch",
+      "type": "registry:ui",
+      "title": "Switch",
+      "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Built on Radix UI Switch.",
+      "dependencies": ["framer-motion", "@radix-ui/react-switch"],
+      "registryDependencies": ["utils", "springs", "font-weight"],
+      "files": [
+        {
+          "path": "registry/default/switch.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "table",
+      "type": "registry:ui",
+      "title": "Table",
+      "description": "Animated table with proximity-based row hover highlighting and fluid border transitions. Includes TableHeader, TableBody, TableRow, TableHead, and TableCell sub-components.",
+      "dependencies": ["framer-motion"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/table.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "thinking-indicator",
+      "type": "registry:ui",
+      "title": "Thinking Indicator",
+      "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through customizable status words.",
+      "dependencies": ["framer-motion"],
+      "registryDependencies": ["utils", "font-weight"],
+      "files": [
+        {
+          "path": "registry/default/thinking-indicator.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}
