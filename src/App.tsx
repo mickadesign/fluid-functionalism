@@ -14,6 +14,14 @@ import {
   InputGroup,
   InputField,
   Button,
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
   ShapeProvider,
   useShapeContext,
 } from "./components";
@@ -28,8 +36,8 @@ const items = [
 ];
 
 const shapeOptions: { label: string; value: ShapeVariant }[] = [
-  { label: "Pill", value: "pill" },
   { label: "Rounded", value: "rounded" },
+  { label: "Pill", value: "pill" },
 ];
 
 type Theme = "system" | "light" | "dark";
@@ -100,28 +108,34 @@ function AppContent() {
       </div>
 
       <div className="px-6 w-full flex gap-6">
-        <RadioGroup selectedIndex={selectedThemeIndex}>
-          {themeOptions.map((option, i) => (
-            <RadioItem
-              key={option.value}
-              index={i}
-              label={option.label}
-              selected={selectedThemeIndex === i}
-              onSelect={() => transitionSetting(() => setTheme(option.value))}
-            />
-          ))}
-        </RadioGroup>
-        <RadioGroup selectedIndex={selectedShapeIndex}>
-          {shapeOptions.map((option, i) => (
-            <RadioItem
-              key={option.value}
-              index={i}
-              label={option.label}
-              selected={selectedShapeIndex === i}
-              onSelect={() => transitionSetting(() => setShape(option.value))}
-            />
-          ))}
-        </RadioGroup>
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] text-muted-foreground pl-3">Theme</span>
+          <RadioGroup selectedIndex={selectedThemeIndex}>
+            {themeOptions.map((option, i) => (
+              <RadioItem
+                key={option.value}
+                index={i}
+                label={option.label}
+                selected={selectedThemeIndex === i}
+                onSelect={() => transitionSetting(() => setTheme(option.value))}
+              />
+            ))}
+          </RadioGroup>
+        </div>
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] text-muted-foreground pl-3">Radius</span>
+          <RadioGroup selectedIndex={selectedShapeIndex}>
+            {shapeOptions.map((option, i) => (
+              <RadioItem
+                key={option.value}
+                index={i}
+                label={option.label}
+                selected={selectedShapeIndex === i}
+                onSelect={() => transitionSetting(() => setShape(option.value))}
+              />
+            ))}
+          </RadioGroup>
+        </div>
       </div>
 
       <div className="px-6 w-full">
@@ -202,6 +216,50 @@ function AppContent() {
           <Button variant="secondary" loading leadingIcon={Loader}>Saving</Button>
           <Button disabled>Disabled</Button>
         </div>
+      </div>
+
+      <div className="px-6 w-full flex flex-wrap items-center gap-2">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="tertiary">Open small dialog</Button>
+          </DialogTrigger>
+          <DialogContent size="sm">
+            <DialogHeader>
+              <DialogTitle>Create teamspace</DialogTitle>
+              <DialogDescription>
+                Add a new teamspace to organize your projects and collaborate with your team.
+              </DialogDescription>
+            </DialogHeader>
+            <p className="text-[13px] text-foreground">
+              Choose a name and set permissions for your new teamspace. You can always change these settings later.
+            </p>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost">Open large dialog</Button>
+          </DialogTrigger>
+          <DialogContent size="lg">
+            <DialogHeader>
+              <DialogTitle>Confirm action</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button>Confirm</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <p className="text-[13px] text-muted-foreground pl-3 mx-6">
