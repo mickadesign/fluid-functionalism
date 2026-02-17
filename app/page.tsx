@@ -237,31 +237,31 @@ function AppContent() {
           <TableBody>
             <TableRow index={0}>
               <TableCell>0</TableCell>
-              <TableCell>The Handoff</TableCell>
+              <TableCell>Figma Handoff</TableCell>
               <TableCell>Figma handoff</TableCell>
               <TableCell>Figma handoff</TableCell>
             </TableRow>
             <TableRow index={1}>
               <TableCell>1</TableCell>
-              <TableCell>The Sandbox</TableCell>
+              <TableCell>Playground</TableCell>
               <TableCell>AI prototypes, outside the codebase</TableCell>
               <TableCell>Figma handoff (still)</TableCell>
             </TableRow>
             <TableRow index={2}>
               <TableCell>2</TableCell>
-              <TableCell>The Observer</TableCell>
+              <TableCell>Observer</TableCell>
               <TableCell>Explores inside the real codebase</TableCell>
-              <TableCell>Local only — no PR rights</TableCell>
+              <TableCell>No PR rights</TableCell>
             </TableRow>
             <TableRow index={3}>
               <TableCell>3</TableCell>
-              <TableCell>The Contributor</TableCell>
+              <TableCell>Contributor</TableCell>
               <TableCell>Builds new features in the codebase</TableCell>
               <TableCell>Cosmetic and polish PRs</TableCell>
             </TableRow>
             <TableRow index={4}>
               <TableCell>4</TableCell>
-              <TableCell>The Shipper</TableCell>
+              <TableCell>Shipper</TableCell>
               <TableCell>Full feature development, AI-assisted</TableCell>
               <TableCell>Feature PRs, AI-assisted</TableCell>
             </TableRow>
