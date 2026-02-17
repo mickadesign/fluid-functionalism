@@ -198,3 +198,22 @@ body {
     -webkit-background-clip: text;
   }
 }
+
+/* Shiki dual-theme: show light theme by default, dark when in dark mode */
+.shiki,
+.shiki span {
+  color: var(--shiki-light) !important;
+  background-color: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .shiki,
+  :root:not(.light) .shiki span {
+    color: var(--shiki-dark) !important;
+  }
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+}
