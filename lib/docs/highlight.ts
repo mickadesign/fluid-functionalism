@@ -22,5 +22,6 @@ export async function highlight(code: string): Promise<string> {
   return h.codeToHtml(code.trim(), {
     lang: "tsx",
     themes: { dark: "github-dark", light: "github-light" },
+    defaultColor: false,
   });
 }
