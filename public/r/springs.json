@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "springs",
+  "title": "Spring Animations",
+  "description": "Spring animation token presets for Framer Motion (fast, moderate, slow).",
+  "files": [
+    {
+      "path": "registry/default/lib/springs.ts",
+      "content": "export const springs = {\n  fast: {\n    type: \"spring\" as const,\n    duration: 0.08,\n    bounce: 0,\n  },\n  moderate: {\n    type: \"spring\" as const,\n    duration: 0.16,\n    bounce: 0.15,\n  },\n  slow: {\n    type: \"spring\" as const,\n    duration: 0.24,\n    bounce: 0.15,\n  },\n} as const;\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}
