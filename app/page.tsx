@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { SquareLibrary, Clock, Star, Users, Lock, Search, Plus, ArrowRight, Loader } from "lucide-react";
 import {
   Dropdown,
@@ -337,6 +338,15 @@ function AppContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="px-6 w-full">
+        <Link
+          href="/docs"
+          className="inline-flex items-center gap-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-80 pl-3 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+        >
+          View component docs &rarr;
+        </Link>
       </div>
 
       <p className="text-[13px] text-muted-foreground pl-3 mx-6">
