@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { SquareLibrary, Clock, Star, Users, Lock, Search, Plus, ArrowRight, Loader } from "lucide-react";
+import { SquareLibrary, Clock, Star, Users, Lock, Search } from "lucide-react";
 import {
   Dropdown,
 } from "@/registry/default/dropdown";
@@ -132,7 +132,7 @@ function AppContent() {
         ))}
       </div>
 
-      <div className="px-6 w-full flex gap-6">
+      <div className="px-6 w-full flex flex-col sm:flex-row gap-6">
         <div className="flex flex-col gap-2">
           <span className="text-[13px] text-muted-foreground pl-3">Theme</span>
           <RadioGroup selectedIndex={selectedThemeIndex}>
@@ -269,31 +269,11 @@ function AppContent() {
         </Table>
       </div>
 
-      <div className="px-6 w-full flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="primary">Primary</Button>
-          <Button variant="secondary">Secondary</Button>
-          <Button variant="tertiary">Tertiary</Button>
-          <Button variant="ghost">Ghost</Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm">Small</Button>
-          <Button size="md">Medium</Button>
-          <Button size="lg">Large</Button>
-          <Button size="icon-sm"><Plus /></Button>
-          <Button size="icon"><Plus /></Button>
-          <Button size="icon-lg"><Plus /></Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button leadingIcon={Plus}>Create</Button>
-          <Button variant="secondary" trailingIcon={ArrowRight}>Next</Button>
-          <Button variant="tertiary" leadingIcon={Search} trailingIcon={ArrowRight}>Search</Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button loading>Loading</Button>
-          <Button variant="secondary" loading leadingIcon={Loader}>Saving</Button>
-          <Button disabled>Disabled</Button>
-        </div>
+      <div className="px-6 w-full flex flex-wrap items-center gap-2">
+        <Button variant="primary">Primary</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Button variant="tertiary">Tertiary</Button>
+        <Button variant="ghost">Ghost</Button>
       </div>
 
       <div className="px-6 w-full flex flex-wrap items-center gap-2">
