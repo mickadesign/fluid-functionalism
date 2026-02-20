@@ -106,7 +106,7 @@ function AppContent() {
         <p className="text-[14px] text-muted-foreground pl-3 mx-6 mb-4">
           Fluid components used exclusively in service of functional clarity.
         </p>
-        <div className="grid grid-cols-2 gap-6 px-6 w-full my-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 sm:gap-6 px-6 w-full mt-6 mb-12">
           <div>
             <h2
               className="text-[14px] text-foreground pl-3"
@@ -152,37 +152,6 @@ function AppContent() {
             </span>
           </SubtleTabPanel>
         ))}
-      </div>
-
-      <div className="px-6 w-full flex flex-col sm:flex-row gap-6">
-        <div className="flex flex-col gap-2">
-          <span className="text-[13px] text-muted-foreground pl-3">Theme</span>
-          <RadioGroup selectedIndex={selectedThemeIndex}>
-            {themeOptions.map((option, i) => (
-              <RadioItem
-                key={option.value}
-                index={i}
-                label={option.label}
-                selected={selectedThemeIndex === i}
-                onSelect={() => transitionSetting(() => setTheme(option.value))}
-              />
-            ))}
-          </RadioGroup>
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-[13px] text-muted-foreground pl-3">Radius</span>
-          <RadioGroup selectedIndex={selectedShapeIndex}>
-            {shapeOptions.map((option, i) => (
-              <RadioItem
-                key={option.value}
-                index={i}
-                label={option.label}
-                selected={selectedShapeIndex === i}
-                onSelect={() => transitionSetting(() => setShape(option.value))}
-              />
-            ))}
-          </RadioGroup>
-        </div>
       </div>
 
       <div className="px-6 w-full">
@@ -310,9 +279,6 @@ function AppContent() {
                 Add a new teamspace to organize your projects and collaborate with your team.
               </DialogDescription>
             </DialogHeader>
-            <p className="text-[13px] text-foreground">
-              Choose a name and set permissions for your new teamspace. You can always change these settings later.
-            </p>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="ghost">Cancel</Button>
@@ -342,7 +308,38 @@ function AppContent() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 px-6 w-full mt-10 mb-40">
+      <div className="px-6 w-full flex flex-col sm:flex-row gap-6">
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] text-muted-foreground pl-3">Theme</span>
+          <RadioGroup selectedIndex={selectedThemeIndex}>
+            {themeOptions.map((option, i) => (
+              <RadioItem
+                key={option.value}
+                index={i}
+                label={option.label}
+                selected={selectedThemeIndex === i}
+                onSelect={() => transitionSetting(() => setTheme(option.value))}
+              />
+            ))}
+          </RadioGroup>
+        </div>
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] text-muted-foreground pl-3">Radius</span>
+          <RadioGroup selectedIndex={selectedShapeIndex}>
+            {shapeOptions.map((option, i) => (
+              <RadioItem
+                key={option.value}
+                index={i}
+                label={option.label}
+                selected={selectedShapeIndex === i}
+                onSelect={() => transitionSetting(() => setShape(option.value))}
+              />
+            ))}
+          </RadioGroup>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 sm:gap-6 px-6 w-full mt-10 mb-40">
         <div>
           <h2
             className="text-[14px] text-foreground pl-3"

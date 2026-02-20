@@ -80,6 +80,7 @@ export default function SubtleTabDoc() {
   return (
     <DocPage
       title="SubtleTab"
+      slug="subtle-tab"
       description="Tab navigation with smooth pill animations."
     >
       <DocSection title="Basic">

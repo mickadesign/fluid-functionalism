@@ -70,6 +70,7 @@ export default function DialogDoc() {
   return (
     <DocPage
       title="Dialog"
+      slug="dialog"
       description="Modal dialog with smooth enter/exit animations and overlay."
     >
       <DocSection title="Small Dialog">

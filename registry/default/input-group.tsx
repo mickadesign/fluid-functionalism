@@ -166,10 +166,8 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
       bgClass = "bg-transparent";
       ringClass = "ring-border";
     } else if (error) {
-      bgClass = isFocused
-        ? "bg-card"
-        : "bg-destructive-light/60";
-      ringClass = "ring-destructive/50";
+      bgClass = isFocused ? "bg-card" : isActive ? "bg-destructive-light/60" : "bg-transparent";
+      ringClass = isFocused || isActive ? "ring-destructive/50" : "ring-transparent";
     } else if (isFocused) {
       bgClass = "bg-card";
       ringClass = "ring-border";
@@ -206,9 +204,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
           <span
             className={cn(
               "col-start-1 row-start-1",
-              error
-                ? "text-destructive"
-                : "text-muted-foreground"
+              error ? "text-destructive" : "text-muted-foreground"
             )}
             style={{
               fontVariationSettings: fontWeights.normal,
@@ -232,9 +228,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
               strokeWidth={labelActive ? 2 : 1.5}
               className={cn(
                 "shrink-0 transition-[color,stroke-width] duration-80",
-                error
-                  ? "text-destructive"
-                  : labelActive
+                labelActive
                   ? "text-foreground"
                   : "text-muted-foreground"
               )}

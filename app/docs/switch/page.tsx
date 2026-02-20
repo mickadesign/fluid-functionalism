@@ -37,6 +37,7 @@ export default function SwitchDoc() {
   return (
     <DocPage
       title="Switch"
+      slug="switch"
       description="Toggle switch with animated thumb and label."
     >
       <DocSection title="Basic">

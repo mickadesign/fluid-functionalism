@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <ShapeProvider>
+        <ShapeProvider defaultShape="rounded">
           <SidebarLayout>{children}</SidebarLayout>
         </ShapeProvider>
       </body>

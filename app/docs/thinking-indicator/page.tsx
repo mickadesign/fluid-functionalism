@@ -12,6 +12,7 @@ export default function ThinkingIndicatorDoc() {
   return (
     <DocPage
       title="ThinkingIndicator"
+      slug="thinking-indicator"
       description="Animated status indicator with morphing SVG and cycling text."
     >
       <DocSection title="Basic">

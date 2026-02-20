@@ -56,6 +56,7 @@ export default function ButtonDoc() {
   return (
     <DocPage
       title="Button"
+      slug="button"
       description="Versatile button with variants, sizes, loading state, and icon support."
     >
       <DocSection title="Variants">

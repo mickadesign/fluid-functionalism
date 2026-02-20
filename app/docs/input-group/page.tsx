@@ -81,6 +81,7 @@ export default function InputGroupDoc() {
   return (
     <DocPage
       title="InputGroup"
+      slug="input-group"
       description="Input field group with proximity hover and validation."
     >
       <DocSection title="Basic">

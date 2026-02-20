@@ -50,6 +50,7 @@ export default function CheckboxGroupDoc() {
   return (
     <DocPage
       title="CheckboxGroup"
+      slug="checkbox-group"
       description="Checkbox group with merged backgrounds for contiguous selections."
     >
       <DocSection title="Basic">

@@ -60,6 +60,7 @@ export default function DropdownDoc() {
   return (
     <DocPage
       title="Dropdown"
+      slug="dropdown"
       description="Menu-style dropdown with proximity hover and animated backgrounds."
     >
       <DocSection title="Basic">

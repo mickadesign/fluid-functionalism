@@ -57,6 +57,7 @@ export default function TableDoc() {
   return (
     <DocPage
       title="Table"
+      slug="table"
       description="Data table with row hover effects and semantic markup."
     >
       <DocSection title="Basic">

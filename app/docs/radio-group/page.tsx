@@ -44,6 +44,7 @@ export default function RadioGroupDoc() {
   return (
     <DocPage
       title="RadioGroup"
+      slug="radio-group"
       description="Radio button group with proximity hover and animated selection."
     >
       <DocSection title="Basic">

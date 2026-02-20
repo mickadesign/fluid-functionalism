@@ -81,7 +81,16 @@
           "path": "registry/default/button.tsx",
           "type": "registry:ui"
         }
-      ]
+      ],
+      "css": {
+        "@keyframes spinner-move": {
+          "to": { "stroke-dashoffset": "-100" }
+        },
+        "@keyframes spinner-dash": {
+          "0%, 100%": { "stroke-dasharray": "15 85" },
+          "50%": { "stroke-dasharray": "40 60" }
+        }
+      }
     },
     {
       "name": "dropdown",
@@ -244,7 +253,21 @@
           "path": "registry/default/thinking-indicator.tsx",
           "type": "registry:ui"
         }
-      ]
+      ],
+      "css": {
+        "@keyframes shimmer": {
+          "0%": { "background-position": "0% 0" },
+          "100%": { "background-position": "100% 0" }
+        },
+        ".shimmer-text": {
+          "color": "transparent",
+          "background": "linear-gradient(90deg, #a3a3a3 0%, #a3a3a3 35%, #525252 50%, #a3a3a3 65%, #a3a3a3 100%)",
+          "background-size": "300% 100%",
+          "background-clip": "text",
+          "-webkit-background-clip": "text",
+          "animation": "shimmer 1.5s ease-in-out infinite"
+        }
+      }
     }
   ]
 }
