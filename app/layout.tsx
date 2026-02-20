@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ShapeProvider } from "@/registry/default/lib/shape-context";
+import { SidebarLayout } from "@/app/components/sidebar-layout";
 
 export const metadata: Metadata = {
   title: "Fluid Functionalism",
@@ -14,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <ShapeProvider>
+          <SidebarLayout>{children}</SidebarLayout>
+        </ShapeProvider>
       </body>
     </html>
   );

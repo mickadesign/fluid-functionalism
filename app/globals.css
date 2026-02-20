@@ -132,6 +132,10 @@ body {
   font-family: var(--font-sans);
 }
 
+h1, h2, h3, p {
+  text-wrap: balance;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Link from "next/link";
 import { SquareLibrary, Clock, Star, Users, Lock, Search } from "lucide-react";
 import {
   Dropdown,
@@ -46,7 +45,6 @@ import {
   DialogClose,
 } from "@/registry/default/dialog";
 import {
-  ShapeProvider,
   useShapeContext,
   type ShapeVariant,
 } from "@/registry/default/lib/shape-context";
@@ -97,7 +95,7 @@ function AppContent() {
   }, [theme]);
 
   return (
-    <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16">
+    <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16 mt-12 md:mt-0">
       <div className="flex flex-col items-start gap-3 w-full py-2">
         <h1
           className="text-[22px] sm:text-[28px] text-foreground leading-none pl-3 mx-6"
@@ -105,9 +103,33 @@ function AppContent() {
         >
           Fluid Functionalism
         </h1>
-        <p className="text-[13px] text-muted-foreground pl-3 mx-6 mb-4">
+        <p className="text-[14px] text-muted-foreground pl-3 mx-6 mb-4">
           Fluid components used exclusively in service of functional clarity.
         </p>
+        <div className="grid grid-cols-2 gap-6 px-6 w-full my-12">
+          <div>
+            <h2
+              className="text-[14px] text-foreground pl-3"
+              style={{ fontVariationSettings: "'wght' 680" }}
+            >
+              shadcn/ui Foundation
+            </h2>
+            <p className="text-[14px] text-muted-foreground pl-3 mt-1.5">
+              Built on shadcn/ui conventions. Your existing theme and setup apply automatically.
+            </p>
+          </div>
+          <div>
+            <h2
+              className="text-[14px] text-foreground pl-3"
+              style={{ fontVariationSettings: "'wght' 680" }}
+            >
+              Accessible by Design
+            </h2>
+            <p className="text-[14px] text-muted-foreground pl-3 mt-1.5">
+              Radix primitives, proper ARIA roles, keyboard navigation, and state communicated through multiple channels.
+            </p>
+          </div>
+        </div>
         <SubtleTab idPrefix="nav" selectedIndex={selectedTab} onSelect={setSelectedTab} aria-label="Navigation">
         {items.map((item, i) => (
           <SubtleTabItem
@@ -320,34 +342,35 @@ function AppContent() {
         </Dialog>
       </div>
 
-      <div className="px-6 w-full">
-        <Link
-          href="/docs"
-          className="inline-flex items-center gap-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-foreground transition-colors duration-80 pl-3 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
-        >
-          View component docs &rarr;
-        </Link>
+      <div className="grid grid-cols-2 gap-6 px-6 w-full mt-10 mb-40">
+        <div>
+          <h2
+            className="text-[14px] text-foreground pl-3"
+            style={{ fontVariationSettings: "'wght' 680" }}
+          >
+            Functional Clarity
+          </h2>
+          <p className="text-[14px] text-muted-foreground pl-3 mt-1.5">
+            Every animation and visual effect serves a purpose. Nothing is decorative — motion makes state transitions legible.
+          </p>
+        </div>
+        <div>
+          <h2
+            className="text-[14px] text-foreground pl-3"
+            style={{ fontVariationSettings: "'wght' 680" }}
+          >
+            Predictive Interaction
+          </h2>
+          <p className="text-[14px] text-muted-foreground pl-3 mt-1.5">
+            Proximity hover highlights the closest item before you act, reducing errors and cognitive load.
+          </p>
+        </div>
       </div>
 
-      <p className="text-[13px] text-muted-foreground pl-3 mx-6">
-        Designed by{" "}
-        <a
-          href="https://x.com/micka_design"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded text-muted-foreground hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] focus-visible:ring-offset-2"
-        >
-          @micka_design
-        </a>
-      </p>
     </div>
   );
 }
 
 export default function Page() {
-  return (
-    <ShapeProvider>
-      <AppContent />
-    </ShapeProvider>
-  );
+  return <AppContent />;
 }
