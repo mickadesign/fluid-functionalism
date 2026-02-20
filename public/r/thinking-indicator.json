@@ -8,7 +8,7 @@
   ],
   "registryDependencies": [
     "utils",
-    "font-weight"
+    "https://fluid-functionalism.vercel.app/r/font-weight.json"
   ],
   "files": [
     {

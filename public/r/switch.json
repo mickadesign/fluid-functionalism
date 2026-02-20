@@ -9,8 +9,8 @@
   ],
   "registryDependencies": [
     "utils",
-    "springs",
-    "font-weight"
+    "https://fluid-functionalism.vercel.app/r/springs.json",
+    "https://fluid-functionalism.vercel.app/r/font-weight.json"
   ],
   "files": [
     {

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "registry:build": "shadcn build"
+    "registry:build": "shadcn build && node scripts/postbuild-registry.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

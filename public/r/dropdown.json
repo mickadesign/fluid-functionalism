@@ -8,10 +8,10 @@
   ],
   "registryDependencies": [
     "utils",
-    "springs",
-    "font-weight",
-    "shape-context",
-    "use-proximity-hover"
+    "https://fluid-functionalism.vercel.app/r/springs.json",
+    "https://fluid-functionalism.vercel.app/r/font-weight.json",
+    "https://fluid-functionalism.vercel.app/r/shape-context.json",
+    "https://fluid-functionalism.vercel.app/r/use-proximity-hover.json"
   ],
   "files": [
     {
