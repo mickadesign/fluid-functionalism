@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useRef, useEffect, type HTMLAttributes } from "react";
+import { forwardRef, useRef, useState, useEffect, type HTMLAttributes } from "react";
 import { motion } from "framer-motion";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cn } from "@/lib/utils";
@@ -19,10 +19,12 @@ const TRACK_HEIGHT = 20;
 const THUMB_SIZE = 16;
 const THUMB_OFFSET = 2;
 const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - THUMB_OFFSET * 2;
+const PILL_EXTEND = 2;
 
 const Switch = forwardRef<HTMLDivElement, SwitchProps>(
   ({ label, checked, onToggle, disabled = false, className, ...props }, ref) => {
     const hasMounted = useRef(false);
+    const [hovered, setHovered] = useState(false);
 
     useEffect(() => {
       hasMounted.current = true;
@@ -36,6 +38,10 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
           disabled && "opacity-50 pointer-events-none",
           className
         )}
+        onPointerEnter={(e) => {
+          if (e.pointerType === "mouse") setHovered(true);
+        }}
+        onPointerLeave={() => setHovered(false)}
         onClick={() => !disabled && onToggle()}
         {...props}
       >
@@ -59,13 +65,16 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
           <SwitchPrimitive.Thumb asChild>
             <motion.span
               className="absolute top-0 left-0 block rounded-full bg-white shadow-sm"
-              style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
               initial={false}
               animate={{
-                x: checked ? THUMB_OFFSET + THUMB_TRAVEL : THUMB_OFFSET,
+                x: checked
+                  ? THUMB_OFFSET + THUMB_TRAVEL - (hovered ? PILL_EXTEND : 0)
+                  : THUMB_OFFSET,
                 y: THUMB_OFFSET,
+                width: hovered ? THUMB_SIZE + PILL_EXTEND : THUMB_SIZE,
+                height: THUMB_SIZE,
               }}
-              transition={hasMounted.current ? springs.fast : { duration: 0 }}
+              transition={hasMounted.current ? springs.moderate : { duration: 0 }}
             />
           </SwitchPrimitive.Thumb>
         </SwitchPrimitive.Root>
