@@ -308,14 +308,14 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
               {[...openItemRects.entries()].map(([idx, rect]) => (
                 <motion.div
                   key={`expanded-${idx}`}
-                  className={`absolute ${shape.bg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
+                  className={`absolute ${shape.bg} bg-accent/20 dark:bg-accent/12 pointer-events-none`}
                   initial={false}
                   animate={{
                     top: rect.top,
                     left: rect.left,
                     width: rect.width,
                     height: rect.height,
-                    opacity: isHoveringNonOpen ? 0.8 : 1,
+                    opacity: isHoveringNonOpen ? 0.7 : 1,
                   }}
                   exit={{ opacity: 0, transition: { duration: 0.12 } }}
                   transition={{
@@ -539,7 +539,7 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
             <AnimatePresence>
               {isOpen && (
                 <motion.div
-                  className={`absolute inset-0 ${shape.bg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
+                  className={`absolute inset-0 ${shape.bg} bg-accent/20 dark:bg-accent/12 pointer-events-none`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, transition: { duration: 0.12 } }}
@@ -675,13 +675,10 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
             <motion.div
               ref={ref}
               className={cn("overflow-hidden", className)}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{
-                height: springs.moderate,
-                opacity: { duration: 0.12 },
-              }}
+              initial={{ height: 0 }}
+              animate={{ height: "auto" }}
+              exit={{ height: 0 }}
+              transition={springs.moderate}
               onAnimationComplete={() => {
                 groupCtx?.remeasure();
               }}
