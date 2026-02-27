@@ -22,12 +22,21 @@ import { useShape } from "@/lib/shape-context";
 
 // ─── Contexts ────────────────────────────────────────────────────────────────
 
+interface ItemRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 interface AccordionGroupContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
+  registerFullItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
   grouped: true;
   remeasure: () => void;
   openValues: Set<string>;
+  openItemRects: Map<number, ItemRect>;
 }
 
 const AccordionGroupContext =
@@ -86,6 +95,11 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const fullItemElementsRef = useRef<Map<number, HTMLElement>>(new Map());
+    const [openItemRects, setOpenItemRects] = useState<Map<number, ItemRect>>(
+      new Map()
+    );
+
     const {
       activeIndex,
       setActiveIndex,
@@ -95,6 +109,33 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       registerItem,
       measureItems,
     } = useProximityHover(containerRef);
+
+    const registerFullItem = useCallback(
+      (index: number, element: HTMLElement | null) => {
+        if (element) {
+          fullItemElementsRef.current.set(index, element);
+        } else {
+          fullItemElementsRef.current.delete(index);
+        }
+      },
+      []
+    );
+
+    const measureFullItems = useCallback(() => {
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const next = new Map<number, ItemRect>();
+      fullItemElementsRef.current.forEach((el, idx) => {
+        const r = el.getBoundingClientRect();
+        next.set(idx, {
+          top: r.top - containerRect.top,
+          left: r.left - containerRect.left,
+          width: r.width,
+          height: r.height,
+        });
+      });
+      setOpenItemRects(next);
+    }, []);
 
     // Track open values for context
     const [internalSingleValue, setInternalSingleValue] = useState<string>(
@@ -148,23 +189,31 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
 
     useEffect(() => {
       measureItems();
-    }, [measureItems, children]);
+      measureFullItems();
+    }, [measureItems, measureFullItems, children]);
 
     // Remeasure when open values change (items shift positions)
     useEffect(() => {
-      const raf = requestAnimationFrame(() => measureItems());
+      const raf = requestAnimationFrame(() => {
+        measureItems();
+        measureFullItems();
+      });
       return () => cancelAnimationFrame(raf);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [...openValues].join(","),
       measureItems,
+      measureFullItems,
     ]);
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
+    // Dimming: reduce expanded BG opacity when hovering a non-expanded trigger
+    const isHoveringNonOpen =
+      activeIndex !== null && !openItemRects.has(activeIndex);
     const shape = useShape();
 
     // Strip non-HTML props before spreading
@@ -200,10 +249,15 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       <AccordionGroupContext.Provider
         value={{
           registerItem,
+          registerFullItem,
           activeIndex,
           grouped: true,
-          remeasure: measureItems,
+          remeasure: () => {
+            measureItems();
+            measureFullItems();
+          },
           openValues,
+          openItemRects,
         }}
       >
         <AccordionPrimitive.Root {...radixProps} asChild>
@@ -249,6 +303,29 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
             )}
             {...(htmlProps as HTMLAttributes<HTMLDivElement>)}
           >
+            {/* Expanded item backgrounds */}
+            <AnimatePresence>
+              {[...openItemRects.entries()].map(([idx, rect]) => (
+                <motion.div
+                  key={`expanded-${idx}`}
+                  className={`absolute ${shape.bg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
+                  initial={false}
+                  animate={{
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height,
+                    opacity: isHoveringNonOpen ? 0.8 : 1,
+                  }}
+                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                  transition={{
+                    ...springs.moderate,
+                    opacity: { duration: 0.16 },
+                  }}
+                />
+              ))}
+            </AnimatePresence>
+
             {/* Hover background */}
             <AnimatePresence>
               {activeRect && (
@@ -418,22 +495,59 @@ interface AccordionItemProps extends HTMLAttributes<HTMLDivElement> {
 
 const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
   ({ value, index, disabled, children, className, ...props }, ref) => {
+    const internalRef = useRef<HTMLDivElement>(null);
     const groupCtx = useAccordionGroup();
     const standaloneOpen = useContext(StandaloneOpenContext);
+    const shape = useShape();
 
     const isOpen = groupCtx?.grouped
       ? groupCtx.openValues.has(value)
       : standaloneOpen.has(value);
 
+    // Register full item element for expanded background measurement
+    useEffect(() => {
+      if (groupCtx?.grouped && index !== undefined) {
+        if (isOpen) {
+          groupCtx.registerFullItem(index, internalRef.current);
+        } else {
+          groupCtx.registerFullItem(index, null);
+        }
+        return () => groupCtx.registerFullItem(index, null);
+      }
+    }, [index, groupCtx, isOpen]);
+
     return (
       <AccordionItemContext.Provider value={{ index, value, isOpen }}>
         <AccordionPrimitive.Item
-          ref={ref}
+          ref={(node) => {
+            (
+              internalRef as React.MutableRefObject<HTMLDivElement | null>
+            ).current = node;
+            if (typeof ref === "function") ref(node);
+            else if (ref)
+              (
+                ref as React.MutableRefObject<HTMLDivElement | null>
+              ).current = node;
+          }}
           value={value}
           disabled={disabled}
           className={cn("relative", className)}
           {...props}
         >
+          {/* Standalone expanded background */}
+          {!groupCtx?.grouped && (
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  className={`absolute inset-0 ${shape.bg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                  transition={{ duration: 0.16 }}
+                />
+              )}
+            </AnimatePresence>
+          )}
           {children}
         </AccordionPrimitive.Item>
       </AccordionItemContext.Provider>
