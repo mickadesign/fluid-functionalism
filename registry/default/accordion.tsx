@@ -215,13 +215,11 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       measureFullItems();
     }, [measureItems, measureFullItems, children]);
 
-    // Remeasure when open values change (items shift positions)
+    // Remeasure synchronously when open values change so the first
+    // paint already reflects shifted trigger positions.
     useEffect(() => {
-      const raf = requestAnimationFrame(() => {
-        measureItems();
-        measureFullItems();
-      });
-      return () => cancelAnimationFrame(raf);
+      measureItems();
+      measureFullItems();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -762,6 +760,9 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
               animate={{ height: "auto" }}
               exit={{ height: 0 }}
               transition={springs.moderate}
+              onUpdate={() => {
+                groupCtx?.remeasure();
+              }}
               onAnimationComplete={() => {
                 groupCtx?.remeasure();
               }}
