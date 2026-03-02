@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Accordion,
   AccordionGroup,
@@ -79,17 +78,9 @@ const multipleCode = `import { AccordionGroup, AccordionItem, AccordionTrigger, 
   </AccordionItem>
 </AccordionGroup>`;
 
-const accordionProps: PropDef[] = [
+const rootProps: PropDef[] = [
   { name: "type", type: '"single" | "multiple"', default: '"single"', description: "Whether one or multiple items can be expanded." },
-  { name: "collapsible", type: "boolean", default: "true", description: "Allow collapsing all items in single mode." },
-  { name: "defaultValue", type: "string | string[]", description: "Initially expanded item value(s)." },
-  { name: "value", type: "string | string[]", description: "Controlled expanded value(s)." },
-  { name: "onValueChange", type: "(value) => void", description: "Callback when expanded state changes." },
-];
-
-const groupProps: PropDef[] = [
-  { name: "type", type: '"single" | "multiple"', default: '"single"', description: "Whether one or multiple items can be expanded." },
-  { name: "collapsible", type: "boolean", default: "true", description: "Allow collapsing all items in single mode." },
+  { name: "collapsible", type: "boolean", default: "true", description: "Allow collapsing all items when type is single." },
   { name: "defaultValue", type: "string | string[]", description: "Initially expanded item value(s)." },
   { name: "value", type: "string | string[]", description: "Controlled expanded value(s)." },
   { name: "onValueChange", type: "(value) => void", description: "Callback when expanded state changes." },
@@ -97,7 +88,7 @@ const groupProps: PropDef[] = [
 
 const itemProps: PropDef[] = [
   { name: "value", type: "string", description: "Unique identifier for this item." },
-  { name: "index", type: "number", description: "Position index within AccordionGroup (required for proximity hover)." },
+  { name: "index", type: "number", description: "Position index for proximity hover. Required inside AccordionGroup, omit for standalone." },
   { name: "disabled", type: "boolean", default: "false", description: "Whether this item is disabled." },
 ];
 
@@ -117,19 +108,23 @@ export default function AccordionDoc() {
       description="Collapsible sections with animated expand/collapse and proximity hover in grouped mode."
     >
       <DocSection title="Standalone">
+        <p className="text-[13px] text-muted-foreground">A single collapsible item with its own hover state.</p>
         <ComponentPreview code={standaloneCode}>
-          <Accordion type="single" collapsible defaultValue="item-1">
-            <AccordionItem value="item-1">
-              <AccordionTrigger>What is this component?</AccordionTrigger>
-              <AccordionContent>
-                A collapsible accordion with animated expand/collapse and spring-animated chevron.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <div className="min-h-[120px] flex items-center">
+            <Accordion type="single" collapsible defaultValue="item-1">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>What is this component?</AccordionTrigger>
+                <AccordionContent>
+                  A collapsible accordion with animated expand/collapse and spring-animated chevron.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Grouped">
+      <DocSection title="Single Expand">
+        <p className="text-[13px] text-muted-foreground">Multiple items with proximity hover — only one can be expanded at a time.</p>
         <ComponentPreview code={groupedCode}>
           <AccordionGroup type="single" collapsible defaultValue="item-1">
             <AccordionItem value="item-1" index={0}>
@@ -165,7 +160,8 @@ export default function AccordionDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Multiple">
+      <DocSection title="Multi Expand">
+        <p className="text-[13px] text-muted-foreground">Multiple items with proximity hover — several can be expanded at once.</p>
         <ComponentPreview code={multipleCode}>
           <AccordionGroup type="multiple" defaultValue={["item-1", "item-3"]}>
             <AccordionItem value="item-1" index={0}>
@@ -190,12 +186,8 @@ export default function AccordionDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="API Reference — Accordion">
-        <PropsTable props={accordionProps} />
-      </DocSection>
-
-      <DocSection title="API Reference — AccordionGroup">
-        <PropsTable props={groupProps} />
+      <DocSection title="API Reference — Accordion / AccordionGroup">
+        <PropsTable props={rootProps} />
       </DocSection>
 
       <DocSection title="API Reference — AccordionItem">

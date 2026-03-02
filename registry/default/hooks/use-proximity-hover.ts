@@ -83,6 +83,8 @@ export function useProximityHover<T extends HTMLElement>(
       let closestDistance = Infinity;
       const rects: ItemRect[] = [];
 
+      let containingIndex: number | null = null;
+
       itemsRef.current.forEach((element, index) => {
         const rect = element.getBoundingClientRect();
         rects[index] = {
@@ -91,6 +93,13 @@ export function useProximityHover<T extends HTMLElement>(
           left: rect.left - containerRect.left + scrollLeft - borderLeft,
           width: rect.width,
         };
+
+        // Check if mouse is within this item's bounds
+        const start = axis === "x" ? rect.left : rect.top;
+        const end = axis === "x" ? rect.right : rect.bottom;
+        if (mousePos >= start && mousePos <= end) {
+          containingIndex = index;
+        }
 
         const itemCenter =
           axis === "x"
@@ -105,7 +114,8 @@ export function useProximityHover<T extends HTMLElement>(
       });
 
       setItemRects(rects);
-      setActiveIndex(closestIndex);
+      // Prefer the item that directly contains the mouse; fall back to closest center
+      setActiveIndex(containingIndex ?? closestIndex);
     },
     [axis, containerRef]
   );
