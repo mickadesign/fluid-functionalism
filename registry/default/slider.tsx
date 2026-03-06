@@ -48,7 +48,8 @@ interface SliderProps
 // Constants
 // ---------------------------------------------------------------------------
 
-const THUMB_SIZE = 20;
+const THUMB_SIZE = 18;
+const THUMB_SIZE_REST = 14;
 const TRACK_HEIGHT = 6;
 const DOT_SIZE = 4;
 
@@ -240,7 +241,7 @@ function TooltipValue({ value, formatValue, motionX }: TooltipValueProps) {
       className="absolute -translate-x-1/2 pointer-events-none z-20"
       style={{
         x: tooltipX,
-        top: -28,
+        top: -16,
       }}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
@@ -299,6 +300,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       left: number;
       width: number;
     } | null>(null);
+    const [hoverThumbIndex, setHoverThumbIndex] = useState<number | null>(null);
 
     // --- Motion values ---
     const motionX0 = useMotionValue(0);
@@ -332,15 +334,15 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         // Find nearest thumb center
         const c0 = motionX0.get() + THUMB_SIZE / 2;
         const c1 = motionX1.get() + THUMB_SIZE / 2;
-        const nearest = isRange
-          ? Math.abs(snappedX - c0) <= Math.abs(snappedX - c1)
-            ? c0
-            : c1
-          : c0;
+        const nearestIdx = isRange
+          ? (Math.abs(snappedX - c0) <= Math.abs(snappedX - c1) ? 0 : 1)
+          : 0;
+        const nearest = nearestIdx === 0 ? c0 : c1;
 
         const left = Math.min(nearest, snappedX);
         const width = Math.abs(snappedX - nearest);
         setHoverPreview({ left, width });
+        setHoverThumbIndex(nearestIdx);
       },
       [min, max, step, isRange, motionX0, motionX1]
     );
@@ -479,7 +481,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           activeDragThumb.current
         );
         // Spring-animate thumb to clicked position
-        animate(motionX, finalPx, springs.slow);
+        animate(motionX, finalPx, springs.moderate);
 
         // Update value
         const finalValue = pixelToValue(
@@ -624,24 +626,35 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       return (
         <motion.span
           key={`visual-thumb-${index}`}
-          className="block rounded-full pointer-events-none"
+          className="flex items-center justify-center pointer-events-none"
           style={{
             width: THUMB_SIZE,
             height: THUMB_SIZE,
-            backgroundColor: "var(--background)",
-            boxShadow:
-              "0 1px 4px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)",
+            marginTop: -THUMB_SIZE / 2,
             x: motionX,
-            scale: 1,
             position: "absolute",
             top: "50%",
-            marginTop: -THUMB_SIZE / 2,
             left: 0,
             zIndex: 10,
           }}
           initial={false}
           transition={springs.moderate}
-        />
+        >
+          <motion.span
+            className="block rounded-full"
+            initial={false}
+            animate={{
+              width: (hoverThumbIndex === index) || (isPressed && activeDragThumb.current === index) ? THUMB_SIZE : THUMB_SIZE_REST,
+              height: (hoverThumbIndex === index) || (isPressed && activeDragThumb.current === index) ? THUMB_SIZE : THUMB_SIZE_REST,
+            }}
+            transition={springs.fast}
+            style={{
+              backgroundColor: "white",
+              boxShadow:
+                "0 1px 4px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)",
+            }}
+          />
+        </motion.span>
       );
     };
 
@@ -664,11 +677,12 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         {/* Track area */}
         <div
           className="relative flex-1"
-          style={{ height: THUMB_SIZE + (valuePosition === "tooltip" ? 28 : 0), paddingTop: valuePosition === "tooltip" ? 28 : 0 }}
+          style={{ height: THUMB_SIZE + (valuePosition === "tooltip" ? 16 : 0), paddingTop: valuePosition === "tooltip" ? 16 : 0 }}
           onPointerEnter={() => setIsHovered(true)}
           onPointerLeave={() => {
             setIsHovered(false);
             setHoverPreview(null);
+            setHoverThumbIndex(null);
           }}
           onMouseMove={(e) => {
             if (dragging.current) return;
@@ -731,8 +745,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           {/* Visual track with pointer handlers */}
           <div
             ref={trackRef}
-            className="relative w-full cursor-pointer"
-            style={{ height: THUMB_SIZE }}
+            className="relative w-full cursor-pointer py-2"
+            style={{ height: THUMB_SIZE + 16 }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -744,10 +758,10 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               animate={{
                 height: isHovered || isPressed ? 8 : TRACK_HEIGHT,
                 top: isHovered || isPressed
-                  ? (THUMB_SIZE - 8) / 2
-                  : (THUMB_SIZE - TRACK_HEIGHT) / 2,
+                  ? 8 + (THUMB_SIZE - 8) / 2
+                  : 8 + (THUMB_SIZE - TRACK_HEIGHT) / 2,
               }}
-              transition={springs.moderate}
+              transition={springs.fast}
               style={{
                 backgroundColor: "var(--accent)",
               }}
@@ -763,16 +777,22 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               />
 
               {/* Hover preview fill (nearest thumb → cursor) */}
-              {hoverPreview && !isPressed && (
-                <div
-                  className={cn("absolute h-full pointer-events-none", shape.bg)}
-                  style={{
-                    left: hoverPreview.left,
-                    width: hoverPreview.width,
-                    backgroundColor: "color-mix(in srgb, var(--foreground) 20%, transparent)",
-                  }}
-                />
-              )}
+              <motion.div
+                className={cn("absolute h-full pointer-events-none", shape.bg)}
+                initial={false}
+                animate={{
+                  left: hoverPreview?.left ?? 0,
+                  width: hoverPreview?.width ?? 0,
+                  opacity: hoverPreview && !isPressed ? 1 : 0,
+                }}
+                transition={{
+                  ...springs.moderate,
+                  opacity: { duration: 0.15 },
+                }}
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--foreground) 20%, transparent)",
+                }}
+              />
 
               {/* Step dots */}
               {stepDots.map(({ value: v, percent }) => (
