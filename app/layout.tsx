@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ShapeProvider } from "@/registry/default/lib/shape-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
 
@@ -29,6 +31,8 @@ export default function RootLayout({
       <body className="antialiased">
         <ShapeProvider defaultShape="rounded">
           <SidebarLayout>{children}</SidebarLayout>
+          <Analytics />
+          <SpeedInsights />
         </ShapeProvider>
       </body>
     </html>
