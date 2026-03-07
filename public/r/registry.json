@@ -342,6 +342,28 @@
           "animation": "shimmer 1.5s ease-in-out infinite"
         }
       }
+    },
+    {
+      "name": "tooltip",
+      "type": "registry:ui",
+      "title": "Tooltip",
+      "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-tooltip"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/tooltip.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

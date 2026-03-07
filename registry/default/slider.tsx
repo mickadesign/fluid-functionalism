@@ -235,6 +235,7 @@ interface TooltipValueProps {
 }
 
 function TooltipValue({ value, formatValue, motionX }: TooltipValueProps) {
+  const shape = useShape();
   const tooltipX = useTransform(motionX, (x) => x + THUMB_SIZE / 2);
   return (
     <motion.div
@@ -249,7 +250,7 @@ function TooltipValue({ value, formatValue, motionX }: TooltipValueProps) {
       transition={springs.fast}
     >
       <span
-        className="text-[12px] text-foreground tabular-nums whitespace-nowrap rounded-md bg-accent px-1.5 py-0.5"
+        className={cn("text-[12px] text-foreground tabular-nums whitespace-nowrap bg-accent px-2 py-1", shape.bg)}
         style={{ fontVariationSettings: fontWeights.medium }}
       >
         {formatValue(value)}
@@ -299,6 +300,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     const [hoverPreview, setHoverPreview] = useState<{
       left: number;
       width: number;
+      onFilledSide: boolean;
+      snappedValue: number;
+      cursorX: number;
     } | null>(null);
     const [hoverThumbIndex, setHoverThumbIndex] = useState<number | null>(null);
 
@@ -339,9 +343,14 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           : 0;
         const nearest = nearestIdx === 0 ? c0 : c1;
 
+        // Determine if cursor is on the filled side
+        const onFilledSide = isRange
+          ? snappedX > c0 && snappedX < c1
+          : snappedX < c0;
+
         const left = Math.min(nearest, snappedX);
         const width = Math.abs(snappedX - nearest);
-        setHoverPreview({ left, width });
+        setHoverPreview({ left, width, onFilledSide, snappedValue: snappedVal, cursorX: snappedX });
         setHoverThumbIndex(nearestIdx);
       },
       [min, max, step, isRange, motionX0, motionX1]
@@ -460,7 +469,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
         dragging.current = true;
         setIsPressed(true);
-        setHoverPreview(null);
 
         const motionX =
           activeDragThumb.current === 0 ? motionX0 : motionX1;
@@ -492,6 +500,16 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           trackRect.width
         );
         emitChange(activeDragThumb.current, finalValue);
+
+        // Update tooltip to follow thumb at click position
+        const thumbCenter = finalPx + THUMB_SIZE / 2;
+        setHoverPreview((prev) => ({
+          left: prev?.left ?? 0,
+          width: prev?.width ?? 0,
+          onFilledSide: prev?.onFilledSide ?? false,
+          snappedValue: finalValue,
+          cursorX: thumbCenter,
+        }));
 
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
@@ -537,6 +555,16 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           trackRect.width
         );
         emitChange(activeDragThumb.current, finalValue);
+
+        // Update tooltip to follow thumb during drag
+        const thumbCenter = finalPx + THUMB_SIZE / 2;
+        setHoverPreview((prev) => ({
+          left: prev?.left ?? 0,
+          width: prev?.width ?? 0,
+          onFilledSide: prev?.onFilledSide ?? false,
+          snappedValue: finalValue,
+          cursorX: thumbCenter,
+        }));
       },
       [min, max, step, motionX0, motionX1, clampForRange, emitChange]
     );
@@ -662,7 +690,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col gap-2 w-full select-none touch-none",
+          "flex flex-col gap-2 w-full select-none touch-none overflow-visible",
           valuePosition === "left" || valuePosition === "right"
             ? "flex-row items-center"
             : "flex-col",
@@ -676,7 +704,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
         {/* Track area */}
         <div
-          className="relative flex-1"
+          className="relative flex-1 overflow-visible"
           style={{ height: THUMB_SIZE + (valuePosition === "tooltip" ? 16 : 0), paddingTop: valuePosition === "tooltip" ? 16 : 0 }}
           onPointerEnter={() => setIsHovered(true)}
           onPointerLeave={() => {
@@ -751,6 +779,38 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           >
+            {/* Extended hit area — 8px beyond each edge */}
+            <div
+              className="absolute cursor-pointer"
+              style={{ left: -8, right: -8, top: 0, bottom: 0 }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            />
+            {/* Hover value tooltip */}
+            <AnimatePresence>
+              {hoverPreview && valuePosition !== "tooltip" && (
+                <motion.div
+                  key="hover-tooltip"
+                  className="absolute -translate-x-1/2 pointer-events-none z-20"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0, left: hoverPreview.cursorX }}
+                  exit={{ opacity: 0, y: 4, transition: { duration: 0.1 } }}
+                  transition={springs.fast}
+                  style={{
+                    top: -20,
+                  }}
+                >
+                  <span
+                    className={cn("text-[12px] text-foreground tabular-nums whitespace-nowrap bg-accent px-2 py-1", shape.bg)}
+                    style={{ fontVariationSettings: fontWeights.medium }}
+                  >
+                    {formatValue(hoverPreview.snappedValue)}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Track background — grows on hover */}
             <motion.div
               className={cn("absolute left-0 right-0", shape.bg)}
@@ -776,14 +836,14 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                 }}
               />
 
-              {/* Hover preview fill (nearest thumb → cursor) */}
+              {/* Hover preview — unfilled side (dark on track) */}
               <motion.div
                 className={cn("absolute h-full pointer-events-none", shape.bg)}
                 initial={false}
                 animate={{
-                  left: hoverPreview?.left ?? 0,
-                  width: hoverPreview?.width ?? 0,
-                  opacity: hoverPreview && !isPressed ? 1 : 0,
+                  left: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.left : 0,
+                  width: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.width : 0,
+                  opacity: hoverPreview && !hoverPreview.onFilledSide && !isPressed ? 1 : 0,
                 }}
                 transition={{
                   ...springs.moderate,
@@ -794,13 +854,38 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                 }}
               />
 
-              {/* Step dots */}
-              {stepDots.map(({ value: v, percent }) => (
+              {/* Hover preview — filled side (light on fill) */}
+              <motion.div
+                className={cn("absolute h-full pointer-events-none z-[2]", shape.bg)}
+                initial={false}
+                animate={{
+                  left: hoverPreview?.onFilledSide ? hoverPreview.left : 0,
+                  width: hoverPreview?.onFilledSide ? hoverPreview.width : 0,
+                  opacity: hoverPreview?.onFilledSide && !isPressed ? 1 : 0,
+                }}
+                transition={{
+                  ...springs.moderate,
+                  opacity: { duration: 0.15 },
+                }}
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--background) 25%, transparent)",
+                }}
+              />
+
+            </motion.div>
+
+            {/* Step dots — outside track bg to avoid border-radius clipping */}
+            {stepDots.map(({ value: v, percent }) => {
+              const onFilled = isRange
+                ? v >= values[0] && v <= values[1]
+                : v <= values[0];
+              return (
                 <div
                   key={v}
-                  className="absolute top-1/2 pointer-events-none flex items-center justify-center"
+                  className="absolute pointer-events-none flex items-center justify-center"
                   style={{
                     left: `calc(${THUMB_SIZE / 2}px + ${percent} * (100% - ${THUMB_SIZE}px))`,
+                    top: "50%",
                     width: 0,
                     height: 0,
                   }}
@@ -809,17 +894,19 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                     className="relative rounded-full flex-shrink-0 z-[6]"
                     initial={false}
                     animate={{
-                      width: isHovered ? DOT_SIZE * 1.75 : DOT_SIZE,
-                      height: isHovered ? DOT_SIZE * 1.75 : DOT_SIZE,
+                      width: isHovered ? DOT_SIZE * 1.25 : DOT_SIZE,
+                      height: isHovered ? DOT_SIZE * 1.25 : DOT_SIZE,
                     }}
                     transition={springs.moderate}
                     style={{
-                      backgroundColor: "color-mix(in srgb, var(--muted-foreground) 40%, var(--accent))",
+                      backgroundColor: onFilled
+                        ? "color-mix(in srgb, var(--background) 20%, var(--foreground))"
+                        : "color-mix(in srgb, var(--muted-foreground) 40%, var(--accent))",
                     }}
                   />
                 </div>
-              ))}
-            </motion.div>
+              );
+            })}
 
             {/* Visual thumbs */}
             {renderVisualThumb(0)}

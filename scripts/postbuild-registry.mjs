@@ -33,6 +33,7 @@ const CUSTOM_ITEMS = new Set([
   "switch",
   "table",
   "thinking-indicator",
+  "tooltip",
 ]);
 
 async function run() {

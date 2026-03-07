@@ -133,6 +133,7 @@ export default function SliderDoc() {
   const [basic, setBasic] = useState(25);
   const [range, setRange] = useState<[number, number]>([25, 75]);
   const [stepped, setStepped] = useState(50);
+  const [stepped10, setStepped10] = useState(50);
   const [left, setLeft] = useState(40);
   const [right, setRight] = useState(60);
   const [tooltip, setTooltip] = useState(50);
@@ -170,6 +171,12 @@ export default function SliderDoc() {
               value={stepped}
               onChange={(v) => setStepped(v as number)}
               step={25}
+              showSteps
+            />
+            <Slider
+              value={stepped10}
+              onChange={(v) => setStepped10(v as number)}
+              step={10}
               showSteps
             />
           </div>

@@ -16,4 +16,5 @@ export const componentList: ComponentEntry[] = [
   { slug: "switch", name: "Switch", description: "Toggle switch with animated thumb and label." },
   { slug: "table", name: "Table", description: "Data table with row hover effects and semantic markup." },
   { slug: "thinking-indicator", name: "ThinkingIndicator", description: "Animated status indicator with morphing SVG and cycling text." },
+  { slug: "tooltip", name: "Tooltip", description: "Floating tooltip with spring-based animations and configurable placement." },
 ];
