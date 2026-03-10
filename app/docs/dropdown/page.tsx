@@ -1,8 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { SquareLibrary, Clock, Star, Users, Lock } from "lucide-react";
-import { Dropdown } from "@/registry/default/dropdown";
+import {
+  SquareLibrary,
+  Clock,
+  Star,
+  Users,
+  Lock,
+  Mail,
+  Bell,
+  Shield,
+  Settings,
+  Palette,
+  Monitor,
+} from "lucide-react";
+import {
+  Dropdown,
+  DropdownLabel,
+  DropdownSeparator,
+} from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
@@ -34,9 +50,40 @@ const [selected, setSelected] = useState<number | null>(0);
   ))}
 </Dropdown>`;
 
+const groupsCode = `import { Dropdown, DropdownLabel, DropdownSeparator, MenuItem } from "./components";
+import { Mail, Bell, Shield, Settings, Palette, Monitor } from "lucide-react";
+
+<Dropdown>
+  <DropdownLabel>Account</DropdownLabel>
+  <MenuItem index={0} icon={Mail} label="Email" />
+  <MenuItem index={1} icon={Bell} label="Notifications" />
+  <MenuItem index={2} icon={Shield} label="Privacy" />
+  <DropdownSeparator />
+  <DropdownLabel>Appearance</DropdownLabel>
+  <MenuItem index={3} icon={Settings} label="General" />
+  <MenuItem index={4} icon={Palette} label="Theme" />
+  <MenuItem index={5} icon={Monitor} label="Display" />
+</Dropdown>`;
+
 const dropdownProps: PropDef[] = [
   { name: "checkedIndex", type: "number", description: "Index of the currently checked item." },
   { name: "children", type: "ReactNode", description: "MenuItem children." },
+];
+
+const labelProps: PropDef[] = [
+  {
+    name: "children",
+    type: "ReactNode",
+    description: "Label text content.",
+  },
+];
+
+const separatorProps: PropDef[] = [
+  {
+    name: "className",
+    type: "string",
+    description: "Additional CSS classes.",
+  },
 ];
 
 const menuItemProps: PropDef[] = [
@@ -80,12 +127,36 @@ export default function DropdownDoc() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Groups">
+        <ComponentPreview code={groupsCode}>
+          <Dropdown>
+            <DropdownLabel>Account</DropdownLabel>
+            <MenuItem index={0} icon={Mail} label="Email" />
+            <MenuItem index={1} icon={Bell} label="Notifications" />
+            <MenuItem index={2} icon={Shield} label="Privacy" />
+            <DropdownSeparator />
+            <DropdownLabel>Appearance</DropdownLabel>
+            <MenuItem index={3} icon={Settings} label="General" />
+            <MenuItem index={4} icon={Palette} label="Theme" />
+            <MenuItem index={5} icon={Monitor} label="Display" />
+          </Dropdown>
+        </ComponentPreview>
+      </DocSection>
+
       <DocSection title="API Reference — Dropdown">
         <PropsTable props={dropdownProps} />
       </DocSection>
 
       <DocSection title="API Reference — MenuItem">
         <PropsTable props={menuItemProps} />
+      </DocSection>
+
+      <DocSection title="API Reference — DropdownLabel">
+        <PropsTable props={labelProps} />
+      </DocSection>
+
+      <DocSection title="API Reference — DropdownSeparator">
+        <PropsTable props={separatorProps} />
       </DocSection>
     </DocPage>
   );

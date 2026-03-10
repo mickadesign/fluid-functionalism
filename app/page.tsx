@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { SquareLibrary, Clock, Star, Users, Lock, Search } from "lucide-react";
 import {
   Dropdown,
@@ -16,10 +16,6 @@ import {
   CheckboxGroup,
   CheckboxItem,
 } from "@/registry/default/checkbox-group";
-import {
-  RadioGroup,
-  RadioItem,
-} from "@/registry/default/radio-group";
 import {
   InputGroup,
   InputField,
@@ -52,11 +48,6 @@ import {
   DialogDescription,
   DialogClose,
 } from "@/registry/default/dialog";
-import {
-  useShapeContext,
-  type ShapeVariant,
-} from "@/registry/default/lib/shape-context";
-
 const items = [
   { icon: SquareLibrary, label: "Teamspaces" },
   { icon: Clock, label: "Recents" },
@@ -65,43 +56,13 @@ const items = [
   { icon: Lock, label: "Private" },
 ];
 
-const shapeOptions: { label: string; value: ShapeVariant }[] = [
-  { label: "Rounded", value: "rounded" },
-  { label: "Pill", value: "pill" },
-];
-
-type Theme = "system" | "light" | "dark";
-const themeOptions: { label: string; value: Theme }[] = [
-  { label: "System", value: "system" },
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-];
-
 function AppContent() {
   const [selectedMenuItem, setSelectedMenuItem] = useState<number | null>(0);
   const [selectedTab, setSelectedTab] = useState(0);
   const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set([0]));
-  const { shape, setShape } = useShapeContext();
-  const selectedShapeIndex = shapeOptions.findIndex((o) => o.value === shape);
-  const [theme, setTheme] = useState<Theme>("system");
-  const selectedThemeIndex = themeOptions.findIndex((o) => o.value === theme);
   const [searchValue, setSearchValue] = useState("");
   const [switchChecked, setSwitchChecked] = useState(false);
   const [sliderValue, setSliderValue] = useState(25);
-
-  const transitionSetting = useCallback((callback: () => void) => {
-    const root = document.documentElement;
-    root.classList.add("transitioning");
-    void root.offsetHeight;
-    callback();
-    setTimeout(() => root.classList.remove("transitioning"), 200);
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove("light", "dark");
-    if (theme !== "system") root.classList.add(theme);
-  }, [theme]);
 
   return (
     <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16 mt-12 md:mt-0">
@@ -139,16 +100,18 @@ function AppContent() {
             </p>
           </div>
         </div>
-        <SubtleTab idPrefix="nav" selectedIndex={selectedTab} onSelect={setSelectedTab} aria-label="Navigation">
-        {items.map((item, i) => (
-          <SubtleTabItem
-            key={item.label}
-            index={i}
-            icon={item.icon}
-            label={item.label}
-          />
-        ))}
-        </SubtleTab>
+        <div className="px-6 w-full">
+          <SubtleTab idPrefix="nav" selectedIndex={selectedTab} onSelect={setSelectedTab} aria-label="Navigation">
+          {items.map((item, i) => (
+            <SubtleTabItem
+              key={item.label}
+              index={i}
+              icon={item.icon}
+              label={item.label}
+            />
+          ))}
+          </SubtleTab>
+        </div>
         {items.map((item, i) => (
           <SubtleTabPanel
             key={item.label}
@@ -303,14 +266,19 @@ function AppContent() {
         <Button variant="ghost">Ghost</Button>
       </div>
 
-      <div className="px-6 w-full flex flex-wrap items-center gap-2">
-        <Badge color="blue">Published</Badge>
-        <Badge color="green">Active</Badge>
-        <Badge color="red">Declined</Badge>
-        <Badge color="gray">Draft</Badge>
-        <Badge variant="dot" color="yellow">Front</Badge>
-        <Badge variant="dot" color="violet">Design</Badge>
-        <Badge variant="dot" color="green">Online</Badge>
+      <div className="px-6 w-full flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="dot" color="blue">Published</Badge>
+          <Badge variant="dot" color="green">Active</Badge>
+          <Badge variant="dot" color="red">Declined</Badge>
+          <Badge variant="dot" color="gray">Draft</Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge color="blue">Published</Badge>
+          <Badge color="green">Active</Badge>
+          <Badge color="red">Declined</Badge>
+          <Badge color="gray">Draft</Badge>
+        </div>
       </div>
 
       <div className="px-6 w-full flex flex-wrap items-center gap-2">
@@ -352,37 +320,6 @@ function AppContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-
-      <div className="px-6 w-full flex flex-col sm:flex-row gap-6">
-        <div className="flex flex-col gap-2">
-          <span className="text-[13px] text-muted-foreground pl-3">Theme</span>
-          <RadioGroup selectedIndex={selectedThemeIndex}>
-            {themeOptions.map((option, i) => (
-              <RadioItem
-                key={option.value}
-                index={i}
-                label={option.label}
-                selected={selectedThemeIndex === i}
-                onSelect={() => transitionSetting(() => setTheme(option.value))}
-              />
-            ))}
-          </RadioGroup>
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-[13px] text-muted-foreground pl-3">Radius</span>
-          <RadioGroup selectedIndex={selectedShapeIndex}>
-            {shapeOptions.map((option, i) => (
-              <RadioItem
-                key={option.value}
-                index={i}
-                label={option.label}
-                selected={selectedShapeIndex === i}
-                onSelect={() => transitionSetting(() => setShape(option.value))}
-              />
-            ))}
-          </RadioGroup>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 sm:gap-6 px-6 w-full mt-10 mb-40">

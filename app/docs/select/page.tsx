@@ -95,6 +95,45 @@ import { Mail, Bell, Shield, User } from "lucide-react";
   </SelectContent>
 </Select>`;
 
+const timezoneCode = `import { Select, SelectTrigger, SelectContent, SelectItem } from "./components";
+import { Globe } from "lucide-react";
+
+<Select value={timezone} onValueChange={setTimezone}>
+  <SelectTrigger icon={Globe} placeholder="Select timezone…" />
+  <SelectContent>
+    <SelectItem index={0} value="utc-8">(UTC-8) Pacific Time</SelectItem>
+    <SelectItem index={1} value="utc-7">(UTC-7) Mountain Time</SelectItem>
+    <SelectItem index={2} value="utc-6">(UTC-6) Central Time</SelectItem>
+    <SelectItem index={3} value="utc-5">(UTC-5) Eastern Time</SelectItem>
+    <SelectItem index={4} value="utc-4">(UTC-4) Atlantic Time</SelectItem>
+    <SelectItem index={5} value="utc-3">(UTC-3) Buenos Aires</SelectItem>
+    <SelectItem index={6} value="utc-1">(UTC-1) Azores</SelectItem>
+    <SelectItem index={7} value="utc+0">(UTC+0) London</SelectItem>
+    <SelectItem index={8} value="utc+1">(UTC+1) Paris</SelectItem>
+    <SelectItem index={9} value="utc+2">(UTC+2) Helsinki</SelectItem>
+    <SelectItem index={10} value="utc+3">(UTC+3) Moscow</SelectItem>
+    <SelectItem index={11} value="utc+5:30">(UTC+5:30) Mumbai</SelectItem>
+    <SelectItem index={12} value="utc+8">(UTC+8) Singapore</SelectItem>
+    <SelectItem index={13} value="utc+9">(UTC+9) Tokyo</SelectItem>
+    <SelectItem index={14} value="utc+10">(UTC+10) Sydney</SelectItem>
+    <SelectItem index={15} value="utc+12">(UTC+12) Auckland</SelectItem>
+  </SelectContent>
+</Select>`;
+
+const errorCode = `import { Select, SelectTrigger, SelectContent, SelectItem } from "./components";
+
+<Select value={role} onValueChange={setRole}>
+  <SelectTrigger
+    placeholder="Select a role…"
+    error="Please select a role to continue."
+  />
+  <SelectContent>
+    <SelectItem index={0} value="admin">Admin</SelectItem>
+    <SelectItem index={1} value="editor">Editor</SelectItem>
+    <SelectItem index={2} value="viewer">Viewer</SelectItem>
+  </SelectContent>
+</Select>`;
+
 const disabledCode = `import { Select, SelectTrigger, SelectContent, SelectItem } from "./components";
 
 {/* Disabled trigger */}
@@ -172,6 +211,11 @@ const triggerProps: PropDef[] = [
     default: '"Select…"',
     description: "Text shown when no value is selected.",
   },
+  {
+    name: "error",
+    type: "string",
+    description: "Error message shown below the trigger.",
+  },
 ];
 
 const itemProps: PropDef[] = [
@@ -206,6 +250,8 @@ export default function SelectDoc() {
   const [basic, setBasic] = useState("");
   const [bordered, setBordered] = useState("");
   const [borderless, setBorderless] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [role, setRole] = useState("");
 
   return (
     <DocPage
@@ -280,6 +326,48 @@ export default function SelectDoc() {
                 <SelectItem index={2} value="notifications" icon={Bell}>Notifications</SelectItem>
                 <SelectItem index={3} value="privacy" icon={Shield}>Privacy</SelectItem>
               </SelectGroup>
+            </SelectContent>
+          </Select>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Scrollable List">
+        <ComponentPreview code={timezoneCode}>
+          <Select value={timezone} onValueChange={setTimezone}>
+            <SelectTrigger icon={Globe} placeholder="Select timezone…" />
+            <SelectContent>
+              <SelectItem index={0} value="utc-8">(UTC-8) Pacific Time</SelectItem>
+              <SelectItem index={1} value="utc-7">(UTC-7) Mountain Time</SelectItem>
+              <SelectItem index={2} value="utc-6">(UTC-6) Central Time</SelectItem>
+              <SelectItem index={3} value="utc-5">(UTC-5) Eastern Time</SelectItem>
+              <SelectItem index={4} value="utc-4">(UTC-4) Atlantic Time</SelectItem>
+              <SelectItem index={5} value="utc-3">(UTC-3) Buenos Aires</SelectItem>
+              <SelectItem index={6} value="utc-1">(UTC-1) Azores</SelectItem>
+              <SelectItem index={7} value="utc+0">(UTC+0) London</SelectItem>
+              <SelectItem index={8} value="utc+1">(UTC+1) Paris</SelectItem>
+              <SelectItem index={9} value="utc+2">(UTC+2) Helsinki</SelectItem>
+              <SelectItem index={10} value="utc+3">(UTC+3) Moscow</SelectItem>
+              <SelectItem index={11} value="utc+5:30">(UTC+5:30) Mumbai</SelectItem>
+              <SelectItem index={12} value="utc+8">(UTC+8) Singapore</SelectItem>
+              <SelectItem index={13} value="utc+9">(UTC+9) Tokyo</SelectItem>
+              <SelectItem index={14} value="utc+10">(UTC+10) Sydney</SelectItem>
+              <SelectItem index={15} value="utc+12">(UTC+12) Auckland</SelectItem>
+            </SelectContent>
+          </Select>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Error State">
+        <ComponentPreview code={errorCode}>
+          <Select value={role} onValueChange={setRole}>
+            <SelectTrigger
+              placeholder="Select a role…"
+              error="Please select a role to continue."
+            />
+            <SelectContent>
+              <SelectItem index={0} value="admin">Admin</SelectItem>
+              <SelectItem index={1} value="editor">Editor</SelectItem>
+              <SelectItem index={2} value="viewer">Viewer</SelectItem>
             </SelectContent>
           </Select>
         </ComponentPreview>
