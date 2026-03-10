@@ -199,5 +199,42 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
 
 Dropdown.displayName = "Dropdown";
 
-export { Dropdown };
+// ---------------------------------------------------------------------------
+// DropdownLabel
+// ---------------------------------------------------------------------------
+
+const DropdownLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "px-2 py-1.5 text-[11px] text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+
+DropdownLabel.displayName = "DropdownLabel";
+
+// ---------------------------------------------------------------------------
+// DropdownSeparator
+// ---------------------------------------------------------------------------
+
+const DropdownSeparator = forwardRef<
+  HTMLDivElement,
+  HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    role="separator"
+    className={cn("my-1 -mx-1 h-px bg-border/60", className)}
+    {...props}
+  />
+));
+
+DropdownSeparator.displayName = "DropdownSeparator";
+
+export { Dropdown, DropdownLabel, DropdownSeparator };
 export default Dropdown;

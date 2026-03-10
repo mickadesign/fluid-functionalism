@@ -80,6 +80,9 @@ function Select({
   const currentValue = value !== undefined ? value : internalValue;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const labelMap = useRef(new Map<string, string>());
+  // Force re-render after mount so trigger picks up labels registered by items
+  const [, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   const onChange = useCallback(
     (v: string) => {
@@ -150,11 +153,12 @@ interface SelectTriggerProps
     VariantProps<typeof triggerVariants> {
   icon?: LucideIcon;
   placeholder?: string;
+  error?: string;
 }
 
 const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
   (
-    { className, variant, icon: Icon, placeholder = "Select…", ...props },
+    { className, variant, icon: Icon, placeholder = "Select…", error, ...props },
     ref
   ) => {
     const { value, open, setOpen, disabled, triggerRef, labelMap } =
@@ -163,6 +167,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
     const label = value ? labelMap.current.get(value) ?? value : undefined;
 
     return (
+      <div className="flex flex-col gap-1">
       <button
         ref={(node) => {
           (
@@ -192,7 +197,13 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
             setOpen(true);
           }
         }}
-        className={cn(triggerVariants({ variant }), shape.input, className)}
+        aria-invalid={!!error || undefined}
+        className={cn(
+          triggerVariants({ variant }),
+          shape.input,
+          error && "border-destructive/50 hover:border-destructive/50",
+          className
+        )}
         {...props}
       >
         <span className="flex items-center gap-2 min-w-0 flex-1">
@@ -224,6 +235,10 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
+      {error && (
+        <span className="text-[12px] text-destructive pl-3">{error}</span>
+      )}
+      </div>
     );
   }
 );
@@ -282,12 +297,16 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           if (container) {
             const items = Array.from(
               container.querySelectorAll("[data-proximity-index]")
-            );
+            ) as HTMLElement[];
             const idx = items.findIndex(
               (el) => el.getAttribute("data-value") === value
             );
             if (idx !== -1) setCheckedIndex(idx);
             else setCheckedIndex(undefined);
+
+            // Focus the container so keyboard events work;
+            // don't focus an item directly to avoid showing a focus ring
+            containerRef.current?.focus({ preventScroll: true });
           }
         });
       });
@@ -325,6 +344,23 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       return () => document.removeEventListener("mousedown", onPointer);
     }, [open, setOpen, triggerRef]);
 
+    // Lock body scroll while open (matches Radix Select behavior)
+    useEffect(() => {
+      if (!open) return;
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      return () => {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.right = "";
+        window.scrollTo(0, scrollY);
+      };
+    }, [open]);
+
     // Keyboard nav inside content
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -339,10 +375,16 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)
         ) {
           e.preventDefault();
-          const next = ["ArrowDown", "ArrowRight"].includes(e.key)
-            ? (currentIdx + 1) % items.length
-            : (currentIdx - 1 + items.length) % items.length;
-          items[next]?.focus();
+          if (currentIdx === -1) {
+            // No item focused yet — focus checked or first item
+            const checked = checkedIndex != null ? items[checkedIndex] : null;
+            (checked ?? items[0])?.focus();
+          } else {
+            const next = ["ArrowDown", "ArrowRight"].includes(e.key)
+              ? (currentIdx + 1) % items.length
+              : (currentIdx - 1 + items.length) % items.length;
+            items[next]?.focus();
+          }
         } else if (e.key === "Home") {
           e.preventDefault();
           items[0]?.focus();
@@ -351,7 +393,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           items[items.length - 1]?.focus();
         }
       },
-      []
+      [checkedIndex]
     );
 
     // Render hidden when closed so items can register labels
@@ -397,7 +439,11 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                 ).current = node;
             }}
             role="listbox"
-            onMouseEnter={handlers.onMouseEnter}
+            tabIndex={-1}
+            onMouseEnter={() => {
+              handlers.onMouseEnter();
+              setFocusedIndex(null);
+            }}
             onMouseMove={handlers.onMouseMove}
             onMouseLeave={handlers.onMouseLeave}
             onFocus={(e) => {
@@ -422,7 +468,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             }}
             onKeyDown={handleKeyDown}
             className={cn(
-              `relative flex flex-col gap-0.5 ${shape.container} bg-card shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none`,
+              `relative flex flex-col gap-0.5 max-h-[300px] overflow-y-auto ${shape.container} bg-card shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none outline-none`,
               className
             )}
             initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
@@ -676,7 +722,7 @@ const SelectLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       className={cn(
-        "px-2 py-1.5 text-[11px] text-muted-foreground uppercase tracking-wider",
+        "px-2 py-1.5 text-[11px] text-muted-foreground",
         className
       )}
       {...props}
@@ -693,7 +739,7 @@ const SelectSeparator = forwardRef<
   <div
     ref={ref}
     role="separator"
-    className={cn("my-1 h-px bg-border/60", className)}
+    className={cn("my-1 -mx-1 h-px bg-border/60", className)}
     {...props}
   />
 ));

@@ -196,16 +196,23 @@ function ValueDisplay({
     );
   };
 
+  // Measure widest possible formatted value for stable column width
+  const widestText = isRange
+    ? `${formatValue(max)} — ${formatValue(max)}`
+    : formatValue(max);
+  const charCount = (label ? `${label}: ` : "").length + widestText.length;
+
   return (
     <span
       className={cn(
-        "text-[13px] text-muted-foreground transition-[font-variation-settings] duration-100",
+        "shrink-0 text-[13px] text-muted-foreground text-right transition-[font-variation-settings] duration-100",
         "tabular-nums"
       )}
       style={{
         fontVariationSettings: isInteracting
           ? fontWeights.medium
           : fontWeights.normal,
+        minWidth: `${charCount + 1}ch`,
       }}
     >
       {label && editingIndex === null && (

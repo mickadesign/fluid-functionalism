@@ -1,1 +1,1 @@
-export { Dropdown, useDropdown } from "@/registry/default/dropdown";
+export { Dropdown, DropdownLabel, DropdownSeparator, useDropdown } from "@/registry/default/dropdown";

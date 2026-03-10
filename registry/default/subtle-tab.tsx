@@ -137,7 +137,7 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
             }
           }}
           className={cn(
-            "relative flex items-center gap-1 select-none overflow-x-auto max-w-full scrollbar-hide px-6 -my-1 py-1",
+            "relative flex items-center gap-0.5 select-none overflow-x-auto max-w-full scrollbar-hide -my-1 py-1",
             className
           )}
           role="tablist"

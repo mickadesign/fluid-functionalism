@@ -54,14 +54,16 @@ export function useProximityHover<T extends HTMLElement>(
     const container = containerRef.current;
     if (!container) return;
     const containerRect = container.getBoundingClientRect();
+    const scrollTop = container.scrollTop;
     const scrollLeft = container.scrollLeft;
     const borderTop = container.clientTop;
     const borderLeft = container.clientLeft;
     const rects: ItemRect[] = [];
     itemsRef.current.forEach((element, index) => {
       const rect = element.getBoundingClientRect();
+      // Content-relative positions (stable across scroll)
       rects[index] = {
-        top: rect.top - containerRect.top - borderTop,
+        top: rect.top - containerRect.top + scrollTop - borderTop,
         height: rect.height,
         left: rect.left - containerRect.left + scrollLeft - borderLeft,
         width: rect.width,
@@ -93,13 +95,17 @@ export function useProximityHover<T extends HTMLElement>(
         let containingIndex: number | null = null;
 
         const rects = itemRectsRef.current;
-        const containerStart = axis === "x" ? containerRect.left : containerRect.top;
+        // Convert content-relative rects to viewport coords using live scroll
+        const scrollOffset = axis === "x" ? container.scrollLeft : container.scrollTop;
+        const borderOffset = axis === "x" ? container.clientLeft : container.clientTop;
+        const containerEdge = axis === "x" ? containerRect.left : containerRect.top;
 
         for (let index = 0; index < rects.length; index++) {
           const r = rects[index];
           if (!r) continue;
 
-          const itemStart = containerStart + (axis === "x" ? r.left : r.top);
+          const contentPos = axis === "x" ? r.left : r.top;
+          const itemStart = containerEdge + borderOffset + contentPos - scrollOffset;
           const itemSize = axis === "x" ? r.width : r.height;
           const itemEnd = itemStart + itemSize;
 
