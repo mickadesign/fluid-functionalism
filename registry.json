@@ -89,6 +89,20 @@
       ]
     },
     {
+      "name": "badge",
+      "type": "registry:ui",
+      "title": "Badge",
+      "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["utils", "shape-context"],
+      "files": [
+        {
+          "path": "registry/default/badge.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "button",
       "type": "registry:ui",
       "title": "Button",
@@ -306,6 +320,29 @@
           "animation": "shimmer 1.5s ease-in-out infinite"
         }
       }
+    },
+    {
+      "name": "select",
+      "type": "registry:ui",
+      "title": "Select",
+      "description": "Animated select menu with bordered/borderless variants, optional leading icons, spring-animated popover, and checkmark indicator. Built on Radix UI Select.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-select",
+        "class-variance-authority",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "shape-context"
+      ],
+      "files": [
+        {
+          "path": "registry/default/select.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "tooltip",

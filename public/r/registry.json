@@ -79,14 +79,33 @@
       ],
       "registryDependencies": [
         "utils",
-        "https://fluid-functionalism.vercel.app/r/springs.json",
-        "https://fluid-functionalism.vercel.app/r/font-weight.json",
-        "https://fluid-functionalism.vercel.app/r/shape-context.json",
-        "https://fluid-functionalism.vercel.app/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
       ],
       "files": [
         {
           "path": "registry/default/accordion.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "type": "registry:ui",
+      "title": "Badge",
+      "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/shape-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/badge.tsx",
           "type": "registry:ui"
         }
       ]
@@ -366,6 +385,29 @@
           "animation": "shimmer 1.5s ease-in-out infinite"
         }
       }
+    },
+    {
+      "name": "select",
+      "type": "registry:ui",
+      "title": "Select",
+      "description": "Animated select menu with bordered/borderless variants, optional leading icons, spring-animated popover, and checkmark indicator. Built on Radix UI Select.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-select",
+        "class-variance-authority",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/select.tsx",
+          "type": "registry:ui"
+        }
+      ]
     },
     {
       "name": "tooltip",

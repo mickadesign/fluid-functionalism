@@ -24,6 +24,7 @@ import {
   InputGroup,
   InputField,
 } from "@/registry/default/input-group";
+import { Badge } from "@/registry/default/badge";
 import { Button } from "@/registry/default/button";
 import { Switch } from "@/registry/default/switch";
 import { Slider } from "@/registry/default/slider";
@@ -300,6 +301,16 @@ function AppContent() {
         <Button variant="secondary">Secondary</Button>
         <Button variant="tertiary">Tertiary</Button>
         <Button variant="ghost">Ghost</Button>
+      </div>
+
+      <div className="px-6 w-full flex flex-wrap items-center gap-2">
+        <Badge color="blue">Published</Badge>
+        <Badge color="green">Active</Badge>
+        <Badge color="red">Declined</Badge>
+        <Badge color="gray">Draft</Badge>
+        <Badge variant="dot" color="yellow">Front</Badge>
+        <Badge variant="dot" color="violet">Design</Badge>
+        <Badge variant="dot" color="green">Online</Badge>
       </div>
 
       <div className="px-6 w-full flex flex-wrap items-center gap-2">
