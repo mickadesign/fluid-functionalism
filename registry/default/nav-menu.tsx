@@ -166,7 +166,7 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
                 exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{
                   ...springs.moderate,
-                  opacity: { duration: 0.16 },
+                  opacity: { duration: 0.08 },
                 }}
               />
             )}
@@ -192,10 +192,10 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
                   width: activeRect.width,
                   height: activeRect.height,
                 }}
-                exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                exit={{ opacity: 0, transition: { duration: 0.06 } }}
                 transition={{
-                  ...springs.moderate,
-                  opacity: { duration: 0.16 },
+                  ...springs.fast,
+                  opacity: { duration: 0.08 },
                 }}
               />
             )}
@@ -213,10 +213,10 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
-                exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                exit={{ opacity: 0, transition: { duration: 0.06 } }}
                 transition={{
-                  ...springs.moderate,
-                  opacity: { duration: 0.16 },
+                  ...springs.fast,
+                  opacity: { duration: 0.08 },
                 }}
               />
             )}

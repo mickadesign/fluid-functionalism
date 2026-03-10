@@ -26,7 +26,7 @@ export function Sidebar({ mobile }: SidebarProps) {
     >
       <Link
         href="/"
-        className="block text-[16px] text-foreground mb-2 px-2 rounded outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+        className="block text-[16px] text-foreground mb-2 px-2 py-1 rounded outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
         style={{ fontVariationSettings: fontWeights.bold }}
       >
         Fluid Functionalism

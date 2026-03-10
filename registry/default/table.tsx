@@ -80,10 +80,10 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
                   width: activeRect.width,
                   height: activeRect.height,
                 }}
-                exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                exit={{ opacity: 0, transition: { duration: 0.06 } }}
                 transition={{
-                  ...springs.moderate,
-                  opacity: { duration: 0.16 },
+                  ...springs.fast,
+                  opacity: { duration: 0.08 },
                 }}
               />
             )}

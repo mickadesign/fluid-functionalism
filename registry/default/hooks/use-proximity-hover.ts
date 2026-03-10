@@ -35,7 +35,9 @@ export function useProximityHover<T extends HTMLElement>(
   const itemsRef = useRef(new Map<number, HTMLElement>());
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [itemRects, setItemRects] = useState<ItemRect[]>([]);
+  const itemRectsRef = useRef<ItemRect[]>([]);
   const sessionRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
 
   const registerItem = useCallback(
     (index: number, element: HTMLElement | null) => {
@@ -65,57 +67,57 @@ export function useProximityHover<T extends HTMLElement>(
         width: rect.width,
       };
     });
+    itemRectsRef.current = rects;
     setItemRects(rects);
   }, [containerRef]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      const container = containerRef.current;
-      if (!container) return;
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
 
-      const containerRect = container.getBoundingClientRect();
-      const scrollLeft = container.scrollLeft;
-      const borderTop = container.clientTop;
-      const borderLeft = container.clientLeft;
-      const mousePos = axis === "x" ? e.clientX : e.clientY;
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
 
-      let closestIndex: number | null = null;
-      let closestDistance = Infinity;
-      const rects: ItemRect[] = [];
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        const container = containerRef.current;
+        if (!container) return;
 
-      let containingIndex: number | null = null;
+        const containerRect = container.getBoundingClientRect();
+        const mousePos = axis === "x" ? mouseX : mouseY;
 
-      itemsRef.current.forEach((element, index) => {
-        const rect = element.getBoundingClientRect();
-        rects[index] = {
-          top: rect.top - containerRect.top - borderTop,
-          height: rect.height,
-          left: rect.left - containerRect.left + scrollLeft - borderLeft,
-          width: rect.width,
-        };
+        let closestIndex: number | null = null;
+        let closestDistance = Infinity;
+        let containingIndex: number | null = null;
 
-        // Check if mouse is within this item's bounds
-        const start = axis === "x" ? rect.left : rect.top;
-        const end = axis === "x" ? rect.right : rect.bottom;
-        if (mousePos >= start && mousePos <= end) {
-          containingIndex = index;
+        const rects = itemRectsRef.current;
+        const containerStart = axis === "x" ? containerRect.left : containerRect.top;
+
+        for (let index = 0; index < rects.length; index++) {
+          const r = rects[index];
+          if (!r) continue;
+
+          const itemStart = containerStart + (axis === "x" ? r.left : r.top);
+          const itemSize = axis === "x" ? r.width : r.height;
+          const itemEnd = itemStart + itemSize;
+
+          if (mousePos >= itemStart && mousePos <= itemEnd) {
+            containingIndex = index;
+          }
+
+          const itemCenter = itemStart + itemSize / 2;
+          const distance = Math.abs(mousePos - itemCenter);
+
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+          }
         }
 
-        const itemCenter =
-          axis === "x"
-            ? rect.left + rect.width / 2
-            : rect.top + rect.height / 2;
-        const distance = Math.abs(mousePos - itemCenter);
-
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestIndex = index;
-        }
+        setActiveIndex(containingIndex ?? closestIndex);
       });
-
-      setItemRects(rects);
-      // Prefer the item that directly contains the mouse; fall back to closest center
-      setActiveIndex(containingIndex ?? closestIndex);
     },
     [axis, containerRef]
   );
@@ -125,7 +127,20 @@ export function useProximityHover<T extends HTMLElement>(
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     setActiveIndex(null);
+  }, []);
+
+  // Clean up rAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
   }, []);
 
   return {

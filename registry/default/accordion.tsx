@@ -342,7 +342,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                   exit={{ opacity: 0, transition: { duration: 0.12 } }}
                   transition={{
                     ...springs.moderate,
-                    opacity: { duration: 0.16 },
+                    opacity: { duration: 0.08 },
                   }}
                 />
               ))}
@@ -368,10 +368,10 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                     width: activeRect.width,
                     height: activeRect.height,
                   }}
-                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                  exit={{ opacity: 0, transition: { duration: 0.06 } }}
                   transition={{
-                    ...springs.moderate,
-                    opacity: { duration: 0.16 },
+                    ...springs.fast,
+                    opacity: { duration: 0.08 },
                   }}
                 />
               )}
@@ -389,10 +389,10 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                     width: focusRect.width + 4,
                     height: focusRect.height + 4,
                   }}
-                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                  exit={{ opacity: 0, transition: { duration: 0.06 } }}
                   transition={{
-                    ...springs.moderate,
-                    opacity: { duration: 0.16 },
+                    ...springs.fast,
+                    opacity: { duration: 0.08 },
                   }}
                 />
               )}
@@ -610,8 +610,8 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
                   className={`absolute inset-0 ${shape.bg} bg-accent/20 dark:bg-accent/12 pointer-events-none`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                  transition={{ duration: 0.16 }}
+                  exit={{ opacity: 0, transition: { duration: 0.06 } }}
+                  transition={{ duration: 0.08 }}
                 />
               )}
             </AnimatePresence>
@@ -721,8 +721,8 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
               className={`absolute inset-0 ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.12 } }}
-              transition={{ duration: 0.16 }}
+              exit={{ opacity: 0, transition: { duration: 0.06 } }}
+              transition={{ duration: 0.08 }}
             />
           )}
         </AnimatePresence>
