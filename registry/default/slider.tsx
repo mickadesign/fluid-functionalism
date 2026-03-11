@@ -52,6 +52,7 @@ const THUMB_SIZE = 18;
 const THUMB_SIZE_REST = 14;
 const TRACK_HEIGHT = 6;
 const DOT_SIZE = 4;
+const PIP_SIZE = 5;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -947,5 +948,316 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
 Slider.displayName = "Slider";
 
-export { Slider };
-export type { SliderProps, SliderValue, ValuePosition };
+// ---------------------------------------------------------------------------
+// SliderComfortable
+// ---------------------------------------------------------------------------
+
+interface SliderComfortableProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "defaultValue"> {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  variant?: "pips" | "scrubber";
+  label?: string;
+  formatValue?: (v: number) => string;
+  disabled?: boolean;
+}
+
+const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
+  (
+    {
+      value,
+      onChange,
+      min = 0,
+      max = 100,
+      step = 1,
+      variant = "pips",
+      label,
+      formatValue = String,
+      disabled = false,
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    const interactRef = useRef<HTMLDivElement>(null);
+    const dragging = useRef(false);
+    const handleDragging = useRef(false);
+    const handleStartX = useRef(0);
+    const handleStartValue = useRef(0);
+    const [isHovered, setIsHovered] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
+    const [isHandleHovered, setIsHandleHovered] = useState(false);
+    const shape = useShape();
+
+    // Fill motion value (scrubber only)
+    const fillPercent = useMotionValue(
+      max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)))
+    );
+    const fillWidthStyle = useTransform(fillPercent, (p) => `${p * 100}%`);
+
+    // Sync fill on programmatic value change
+    useEffect(() => {
+      if (variant !== "scrubber") return;
+      if (dragging.current || handleDragging.current) return;
+      const percent = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)));
+      animate(fillPercent, percent, springs.fast);
+    }, [value, min, max, variant, fillPercent]);
+
+    const pipSteps = Array.from(
+      { length: Math.round((max - min) / step) + 1 },
+      (_, i) => min + i * step
+    );
+    const pipCount = pipSteps.length;
+
+    const getValueFromX = useCallback(
+      (clientX: number) => {
+        const rect = interactRef.current?.getBoundingClientRect();
+        if (!rect) return value;
+        const x = clientX - rect.left;
+        const clamped = Math.max(0, Math.min(rect.width, x));
+        if (variant === "pips") {
+          if (pipCount <= 1) return value;
+          const index = Math.max(
+            0,
+            Math.min(pipCount - 1, Math.round((clamped / rect.width) * (pipCount - 1)))
+          );
+          return pipSteps[index];
+        } else {
+          const raw = min + (clamped / rect.width) * (max - min);
+          const snapped = Math.round((raw - min) / step) * step + min;
+          return Math.max(min, Math.min(max, snapped));
+        }
+      },
+      [variant, pipSteps, pipCount, min, max, step, value]
+    );
+
+    const handlePointerDown = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        if (disabled) return;
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        e.preventDefault();
+        dragging.current = true;
+        const newVal = getValueFromX(e.clientX);
+        onChange(newVal);
+        if (variant === "scrubber") {
+          fillPercent.set(Math.max(0, Math.min(1, (newVal - min) / (max - min))));
+        }
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      },
+      [disabled, getValueFromX, onChange, variant, fillPercent, min, max]
+    );
+
+    const handlePointerMove = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!dragging.current) return;
+        const newVal = getValueFromX(e.clientX);
+        onChange(newVal);
+        if (variant === "scrubber") {
+          fillPercent.set(Math.max(0, Math.min(1, (newVal - min) / (max - min))));
+        }
+      },
+      [getValueFromX, onChange, variant, fillPercent, min, max]
+    );
+
+    const handlePointerUp = useCallback(() => {
+      dragging.current = false;
+    }, []);
+
+    // Resize handle drag handlers (delta-based from drag start)
+    const handleResizePointerDown = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        if (disabled) return;
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        handleDragging.current = true;
+        handleStartX.current = e.clientX;
+        handleStartValue.current = value;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      },
+      [disabled, value]
+    );
+
+    const handleResizePointerMove = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!handleDragging.current) return;
+        const rect = interactRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const delta = e.clientX - handleStartX.current;
+        const valueDelta = (delta / rect.width) * (max - min);
+        const raw = handleStartValue.current + valueDelta;
+        const snapped = Math.round((raw - min) / step) * step + min;
+        const clamped = Math.max(min, Math.min(max, snapped));
+        onChange(clamped);
+        fillPercent.set(Math.max(0, Math.min(1, (clamped - min) / (max - min))));
+      },
+      [max, min, step, onChange, fillPercent]
+    );
+
+    const handleResizePointerUp = useCallback(() => {
+      handleDragging.current = false;
+    }, []);
+
+    const handleRadixChange = useCallback(
+      (newValues: number[]) => {
+        onChange(newValues[0]);
+      },
+      [onChange]
+    );
+
+    const isActive = isHovered || isFocused;
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "relative flex items-center gap-3 w-full h-8 px-3 select-none touch-none bg-accent",
+          variant === "scrubber" && "overflow-hidden",
+          shape.bg,
+          disabled && "opacity-50 pointer-events-none",
+          className
+        )}
+        onPointerEnter={() => setIsHovered(true)}
+        onPointerLeave={() => setIsHovered(false)}
+        {...props}
+      >
+        {/* Fill — spans full container width proportional to value (scrubber only) */}
+        {variant === "scrubber" && (
+          <motion.div
+            className="absolute left-0 top-0 bottom-0 pointer-events-none"
+            style={{
+              width: fillWidthStyle,
+              backgroundColor: "color-mix(in srgb, var(--foreground) 8%, transparent)",
+            }}
+          />
+        )}
+
+        {/* Invisible Radix for keyboard nav + a11y */}
+        <SliderPrimitive.Root
+          value={[value]}
+          onValueChange={handleRadixChange}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          className="absolute inset-0 opacity-0 pointer-events-none"
+        >
+          <SliderPrimitive.Track className="w-full h-full">
+            <SliderPrimitive.Range />
+          </SliderPrimitive.Track>
+          <SliderPrimitive.Thumb
+            className="block outline-none"
+            onFocus={(e) => {
+              if (e.currentTarget.matches(":focus-visible")) setIsFocused(true);
+            }}
+            onBlur={() => setIsFocused(false)}
+          />
+        </SliderPrimitive.Root>
+
+        {/* Label */}
+        {label && (
+          <motion.span
+            className="text-[13px] shrink-0"
+            initial={false}
+            animate={{
+              color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
+            }}
+            transition={springs.fast}
+          >
+            {label}
+          </motion.span>
+        )}
+
+        {/* Interact area */}
+        <div
+          ref={interactRef}
+          className={cn(
+            "flex-1 h-full flex items-center",
+            variant === "pips" ? "justify-between cursor-pointer" : "cursor-ew-resize"
+          )}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          {variant === "pips" && pipSteps.map((pipValue) => {
+            const isActivePip = pipValue === value;
+            return (
+              <div
+                key={pipValue}
+                className="relative flex items-center justify-center"
+                style={{ width: PIP_SIZE, height: PIP_SIZE }}
+              >
+                <motion.div
+                  className="rounded-full"
+                  initial={false}
+                  animate={{
+                    backgroundColor: isActivePip
+                      ? "var(--foreground)"
+                      : "var(--muted-foreground)",
+                    opacity: isActivePip ? 1 : 0.3,
+                  }}
+                  transition={springs.fast}
+                  style={{ width: PIP_SIZE, height: PIP_SIZE }}
+                />
+                <motion.span
+                  className="absolute rounded-full border border-[#6B97FF] pointer-events-none"
+                  initial={false}
+                  animate={{ opacity: isFocused && isActivePip ? 1 : 0 }}
+                  transition={springs.fast}
+                  style={{ width: PIP_SIZE + 6, height: PIP_SIZE + 6 }}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Separator (scrubber only) */}
+        {variant === "scrubber" && (
+          <div
+            className="shrink-0 w-px h-3 rounded-full pointer-events-none"
+            style={{ backgroundColor: "color-mix(in srgb, var(--muted-foreground) 35%, transparent)" }}
+          />
+        )}
+
+        {/* Value */}
+        <motion.span
+          className="text-[13px] shrink-0 tabular-nums text-right"
+          initial={false}
+          animate={{
+            color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
+          }}
+          transition={springs.fast}
+          style={{
+            minWidth: `${String(formatValue(max)).length}ch`,
+          }}
+        >
+          {formatValue(value)}
+        </motion.span>
+
+        {/* Resize handle (scrubber only) */}
+        {variant === "scrubber" && (
+          <motion.div
+            className="shrink-0 w-px h-3 rounded-full cursor-ew-resize"
+            initial={false}
+            animate={{ opacity: isHandleHovered ? 0.8 : 0.35 }}
+            transition={springs.fast}
+            style={{ backgroundColor: "var(--muted-foreground)" }}
+            onPointerEnter={() => setIsHandleHovered(true)}
+            onPointerLeave={() => setIsHandleHovered(false)}
+            onPointerDown={handleResizePointerDown}
+            onPointerMove={handleResizePointerMove}
+            onPointerUp={handleResizePointerUp}
+          />
+        )}
+      </div>
+    );
+  }
+);
+
+SliderComfortable.displayName = "SliderComfortable";
+
+export { Slider, SliderComfortable };
+export type { SliderProps, SliderValue, ValuePosition, SliderComfortableProps };

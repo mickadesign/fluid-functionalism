@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Slider } from "@/registry/default/slider";
+import { Slider, SliderComfortable } from "@/registry/default/slider";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 
 // ---------------------------------------------------------------------------
-// Code snippets
+// Code snippets — Slider (compact)
 // ---------------------------------------------------------------------------
 
 const basicCode = `import { Slider } from "./components";
@@ -52,8 +52,63 @@ const formatCode = `import { Slider } from "./components";
   label="Opacity"
 />`;
 
+
 // ---------------------------------------------------------------------------
-// Props table
+// Code snippets — SliderComfortable
+// ---------------------------------------------------------------------------
+
+const comfortableBasicCode = `import { SliderComfortable } from "./components";
+
+const [roundness, setRoundness] = useState(2);
+
+<SliderComfortable
+  label="Roundness"
+  value={roundness}
+  onChange={setRoundness}
+  min={0}
+  max={4}
+/>`;
+
+const comfortableScrubberCode = `import { SliderComfortable } from "./components";
+
+const [volume, setVolume] = useState(50);
+
+<SliderComfortable
+  variant="scrubber"
+  label="Volume"
+  value={volume}
+  onChange={setVolume}
+  min={0}
+  max={100}
+  formatValue={(v) => \`\${v}%\`}
+/>`;
+
+const comfortableFormatCode = `import { SliderComfortable } from "./components";
+
+const qualityLabels = ["Off", "Low", "Medium", "High", "Ultra"];
+
+<SliderComfortable
+  label="Quality"
+  value={quality}
+  onChange={setQuality}
+  min={0}
+  max={4}
+  formatValue={(v) => qualityLabels[v]}
+/>`;
+
+const comfortableDisabledCode = `import { SliderComfortable } from "./components";
+
+<SliderComfortable
+  label="Roundness"
+  value={2}
+  onChange={() => {}}
+  min={0}
+  max={4}
+  disabled
+/>`;
+
+// ---------------------------------------------------------------------------
+// Props tables
 // ---------------------------------------------------------------------------
 
 const sliderProps: PropDef[] = [
@@ -125,9 +180,67 @@ const sliderProps: PropDef[] = [
   },
 ];
 
+const comfortableProps: PropDef[] = [
+  {
+    name: "value",
+    type: "number",
+    description: "Current selected value.",
+  },
+  {
+    name: "onChange",
+    type: "(value: number) => void",
+    description: "Called when the value changes via click, drag, or keyboard.",
+  },
+  {
+    name: "min",
+    type: "number",
+    default: "0",
+    description: "Minimum value.",
+  },
+  {
+    name: "max",
+    type: "number",
+    default: "100",
+    description: "Maximum value.",
+  },
+  {
+    name: "variant",
+    type: '"pips" | "scrubber"',
+    default: '"pips"',
+    description:
+      'Visual mode. "pips" shows discrete dot indicators. "scrubber" shows no dots — drag anywhere in the row to set a continuous value.',
+  },
+  {
+    name: "step",
+    type: "number",
+    default: "1",
+    description: "Step increment for snapping. In pips mode, also determines the number of dots rendered.",
+  },
+  {
+    name: "label",
+    type: "string",
+    description:
+      "Label shown on the left side. Transitions from muted to foreground on hover.",
+  },
+  {
+    name: "formatValue",
+    type: "(v: number) => string",
+    default: "String",
+    description: "Custom formatter for the value shown on the right.",
+  },
+  {
+    name: "disabled",
+    type: "boolean",
+    default: "false",
+    description: "Disables all interaction.",
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
+
+const qualityLabels = ["Off", "Low", "Medium", "High", "Ultra"];
 
 export default function SliderDoc() {
   const [basic, setBasic] = useState(25);
@@ -139,13 +252,21 @@ export default function SliderDoc() {
   const [tooltip, setTooltip] = useState(50);
   const [formatted, setFormatted] = useState(75);
 
+  const [roundness, setRoundness] = useState(2);
+  const [volume, setVolume] = useState(50);
+  const [quality, setQuality] = useState(2);
+
   return (
     <DocPage
       title="Slider"
       slug="slider"
-      description="Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display."
+      description="Two variants: compact (spring-snapped thumb with track fill and range mode) and comfortable (pip-based discrete selector for settings panels)."
     >
-      <DocSection title="Basic">
+      {/* ------------------------------------------------------------------ */}
+      {/* Compact                                                              */}
+      {/* ------------------------------------------------------------------ */}
+
+      <DocSection title="Compact">
         <ComponentPreview code={basicCode}>
           <div className="w-72">
             <Slider value={basic} onChange={(v) => setBasic(v as number)} />
@@ -207,7 +328,7 @@ export default function SliderDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Custom Format">
+      <DocSection title="Format">
         <ComponentPreview code={formatCode}>
           <div className="w-72">
             <Slider
@@ -228,8 +349,79 @@ export default function SliderDoc() {
         </ComponentPreview>
       </DocSection>
 
+      {/* ------------------------------------------------------------------ */}
+      {/* Comfortable                                                          */}
+      {/* ------------------------------------------------------------------ */}
+
+      <DocSection title="Comfortable">
+        <ComponentPreview code={comfortableScrubberCode}>
+          <div className="w-72">
+            <SliderComfortable
+              variant="scrubber"
+              label="Volume"
+              value={volume}
+              onChange={setVolume}
+              min={0}
+              max={100}
+              formatValue={(v) => `${v}%`}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Comfortable — Stepper">
+        <ComponentPreview code={comfortableBasicCode}>
+          <div className="w-72">
+            <SliderComfortable
+              label="Roundness"
+              value={roundness}
+              onChange={setRoundness}
+              min={0}
+              max={4}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Comfortable — Format">
+        <ComponentPreview code={comfortableFormatCode}>
+          <div className="w-72">
+            <SliderComfortable
+              label="Quality"
+              value={quality}
+              onChange={setQuality}
+              min={0}
+              max={4}
+              formatValue={(v) => qualityLabels[v]}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Comfortable — Disabled">
+        <ComponentPreview code={comfortableDisabledCode}>
+          <div className="w-72">
+            <SliderComfortable
+              label="Roundness"
+              value={2}
+              onChange={() => {}}
+              min={0}
+              max={4}
+              disabled
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* API Reference                                                        */}
+      {/* ------------------------------------------------------------------ */}
+
       <DocSection title="API Reference">
+        <p className="text-[13px] text-muted-foreground mb-3">Slider</p>
         <PropsTable props={sliderProps} />
+        <p className="text-[13px] text-muted-foreground mt-8 mb-3">SliderComfortable</p>
+        <PropsTable props={comfortableProps} />
       </DocSection>
     </DocPage>
   );
