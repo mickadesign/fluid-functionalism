@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/registry/default/badge";
 import { Button } from "@/registry/default/button";
 import { Switch } from "@/registry/default/switch";
-import { Slider } from "@/registry/default/slider";
+import { Slider, SliderComfortable } from "@/registry/default/slider";
 import {
   AccordionGroup,
   AccordionItem,
@@ -63,6 +63,7 @@ function AppContent() {
   const [searchValue, setSearchValue] = useState("");
   const [switchChecked, setSwitchChecked] = useState(false);
   const [sliderValue, setSliderValue] = useState(25);
+  const [comfortableValue, setComfortableValue] = useState(60);
 
   return (
     <div className="flex flex-col items-start gap-10 sm:gap-16 min-h-screen sm:justify-center mx-auto w-full max-w-[680px] py-10 sm:py-16 mt-12 md:mt-0">
@@ -187,8 +188,20 @@ function AppContent() {
         />
       </div>
 
-      <div className="px-6 w-full max-w-[290px]">
+      <div className="px-6 w-72 max-w-full">
         <Slider value={sliderValue} onChange={(v) => setSliderValue(v as number)} />
+      </div>
+
+      <div className="px-6 w-72 max-w-full">
+        <SliderComfortable
+          variant="scrubber"
+          label="Volume"
+          value={comfortableValue}
+          onChange={setComfortableValue}
+          min={0}
+          max={100}
+          formatValue={(v) => `${v}%`}
+        />
       </div>
 
       <div className="px-6 w-full">

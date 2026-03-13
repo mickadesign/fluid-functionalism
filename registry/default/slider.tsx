@@ -49,9 +49,9 @@ interface SliderProps
 // Constants
 // ---------------------------------------------------------------------------
 
-const THUMB_SIZE = 18;
-const THUMB_SIZE_REST = 14;
-const TRACK_HEIGHT = 6;
+const THUMB_SIZE = 20;
+const THUMB_SIZE_REST = 16;
+const TRACK_BG_HEIGHT = 18;
 const DOT_SIZE = 4;
 const PIP_SIZE = 5;
 
@@ -674,7 +674,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Render visual thumb (not Radix — purely visual) ---
     const renderVisualThumb = (index: number) => {
       const motionX = index === 0 ? motionX0 : motionX1;
-      const dotSize = isPressed ? THUMB_SIZE : isHovered ? THUMB_SIZE_REST + 2 : THUMB_SIZE_REST;
+      const dotSize = isHovered ? THUMB_SIZE_REST + 2 : THUMB_SIZE_REST;
       return (
         <motion.span
           key={`visual-thumb-${index}`}
@@ -696,13 +696,12 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             initial={false}
             animate={{
               width: dotSize,
-              height: dotSize,
+              height: THUMB_SIZE_REST,
             }}
             transition={springs.fast}
             style={{
               backgroundColor: "white",
-              boxShadow:
-                "0 1px 4px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
             }}
           />
           {/* Focus ring */}
@@ -856,24 +855,24 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
             {/* Track background */}
             <motion.div
-              className={cn("absolute left-0 right-0", shape.bg)}
+              className={cn("absolute left-0 right-0 border border-border overflow-hidden", shape.bg)}
               initial={false}
               animate={{
-                height: TRACK_HEIGHT,
-                top: 8 + (THUMB_SIZE - TRACK_HEIGHT) / 2,
+                height: TRACK_BG_HEIGHT,
+                top: 8 + (THUMB_SIZE - TRACK_BG_HEIGHT) / 2,
               }}
               transition={springs.fast}
               style={{
-                backgroundColor: "var(--accent)",
+                backgroundColor: "transparent",
               }}
             >
               {/* Filled range */}
               <motion.div
-                className={cn("absolute h-full", shape.bg)}
+                className="absolute h-full"
                 style={{
                   left: fillLeft,
                   width: fillWidth,
-                  backgroundColor: "var(--foreground)",
+                  backgroundColor: "var(--border)",
                 }}
               />
 
@@ -1272,6 +1271,8 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             className="absolute rounded-full pointer-events-none z-[3]"
             initial={false}
             animate={{
+              top: isActive ? 7 : 8,
+              bottom: isActive ? 7 : 8,
               backgroundColor: isFocused
                 ? "var(--foreground)"
                 : isHovered
@@ -1281,8 +1282,6 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             transition={springs.fast}
             style={{
               left: pipsHandleLineLeftStyle,
-              top: 8,
-              bottom: 8,
               width: 2,
             }}
           />
@@ -1330,6 +1329,8 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             className="absolute rounded-full pointer-events-none z-10"
             initial={false}
             animate={{
+              top: isActive ? 7 : 8,
+              bottom: isActive ? 7 : 8,
               backgroundColor: isFocused
                 ? "var(--foreground)"
                 : isHovered
@@ -1339,8 +1340,6 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             transition={springs.fast}
             style={{
               left: handleLineLeftStyle,
-              top: 8,
-              bottom: 8,
               width: 2,
             }}
           />
