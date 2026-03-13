@@ -998,39 +998,53 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
       [ref]
     );
 
-    // Fill motion value (scrubber only)
+    const pipSteps = Array.from(
+      { length: Math.round((max - min) / step) + 1 },
+      (_, i) => min + i * step
+    );
+    const pipCount = pipSteps.length;
+
+    // Fill motion value
     const fillPercent = useMotionValue(
       max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)))
     );
+    // Small offset when value is at min so the handle line stays visible
+    const zeroTarget = variant === "pips" ? 8 : 17;
+    const zeroOffset = useMotionValue(value === min ? zeroTarget : 0);
+
     const fillWidthStyle = useTransform(fillPercent, (p) => `${p * 100}%`);
-    const handleLeftStyle = useTransform(fillPercent, (p) => `calc(${p * 100}% - 8px)`);
-    const handleLineLeftStyle = useTransform(fillPercent, (p) => `calc(${p * 100}% - 9px)`);
+    const handleLeftStyle = useTransform(
+      [fillPercent, zeroOffset] as MotionValue<number>[],
+      ([p, zo]) => `calc(${(p as number) * 100}% - 8px + ${zo as number}px)`
+    );
+    const handleLineLeftStyle = useTransform(
+      [fillPercent, zeroOffset] as MotionValue<number>[],
+      ([p, zo]) => `calc(${(p as number) * 100}% - 9px + ${zo as number}px)`
+    );
     // Pips-specific: offset by px-3 (12px) padding so fill edge aligns with active pip center
     const pipsFillWidthStyle = useTransform(
-      fillPercent,
-      (p) => `calc(${p * 100}% + ${20 - 24 * p}px)`
+      [fillPercent, zeroOffset] as MotionValue<number>[],
+      ([p, zo]) => `calc(${(p as number) * 100}% + ${20 - 20 * (p as number) - (zo as number) * 2.5}px)`
     );
     const pipsHandleLineLeftStyle = useTransform(
       fillPercent,
       (p) => `calc(${p * 100}% + ${11 - 24 * p}px)`
     );
-    const pipsMaskStyle = useTransform(fillPercent, (p) => {
-      const offset = 12 - 24 * p;
-      return `linear-gradient(to right, transparent calc(${p * 100}% + ${offset}px), black calc(${p * 100}% + ${offset + 2}px))`;
-    });
+    const pipsMaskStyle = useTransform(
+      [fillPercent, zeroOffset] as MotionValue<number>[],
+      ([p, zo]) => {
+        const offset = 20 - 20 * (p as number) - (zo as number) * 2.5;
+        return `linear-gradient(to right, transparent calc(${(p as number) * 100}% + ${offset}px), black calc(${(p as number) * 100}% + ${offset + 2}px))`;
+      }
+    );
 
     // Sync fill on programmatic value change
     useEffect(() => {
       if (dragging.current || handleDragging.current) return;
       const percent = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)));
       animate(fillPercent, percent, springs.fast);
-    }, [value, min, max, variant, fillPercent]);
-
-    const pipSteps = Array.from(
-      { length: Math.round((max - min) / step) + 1 },
-      (_, i) => min + i * step
-    );
-    const pipCount = pipSteps.length;
+      animate(zeroOffset, value === min ? zeroTarget : 0, springs.fast);
+    }, [value, min, max, variant, fillPercent, zeroOffset, zeroTarget]);
 
     const getValueFromX = useCallback(
       (clientX: number) => {
@@ -1064,9 +1078,10 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         onChange(newVal);
         const newPercent = Math.max(0, Math.min(1, (newVal - min) / (max - min)));
         animate(fillPercent, newPercent, springs.fast);
+        animate(zeroOffset, newVal === min ? zeroTarget : 0, springs.fast);
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
-      [disabled, getValueFromX, onChange, fillPercent, min, max]
+      [disabled, getValueFromX, onChange, fillPercent, zeroOffset, zeroTarget, min, max]
     );
 
     const handlePointerMove = useCallback(
@@ -1080,8 +1095,9 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         } else {
           animate(fillPercent, newPercent, springs.fast);
         }
+        animate(zeroOffset, newVal === min ? zeroTarget : 0, springs.fast);
       },
-      [getValueFromX, onChange, variant, fillPercent, min, max]
+      [getValueFromX, onChange, variant, fillPercent, zeroOffset, zeroTarget, min, max]
     );
 
     const handlePointerUp = useCallback(() => {
@@ -1099,9 +1115,10 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         const newVal = getValueFromX(e.clientX);
         onChange(newVal);
         fillPercent.set(Math.max(0, Math.min(1, (newVal - min) / (max - min))));
+        animate(zeroOffset, newVal === min ? zeroTarget : 0, springs.fast);
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
-      [disabled, getValueFromX, onChange, fillPercent, min, max]
+      [disabled, getValueFromX, onChange, fillPercent, zeroOffset, zeroTarget, min, max]
     );
 
     const handleResizePointerMove = useCallback(
@@ -1110,8 +1127,9 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         const newVal = getValueFromX(e.clientX);
         onChange(newVal);
         fillPercent.set(Math.max(0, Math.min(1, (newVal - min) / (max - min))));
+        animate(zeroOffset, newVal === min ? zeroTarget : 0, springs.fast);
       },
-      [getValueFromX, onChange, fillPercent, min, max]
+      [getValueFromX, onChange, fillPercent, zeroOffset, zeroTarget, min, max]
     );
 
     const handleResizePointerUp = useCallback(() => {
@@ -1128,17 +1146,22 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
     const isActive = isHovered || isFocused;
 
     return (
-      <div
+      <motion.div
         ref={mergedRef}
         className={cn(
-          "relative w-full h-8 select-none touch-none border border-border overflow-hidden",
+          "relative w-full h-8 select-none touch-none border border-border overflow-hidden outline-offset-2",
           variant === "scrubber"
             ? "flex items-center gap-3 px-3 cursor-ew-resize"
-            : "cursor-pointer",
+            : "cursor-ew-resize",
           shape.bg,
           disabled && "opacity-50 pointer-events-none",
           className
         )}
+        initial={false}
+        animate={{
+          outline: isFocused ? "1px solid #6B97FF" : "1px solid transparent",
+        }}
+        transition={springs.fast}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1160,7 +1183,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             <SliderPrimitive.Range />
           </SliderPrimitive.Track>
           <SliderPrimitive.Thumb
-            className="block outline-none"
+            className="block outline-none pointer-events-none"
             onFocus={(e) => {
               if (e.currentTarget.matches(":focus-visible")) setIsFocused(true);
             }}
@@ -1191,13 +1214,6 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
                     }}
                     transition={springs.fast}
                     style={{ width: PIP_SIZE, height: PIP_SIZE }}
-                  />
-                  <motion.span
-                    className="absolute rounded-full border border-[#6B97FF] pointer-events-none"
-                    initial={false}
-                    animate={{ opacity: isFocused && isActivePip ? 1 : 0 }}
-                    transition={springs.fast}
-                    style={{ width: PIP_SIZE + 6, height: PIP_SIZE + 6 }}
                   />
                 </div>
               );
@@ -1239,7 +1255,9 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             className="absolute rounded-full pointer-events-none z-[3]"
             initial={false}
             animate={{
-              backgroundColor: isActive
+              backgroundColor: isFocused
+                ? "var(--foreground)"
+                : isHovered
                 ? "color-mix(in srgb, var(--foreground) 50%, transparent)"
                 : "color-mix(in srgb, var(--foreground) 25%, transparent)",
             }}
@@ -1295,7 +1313,9 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             className="absolute rounded-full pointer-events-none z-10"
             initial={false}
             animate={{
-              backgroundColor: isActive
+              backgroundColor: isFocused
+                ? "var(--foreground)"
+                : isHovered
                 ? "color-mix(in srgb, var(--foreground) 50%, transparent)"
                 : "color-mix(in srgb, var(--foreground) 25%, transparent)",
             }}
@@ -1347,7 +1367,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             onPointerUp={handleResizePointerUp}
           />
         )}
-      </div>
+      </motion.div>
     );
   }
 );
