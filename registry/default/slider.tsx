@@ -338,7 +338,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Motion values ---
     const motionX0 = useMotionValue(0);
     const motionX1 = useMotionValue(0);
-    const thumbScale = useMotionValue(1);
 
     // --- Derived motion values for fill ---
     const fillLeft = useTransform(motionX0, (x) =>
@@ -537,7 +536,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
-      [disabled, isRange, min, max, step, motionX0, motionX1, thumbScale, clampForRange, emitChange]
+      [disabled, isRange, min, max, step, motionX0, motionX1, clampForRange, emitChange]
     );
 
     const handlePointerMove = useCallback(
@@ -607,7 +606,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       const snapped = pixelToValue(currentPx, min, max, step, tw);
       const snappedPx = valueToPixel(snapped, min, max, tw);
       animate(motionX, snappedPx, springs.moderate);
-    }, [min, max, step, motionX0, motionX1, thumbScale]);
+    }, [min, max, step, motionX0, motionX1]);
 
     // --- Radix keyboard handler ---
     const handleRadixChange = useCallback(
@@ -675,6 +674,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Render visual thumb (not Radix — purely visual) ---
     const renderVisualThumb = (index: number) => {
       const motionX = index === 0 ? motionX0 : motionX1;
+      const dotSize = isPressed ? THUMB_SIZE : isHovered ? THUMB_SIZE_REST + 2 : THUMB_SIZE_REST;
       return (
         <motion.span
           key={`visual-thumb-${index}`}
@@ -690,14 +690,13 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             zIndex: 10,
           }}
           initial={false}
-          transition={springs.moderate}
         >
           <motion.span
             className="block rounded-full"
             initial={false}
             animate={{
-              width: THUMB_SIZE_REST,
-              height: THUMB_SIZE_REST,
+              width: dotSize,
+              height: dotSize,
             }}
             transition={springs.fast}
             style={{
