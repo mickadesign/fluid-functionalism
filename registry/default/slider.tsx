@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   type HTMLAttributes,
 } from "react";
@@ -305,7 +306,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Refs ---
     const trackRef = useRef<HTMLDivElement>(null);
     const trackWidthRef = useRef(0);
-    const hasMounted = useRef(false);
     const dragging = useRef(false);
     const activeDragThumb = useRef<number>(0);
 
@@ -320,8 +320,20 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       snappedValue: number;
       cursorX: number;
     } | null>(null);
-    const [hoverThumbIndex, setHoverThumbIndex] = useState<number | null>(null);
     const [focusedThumb, setFocusedThumb] = useState<number | null>(null);
+    const [showHoverTooltip, setShowHoverTooltip] = useState(false);
+    const hoverDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Show hover tooltip after 100ms delay
+    useEffect(() => {
+      if (isHovered) {
+        hoverDelayRef.current = setTimeout(() => setShowHoverTooltip(true), 100);
+      } else {
+        if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+        setShowHoverTooltip(false);
+      }
+      return () => { if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current); };
+    }, [isHovered]);
 
     // --- Motion values ---
     const motionX0 = useMotionValue(0);
@@ -368,66 +380,61 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         const left = Math.min(nearest, snappedX);
         const width = Math.abs(snappedX - nearest);
         setHoverPreview({ left, width, onFilledSide, snappedValue: snappedVal, cursorX: snappedX });
-        setHoverThumbIndex(nearestIdx);
       },
       [min, max, step, isRange, motionX0, motionX1]
     );
 
-    // --- Mount ---
-    useEffect(() => {
-      hasMounted.current = true;
+    // --- Initial sync (before paint) ---
+    const initialSyncDone = useRef(false);
+    const [ready, setReady] = useState(false);
+    useLayoutEffect(() => {
+      const el = trackRef.current;
+      if (!el || initialSyncDone.current) return;
+      const w = el.getBoundingClientRect().width;
+      trackWidthRef.current = w;
+      const px0 = valueToPixel(values[0], min, max, w);
+      motionX0.set(px0);
+      if (isRange && values[1] !== undefined) {
+        const px1 = valueToPixel(values[1], min, max, w);
+        motionX1.set(px1);
+      }
+      initialSyncDone.current = true;
+      setReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // --- Track width measurement ---
+    // --- Track width measurement (resize only) ---
     useEffect(() => {
       const el = trackRef.current;
       if (!el) return;
       const ro = new ResizeObserver(([entry]) => {
-        trackWidthRef.current = entry.contentRect.width;
-        if (!dragging.current) {
-          const px0 = valueToPixel(values[0], min, max, entry.contentRect.width);
-          if (hasMounted.current) {
-            animate(motionX0, px0, springs.moderate);
-          } else {
-            motionX0.set(px0);
-          }
+        const w = entry.contentRect.width;
+        trackWidthRef.current = w;
+        if (!dragging.current && initialSyncDone.current) {
+          const px0 = valueToPixel(values[0], min, max, w);
+          animate(motionX0, px0, springs.moderate);
           if (isRange && values[1] !== undefined) {
-            const px1 = valueToPixel(
-              values[1],
-              min,
-              max,
-              entry.contentRect.width
-            );
-            if (hasMounted.current) {
-              animate(motionX1, px1, springs.moderate);
-            } else {
-              motionX1.set(px1);
-            }
+            const px1 = valueToPixel(values[1], min, max, w);
+            animate(motionX1, px1, springs.moderate);
           }
         }
       });
       ro.observe(el);
       return () => ro.disconnect();
-    }, [min, max, isRange, values, motionX0, motionX1]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isRange, motionX0, motionX1]);
 
     // --- Sync motion values on value change (keyboard, programmatic) ---
     useEffect(() => {
+      if (!initialSyncDone.current) return;
       if (dragging.current) return;
       const tw = trackWidthRef.current;
       if (tw <= 0) return;
       const px0 = valueToPixel(values[0], min, max, tw);
-      if (hasMounted.current) {
-        animate(motionX0, px0, springs.moderate);
-      } else {
-        motionX0.set(px0);
-      }
+      animate(motionX0, px0, springs.moderate);
       if (isRange && values[1] !== undefined) {
         const px1 = valueToPixel(values[1], min, max, tw);
-        if (hasMounted.current) {
-          animate(motionX1, px1, springs.moderate);
-        } else {
-          motionX1.set(px1);
-        }
+        animate(motionX1, px1, springs.moderate);
       }
     }, [values, min, max, isRange, motionX0, motionX1]);
 
@@ -689,8 +696,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             className="block rounded-full"
             initial={false}
             animate={{
-              width: (hoverThumbIndex === index) || (isPressed && activeDragThumb.current === index) ? THUMB_SIZE : THUMB_SIZE_REST,
-              height: (hoverThumbIndex === index) || (isPressed && activeDragThumb.current === index) ? THUMB_SIZE : THUMB_SIZE_REST,
+              width: THUMB_SIZE_REST,
+              height: THUMB_SIZE_REST,
             }}
             transition={springs.fast}
             style={{
@@ -743,7 +750,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           onPointerLeave={() => {
             setIsHovered(false);
             setHoverPreview(null);
-            setHoverThumbIndex(null);
           }}
           onMouseMove={(e) => {
             if (dragging.current) return;
@@ -811,7 +817,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           <div
             ref={trackRef}
             className="relative w-full cursor-pointer py-2"
-            style={{ height: THUMB_SIZE + 16 }}
+            style={{ height: THUMB_SIZE + 16, opacity: ready ? 1 : 0 }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -826,15 +832,16 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             />
             {/* Hover value tooltip */}
             <AnimatePresence>
-              {hoverPreview && valuePosition !== "tooltip" && (
+              {hoverPreview && showHoverTooltip && valuePosition !== "tooltip" && (
                 <motion.div
                   key="hover-tooltip"
                   className="absolute -translate-x-1/2 pointer-events-none z-20"
                   initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0, left: hoverPreview.cursorX }}
+                  animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4, transition: { duration: 0.1 } }}
                   transition={springs.fast}
                   style={{
+                    left: hoverPreview.cursorX,
                     top: -20,
                   }}
                 >
@@ -848,15 +855,13 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               )}
             </AnimatePresence>
 
-            {/* Track background — grows on hover */}
+            {/* Track background */}
             <motion.div
               className={cn("absolute left-0 right-0", shape.bg)}
               initial={false}
               animate={{
-                height: isHovered || isPressed ? 8 : TRACK_HEIGHT,
-                top: isHovered || isPressed
-                  ? 8 + (THUMB_SIZE - 8) / 2
-                  : 8 + (THUMB_SIZE - TRACK_HEIGHT) / 2,
+                height: TRACK_HEIGHT,
+                top: 8 + (THUMB_SIZE - TRACK_HEIGHT) / 2,
               }}
               transition={springs.fast}
               style={{

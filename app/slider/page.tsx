@@ -30,7 +30,7 @@ export default function SliderPage() {
   const [midFreq, setMidFreq] = useState(50);
   const [midGain, setMidGain] = useState(50);
   const [highShelf, setHighShelf] = useState(55);
-  const [highCut, setHighCut] = useState(85);
+  const [highCut, setHighCut] = useState(12000);
 
   // --- Effects sends ---
   const [reverbSend, setReverbSend] = useState(35);
@@ -87,7 +87,7 @@ export default function SliderPage() {
         >
           Channel Strip
         </h2>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
           <Slider
             value={volume}
             onChange={(v) => setVolume(v as number)}
@@ -137,7 +137,7 @@ export default function SliderPage() {
         >
           Parametric EQ
         </h2>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
           <Slider
             value={lowCut}
             onChange={(v) => setLowCut(v as number)}
@@ -212,7 +212,7 @@ export default function SliderPage() {
         >
           Range Selection
         </h2>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
           <Slider
             value={freqRange}
             onChange={(v) => setFreqRange(v as [number, number])}
@@ -244,7 +244,7 @@ export default function SliderPage() {
         >
           Compressor
         </h2>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
           <Slider
             value={threshold}
             onChange={(v) => setThreshold(v as number)}
@@ -308,7 +308,7 @@ export default function SliderPage() {
         >
           Effects Sends
         </h2>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
           <Slider
             value={reverbSend}
             onChange={(v) => setReverbSend(v as number)}
