@@ -54,6 +54,8 @@ const THUMB_SIZE_REST = 16;
 const TRACK_BG_HEIGHT = 18;
 const DOT_SIZE = 4;
 const PIP_SIZE = 5;
+// Inset track BG so its rounded-end centers align with thumb centers at min/max
+const TRACK_INSET = (THUMB_SIZE - TRACK_BG_HEIGHT) / 2;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -341,9 +343,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
     // --- Derived motion values for fill ---
     const fillLeft = useTransform(motionX0, (x) =>
-      isRange ? x + THUMB_SIZE / 2 : 0
+      isRange ? x + THUMB_SIZE / 2 - TRACK_INSET : 0
     );
-    const fillWidthSingle = useTransform(motionX0, (x) => x + THUMB_SIZE / 2);
+    const fillWidthSingle = useTransform(motionX0, (x) => x + THUMB_SIZE / 2 - TRACK_INSET);
     const fillWidthRange = useTransform(
       [motionX0, motionX1] as MotionValue<number>[],
       ([x0, x1]) => (x1 as number) - (x0 as number)
@@ -877,7 +879,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
             {/* Track background */}
             <motion.div
-              className={cn("absolute left-0 right-0 border border-border overflow-hidden", shape.bg)}
+              className="absolute border border-border overflow-hidden rounded-full"
               initial={false}
               animate={{
                 height: TRACK_BG_HEIGHT,
@@ -885,6 +887,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               }}
               transition={springs.fast}
               style={{
+                left: TRACK_INSET,
+                right: TRACK_INSET,
                 backgroundColor: "transparent",
               }}
             >
@@ -908,7 +912,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                   opacity: { duration: 0.15 },
                 }}
                 style={{
-                  left: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.left : 0,
+                  left: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.left - TRACK_INSET : 0,
                   width: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.width : 0,
                   borderRadius: hoverPreview && hoverPreview.cursorX > hoverPreview.left
                     ? "0 9999px 9999px 0"
@@ -928,7 +932,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                   opacity: { duration: 0.15 },
                 }}
                 style={{
-                  left: hoverPreview?.onFilledSide ? hoverPreview.left : 0,
+                  left: hoverPreview?.onFilledSide ? hoverPreview.left - TRACK_INSET : 0,
                   width: hoverPreview?.onFilledSide ? hoverPreview.width : 0,
                   borderRadius: hoverPreview && hoverPreview.cursorX > hoverPreview.left
                     ? "0 9999px 9999px 0"
@@ -1268,6 +1272,34 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
 
     return (
       <div className="relative w-full">
+        {/* Extended hit area — 8px beyond each edge */}
+        <div
+          className="absolute cursor-ew-resize"
+          style={{ left: -8, right: -8, top: 0, bottom: 0 }}
+          onPointerDown={(e) => {
+            if (disabled) return;
+            handlePointerDown(e as unknown as React.PointerEvent<HTMLDivElement>);
+          }}
+          onPointerMove={(e) => {
+            if (disabled) return;
+            handlePointerMove(e as unknown as React.PointerEvent<HTMLDivElement>);
+          }}
+          onPointerUp={() => {
+            if (disabled) return;
+            handlePointerUp();
+          }}
+          onPointerEnter={() => { if (!disabled) setIsHovered(true); }}
+          onPointerLeave={() => {
+            if (!disabled) {
+              setIsHovered(false);
+              setHoverPreview(null);
+            }
+          }}
+          onMouseMove={(e) => {
+            if (disabled || dragging.current || handleDragging.current) return;
+            computeHoverPreview(e.clientX);
+          }}
+        />
         {/* Hover value tooltip — outside overflow-hidden container */}
         <AnimatePresence>
           {hoverPreview && showHoverTooltip && !isPressed && (
