@@ -1005,8 +1005,29 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
     const dragging = useRef(false);
     const handleDragging = useRef(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [isPressed, setIsPressed] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [hoverPreview, setHoverPreview] = useState<{
+      left: number;
+      width: number;
+      onFilledSide: boolean;
+      snappedValue: number;
+      cursorX: number;
+    } | null>(null);
+    const [showHoverTooltip, setShowHoverTooltip] = useState(false);
+    const hoverDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const shape = useShape();
+
+    // Show hover tooltip after 100ms delay
+    useEffect(() => {
+      if (isHovered) {
+        hoverDelayRef.current = setTimeout(() => setShowHoverTooltip(true), 100);
+      } else {
+        if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current);
+        setShowHoverTooltip(false);
+      }
+      return () => { if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current); };
+    }, [isHovered]);
 
     const mergedRef = useCallback(
       (el: HTMLDivElement | null) => {
@@ -1057,6 +1078,41 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
       }
     );
 
+    // --- Hover preview computation ---
+    const computeHoverPreview = useCallback(
+      (clientX: number) => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const x = clientX - rect.left;
+        const clamped = Math.max(0, Math.min(rect.width, x));
+
+        // Snap to nearest step value
+        let snappedVal: number;
+        if (variant === "pips") {
+          if (pipCount <= 1) return;
+          const index = Math.max(0, Math.min(pipCount - 1, Math.round((clamped / rect.width) * (pipCount - 1))));
+          snappedVal = pipSteps[index];
+        } else {
+          const raw = min + (clamped / rect.width) * (max - min);
+          snappedVal = Math.max(min, Math.min(max, Math.round((raw - min) / step) * step + min));
+        }
+        const snappedPercent = max === min ? 0 : (snappedVal - min) / (max - min);
+        const snappedX = snappedPercent * rect.width;
+
+        // Current handle position (percentage-based)
+        const currentPercent = fillPercent.get();
+        const handleX = currentPercent * rect.width;
+
+        // Determine if cursor is on the filled side
+        const onFilledSide = snappedX < handleX;
+
+        const left = Math.min(handleX, snappedX);
+        const width = Math.abs(snappedX - handleX);
+        setHoverPreview({ left, width, onFilledSide, snappedValue: snappedVal, cursorX: snappedX });
+      },
+      [variant, pipSteps, pipCount, min, max, step, fillPercent]
+    );
+
     // Sync fill on programmatic value change
     useEffect(() => {
       if (dragging.current || handleDragging.current) return;
@@ -1093,6 +1149,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         if (e.pointerType === "mouse" && e.button !== 0) return;
         e.preventDefault();
         dragging.current = true;
+        setIsPressed(true);
         const newVal = getValueFromX(e.clientX);
         onChange(newVal);
         const newPercent = Math.max(0, Math.min(1, (newVal - min) / (max - min)));
@@ -1121,6 +1178,8 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
 
     const handlePointerUp = useCallback(() => {
       dragging.current = false;
+      setIsPressed(false);
+      setHoverPreview(null);
     }, []);
 
     // Resize handle drag handlers (direct cursor position)
@@ -1131,6 +1190,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         e.preventDefault();
         e.stopPropagation();
         handleDragging.current = true;
+        setIsPressed(true);
         const newVal = getValueFromX(e.clientX);
         onChange(newVal);
         fillPercent.set(Math.max(0, Math.min(1, (newVal - min) / (max - min))));
@@ -1153,6 +1213,8 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
 
     const handleResizePointerUp = useCallback(() => {
       handleDragging.current = false;
+      setIsPressed(false);
+      setHoverPreview(null);
     }, []);
 
     const handleRadixChange = useCallback(
@@ -1165,6 +1227,32 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
     const isActive = isHovered || isFocused;
 
     return (
+      <div className="relative w-full">
+        {/* Hover value tooltip — outside overflow-hidden container */}
+        <AnimatePresence>
+          {hoverPreview && showHoverTooltip && !isPressed && (
+            <motion.div
+              key="hover-tooltip"
+              className="absolute -translate-x-1/2 pointer-events-none z-20"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4, transition: { duration: 0.1 } }}
+              transition={springs.fast}
+              style={{
+                left: hoverPreview.cursorX,
+                top: -30,
+              }}
+            >
+              <span
+                className={cn("text-[12px] text-background tabular-nums whitespace-nowrap bg-foreground px-2 py-1", shape.bg)}
+                style={{ fontVariationSettings: fontWeights.medium }}
+              >
+                {formatValue(hoverPreview.snappedValue)}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       <motion.div
         ref={mergedRef}
         className={cn(
@@ -1185,7 +1273,14 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerEnter={() => setIsHovered(true)}
-        onPointerLeave={() => setIsHovered(false)}
+        onPointerLeave={() => {
+          setIsHovered(false);
+          setHoverPreview(null);
+        }}
+        onMouseMove={(e) => {
+          if (dragging.current || handleDragging.current) return;
+          computeHoverPreview(e.clientX);
+        }}
         {...props}
       >
         {/* Invisible Radix for keyboard nav + a11y */}
@@ -1209,6 +1304,36 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             onBlur={() => setIsFocused(false)}
           />
         </SliderPrimitive.Root>
+
+        {/* Hover preview — unfilled side */}
+        <motion.div
+          className="absolute inset-y-0 pointer-events-none"
+          initial={false}
+          animate={{
+            opacity: hoverPreview && !hoverPreview.onFilledSide && !isPressed ? 1 : 0,
+          }}
+          transition={{ opacity: { duration: 0.15 } }}
+          style={{
+            left: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.left : 0,
+            width: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.width : 0,
+            backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",
+          }}
+        />
+
+        {/* Hover preview — filled side */}
+        <motion.div
+          className="absolute inset-y-0 pointer-events-none"
+          initial={false}
+          animate={{
+            opacity: hoverPreview?.onFilledSide && !isPressed ? 1 : 0,
+          }}
+          transition={{ opacity: { duration: 0.15 } }}
+          style={{
+            left: hoverPreview?.onFilledSide ? hoverPreview.left : 0,
+            width: hoverPreview?.onFilledSide ? hoverPreview.width : 0,
+            backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",
+          }}
+        />
 
         {/* Pips: dots layer — z-[1] */}
         {variant === "pips" && (
@@ -1387,6 +1512,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
           />
         )}
       </motion.div>
+      </div>
     );
   }
 );
