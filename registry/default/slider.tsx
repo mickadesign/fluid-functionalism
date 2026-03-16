@@ -350,18 +350,38 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     );
     const fillWidth = isRange ? fillWidthRange : fillWidthSingle;
 
+    // --- Step dots mask (hides dots on filled side, like SliderComfortable pips) ---
+    const stepDotsMaskSingle = useTransform(
+      motionX0,
+      (x) => {
+        const edge = x + THUMB_SIZE / 2;
+        return `linear-gradient(to right, transparent ${edge}px, black ${edge + 2}px)`;
+      }
+    );
+    const stepDotsMaskRange = useTransform(
+      [motionX0, motionX1] as MotionValue<number>[],
+      ([x0, x1]) => {
+        const left = (x0 as number) + THUMB_SIZE / 2;
+        const right = (x1 as number) + THUMB_SIZE / 2;
+        return `linear-gradient(to right, black ${left - 2}px, transparent ${left}px, transparent ${right}px, black ${right + 2}px)`;
+      }
+    );
+    const stepDotsMask = isRange ? stepDotsMaskRange : stepDotsMaskSingle;
+
     // --- Hover preview computation ---
     const computeHoverPreview = useCallback(
       (cursorX: number, trackWidth: number) => {
-        // Snap cursor to step grid
-        const rawPercent = cursorX / trackWidth;
-        const rawVal = rawPercent * (max - min) + min;
+        // Snap cursor to step grid (using same usable-width coordinate system as thumb/dots)
+        const usable = trackWidth - THUMB_SIZE;
+        const rawPx = cursorX - THUMB_SIZE / 2;
+        const clampedPx = Math.max(0, Math.min(usable, rawPx));
+        const rawVal = usable > 0 ? (clampedPx / usable) * (max - min) + min : min;
         const snappedVal = Math.max(
           min,
           Math.min(max, Math.round((rawVal - min) / step) * step + min)
         );
-        const snappedX =
-          ((snappedVal - min) / (max - min)) * trackWidth;
+        const snappedPercent = max === min ? 0 : (snappedVal - min) / (max - min);
+        const snappedX = THUMB_SIZE / 2 + snappedPercent * usable;
 
         // Find nearest thumb center
         const c0 = motionX0.get() + THUMB_SIZE / 2;
@@ -376,8 +396,10 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           ? snappedX > c0 && snappedX < c1
           : snappedX < c0;
 
-        const left = Math.min(nearest, snappedX);
-        const width = Math.abs(snappedX - nearest);
+        // Extend hover bar to track edges at extremes so there's no gap
+        const edgeX = snappedVal === min ? 0 : snappedVal === max ? trackWidth : snappedX;
+        const left = Math.min(nearest, edgeX);
+        const width = Math.abs(edgeX - nearest);
         setHoverPreview({ left, width, onFilledSide, snappedValue: snappedVal, cursorX: snappedX });
       },
       [min, max, step, isRange, motionX0, motionX1]
@@ -839,7 +861,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                   exit={{ opacity: 0, y: 4, transition: { duration: 0.1 } }}
                   transition={springs.fast}
                   style={{
-                    left: hoverPreview.cursorX,
+                    left: hoverPreview.cursorX + 4,
                     top: -20,
                   }}
                 >
@@ -917,39 +939,45 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
             </motion.div>
 
-            {/* Step dots — outside track bg to avoid border-radius clipping */}
-            {stepDots.map(({ value: v, percent }) => {
-              const onFilled = isRange
-                ? v >= values[0] && v <= values[1]
-                : v <= values[0];
-              return (
-                <div
-                  key={v}
-                  className="absolute pointer-events-none flex items-center justify-center"
-                  style={{
-                    left: `calc(${THUMB_SIZE / 2}px + ${percent} * (100% - ${THUMB_SIZE}px))`,
-                    top: "50%",
-                    width: 0,
-                    height: 0,
-                  }}
-                >
-                  <motion.div
-                    className="relative rounded-full flex-shrink-0 z-[6]"
-                    initial={false}
-                    animate={{
-                      width: isHovered ? DOT_SIZE * 1.25 : DOT_SIZE,
-                      height: isHovered ? DOT_SIZE * 1.25 : DOT_SIZE,
-                    }}
-                    transition={springs.moderate}
+            {/* Step dots — masked so filled side is hidden */}
+            {stepDots.length > 0 && (
+              <motion.div
+                className="absolute left-0 right-0 pointer-events-none"
+                style={{
+                  top: 8 + (THUMB_SIZE - TRACK_BG_HEIGHT) / 2,
+                  height: TRACK_BG_HEIGHT,
+                  WebkitMaskImage: stepDotsMask,
+                  maskImage: stepDotsMask,
+                }}
+              >
+                {stepDots.map(({ value: v, percent }) => (
+                  <div
+                    key={v}
+                    className="absolute pointer-events-none flex items-center justify-center"
                     style={{
-                      backgroundColor: onFilled
-                        ? "color-mix(in srgb, var(--background) 20%, var(--foreground))"
-                        : "color-mix(in srgb, var(--muted-foreground) 40%, var(--accent))",
+                      left: `calc(${THUMB_SIZE / 2}px + ${percent} * (100% - ${THUMB_SIZE}px))`,
+                      top: "50%",
+                      width: 0,
+                      height: 0,
                     }}
-                  />
-                </div>
-              );
-            })}
+                  >
+                    <motion.div
+                      className="rounded-full flex-shrink-0"
+                      initial={false}
+                      animate={{
+                        width: isHovered ? DOT_SIZE * 1.25 : DOT_SIZE,
+                        height: isHovered ? DOT_SIZE * 1.25 : DOT_SIZE,
+                      }}
+                      transition={springs.moderate}
+                      style={{
+                        backgroundColor: "var(--muted-foreground)",
+                        opacity: 0.3,
+                      }}
+                    />
+                  </div>
+                ))}
+              </motion.div>
+            )}
 
             {/* Visual thumbs */}
             {renderVisualThumb(0)}
@@ -1081,36 +1109,48 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
     // --- Hover preview computation ---
     const computeHoverPreview = useCallback(
       (clientX: number) => {
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const x = clientX - rect.left;
-        const clamped = Math.max(0, Math.min(rect.width, x));
+        const el = containerRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        // Use clientWidth (padding box) — CSS % and absolute left/width are relative to it
+        const w = el.clientWidth;
+        const borderLeft = rect.width - w > 0 ? (rect.width - w) / 2 : 0;
+        const x = clientX - rect.left - borderLeft;
+        const clamped = Math.max(0, Math.min(w, x));
 
         // Snap to nearest step value
         let snappedVal: number;
         if (variant === "pips") {
           if (pipCount <= 1) return;
-          const index = Math.max(0, Math.min(pipCount - 1, Math.round((clamped / rect.width) * (pipCount - 1))));
+          const index = Math.max(0, Math.min(pipCount - 1, Math.round((clamped / w) * (pipCount - 1))));
           snappedVal = pipSteps[index];
         } else {
-          const raw = min + (clamped / rect.width) * (max - min);
+          const raw = min + (clamped / w) * (max - min);
           snappedVal = Math.max(min, Math.min(max, Math.round((raw - min) / step) * step + min));
         }
         const snappedPercent = max === min ? 0 : (snappedVal - min) / (max - min);
-        const snappedX = snappedPercent * rect.width;
+        const snappedX = snappedPercent * w;
 
-        // Current handle position (percentage-based)
+        // Current handle position — for pips, match the visual fill edge offset
         const currentPercent = fillPercent.get();
-        const handleX = currentPercent * rect.width;
+        let handleX: number;
+        if (variant === "pips") {
+          const zo = zeroOffset.get();
+          handleX = currentPercent * w + (20 - 20 * currentPercent - zo * 2.5);
+        } else {
+          handleX = currentPercent * w;
+        }
 
         // Determine if cursor is on the filled side
         const onFilledSide = snappedX < handleX;
 
-        const left = Math.min(handleX, snappedX);
-        const width = Math.abs(snappedX - handleX);
+        // Extend hover bar to container edges at extremes so there's no gap
+        const edgeX = snappedVal === min ? 0 : snappedVal === max ? w : snappedX;
+        const left = Math.min(handleX, edgeX);
+        const width = Math.abs(edgeX - handleX);
         setHoverPreview({ left, width, onFilledSide, snappedValue: snappedVal, cursorX: snappedX });
       },
-      [variant, pipSteps, pipCount, min, max, step, fillPercent]
+      [variant, pipSteps, pipCount, min, max, step, fillPercent, zeroOffset]
     );
 
     // Sync fill on programmatic value change
@@ -1307,7 +1347,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
 
         {/* Hover preview — unfilled side */}
         <motion.div
-          className="absolute inset-y-0 pointer-events-none"
+          className="absolute inset-y-0 pointer-events-none z-[3]"
           initial={false}
           animate={{
             opacity: hoverPreview && !hoverPreview.onFilledSide && !isPressed ? 1 : 0,
@@ -1322,7 +1362,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
 
         {/* Hover preview — filled side */}
         <motion.div
-          className="absolute inset-y-0 pointer-events-none"
+          className="absolute inset-y-0 pointer-events-none z-[3]"
           initial={false}
           animate={{
             opacity: hoverPreview?.onFilledSide && !isPressed ? 1 : 0,
