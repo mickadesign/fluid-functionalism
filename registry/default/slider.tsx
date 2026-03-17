@@ -7,6 +7,7 @@ import {
   useEffect,
   useLayoutEffect,
   useCallback,
+  useMemo,
   type HTMLAttributes,
 } from "react";
 import {
@@ -132,7 +133,9 @@ function ValueDisplay({
       setInputValue(String(values[editingIndex]));
       requestAnimationFrame(() => inputRef.current?.select());
     }
-  }, [editingIndex, values]);
+    // Only reset input when editingIndex changes (not on every values reference change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingIndex]);
 
   const commitEdit = useCallback(
     (index: number) => {
@@ -310,6 +313,12 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     const trackWidthRef = useRef(0);
     const dragging = useRef(false);
     const activeDragThumb = useRef<number>(0);
+    const valuesRef = useRef(values);
+    const minRef = useRef(min);
+    const maxRef = useRef(max);
+    valuesRef.current = values;
+    minRef.current = min;
+    maxRef.current = max;
 
     // --- State ---
     const [isHovered, setIsHovered] = useState(false);
@@ -434,17 +443,19 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         const w = entry.contentRect.width;
         trackWidthRef.current = w;
         if (!dragging.current && initialSyncDone.current) {
-          const px0 = valueToPixel(values[0], min, max, w);
+          const v = valuesRef.current;
+          const mn = minRef.current;
+          const mx = maxRef.current;
+          const px0 = valueToPixel(v[0], mn, mx, w);
           animate(motionX0, px0, springs.moderate);
-          if (isRange && values[1] !== undefined) {
-            const px1 = valueToPixel(values[1], min, max, w);
+          if (isRange && v[1] !== undefined) {
+            const px1 = valueToPixel(v[1], mn, mx, w);
             animate(motionX1, px1, springs.moderate);
           }
         }
       });
       ro.observe(el);
       return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isRange, motionX0, motionX1]);
 
     // --- Sync motion values on value change (keyboard, programmatic) ---
@@ -548,16 +559,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         );
         emitChange(activeDragThumb.current, finalValue);
 
-        // Update tooltip to follow thumb at click position
-        const thumbCenter = finalPx + THUMB_SIZE / 2;
-        setHoverPreview((prev) => ({
-          left: prev?.left ?? 0,
-          width: prev?.width ?? 0,
-          onFilledSide: prev?.onFilledSide ?? false,
-          snappedValue: finalValue,
-          cursorX: thumbCenter,
-        }));
-
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
       [disabled, isRange, min, max, step, motionX0, motionX1, clampForRange, emitChange]
@@ -602,16 +603,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           trackRect.width
         );
         emitChange(activeDragThumb.current, finalValue);
-
-        // Update tooltip to follow thumb during drag
-        const thumbCenter = finalPx + THUMB_SIZE / 2;
-        setHoverPreview((prev) => ({
-          left: prev?.left ?? 0,
-          width: prev?.width ?? 0,
-          onFilledSide: prev?.onFilledSide ?? false,
-          snappedValue: finalValue,
-          cursorX: thumbCenter,
-        }));
       },
       [min, max, step, motionX0, motionX1, clampForRange, emitChange]
     );
@@ -663,16 +654,20 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     }, []);
 
     // --- Step dots ---
-    const stepDots = showSteps
-      ? Array.from(
-          { length: Math.round((max - min) / step) + 1 },
-          (_, i) => {
-            const v = min + i * step;
-            const percent = (v - min) / (max - min);
-            return { value: v, percent };
-          }
-        )
-      : [];
+    const stepDots = useMemo(
+      () =>
+        showSteps
+          ? Array.from(
+              { length: Math.round((max - min) / step) + 1 },
+              (_, i) => {
+                const v = min + i * step;
+                const percent = (v - min) / (max - min);
+                return { value: v, percent };
+              }
+            )
+          : [],
+      [showSteps, min, max, step]
+    );
 
     // --- Interaction state for tooltip ---
     const isInteracting = isHovered || isPressed;
@@ -698,7 +693,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Render visual thumb (not Radix — purely visual) ---
     const renderVisualThumb = (index: number) => {
       const motionX = index === 0 ? motionX0 : motionX1;
-      const dotSize = THUMB_SIZE_REST;
       return (
         <motion.span
           key={`visual-thumb-${index}`}
@@ -719,7 +713,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             className="block rounded-full"
             initial={false}
             animate={{
-              width: dotSize,
+              width: THUMB_SIZE_REST,
               height: THUMB_SIZE_REST,
             }}
             transition={springs.fast}
@@ -901,39 +895,19 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                 }}
               />
 
-              {/* Hover preview — unfilled side (dark on track) */}
-              <motion.div
-                className="absolute h-full pointer-events-none"
-                initial={false}
-                animate={{
-                  opacity: hoverPreview && !hoverPreview.onFilledSide && !isPressed ? 1 : 0,
-                }}
-                transition={{
-                  opacity: { duration: 0.15 },
-                }}
-                style={{
-                  left: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.left - TRACK_INSET : 0,
-                  width: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.width : 0,
-                  borderRadius: hoverPreview && hoverPreview.cursorX > hoverPreview.left
-                    ? "0 9999px 9999px 0"
-                    : "9999px 0 0 9999px",
-                  backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",
-                }}
-              />
-
-              {/* Hover preview — filled side (light on fill) */}
+              {/* Hover preview */}
               <motion.div
                 className="absolute h-full pointer-events-none z-[2]"
                 initial={false}
                 animate={{
-                  opacity: hoverPreview?.onFilledSide && !isPressed ? 1 : 0,
+                  opacity: hoverPreview && !isPressed ? 1 : 0,
                 }}
                 transition={{
                   opacity: { duration: 0.15 },
                 }}
                 style={{
-                  left: hoverPreview?.onFilledSide ? hoverPreview.left - TRACK_INSET : 0,
-                  width: hoverPreview?.onFilledSide ? hoverPreview.width : 0,
+                  left: hoverPreview ? hoverPreview.left - TRACK_INSET : 0,
+                  width: hoverPreview ? hoverPreview.width : 0,
                   borderRadius: hoverPreview && hoverPreview.cursorX > hoverPreview.left
                     ? "0 9999px 9999px 0"
                     : "9999px 0 0 9999px",
@@ -1070,9 +1044,12 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
       [ref]
     );
 
-    const pipSteps = Array.from(
-      { length: Math.round((max - min) / step) + 1 },
-      (_, i) => min + i * step
+    const pipSteps = useMemo(
+      () => Array.from(
+        { length: Math.round((max - min) / step) + 1 },
+        (_, i) => min + i * step
+      ),
+      [min, max, step]
     );
     const pipCount = pipSteps.length;
 
@@ -1168,11 +1145,11 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
     const getValueFromX = useCallback(
       (clientX: number) => {
         const rect = containerRef.current?.getBoundingClientRect();
-        if (!rect) return value;
+        if (!rect) return min;
         const x = clientX - rect.left;
         const clamped = Math.max(0, Math.min(rect.width, x));
         if (variant === "pips") {
-          if (pipCount <= 1) return value;
+          if (pipCount <= 1) return min;
           const index = Math.max(
             0,
             Math.min(pipCount - 1, Math.round((clamped / rect.width) * (pipCount - 1)))
@@ -1184,7 +1161,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
           return Math.max(min, Math.min(max, snapped));
         }
       },
-      [variant, pipSteps, pipCount, min, max, step, value]
+      [variant, pipSteps, pipCount, min, max, step]
     );
 
     const handlePointerDown = useCallback(
@@ -1271,34 +1248,27 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
     const isActive = isHovered || isFocused;
 
     return (
-      <div className="relative w-full">
+      <div
+        className="relative w-full"
+        onPointerEnter={() => { if (!disabled) setIsHovered(true); }}
+        onPointerLeave={() => {
+          if (!disabled) {
+            setIsHovered(false);
+            setHoverPreview(null);
+          }
+        }}
+        onMouseMove={(e) => {
+          if (disabled || dragging.current || handleDragging.current) return;
+          computeHoverPreview(e.clientX);
+        }}
+      >
         {/* Extended hit area — 8px beyond each edge */}
         <div
           className="absolute cursor-ew-resize"
           style={{ left: -8, right: -8, top: 0, bottom: 0 }}
-          onPointerDown={(e) => {
-            if (disabled) return;
-            handlePointerDown(e as unknown as React.PointerEvent<HTMLDivElement>);
-          }}
-          onPointerMove={(e) => {
-            if (disabled) return;
-            handlePointerMove(e as unknown as React.PointerEvent<HTMLDivElement>);
-          }}
-          onPointerUp={() => {
-            if (disabled) return;
-            handlePointerUp();
-          }}
-          onPointerEnter={() => { if (!disabled) setIsHovered(true); }}
-          onPointerLeave={() => {
-            if (!disabled) {
-              setIsHovered(false);
-              setHoverPreview(null);
-            }
-          }}
-          onMouseMove={(e) => {
-            if (disabled || dragging.current || handleDragging.current) return;
-            computeHoverPreview(e.clientX);
-          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         />
         {/* Hover value tooltip — outside overflow-hidden container */}
         <AnimatePresence>
@@ -1344,15 +1314,6 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerEnter={() => setIsHovered(true)}
-        onPointerLeave={() => {
-          setIsHovered(false);
-          setHoverPreview(null);
-        }}
-        onMouseMove={(e) => {
-          if (dragging.current || handleDragging.current) return;
-          computeHoverPreview(e.clientX);
-        }}
         {...props}
       >
         {/* Invisible Radix for keyboard nav + a11y */}
@@ -1377,32 +1338,17 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
           />
         </SliderPrimitive.Root>
 
-        {/* Hover preview — unfilled side */}
+        {/* Hover preview */}
         <motion.div
           className="absolute inset-y-0 pointer-events-none z-[3]"
           initial={false}
           animate={{
-            opacity: hoverPreview && !hoverPreview.onFilledSide && !isPressed ? 1 : 0,
+            opacity: hoverPreview && !isPressed ? 1 : 0,
           }}
           transition={{ opacity: { duration: 0.15 } }}
           style={{
-            left: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.left : 0,
-            width: hoverPreview && !hoverPreview.onFilledSide ? hoverPreview.width : 0,
-            backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",
-          }}
-        />
-
-        {/* Hover preview — filled side */}
-        <motion.div
-          className="absolute inset-y-0 pointer-events-none z-[3]"
-          initial={false}
-          animate={{
-            opacity: hoverPreview?.onFilledSide && !isPressed ? 1 : 0,
-          }}
-          transition={{ opacity: { duration: 0.15 } }}
-          style={{
-            left: hoverPreview?.onFilledSide ? hoverPreview.left : 0,
-            width: hoverPreview?.onFilledSide ? hoverPreview.width : 0,
+            left: hoverPreview ? hoverPreview.left : 0,
+            width: hoverPreview ? hoverPreview.width : 0,
             backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",
           }}
         />

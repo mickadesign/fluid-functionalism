@@ -24,14 +24,11 @@ const [range, setRange] = useState<[number, number]>([25, 75]);
 
 const stepsCode = `import { Slider } from "./components";
 
-const [value, setValue] = useState(50);
+const [stepped, setStepped] = useState(50);
+const [stepped10, setStepped10] = useState(50);
 
-<Slider
-  value={value}
-  onChange={setValue}
-  step={25}
-  showSteps
-/>`;
+<Slider value={stepped} onChange={setStepped} step={25} showSteps />
+<Slider value={stepped10} onChange={setStepped10} step={10} showSteps />`;
 
 const valueDisplayCode = `import { Slider } from "./components";
 
@@ -156,7 +153,7 @@ const sliderProps: PropDef[] = [
   {
     name: "valuePosition",
     type: '"left" | "right" | "top" | "bottom" | "tooltip"',
-    default: '"bottom"',
+    default: '"left"',
     description:
       'Position of the value label. "tooltip" shows above the thumb during interaction.',
   },
@@ -354,6 +351,20 @@ export default function SliderDoc() {
       {/* ------------------------------------------------------------------ */}
 
       <DocSection title="Comfortable">
+        <ComponentPreview code={comfortableBasicCode}>
+          <div className="w-72">
+            <SliderComfortable
+              label="Roundness"
+              value={roundness}
+              onChange={setRoundness}
+              min={0}
+              max={4}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Comfortable — Scrubber">
         <ComponentPreview code={comfortableScrubberCode}>
           <div className="w-72">
             <SliderComfortable
@@ -364,20 +375,6 @@ export default function SliderDoc() {
               min={0}
               max={100}
               formatValue={(v) => `${v}%`}
-            />
-          </div>
-        </ComponentPreview>
-      </DocSection>
-
-      <DocSection title="Comfortable — Stepper">
-        <ComponentPreview code={comfortableBasicCode}>
-          <div className="w-72">
-            <SliderComfortable
-              label="Roundness"
-              value={roundness}
-              onChange={setRoundness}
-              min={0}
-              max={4}
             />
           </div>
         </ComponentPreview>
