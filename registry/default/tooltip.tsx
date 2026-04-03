@@ -27,6 +27,8 @@ interface TooltipProps {
   className?: string;
   /** When true, forces the tooltip open. When false, forces it closed. When undefined, uses default hover/focus behavior. */
   forceOpen?: boolean;
+  /** Called when the tooltip's internal open state changes (before forceOpen is applied). */
+  onOpenChange?: (open: boolean) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +60,7 @@ function Tooltip({
   delayDuration = 200,
   className,
   forceOpen,
+  onOpenChange: onOpenChangeProp,
 }: TooltipProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = forceOpen !== undefined ? forceOpen : internalOpen;
@@ -76,7 +79,7 @@ function Tooltip({
 
   return (
     <TooltipPrimitive.Provider delayDuration={delayDuration}>
-      <TooltipPrimitive.Root open={open} onOpenChange={setInternalOpen}>
+      <TooltipPrimitive.Root open={open} onOpenChange={(v) => { setInternalOpen(v); onOpenChangeProp?.(v); }}>
         <TooltipPrimitive.Trigger asChild>
           {children}
         </TooltipPrimitive.Trigger>

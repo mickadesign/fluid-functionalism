@@ -34,7 +34,14 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
     // "idle" = normal tooltip behavior, "copied" = force open, "suppressed" = force closed
     const [tooltipState, setTooltipState] = useState<"idle" | "copied" | "suppressed">("idle");
     const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+    const tooltipVisibleRef = useRef(false);
+    const tooltipWasVisibleRef = useRef(false);
     const shape = useShape();
+
+    const handlePointerDown = useCallback(() => {
+      // Capture tooltip visibility before Radix closes it on pointer down
+      tooltipWasVisibleRef.current = tooltipVisibleRef.current;
+    }, []);
 
     const handleCopy = useCallback(async () => {
       if (disabled) return;
@@ -42,7 +49,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
         await navigator.clipboard.writeText(value);
         setCopied(true);
         setCopyCount((c) => c + 1);
-        setTooltipState("copied");
+        setTooltipState(tooltipWasVisibleRef.current ? "copied" : "suppressed");
         onCopy?.();
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
@@ -54,6 +61,10 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
       }
     }, [value, disabled, onCopy]);
 
+    const handleTooltipOpenChange = useCallback((open: boolean) => {
+      tooltipVisibleRef.current = open;
+    }, []);
+
     const handleMouseLeave = useCallback(() => {
       if (tooltipState === "suppressed") setTooltipState("idle");
     }, [tooltipState]);
@@ -63,11 +74,11 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
         {copied ? (
           <motion.span
             key={`check-${copyCount}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.08 }}
-            className="flex items-center justify-center text-foreground"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", duration: 0.16, bounce: 0.15 }}
+            className="flex items-center justify-center"
           >
             <svg
               width={14}
@@ -133,7 +144,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
       <span
         className={cn(
           "flex-1 min-w-0 text-left text-[13px] text-foreground font-mono py-2 select-none truncate",
-          align === "left" ? "pl-3" : "pl-0"
+          align === "left" ? "pl-1" : "pl-0"
         )}
         style={{ fontVariationSettings: fontWeights.normal }}
       >
@@ -152,6 +163,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
     const button = (
       <button
         type="button"
+        onPointerDown={handlePointerDown}
         onClick={handleCopy}
         disabled={disabled}
         aria-label={copied ? "Copied" : "Copy to clipboard"}
@@ -185,7 +197,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
           </span>
         )}
         {variant === "icon" ? (
-          <Tooltip content={tooltipState === "idle" ? "Copy to clipboard" : "Copied"} delayDuration={500} sideOffset={2} forceOpen={tooltipState === "copied" ? true : tooltipState === "suppressed" ? false : undefined}>
+          <Tooltip content={tooltipState === "idle" ? "Copy to clipboard" : "Copied"} delayDuration={500} sideOffset={2} forceOpen={tooltipState === "copied" ? true : tooltipState === "suppressed" ? false : undefined} onOpenChange={handleTooltipOpenChange}>
             {button}
           </Tooltip>
         ) : (
