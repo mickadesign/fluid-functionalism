@@ -31,6 +31,8 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
   ({ value, label, onCopy, disabled, variant = "icon", align = "right", className, ...props }, ref) => {
     const [copied, setCopied] = useState(false);
     const [copyCount, setCopyCount] = useState(0);
+    // "idle" = normal tooltip behavior, "copied" = force open, "suppressed" = force closed
+    const [tooltipState, setTooltipState] = useState<"idle" | "copied" | "suppressed">("idle");
     const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
     const shape = useShape();
 
@@ -40,13 +42,21 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
         await navigator.clipboard.writeText(value);
         setCopied(true);
         setCopyCount((c) => c + 1);
+        setTooltipState("copied");
         onCopy?.();
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+        timeoutRef.current = setTimeout(() => {
+          setCopied(false);
+          setTooltipState("suppressed");
+        }, 2000);
       } catch {
         // Clipboard API not available — silently fail
       }
     }, [value, disabled, onCopy]);
+
+    const handleMouseLeave = useCallback(() => {
+      if (tooltipState === "suppressed") setTooltipState("idle");
+    }, [tooltipState]);
 
     const iconSwitch = (
       <AnimatePresence mode="wait" initial={false}>
@@ -121,7 +131,10 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
 
     const valueElement = (
       <span
-        className="flex-1 min-w-0 text-left text-[13px] pl-3 py-2 select-none truncate"
+        className={cn(
+          "flex-1 min-w-0 text-left text-[13px] text-foreground font-mono py-2 select-none truncate",
+          align === "left" ? "pl-3" : "pl-0"
+        )}
         style={{ fontVariationSettings: fontWeights.normal }}
       >
         <mark className="bg-transparent text-foreground transition-colors duration-80 group-hover:bg-[#6B97FF]/20 group-hover:text-foreground">
@@ -156,22 +169,23 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col gap-1",
+          "flex flex-col gap-0.5",
           disabled && "opacity-50 pointer-events-none",
           className
         )}
+        onMouseLeave={handleMouseLeave}
         {...props}
       >
         {label && (
           <span
-            className="text-[13px] text-muted-foreground pl-3"
+            className={cn("text-[13px] text-muted-foreground", align === "left" ? "pl-3" : "pl-0")}
             style={{ fontVariationSettings: fontWeights.normal }}
           >
             {label}
           </span>
         )}
         {variant === "icon" ? (
-          <Tooltip content={copied ? "Copied" : "Copy to clipboard"} delayDuration={500} sideOffset={4}>
+          <Tooltip content={tooltipState === "idle" ? "Copy to clipboard" : "Copied"} delayDuration={500} sideOffset={2} forceOpen={tooltipState === "copied" ? true : tooltipState === "suppressed" ? false : undefined}>
             {button}
           </Tooltip>
         ) : (
