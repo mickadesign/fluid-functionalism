@@ -11,10 +11,10 @@ import {
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  SubtleTab,
-  SubtleTabItem,
-  SubtleTabPanel,
-} from "@/registry/default/subtle-tab";
+  TabsSubtle,
+  TabsSubtleItem,
+  TabsSubtlePanel,
+} from "@/registry/default/tabs-subtle";
 import {
   Table,
   TableHeader,
@@ -394,23 +394,23 @@ export default function TablePage() {
         Quotes
       </h1>
 
-      <SubtleTab
+      <TabsSubtle
         idPrefix="quotes"
         selectedIndex={selectedTab}
         onSelect={setSelectedTab}
       >
         {tabs.map((tab, i) => (
-          <SubtleTabItem
+          <TabsSubtleItem
             key={tab.label}
             index={i}
             icon={tab.icon}
             label={tab.label}
           />
         ))}
-      </SubtleTab>
+      </TabsSubtle>
 
       {tabs.map((tab, i) => (
-        <SubtleTabPanel
+        <TabsSubtlePanel
           key={tab.label}
           index={i}
           selectedIndex={selectedTab}
@@ -441,7 +441,7 @@ export default function TablePage() {
               ))}
             </TableBody>
           </Table>
-        </SubtleTabPanel>
+        </TabsSubtlePanel>
       ))}
     </div>
   );

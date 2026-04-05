@@ -242,9 +242,9 @@
       ]
     },
     {
-      "name": "subtle-tab",
+      "name": "tabs-subtle",
       "type": "registry:ui",
-      "title": "Subtle Tab",
+      "title": "Tabs Subtle",
       "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Supports icons and keyboard navigation.",
       "dependencies": ["framer-motion", "lucide-react"],
       "registryDependencies": [
@@ -255,7 +255,7 @@
       ],
       "files": [
         {
-          "path": "registry/default/subtle-tab.tsx",
+          "path": "registry/default/tabs-subtle.tsx",
           "type": "registry:ui"
         }
       ]
@@ -303,6 +303,26 @@
       "files": [
         {
           "path": "registry/default/slider.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "type": "registry:ui",
+      "title": "Tabs",
+      "description": "Segmented control tabs with sliding active indicator, proximity hover, and spring animations. Built on Radix UI Tabs.",
+      "dependencies": ["framer-motion", "@radix-ui/react-tabs", "lucide-react"],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/tabs.tsx",
           "type": "registry:ui"
         }
       ]

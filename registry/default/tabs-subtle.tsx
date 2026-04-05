@@ -19,7 +19,7 @@ import { springs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
-interface SubtleTabContextValue {
+interface TabsSubtleContextValue {
   registerTab: (index: number, element: HTMLElement | null) => void;
   hoveredIndex: number | null;
   selectedIndex: number;
@@ -27,22 +27,22 @@ interface SubtleTabContextValue {
   idPrefix: string;
 }
 
-const SubtleTabContext = createContext<SubtleTabContextValue | null>(null);
+const TabsSubtleContext = createContext<TabsSubtleContextValue | null>(null);
 
-function useSubtleTab() {
-  const ctx = useContext(SubtleTabContext);
-  if (!ctx) throw new Error("useSubtleTab must be used within a SubtleTab");
+function useTabsSubtle() {
+  const ctx = useContext(TabsSubtleContext);
+  if (!ctx) throw new Error("useTabsSubtle must be used within a TabsSubtle");
   return ctx;
 }
 
-interface SubtleTabProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> {
+interface TabsSubtleProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> {
   children: ReactNode;
   selectedIndex: number;
   onSelect: (index: number) => void;
   idPrefix?: string;
 }
 
-const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
+const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
   ({ children, selectedIndex, onSelect, idPrefix: idPrefixProp, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
@@ -86,7 +86,7 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
     return (
-      <SubtleTabContext.Provider
+      <TabsSubtleContext.Provider
         value={{ registerTab, hoveredIndex, selectedIndex, onSelect, idPrefix }}
       >
         <div
@@ -224,24 +224,24 @@ const SubtleTab = forwardRef<HTMLDivElement, SubtleTabProps>(
 
           {children}
         </div>
-      </SubtleTabContext.Provider>
+      </TabsSubtleContext.Provider>
     );
   }
 );
 
-SubtleTab.displayName = "SubtleTab";
+TabsSubtle.displayName = "TabsSubtle";
 
-interface SubtleTabItemProps extends HTMLAttributes<HTMLButtonElement> {
+interface TabsSubtleItemProps extends HTMLAttributes<HTMLButtonElement> {
   icon: LucideIcon;
   label: string;
   index: number;
 }
 
-const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
+const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
   ({ icon: Icon, label, index, className, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement>(null);
     const { registerTab, hoveredIndex, selectedIndex, onSelect, idPrefix } =
-      useSubtleTab();
+      useTabsSubtle();
 
     useEffect(() => {
       registerTab(index, internalRef.current);
@@ -306,16 +306,16 @@ const SubtleTabItem = forwardRef<HTMLButtonElement, SubtleTabItemProps>(
   }
 );
 
-SubtleTabItem.displayName = "SubtleTabItem";
+TabsSubtleItem.displayName = "TabsSubtleItem";
 
-interface SubtleTabPanelProps extends HTMLAttributes<HTMLDivElement> {
+interface TabsSubtlePanelProps extends HTMLAttributes<HTMLDivElement> {
   index: number;
   selectedIndex: number;
   idPrefix: string;
   children: ReactNode;
 }
 
-const SubtleTabPanel = forwardRef<HTMLDivElement, SubtleTabPanelProps>(
+const TabsSubtlePanel = forwardRef<HTMLDivElement, TabsSubtlePanelProps>(
   ({ index, selectedIndex, idPrefix, children, className, ...props }, ref) => {
     const isSelected = selectedIndex === index;
 
@@ -336,7 +336,7 @@ const SubtleTabPanel = forwardRef<HTMLDivElement, SubtleTabPanelProps>(
   }
 );
 
-SubtleTabPanel.displayName = "SubtleTabPanel";
+TabsSubtlePanel.displayName = "TabsSubtlePanel";
 
-export { SubtleTab, SubtleTabItem, SubtleTabPanel };
-export default SubtleTab;
+export { TabsSubtle, TabsSubtleItem, TabsSubtlePanel };
+export default TabsSubtle;

@@ -7,10 +7,10 @@ import {
 } from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import {
-  SubtleTab,
-  SubtleTabItem,
-  SubtleTabPanel,
-} from "@/registry/default/subtle-tab";
+  TabsSubtle,
+  TabsSubtleItem,
+  TabsSubtlePanel,
+} from "@/registry/default/tabs-subtle";
 import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
 import {
   CheckboxGroup,
@@ -102,19 +102,19 @@ function AppContent() {
           </div>
         </div>
         <div className="px-6 w-full">
-          <SubtleTab idPrefix="nav" selectedIndex={selectedTab} onSelect={setSelectedTab} aria-label="Navigation">
+          <TabsSubtle idPrefix="nav" selectedIndex={selectedTab} onSelect={setSelectedTab} aria-label="Navigation">
           {items.map((item, i) => (
-            <SubtleTabItem
+            <TabsSubtleItem
               key={item.label}
               index={i}
               icon={item.icon}
               label={item.label}
             />
           ))}
-          </SubtleTab>
+          </TabsSubtle>
         </div>
         {items.map((item, i) => (
-          <SubtleTabPanel
+          <TabsSubtlePanel
             key={item.label}
             index={i}
             selectedIndex={selectedTab}
@@ -123,7 +123,7 @@ function AppContent() {
             <span className="sr-only">
               {item.label} section
             </span>
-          </SubtleTabPanel>
+          </TabsSubtlePanel>
         ))}
       </div>
 

@@ -30,9 +30,10 @@ const CUSTOM_ITEMS = new Set([
   "radio-group",
   "select",
   "slider",
-  "subtle-tab",
+  "tabs-subtle",
   "switch",
   "table",
+  "tabs",
   "thinking-indicator",
   "tooltip",
 ]);

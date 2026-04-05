@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { SquareLibrary, Clock, Star, Users } from "lucide-react";
 import {
-  SubtleTab,
-  SubtleTabItem,
-  SubtleTabPanel,
-} from "@/registry/default/subtle-tab";
+  TabsSubtle,
+  TabsSubtleItem,
+  TabsSubtlePanel,
+} from "@/registry/default/tabs-subtle";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 
-const basicCode = `import { SubtleTab, SubtleTabItem, SubtleTabPanel } from "./components";
+const basicCode = `import { TabsSubtle, TabsSubtleItem, TabsSubtlePanel } from "./components";
 import { SquareLibrary, Clock, Star, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -23,36 +23,36 @@ const tabs = [
 ];
 const [selected, setSelected] = useState(0);
 
-<SubtleTab
+<TabsSubtle
   idPrefix="demo"
   selectedIndex={selected}
   onSelect={setSelected}
 >
   {tabs.map((tab, i) => (
-    <SubtleTabItem
+    <TabsSubtleItem
       key={tab.label}
       index={i}
       icon={tab.icon}
       label={tab.label}
     />
   ))}
-</SubtleTab>
+</TabsSubtle>
 {tabs.map((tab, i) => (
-  <SubtleTabPanel
+  <TabsSubtlePanel
     key={tab.label}
     index={i}
     selectedIndex={selected}
     idPrefix="demo"
   >
     <p>{tab.label} content</p>
-  </SubtleTabPanel>
+  </TabsSubtlePanel>
 ))}`;
 
 const tabProps: PropDef[] = [
   { name: "selectedIndex", type: "number", description: "Index of the currently selected tab." },
   { name: "onSelect", type: "(index: number) => void", description: "Called when a tab is selected." },
   { name: "idPrefix", type: "string", description: "Prefix for ARIA IDs linking tabs to panels." },
-  { name: "children", type: "ReactNode", description: "SubtleTabItem children." },
+  { name: "children", type: "ReactNode", description: "TabsSubtleItem children." },
 ];
 
 const tabItemProps: PropDef[] = [
@@ -64,11 +64,11 @@ const tabItemProps: PropDef[] = [
 const tabPanelProps: PropDef[] = [
   { name: "index", type: "number", description: "Index of this panel." },
   { name: "selectedIndex", type: "number", description: "Currently selected tab index." },
-  { name: "idPrefix", type: "string", description: "Must match the SubtleTab idPrefix." },
+  { name: "idPrefix", type: "string", description: "Must match the TabsSubtle idPrefix." },
   { name: "children", type: "ReactNode", description: "Panel content, only rendered when selected." },
 ];
 
-export default function SubtleTabDoc() {
+export default function TabsSubtleDoc() {
   const tabs = [
     { icon: SquareLibrary, label: "Teamspaces" },
     { icon: Clock, label: "Recents" },
@@ -79,29 +79,29 @@ export default function SubtleTabDoc() {
 
   return (
     <DocPage
-      title="SubtleTab"
-      slug="subtle-tab"
+      title="TabsSubtle"
+      slug="tabs-subtle"
       description="Tab navigation with smooth pill animations."
     >
       <DocSection title="Basic">
         <ComponentPreview code={basicCode}>
           <div className="flex flex-col gap-4 w-full">
-            <SubtleTab
+            <TabsSubtle
               idPrefix="demo"
               selectedIndex={selected}
               onSelect={setSelected}
             >
               {tabs.map((tab, i) => (
-                <SubtleTabItem
+                <TabsSubtleItem
                   key={tab.label}
                   index={i}
                   icon={tab.icon}
                   label={tab.label}
                 />
               ))}
-            </SubtleTab>
+            </TabsSubtle>
             {tabs.map((tab, i) => (
-              <SubtleTabPanel
+              <TabsSubtlePanel
                 key={tab.label}
                 index={i}
                 selectedIndex={selected}
@@ -110,21 +110,21 @@ export default function SubtleTabDoc() {
                 <p className="text-[13px] text-muted-foreground px-3">
                   {tab.label} content goes here.
                 </p>
-              </SubtleTabPanel>
+              </TabsSubtlePanel>
             ))}
           </div>
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="API Reference — SubtleTab">
+      <DocSection title="API Reference — TabsSubtle">
         <PropsTable props={tabProps} />
       </DocSection>
 
-      <DocSection title="API Reference — SubtleTabItem">
+      <DocSection title="API Reference — TabsSubtleItem">
         <PropsTable props={tabItemProps} />
       </DocSection>
 
-      <DocSection title="API Reference — SubtleTabPanel">
+      <DocSection title="API Reference — TabsSubtlePanel">
         <PropsTable props={tabPanelProps} />
       </DocSection>
     </DocPage>
