@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "icon-context",
+  "title": "Icon Context",
+  "description": "React context provider for runtime icon library switching with Lucide fallback.",
+  "dependencies": [
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "https://www.fluidfunctionalism.com/r/icon-map.json"
+  ],
+  "files": [
+    {
+      "path": "registry/default/lib/icon-context.tsx",
+      "content": "\"use client\";\n\nimport {\n  createContext,\n  useContext,\n  useState,\n  useCallback,\n  useEffect,\n  useMemo,\n  type ReactNode,\n} from \"react\";\n\nimport {\n  iconMap,\n  iconLibraryOrder,\n  type IconLibrary,\n  type IconName,\n  type IconComponent,\n} from \"@/lib/icon-map\";\n\n// Re-export types for consumers\nexport type { IconComponent, IconName, IconLibrary } from \"@/lib/icon-map\";\nexport { iconLibraryOrder, iconLibraryLabels } from \"@/lib/icon-map\";\n\ninterface IconContextValue {\n  iconLibrary: IconLibrary;\n  setIconLibrary: (lib: IconLibrary) => void;\n}\n\nconst IconContext = createContext<IconContextValue | null>(null);\n\n/**\n * Returns the current icon library and setter.\n * Throws if used outside IconProvider.\n */\nfunction useIconLibrary() {\n  const ctx = useContext(IconContext);\n  if (!ctx) throw new Error(\"useIconLibrary must be used within an IconProvider\");\n  return ctx;\n}\n\n/**\n * Returns a single icon component for the given name.\n * Falls back to Lucide if no provider is present.\n */\nfunction useIcon(name: IconName): IconComponent {\n  const ctx = useContext(IconContext);\n  if (!ctx) return iconMap.lucide[name];\n  return iconMap[ctx.iconLibrary][name];\n}\n\n/**\n * Returns the full icon map for the current library.\n * Falls back to Lucide if no provider is present.\n */\nfunction useIcons(): Record<IconName, IconComponent> {\n  const ctx = useContext(IconContext);\n  const lib = ctx?.iconLibrary ?? \"lucide\";\n  return useMemo(() => iconMap[lib], [lib]);\n}\n\nfunction IconProvider({\n  children,\n  defaultLibrary = \"lucide\",\n}: {\n  children: ReactNode;\n  defaultLibrary?: IconLibrary;\n}) {\n  const [iconLibrary, setIconLibraryState] = useState<IconLibrary>(defaultLibrary);\n\n  const setIconLibrary = useCallback((next: IconLibrary) => {\n    setIconLibraryState(next);\n  }, []);\n\n  // Global keyboard shortcut: I to cycle icon library\n  useEffect(() => {\n    const onKeyDown = (e: KeyboardEvent) => {\n      if (e.key !== \"i\" && e.key !== \"I\") return;\n      if (e.metaKey || e.ctrlKey || e.altKey) return;\n      const tag = (e.target as HTMLElement)?.tagName;\n      if (tag === \"INPUT\" || tag === \"TEXTAREA\" || (e.target as HTMLElement)?.isContentEditable) return;\n      e.preventDefault();\n      setIconLibraryState((prev) => {\n        const idx = iconLibraryOrder.indexOf(prev);\n        return iconLibraryOrder[(idx + 1) % iconLibraryOrder.length];\n      });\n    };\n    document.addEventListener(\"keydown\", onKeyDown);\n    return () => document.removeEventListener(\"keydown\", onKeyDown);\n  }, []);\n\n  return (\n    <IconContext.Provider value={{ iconLibrary, setIconLibrary }}>\n      {children}\n    </IconContext.Provider>\n  );\n}\n\nexport { IconProvider, useIcon, useIcons, useIconLibrary };\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}

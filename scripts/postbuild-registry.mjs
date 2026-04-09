@@ -37,7 +37,11 @@ const CUSTOM_ITEMS = new Set([
   "table",
   "tabs",
   "thinking-indicator",
+  "thinking-steps",
   "tooltip",
+  "accordion",
+  "badge",
+  "input-copy",
 ]);
 
 async function run() {

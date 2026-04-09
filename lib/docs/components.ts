@@ -22,5 +22,6 @@ export const componentList: ComponentEntry[] = [
   { slug: "tabs", name: "Tabs", description: "Segmented control with sliding indicator and proximity hover.", isNew: true },
   { slug: "tabs-subtle", name: "TabsSubtle", description: "Tab navigation with smooth pill animations." },
   { slug: "thinking-indicator", name: "ThinkingIndicator", description: "Animated status indicator with morphing SVG and cycling text." },
+  { slug: "thinking-steps", name: "ThinkingSteps", description: "Chain-of-thought display with sequential animation and collapsible steps.", isNew: true },
   { slug: "tooltip", name: "Tooltip", description: "Floating tooltip with spring-based animations and configurable placement." },
 ];

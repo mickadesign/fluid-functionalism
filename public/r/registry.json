@@ -56,6 +56,43 @@
       ]
     },
     {
+      "name": "icon-context",
+      "type": "registry:lib",
+      "title": "Icon Context",
+      "description": "React context provider for runtime icon library switching with Lucide fallback.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "https://www.fluidfunctionalism.com/r/icon-map.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lib/icon-context.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "icon-map",
+      "type": "registry:lib",
+      "title": "Icon Map",
+      "description": "Canonical icon name mapping across Lucide, Tabler, Phosphor, and HugeIcons.",
+      "dependencies": [
+        "lucide-react",
+        "@tabler/icons-react",
+        "@phosphor-icons/react",
+        "@hugeicons/react",
+        "@hugeicons/core-free-icons"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lib/icon-map.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "use-proximity-hover",
       "type": "registry:hook",
       "title": "useProximityHover",
@@ -82,6 +119,7 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
       ],
       "files": [
@@ -124,7 +162,8 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
-        "https://www.fluidfunctionalism.com/r/shape-context.json"
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json"
       ],
       "files": [
         {
@@ -234,11 +273,35 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/button.json"
       ],
       "files": [
         {
           "path": "registry/default/dialog.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "input-copy",
+      "type": "registry:ui",
+      "title": "Input Copy",
+      "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/input-copy.tsx",
           "type": "registry:ui"
         }
       ]
@@ -254,7 +317,8 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
-        "https://www.fluidfunctionalism.com/r/shape-context.json"
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json"
       ],
       "files": [
         {
@@ -264,9 +328,9 @@
       ]
     },
     {
-      "name": "subtle-tab",
+      "name": "tabs-subtle",
       "type": "registry:ui",
-      "title": "Subtle Tab",
+      "title": "Tabs Subtle",
       "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Supports icons and keyboard navigation.",
       "dependencies": [
         "framer-motion",
@@ -276,11 +340,12 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
       ],
       "files": [
         {
-          "path": "registry/default/subtle-tab.tsx",
+          "path": "registry/default/tabs-subtle.tsx",
           "type": "registry:ui"
         }
       ]
@@ -350,6 +415,31 @@
       ]
     },
     {
+      "name": "tabs",
+      "type": "registry:ui",
+      "title": "Tabs",
+      "description": "Segmented control tabs with sliding active indicator, proximity hover, and spring animations. Built on Radix UI Tabs.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-tabs",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/tabs.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "thinking-indicator",
       "type": "registry:ui",
       "title": "Thinking Indicator",
@@ -400,6 +490,7 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
       ],
       "files": [
@@ -427,6 +518,32 @@
       "files": [
         {
           "path": "registry/default/tooltip.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "thinking-steps",
+      "type": "registry:ui",
+      "title": "Thinking Steps",
+      "description": "Chain-of-thought reasoning display with collapsible steps, sequential animation, source badges, and image support.",
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/accordion.json",
+        "https://www.fluidfunctionalism.com/r/badge.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/thinking-steps.tsx",
           "type": "registry:ui"
         }
       ]

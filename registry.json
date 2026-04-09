@@ -423,6 +423,20 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "thinking-steps",
+      "type": "registry:ui",
+      "title": "Thinking Steps",
+      "description": "Chain-of-thought reasoning display with collapsible steps, sequential animation, source badges, and image support.",
+      "dependencies": ["framer-motion", "lucide-react"],
+      "registryDependencies": ["utils", "springs", "font-weight", "shape-context", "icon-context", "use-proximity-hover", "accordion", "badge"],
+      "files": [
+        {
+          "path": "registry/default/thinking-steps.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

@@ -35,6 +35,9 @@ import {
   Brain,
   Globe,
   User,
+  ImageIcon,
+  Link,
+  Check,
 } from "lucide-react";
 
 // ── Tabler ──────────────────────────────────────────────────
@@ -70,6 +73,9 @@ import {
   IconBrain,
   IconGlobe,
   IconUser,
+  IconPhoto,
+  IconLink,
+  IconCheck,
 } from "@tabler/icons-react";
 
 // ── Phosphor ────────────────────────────────────────────────
@@ -105,6 +111,9 @@ import {
   Brain as PhBrain,
   Globe as PhGlobe,
   User as PhUser,
+  Image as PhImage,
+  Link as PhLink,
+  Check as PhCheck,
 } from "@phosphor-icons/react";
 
 // ── HugeIcons ───────────────────────────────────────────────
@@ -139,6 +148,9 @@ import HiPaintbrush from "@hugeicons/core-free-icons/PaintBrush02Icon";
 import HiBrain from "@hugeicons/core-free-icons/BrainIcon";
 import HiGlobe from "@hugeicons/core-free-icons/GlobeIcon";
 import HiUser from "@hugeicons/core-free-icons/UserIcon";
+import HiImage from "@hugeicons/core-free-icons/Image01Icon";
+import HiLink from "@hugeicons/core-free-icons/Link01Icon";
+import HiCheck from "@hugeicons/core-free-icons/Tick02Icon";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -159,7 +171,8 @@ export type IconName =
   | "plus" | "arrow-right" | "search" | "loader"
   | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
-  | "globe" | "user";
+  | "globe" | "user"
+  | "image" | "link" | "check";
 
 export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons"];
 
@@ -238,6 +251,9 @@ const lucideMap: Record<IconName, IconComponent> = {
   "brain": Brain,
   "globe": Globe,
   "user": User,
+  "image": ImageIcon,
+  "link": Link,
+  "check": Check,
 };
 
 const tablerMap: Record<IconName, IconComponent> = {
@@ -272,6 +288,9 @@ const tablerMap: Record<IconName, IconComponent> = {
   "brain": tabler(IconBrain),
   "globe": tabler(IconGlobe),
   "user": tabler(IconUser),
+  "image": tabler(IconPhoto),
+  "link": tabler(IconLink),
+  "check": tabler(IconCheck),
 };
 
 const phosphorMap: Record<IconName, IconComponent> = {
@@ -306,6 +325,9 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "brain": phosphor(PhBrain),
   "globe": phosphor(PhGlobe),
   "user": phosphor(PhUser),
+  "image": phosphor(PhImage),
+  "link": phosphor(PhLink),
+  "check": phosphor(PhCheck),
 };
 
 const hugeiconsMap: Record<IconName, IconComponent> = {
@@ -340,6 +362,9 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "brain": hugeicons(HiBrain),
   "globe": hugeicons(HiGlobe),
   "user": hugeicons(HiUser),
+  "image": hugeicons(HiImage),
+  "link": hugeicons(HiLink),
+  "check": hugeicons(HiCheck),
 };
 
 // ── Unified Map ─────────────────────────────────────────────
