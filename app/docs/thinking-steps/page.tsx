@@ -45,9 +45,8 @@ useEffect(() => {
     setTimeout(() => setVisibleSteps(2), 1800),
     setTimeout(() => setVisibleSteps(3), 3200),
     setTimeout(() => setVisibleSteps(4), 4200),
-    // Mark all complete, then auto-collapse
+    // Mark all complete
     setTimeout(() => setVisibleSteps(TOTAL + 1), 5200),
-    setTimeout(() => setOpen(false), 6000),
   ];
   return () => timers.forEach(clearTimeout);
 }, []);
@@ -192,7 +191,6 @@ function StreamingDemo({ replayRef }: { replayRef: React.MutableRefObject<(() =>
       setTimeout(() => setVisibleSteps(4), 4200),
       // All complete, then auto-collapse
       setTimeout(() => setVisibleSteps(TOTAL + 1), 5200),
-      setTimeout(() => setOpen(false), 6000),
     ];
     return () => timers.forEach(clearTimeout);
   }, [key]);
@@ -270,7 +268,6 @@ function LongDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void
       setTimeout(() => setVisibleSteps(5), 5000),
       setTimeout(() => setVisibleSteps(6), 6200),
       setTimeout(() => setVisibleSteps(TOTAL + 1), 7200),
-      setTimeout(() => setOpen(false), 8000),
     ];
     return () => timers.forEach(clearTimeout);
   }, [key]);
@@ -372,7 +369,6 @@ function DotDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void)
       setTimeout(() => setVisibleSteps(4), 3400),
       setTimeout(() => setVisibleSteps(5), 4400),
       setTimeout(() => setVisibleSteps(TOTAL + 1), 5400),
-      setTimeout(() => setOpen(false), 6200),
     ];
     return () => timers.forEach(clearTimeout);
   }, [key]);
