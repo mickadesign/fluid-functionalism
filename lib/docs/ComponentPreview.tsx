@@ -40,20 +40,20 @@ export function ComponentPreview({ title, code, onReplay, children }: ComponentP
           <TabsSubtleItem index={0} label="Preview" />
           <TabsSubtleItem index={1} label="Code" />
         </TabsSubtle>
+        {onReplay && (
+          <button
+            onClick={onReplay}
+            className="ml-auto w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+            aria-label="Replay animation"
+          >
+            <ReplayIcon size={16} strokeWidth={1.5} />
+          </button>
+        )}
       </div>
 
       {/* Content */}
       {tab === 0 ? (
-        <div className="relative flex items-center justify-center px-8 py-12 min-h-[120px] bg-background">
-          {onReplay && (
-            <button
-              onClick={onReplay}
-              className="absolute top-2 right-2 z-20 w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
-              aria-label="Replay animation"
-            >
-              <ReplayIcon size={16} strokeWidth={1.5} />
-            </button>
-          )}
+        <div className="flex items-center justify-center px-8 py-12 min-h-[120px] bg-background">
           {children}
         </div>
       ) : (
