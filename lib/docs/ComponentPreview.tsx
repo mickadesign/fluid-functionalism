@@ -6,6 +6,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
 import { TabsSubtle, TabsSubtleItem } from "@/registry/default/tabs-subtle";
+import { Tooltip } from "@/registry/default/tooltip";
 
 interface ComponentPreviewProps {
   title?: string;
@@ -41,13 +42,15 @@ export function ComponentPreview({ title, code, onReplay, children }: ComponentP
           <TabsSubtleItem index={1} label="Code" />
         </TabsSubtle>
         {onReplay && (
-          <button
-            onClick={onReplay}
-            className="ml-auto w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
-            aria-label="Replay animation"
-          >
-            <ReplayIcon size={16} strokeWidth={1.5} />
-          </button>
+          <Tooltip content="Replay animation" side="top">
+            <button
+              onClick={onReplay}
+              className={`ml-auto w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]`}
+              aria-label="Replay animation"
+            >
+              <ReplayIcon size={16} strokeWidth={1.5} />
+            </button>
+          </Tooltip>
         )}
       </div>
 
