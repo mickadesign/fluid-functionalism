@@ -2,22 +2,17 @@
 
 import {
   useRef,
-  useEffect,
-  createContext,
-  useContext,
   forwardRef,
-  Children,
   type ReactNode,
   type HTMLAttributes,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
 import type { IconName } from "@/lib/icon-context";
 import { springs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
-import { useProximityHover, type ItemRect } from "@/hooks/use-proximity-hover";
 import {
   Accordion,
   AccordionItem,
@@ -26,15 +21,6 @@ import {
 } from "@/registry/default/accordion";
 import { Badge } from "@/registry/default/badge";
 import type { BadgeColor } from "@/registry/default/badge";
-
-// ─── Step List Context (proximity hover inside content) ─────────────────────
-
-interface StepListContextValue {
-  registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
-}
-
-const StepListContext = createContext<StepListContextValue | null>(null);
 
 // ─── ThinkingSteps (root) ───────────────────────────────────────────────────
 
@@ -107,52 +93,16 @@ interface ThinkingStepsContentProps extends HTMLAttributes<HTMLDivElement> {
 const ThinkingStepsContent = forwardRef<
   HTMLDivElement,
   ThinkingStepsContentProps
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 >(({ children, className, ...props }, ref) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const shape = useShape();
-  const { activeIndex, itemRects, sessionRef, handlers, registerItem, measureItems } =
-    useProximityHover(containerRef);
-
-  // Remeasure when children change (new steps streaming in)
-  const childCount = Children.count(children);
-  useEffect(() => {
-    measureItems();
-  }, [measureItems, childCount]);
-
-  const activeRect: ItemRect | null =
-    activeIndex !== null ? itemRects[activeIndex] ?? null : null;
-
   return (
     <AccordionContent>
-      <StepListContext.Provider value={{ registerItem, activeIndex }}>
-        <div
-          ref={(node) => {
-            (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-            if (typeof ref === "function") ref(node);
-            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
-          }}
-          className={cn("relative flex flex-col", className)}
-          onMouseEnter={handlers.onMouseEnter}
-          onMouseMove={handlers.onMouseMove}
-          onMouseLeave={handlers.onMouseLeave}
-        >
-          {/* Proximity hover background */}
-          <AnimatePresence>
-            {activeRect && (
-              <motion.div
-                key={sessionRef.current}
-                className={`absolute ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none z-0`}
-                initial={{ opacity: 0, ...activeRect }}
-                animate={{ opacity: 1, ...activeRect }}
-                exit={{ opacity: 0, transition: { duration: 0.06 } }}
-                transition={{ ...springs.fast, opacity: { duration: 0.08 } }}
-              />
-            )}
-          </AnimatePresence>
-          {children}
-        </div>
-      </StepListContext.Provider>
+      <div
+        ref={ref}
+        className={cn("flex flex-col", className)}
+        {...props}
+      >
+        {children}
+      </div>
     </AccordionContent>
   );
 });
@@ -187,19 +137,8 @@ function ThinkingStep({
   children,
   className,
 }: ThinkingStepProps) {
-    const internalRef = useRef<HTMLDivElement>(null);
-    const stepCtx = useContext(StepListContext);
     const Icon = useIcon(icon);
     const shape = useShape();
-
-    // Register with proximity hover (depend on registerItem, not full context)
-    const registerItem = stepCtx?.registerItem;
-    useEffect(() => {
-      if (registerItem) {
-        registerItem(index, internalRef.current);
-        return () => registerItem(index, null);
-      }
-    }, [index, registerItem]);
 
     if (status === "pending") return null;
 
@@ -220,11 +159,7 @@ function ThinkingStep({
           transition={{ duration: 0.24, delay: 0.08, ease: "easeOut" }}
         >
           {/* Content row — this is the proximity hover target */}
-          <div
-            ref={internalRef}
-            data-proximity-index={index}
-            className={cn("flex gap-2.5 px-2 py-1.5", shape.item)}
-          >
+          <div className={cn("flex gap-2.5 px-2 py-1.5", shape.item)}>
             {/* Icon column with continuous connector line */}
             <div className="flex flex-col items-center shrink-0 w-[14px]">
               <div className="pt-0.5">
