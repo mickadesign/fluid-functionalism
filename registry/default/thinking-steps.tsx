@@ -85,13 +85,15 @@ const ThinkingStepsHeader = forwardRef<
   ThinkingStepsHeaderProps
 >(({ children = "Thinking", className, ...props }, ref) => {
   return (
-    <AccordionTrigger
-      ref={ref}
-      className={cn("[&>span:first-child]:flex-none", className)}
-      {...props}
-    >
-      {children}
-    </AccordionTrigger>
+    <div className="w-fit">
+      <AccordionTrigger
+        ref={ref}
+        className={cn("[&>span:first-child]:flex-none w-auto", className)}
+        {...props}
+      >
+        {children}
+      </AccordionTrigger>
+    </div>
   );
 });
 ThinkingStepsHeader.displayName = "ThinkingStepsHeader";
