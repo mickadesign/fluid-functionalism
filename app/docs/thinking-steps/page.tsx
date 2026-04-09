@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, type ReactNode } from "react";
-import { RotateCcw } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ThinkingSteps,
   ThinkingStepsHeader,
@@ -169,26 +168,9 @@ const imageProps: PropDef[] = [
   { name: "delay", type: "number", default: "0", description: "Entrance animation delay in seconds." },
 ];
 
-// ─── Replay wrapper ─────────────────────────────────────────────────────────
-
-function DemoWithReplay({ onReplay, children }: { onReplay: () => void; children: ReactNode }) {
-  return (
-    <div className="relative w-full">
-      <button
-        onClick={onReplay}
-        className="absolute top-0 right-0 z-20 p-1.5 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
-        aria-label="Replay animation"
-      >
-        <RotateCcw size={14} strokeWidth={1.5} />
-      </button>
-      {children}
-    </div>
-  );
-}
-
 // ─── Interactive Demos ──────────────────────────────────────────────────────
 
-function StreamingDemo() {
+function StreamingDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
   const TOTAL = 4;
   const [visibleSteps, setVisibleSteps] = useState(0);
   const [open, setOpen] = useState(true);
@@ -199,6 +181,8 @@ function StreamingDemo() {
     setOpen(true);
     setKey((k) => k + 1);
   }, []);
+
+  replayRef.current = run;
 
   useEffect(() => {
     const timers = [
@@ -219,53 +203,51 @@ function StreamingDemo() {
   };
 
   return (
-    <DemoWithReplay onReplay={run}>
-      <ThinkingSteps key={key} open={open} onOpenChange={setOpen}>
-        <ThinkingStepsHeader />
-        <ThinkingStepsContent>
-          <ThinkingStep
-            index={0}
-            icon="search"
-            label="Searching for micka.design"
-            status={getStatus(0)}
-            isLast={visibleSteps <= 1}
-          >
-            {visibleSteps > 1 && (
-              <ThinkingStepSources>
-                <ThinkingStepSource delay={0.05}>x.com</ThinkingStepSource>
-                <ThinkingStepSource delay={0.1}>google.com</ThinkingStepSource>
-                <ThinkingStepSource delay={0.15}>github.com</ThinkingStepSource>
-              </ThinkingStepSources>
-            )}
-          </ThinkingStep>
-          <ThinkingStep
-            index={1}
-            icon="globe"
-            label="Reading sources"
-            status={getStatus(1)}
-            isLast={visibleSteps <= 2}
-          />
-          <ThinkingStep
-            index={2}
-            icon="brain"
-            label="Analyzing portfolio"
-            status={getStatus(2)}
-            isLast={visibleSteps <= 3}
-          />
-          <ThinkingStep
-            index={3}
-            icon="check"
-            label="Complete"
-            status={getStatus(3)}
-            isLast
-          />
-        </ThinkingStepsContent>
-      </ThinkingSteps>
-    </DemoWithReplay>
+    <ThinkingSteps key={key} open={open} onOpenChange={setOpen}>
+      <ThinkingStepsHeader />
+      <ThinkingStepsContent>
+        <ThinkingStep
+          index={0}
+          icon="search"
+          label="Searching for micka.design"
+          status={getStatus(0)}
+          isLast={visibleSteps <= 1}
+        >
+          {visibleSteps > 1 && (
+            <ThinkingStepSources>
+              <ThinkingStepSource delay={0.05}>x.com</ThinkingStepSource>
+              <ThinkingStepSource delay={0.1}>google.com</ThinkingStepSource>
+              <ThinkingStepSource delay={0.15}>github.com</ThinkingStepSource>
+            </ThinkingStepSources>
+          )}
+        </ThinkingStep>
+        <ThinkingStep
+          index={1}
+          icon="globe"
+          label="Reading sources"
+          status={getStatus(1)}
+          isLast={visibleSteps <= 2}
+        />
+        <ThinkingStep
+          index={2}
+          icon="brain"
+          label="Analyzing portfolio"
+          status={getStatus(2)}
+          isLast={visibleSteps <= 3}
+        />
+        <ThinkingStep
+          index={3}
+          icon="check"
+          label="Complete"
+          status={getStatus(3)}
+          isLast
+        />
+      </ThinkingStepsContent>
+    </ThinkingSteps>
   );
 }
 
-function LongDemo() {
+function LongDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
   const TOTAL = 6;
   const [visibleSteps, setVisibleSteps] = useState(0);
   const [open, setOpen] = useState(true);
@@ -276,6 +258,8 @@ function LongDemo() {
     setOpen(true);
     setKey((k) => k + 1);
   }, []);
+
+  replayRef.current = run;
 
   useEffect(() => {
     const timers = [
@@ -297,78 +281,76 @@ function LongDemo() {
   };
 
   return (
-    <DemoWithReplay onReplay={run}>
-      <ThinkingSteps key={key} open={open} onOpenChange={setOpen}>
-        <ThinkingStepsHeader>Research Agent</ThinkingStepsHeader>
-        <ThinkingStepsContent>
-          <ThinkingStep
-            index={0}
-            icon="search"
-            label="Searching for profiles"
-            status={getStatus(0)}
-            isLast={visibleSteps <= 1}
-          >
-            {visibleSteps > 1 && (
-              <ThinkingStepSources>
-                <ThinkingStepSource delay={0.05}>x.com</ThinkingStepSource>
-                <ThinkingStepSource delay={0.1}>instagram.com</ThinkingStepSource>
-                <ThinkingStepSource delay={0.15}>github.com</ThinkingStepSource>
-              </ThinkingStepSources>
-            )}
-          </ThinkingStep>
-          <ThinkingStep
-            index={1}
-            icon="image"
-            label="Found profile photo"
-            description="micka.design profile from x.com"
-            status={getStatus(1)}
-            isLast={visibleSteps <= 2}
-          />
-          <ThinkingStep
-            index={2}
-            icon="globe"
-            label="Reading portfolio"
-            description="Found 12 projects across design and engineering."
-            status={getStatus(2)}
-            isLast={visibleSteps <= 3}
-          />
-          <ThinkingStep
-            index={3}
-            icon="search"
-            label="Searching for recent work"
-            status={getStatus(3)}
-            isLast={visibleSteps <= 4}
-          >
-            {visibleSteps > 4 && (
-              <ThinkingStepSources>
-                <ThinkingStepSource delay={0.05}>figma.com</ThinkingStepSource>
-                <ThinkingStepSource delay={0.1}>behance.net</ThinkingStepSource>
-                <ThinkingStepSource delay={0.15}>google.com</ThinkingStepSource>
-              </ThinkingStepSources>
-            )}
-          </ThinkingStep>
-          <ThinkingStep
-            index={4}
-            icon="brain"
-            label="Analyzing results"
-            description="Compiling findings into a summary."
-            status={getStatus(4)}
-            isLast={visibleSteps <= 5}
-          />
-          <ThinkingStep
-            index={5}
-            icon="check"
-            label="Research complete"
-            status={getStatus(5)}
-            isLast
-          />
-        </ThinkingStepsContent>
-      </ThinkingSteps>
-    </DemoWithReplay>
+    <ThinkingSteps key={key} open={open} onOpenChange={setOpen}>
+      <ThinkingStepsHeader>Research Agent</ThinkingStepsHeader>
+      <ThinkingStepsContent>
+        <ThinkingStep
+          index={0}
+          icon="search"
+          label="Searching for profiles"
+          status={getStatus(0)}
+          isLast={visibleSteps <= 1}
+        >
+          {visibleSteps > 1 && (
+            <ThinkingStepSources>
+              <ThinkingStepSource delay={0.05}>x.com</ThinkingStepSource>
+              <ThinkingStepSource delay={0.1}>instagram.com</ThinkingStepSource>
+              <ThinkingStepSource delay={0.15}>github.com</ThinkingStepSource>
+            </ThinkingStepSources>
+          )}
+        </ThinkingStep>
+        <ThinkingStep
+          index={1}
+          icon="image"
+          label="Found profile photo"
+          description="micka.design profile from x.com"
+          status={getStatus(1)}
+          isLast={visibleSteps <= 2}
+        />
+        <ThinkingStep
+          index={2}
+          icon="globe"
+          label="Reading portfolio"
+          description="Found 12 projects across design and engineering."
+          status={getStatus(2)}
+          isLast={visibleSteps <= 3}
+        />
+        <ThinkingStep
+          index={3}
+          icon="search"
+          label="Searching for recent work"
+          status={getStatus(3)}
+          isLast={visibleSteps <= 4}
+        >
+          {visibleSteps > 4 && (
+            <ThinkingStepSources>
+              <ThinkingStepSource delay={0.05}>figma.com</ThinkingStepSource>
+              <ThinkingStepSource delay={0.1}>behance.net</ThinkingStepSource>
+              <ThinkingStepSource delay={0.15}>google.com</ThinkingStepSource>
+            </ThinkingStepSources>
+          )}
+        </ThinkingStep>
+        <ThinkingStep
+          index={4}
+          icon="brain"
+          label="Analyzing results"
+          description="Compiling findings into a summary."
+          status={getStatus(4)}
+          isLast={visibleSteps <= 5}
+        />
+        <ThinkingStep
+          index={5}
+          icon="check"
+          label="Research complete"
+          status={getStatus(5)}
+          isLast
+        />
+      </ThinkingStepsContent>
+    </ThinkingSteps>
   );
 }
 
-function DotDemo() {
+function DotDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
   const TOTAL = 5;
   const [visibleSteps, setVisibleSteps] = useState(0);
   const [open, setOpen] = useState(true);
@@ -379,6 +361,8 @@ function DotDemo() {
     setOpen(true);
     setKey((k) => k + 1);
   }, []);
+
+  replayRef.current = run;
 
   useEffect(() => {
     const timers = [
@@ -399,31 +383,33 @@ function DotDemo() {
   };
 
   return (
-    <DemoWithReplay onReplay={run}>
-      <ThinkingSteps key={key} open={open} onOpenChange={setOpen}>
-        <ThinkingStepsHeader />
-        <ThinkingStepsContent>
-          <ThinkingStep index={0} showIcon={false} label="Parsed the query" status={getStatus(0)} isLast={visibleSteps <= 1} />
-          <ThinkingStep index={1} showIcon={false} label="Retrieved context" status={getStatus(1)} isLast={visibleSteps <= 2} />
-          <ThinkingStep index={2} showIcon={false} label="Searching for references" status={getStatus(2)} isLast={visibleSteps <= 3}>
-            {visibleSteps > 3 && (
-              <ThinkingStepSources>
-                <ThinkingStepSource delay={0.05}>docs.python.org</ThinkingStepSource>
-                <ThinkingStepSource delay={0.1}>stackoverflow.com</ThinkingStepSource>
-              </ThinkingStepSources>
-            )}
-          </ThinkingStep>
-          <ThinkingStep index={3} showIcon={false} label="Drafting response" status={getStatus(3)} isLast={visibleSteps <= 4} />
-          <ThinkingStep index={4} showIcon={false} label="Done" status={getStatus(4)} isLast />
-        </ThinkingStepsContent>
-      </ThinkingSteps>
-    </DemoWithReplay>
+    <ThinkingSteps key={key} open={open} onOpenChange={setOpen}>
+      <ThinkingStepsHeader />
+      <ThinkingStepsContent>
+        <ThinkingStep index={0} showIcon={false} label="Parsed the query" status={getStatus(0)} isLast={visibleSteps <= 1} />
+        <ThinkingStep index={1} showIcon={false} label="Retrieved context" status={getStatus(1)} isLast={visibleSteps <= 2} />
+        <ThinkingStep index={2} showIcon={false} label="Searching for references" status={getStatus(2)} isLast={visibleSteps <= 3}>
+          {visibleSteps > 3 && (
+            <ThinkingStepSources>
+              <ThinkingStepSource delay={0.05}>docs.python.org</ThinkingStepSource>
+              <ThinkingStepSource delay={0.1}>stackoverflow.com</ThinkingStepSource>
+            </ThinkingStepSources>
+          )}
+        </ThinkingStep>
+        <ThinkingStep index={3} showIcon={false} label="Drafting response" status={getStatus(3)} isLast={visibleSteps <= 4} />
+        <ThinkingStep index={4} showIcon={false} label="Done" status={getStatus(4)} isLast />
+      </ThinkingStepsContent>
+    </ThinkingSteps>
   );
 }
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function ThinkingStepsDoc() {
+  const streamingReplay = useRef<(() => void) | null>(null);
+  const dotReplay = useRef<(() => void) | null>(null);
+  const longReplay = useRef<(() => void) | null>(null);
+
   return (
     <DocPage
       title="ThinkingSteps"
@@ -452,8 +438,8 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           Steps appear sequentially as they stream in. Active steps show a shimmer effect.
         </p>
-        <ComponentPreview code={streamingCode}>
-          <StreamingDemo />
+        <ComponentPreview code={streamingCode} onReplay={() => streamingReplay.current?.()}>
+          <StreamingDemo replayRef={streamingReplay} />
         </ComponentPreview>
       </DocSection>
 
@@ -461,8 +447,8 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           Set showIcon to false to replace icons with minimal dots.
         </p>
-        <ComponentPreview code={dotsCode}>
-          <DotDemo />
+        <ComponentPreview code={dotsCode} onReplay={() => dotReplay.current?.()}>
+          <DotDemo replayRef={dotReplay} />
         </ComponentPreview>
       </DocSection>
 
@@ -470,8 +456,8 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           A 6-step research agent with sources, descriptions, and sequential animation.
         </p>
-        <ComponentPreview code={longCode}>
-          <LongDemo />
+        <ComponentPreview code={longCode} onReplay={() => longReplay.current?.()}>
+          <LongDemo replayRef={longReplay} />
         </ComponentPreview>
       </DocSection>
 

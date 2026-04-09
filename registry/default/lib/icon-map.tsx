@@ -38,6 +38,7 @@ import {
   ImageIcon,
   Link,
   Check,
+  RotateCcw,
 } from "lucide-react";
 
 // ── Tabler ──────────────────────────────────────────────────
@@ -76,6 +77,7 @@ import {
   IconPhoto,
   IconLink,
   IconCheck,
+  IconRotate2,
 } from "@tabler/icons-react";
 
 // ── Phosphor ────────────────────────────────────────────────
@@ -114,6 +116,7 @@ import {
   Image as PhImage,
   Link as PhLink,
   Check as PhCheck,
+  ArrowCounterClockwise as PhRotateCcw,
 } from "@phosphor-icons/react";
 
 // ── HugeIcons ───────────────────────────────────────────────
@@ -151,6 +154,7 @@ import HiUser from "@hugeicons/core-free-icons/UserIcon";
 import HiImage from "@hugeicons/core-free-icons/Image01Icon";
 import HiLink from "@hugeicons/core-free-icons/Link01Icon";
 import HiCheck from "@hugeicons/core-free-icons/Tick02Icon";
+import HiRotateCcw from "@hugeicons/core-free-icons/ArrowReloadHorizontalIcon";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -172,7 +176,7 @@ export type IconName =
   | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
   | "globe" | "user"
-  | "image" | "link" | "check";
+  | "image" | "link" | "check" | "rotate-ccw";
 
 export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons"];
 
@@ -254,6 +258,7 @@ const lucideMap: Record<IconName, IconComponent> = {
   "image": ImageIcon,
   "link": Link,
   "check": Check,
+  "rotate-ccw": RotateCcw,
 };
 
 const tablerMap: Record<IconName, IconComponent> = {
@@ -291,6 +296,7 @@ const tablerMap: Record<IconName, IconComponent> = {
   "image": tabler(IconPhoto),
   "link": tabler(IconLink),
   "check": tabler(IconCheck),
+  "rotate-ccw": tabler(IconRotate2),
 };
 
 const phosphorMap: Record<IconName, IconComponent> = {
@@ -328,6 +334,7 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "image": phosphor(PhImage),
   "link": phosphor(PhLink),
   "check": phosphor(PhCheck),
+  "rotate-ccw": phosphor(PhRotateCcw),
 };
 
 const hugeiconsMap: Record<IconName, IconComponent> = {
@@ -365,6 +372,7 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "image": hugeicons(HiImage),
   "link": hugeicons(HiLink),
   "check": hugeicons(HiCheck),
+  "rotate-ccw": hugeicons(HiRotateCcw),
 };
 
 // ── Unified Map ─────────────────────────────────────────────
