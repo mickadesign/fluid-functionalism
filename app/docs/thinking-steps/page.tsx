@@ -15,6 +15,7 @@ import {
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useIcon } from "@/registry/default/lib/icon-context";
 
 // ─── Code Snippets ──────────────────────────────────────────────────────────
 
@@ -63,7 +64,6 @@ useEffect(() => {
     setTimeout(() => setVisibleSteps(2), 1800),
     setTimeout(() => setVisibleSteps(3), 3200),
     setTimeout(() => setVisibleSteps(4), 4200),
-    // Mark all complete
     setTimeout(() => setVisibleSteps(TOTAL + 1), 5200),
   ];
   return () => timers.forEach(clearTimeout);
@@ -266,36 +266,92 @@ const imageProps: PropDef[] = [
   { name: "delay", type: "number", default: "0", description: "Entrance animation delay in seconds." },
 ];
 
+// ─── Sequenced timer hook with pause/resume ─────────────────────────────────
+
+/**
+ * Fires callbacks at scheduled times, with pause/resume support.
+ * `delays` is an array of absolute ms from start (e.g. [400, 1800, 3200]).
+ * Returns the current "step" index (how many have fired).
+ */
+function useSequencedSteps(
+  delays: number[],
+  playing: boolean,
+  onFinished?: () => void,
+) {
+  const [fired, setFired] = useState(0);
+  const elapsedRef = useRef(0); // total elapsed ms when paused
+  const startRef = useRef(0);   // Date.now() when last resumed
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const total = delays.length;
+
+  // Detect completion in a separate effect to avoid setState-during-render
+  useEffect(() => {
+    if (fired >= total && total > 0) {
+      onFinished?.();
+    }
+  }, [fired, total, onFinished]);
+
+  // Schedule next unfired step
+  useEffect(() => {
+    if (!playing || fired >= total) return;
+
+    const now = Date.now();
+    startRef.current = now;
+    const target = delays[fired];
+    const wait = Math.max(0, target - elapsedRef.current);
+
+    timerRef.current = setTimeout(() => {
+      elapsedRef.current = target;
+      setFired((f) => f + 1);
+    }, wait);
+
+    return () => {
+      // On pause or unmount: accumulate elapsed time
+      clearTimeout(timerRef.current);
+      elapsedRef.current += Date.now() - startRef.current;
+    };
+  }, [playing, fired, delays, total, onFinished]);
+
+  // Reset function
+  const reset = useCallback(() => {
+    clearTimeout(timerRef.current);
+    elapsedRef.current = 0;
+    setFired(0);
+  }, []);
+
+  return { fired, reset };
+}
+
 // ─── Interactive Demos ──────────────────────────────────────────────────────
 
-function StreamingDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
-  const TOTAL = 4;
-  const [visibleSteps, setVisibleSteps] = useState(0);
+interface DemoProps {
+  playing: boolean;
+  onFinished: () => void;
+  onResetRef: React.MutableRefObject<(() => void) | null>;
+}
+
+function StreamingDemo({ playing, onFinished, onResetRef }: DemoProps) {
+  const TOTAL = 5; // 4 steps + 1 completion marker
+  const delays = [400, 1800, 3200, 4200, 5200];
+  const { fired, reset } = useSequencedSteps(delays, playing, onFinished);
   const [open, setOpen] = useState(true);
   const [key, setKey] = useState(0);
 
-  const run = useCallback(() => {
-    setVisibleSteps(0);
-    setOpen(true);
-    setKey((k) => k + 1);
-  }, []);
-
-  replayRef.current = run;
-
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setVisibleSteps(1), 400),
-      setTimeout(() => setVisibleSteps(2), 1800),
-      setTimeout(() => setVisibleSteps(3), 3200),
-      setTimeout(() => setVisibleSteps(4), 4200),
-      setTimeout(() => setVisibleSteps(TOTAL + 1), 5200),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [key]);
+    onResetRef.current = () => {
+      reset();
+      setOpen(true);
+      setKey((k) => k + 1);
+    };
+  }, [reset, onResetRef]);
+
+  const visibleSteps = fired;
+  const allComplete = fired >= TOTAL;
 
   const getStatus = (i: number): StepStatus => {
-    if (visibleSteps > TOTAL) return "complete";
-    return i < visibleSteps - 1 ? "complete" : i === visibleSteps - 1 ? "active" : "pending";
+    if (allComplete) return "complete";
+    return i < fired - 1 ? "complete" : i === fired - 1 ? "active" : "pending";
   };
 
   return (
@@ -309,7 +365,7 @@ function StreamingDemo({ replayRef }: { replayRef: React.MutableRefObject<(() =>
           status={getStatus(0)}
           isLast={visibleSteps <= 1}
         >
-          {visibleSteps > 1 && (
+          {fired > 1 && (
             <ThinkingStepSources>
               <ThinkingStepSource delay={0.05}>x.com</ThinkingStepSource>
               <ThinkingStepSource delay={0.1}>google.com</ThinkingStepSource>
@@ -381,36 +437,25 @@ function StreamingDescription({ text, active, done }: { text: string; active: bo
   );
 }
 
-function StreamingTextDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
-  const TOTAL = 6;
-  const [visibleSteps, setVisibleSteps] = useState(0);
+function StreamingTextDemo({ playing, onFinished, onResetRef }: DemoProps) {
+  const TOTAL = 7; // 6 step appearances + 1 completion
+  const delays = [400, 6000, 12000, 18000, 24000, 30000, 32000];
+  const { fired, reset } = useSequencedSteps(delays, playing, onFinished);
   const [open, setOpen] = useState(true);
   const [key, setKey] = useState(0);
 
-  const run = useCallback(() => {
-    setVisibleSteps(0);
+  onResetRef.current = () => {
+    reset();
     setOpen(true);
     setKey((k) => k + 1);
-  }, []);
+  };
 
-  replayRef.current = run;
-
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setVisibleSteps(1), 400),
-      setTimeout(() => setVisibleSteps(2), 6000),
-      setTimeout(() => setVisibleSteps(3), 12000),
-      setTimeout(() => setVisibleSteps(4), 18000),
-      setTimeout(() => setVisibleSteps(5), 24000),
-      setTimeout(() => setVisibleSteps(6), 30000),
-      setTimeout(() => setVisibleSteps(TOTAL + 1), 32000),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [key]);
+  const visibleSteps = fired;
+  const allComplete = fired >= TOTAL;
 
   const getStatus = (i: number): StepStatus => {
-    if (visibleSteps > TOTAL) return "complete";
-    return i < visibleSteps - 1 ? "complete" : i === visibleSteps - 1 ? "active" : "pending";
+    if (allComplete) return "complete";
+    return i < fired - 1 ? "complete" : i === fired - 1 ? "active" : "pending";
   };
 
   const labels = ["Loading dataset", "Validating schema", "Transforming records", "Running quality checks", "Writing output"];
@@ -434,34 +479,25 @@ function StreamingTextDemo({ replayRef }: { replayRef: React.MutableRefObject<((
   );
 }
 
-function WithImagesDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
-  const TOTAL = 4;
-  const [visibleSteps, setVisibleSteps] = useState(0);
+function WithImagesDemo({ playing, onFinished, onResetRef }: DemoProps) {
+  const TOTAL = 5;
+  const delays = [400, 1800, 3400, 5000, 6000];
+  const { fired, reset } = useSequencedSteps(delays, playing, onFinished);
   const [open, setOpen] = useState(true);
   const [key, setKey] = useState(0);
 
-  const run = useCallback(() => {
-    setVisibleSteps(0);
+  onResetRef.current = () => {
+    reset();
     setOpen(true);
     setKey((k) => k + 1);
-  }, []);
+  };
 
-  replayRef.current = run;
-
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setVisibleSteps(1), 400),
-      setTimeout(() => setVisibleSteps(2), 1800),
-      setTimeout(() => setVisibleSteps(3), 3400),
-      setTimeout(() => setVisibleSteps(4), 5000),
-      setTimeout(() => setVisibleSteps(TOTAL + 1), 6000),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [key]);
+  const visibleSteps = fired;
+  const allComplete = fired >= TOTAL;
 
   const getStatus = (i: number): StepStatus => {
-    if (visibleSteps > TOTAL) return "complete";
-    return i < visibleSteps - 1 ? "complete" : i === visibleSteps - 1 ? "active" : "pending";
+    if (allComplete) return "complete";
+    return i < fired - 1 ? "complete" : i === fired - 1 ? "active" : "pending";
   };
 
   return (
@@ -482,7 +518,7 @@ function WithImagesDemo({ replayRef }: { replayRef: React.MutableRefObject<(() =
           status={getStatus(1)}
           isLast={visibleSteps <= 2}
         >
-          {visibleSteps > 2 && (
+          {fired > 2 && (
             <ThinkingStepImage src="/og.png" caption="Homepage screenshot" />
           )}
         </ThinkingStep>
@@ -506,36 +542,25 @@ function WithImagesDemo({ replayRef }: { replayRef: React.MutableRefObject<(() =
   );
 }
 
-function FullDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void) | null> }) {
-  const TOTAL = 6;
-  const [visibleSteps, setVisibleSteps] = useState(0);
+function FullDemo({ playing, onFinished, onResetRef }: DemoProps) {
+  const TOTAL = 7;
+  const delays = [400, 1600, 2800, 3800, 5000, 6200, 7200];
+  const { fired, reset } = useSequencedSteps(delays, playing, onFinished);
   const [open, setOpen] = useState(true);
   const [key, setKey] = useState(0);
 
-  const run = useCallback(() => {
-    setVisibleSteps(0);
+  onResetRef.current = () => {
+    reset();
     setOpen(true);
     setKey((k) => k + 1);
-  }, []);
+  };
 
-  replayRef.current = run;
-
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setVisibleSteps(1), 400),
-      setTimeout(() => setVisibleSteps(2), 1600),
-      setTimeout(() => setVisibleSteps(3), 2800),
-      setTimeout(() => setVisibleSteps(4), 3800),
-      setTimeout(() => setVisibleSteps(5), 5000),
-      setTimeout(() => setVisibleSteps(6), 6200),
-      setTimeout(() => setVisibleSteps(TOTAL + 1), 7200),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [key]);
+  const visibleSteps = fired;
+  const allComplete = fired >= TOTAL;
 
   const getStatus = (i: number): StepStatus => {
-    if (visibleSteps > TOTAL) return "complete";
-    return i < visibleSteps - 1 ? "complete" : i === visibleSteps - 1 ? "active" : "pending";
+    if (allComplete) return "complete";
+    return i < fired - 1 ? "complete" : i === fired - 1 ? "active" : "pending";
   };
 
   return (
@@ -549,7 +574,7 @@ function FullDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void
           status={getStatus(0)}
           isLast={visibleSteps <= 1}
         >
-          {visibleSteps > 1 && (
+          {fired > 1 && (
             <ThinkingStepSources>
               <ThinkingStepSource delay={0.05}>x.com</ThinkingStepSource>
               <ThinkingStepSource delay={0.1}>instagram.com</ThinkingStepSource>
@@ -565,7 +590,7 @@ function FullDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void
           status={getStatus(1)}
           isLast={visibleSteps <= 2}
         >
-          {visibleSteps > 2 && (
+          {fired > 2 && (
             <ThinkingStepImage src="/og.png" caption="Profile card" />
           )}
         </ThinkingStep>
@@ -576,7 +601,7 @@ function FullDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void
           status={getStatus(2)}
           isLast={visibleSteps <= 3}
         >
-          {visibleSteps > 3 && (
+          {fired > 3 && (
             <ThinkingStepDetails
               summary="Explored 4 pages"
               details={[
@@ -595,7 +620,7 @@ function FullDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void
           status={getStatus(3)}
           isLast={visibleSteps <= 4}
         >
-          {visibleSteps > 4 && (
+          {fired > 4 && (
             <ThinkingStepSources>
               <ThinkingStepSource delay={0.05}>figma.com</ThinkingStepSource>
               <ThinkingStepSource delay={0.1}>behance.net</ThinkingStepSource>
@@ -623,14 +648,106 @@ function FullDemo({ replayRef }: { replayRef: React.MutableRefObject<(() => void
   );
 }
 
+// ─── Animated preview wrapper ───────────────────────────────────────────────
+
+type PlaybackState = "playing" | "paused" | "finished";
+
+function AnimatedPreview({
+  code,
+  children,
+}: {
+  code: string;
+  children: (props: DemoProps) => ReactNode;
+}) {
+  const [playback, setPlayback] = useState<PlaybackState>("paused");
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const manualPauseRef = useRef(false);
+  const resetRef = useRef<(() => void) | null>(null);
+
+  // IntersectionObserver for viewport-driven playback
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio >= 0.5) {
+          if (!manualPauseRef.current) {
+            setPlayback((prev) => (prev === "finished" ? "finished" : "playing"));
+          }
+        } else if (entry.intersectionRatio < 0.1) {
+          manualPauseRef.current = false;
+          setPlayback((prev) => (prev === "finished" ? "finished" : "paused"));
+        }
+      },
+      { threshold: [0.1, 0.5] }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleFinished = useCallback(() => {
+    setPlayback("finished");
+  }, []);
+
+  const handleButtonClick = useCallback(() => {
+    setPlayback((prev) => {
+      if (prev === "playing") {
+        manualPauseRef.current = true;
+        return "paused";
+      }
+      if (prev === "paused") {
+        manualPauseRef.current = false;
+        return "playing";
+      }
+      // finished → replay
+      manualPauseRef.current = false;
+      resetRef.current?.();
+      return "playing";
+    });
+  }, []);
+
+  const playing = playback === "playing";
+
+  // Resolve icons via the icon system so they follow the selected library
+  const PauseIcon = useIcon("pause");
+  const PlayIcon = useIcon("play");
+  const RotateIcon = useIcon("rotate-ccw");
+
+  // Button icon/tooltip based on state
+  let buttonIcon: ReactNode;
+  let buttonTooltip: string;
+  if (playback === "playing") {
+    buttonIcon = <PauseIcon size={16} strokeWidth={1.5} />;
+    buttonTooltip = "Pause";
+  } else if (playback === "paused") {
+    buttonIcon = <PlayIcon size={16} strokeWidth={1.5} />;
+    buttonTooltip = "Play";
+  } else {
+    buttonIcon = <RotateIcon size={16} strokeWidth={1.5} />;
+    buttonTooltip = "Replay";
+  }
+
+  return (
+    <div ref={wrapperRef}>
+      <ComponentPreview
+        code={code}
+        playbackButton={{
+          icon: buttonIcon,
+          tooltip: buttonTooltip,
+          onClick: handleButtonClick,
+        }}
+      >
+        {children({ playing, onFinished: handleFinished, onResetRef: resetRef })}
+      </ComponentPreview>
+    </div>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function ThinkingStepsDoc() {
-  const streamingReplay = useRef<(() => void) | null>(null);
-  const streamingTextReplay = useRef<(() => void) | null>(null);
-  const withImagesReplay = useRef<(() => void) | null>(null);
-  const fullReplay = useRef<(() => void) | null>(null);
-
   return (
     <DocPage
       title="ThinkingSteps"
@@ -684,9 +801,9 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           Steps appear sequentially as they stream in. Active steps show a shimmer effect.
         </p>
-        <ComponentPreview code={streamingCode} onReplay={() => streamingReplay.current?.()}>
-          <StreamingDemo replayRef={streamingReplay} />
-        </ComponentPreview>
+        <AnimatedPreview code={streamingCode}>
+          {(props) => <StreamingDemo {...props} />}
+        </AnimatedPreview>
       </DocSection>
 
       {/* 4. Streaming Text — dots, long streaming descriptions */}
@@ -694,9 +811,9 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           Dots with long descriptions that stream in character by character, simulating LLM output.
         </p>
-        <ComponentPreview code={streamingTextCode} onReplay={() => streamingTextReplay.current?.()}>
-          <StreamingTextDemo replayRef={streamingTextReplay} />
-        </ComponentPreview>
+        <AnimatedPreview code={streamingTextCode}>
+          {(props) => <StreamingTextDemo {...props} />}
+        </AnimatedPreview>
       </DocSection>
 
       {/* 5. With Images — ThinkingStepImage in action */}
@@ -704,9 +821,9 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           Steps can include inline images with optional captions using ThinkingStepImage.
         </p>
-        <ComponentPreview code={withImagesCode} onReplay={() => withImagesReplay.current?.()}>
-          <WithImagesDemo replayRef={withImagesReplay} />
-        </ComponentPreview>
+        <AnimatedPreview code={withImagesCode}>
+          {(props) => <WithImagesDemo {...props} />}
+        </AnimatedPreview>
       </DocSection>
 
       {/* 6. Full Example — kitchen sink */}
@@ -714,9 +831,9 @@ export default function ThinkingStepsDoc() {
         <p className="text-[13px] text-muted-foreground mb-3">
           A 6-step research agent combining sources, details, descriptions, images, and a custom header.
         </p>
-        <ComponentPreview code={fullCode} onReplay={() => fullReplay.current?.()}>
-          <FullDemo replayRef={fullReplay} />
-        </ComponentPreview>
+        <AnimatedPreview code={fullCode}>
+          {(props) => <FullDemo {...props} />}
+        </AnimatedPreview>
       </DocSection>
 
       <DocSection title="API Reference">

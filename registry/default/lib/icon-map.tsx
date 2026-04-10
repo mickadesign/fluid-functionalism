@@ -39,6 +39,8 @@ import {
   Link,
   Check,
   RotateCcw,
+  Play,
+  Pause,
 } from "lucide-react";
 
 // ── Tabler ──────────────────────────────────────────────────
@@ -78,6 +80,8 @@ import {
   IconLink,
   IconCheck,
   IconRotate2,
+  IconPlayerPlay,
+  IconPlayerPause,
 } from "@tabler/icons-react";
 
 // ── Phosphor ────────────────────────────────────────────────
@@ -117,6 +121,8 @@ import {
   Link as PhLink,
   Check as PhCheck,
   ArrowCounterClockwise as PhRotateCcw,
+  Play as PhPlay,
+  Pause as PhPause,
 } from "@phosphor-icons/react";
 
 // ── HugeIcons ───────────────────────────────────────────────
@@ -176,7 +182,8 @@ export type IconName =
   | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
   | "globe" | "user"
-  | "image" | "link" | "check" | "rotate-ccw";
+  | "image" | "link" | "check" | "rotate-ccw"
+  | "play" | "pause";
 
 export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons"];
 
@@ -259,6 +266,8 @@ const lucideMap: Record<IconName, IconComponent> = {
   "link": Link,
   "check": Check,
   "rotate-ccw": RotateCcw,
+  "play": Play,
+  "pause": Pause,
 };
 
 const tablerMap: Record<IconName, IconComponent> = {
@@ -297,6 +306,8 @@ const tablerMap: Record<IconName, IconComponent> = {
   "link": tabler(IconLink),
   "check": tabler(IconCheck),
   "rotate-ccw": tabler(IconRotate2),
+  "play": tabler(IconPlayerPlay),
+  "pause": tabler(IconPlayerPause),
 };
 
 const phosphorMap: Record<IconName, IconComponent> = {
@@ -335,6 +346,8 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "link": phosphor(PhLink),
   "check": phosphor(PhCheck),
   "rotate-ccw": phosphor(PhRotateCcw),
+  "play": phosphor(PhPlay),
+  "pause": phosphor(PhPause),
 };
 
 const hugeiconsMap: Record<IconName, IconComponent> = {
@@ -373,6 +386,8 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "link": hugeicons(HiLink),
   "check": hugeicons(HiCheck),
   "rotate-ccw": hugeicons(HiRotateCcw),
+  "play": Play,
+  "pause": Pause,
 };
 
 // ── Unified Map ─────────────────────────────────────────────

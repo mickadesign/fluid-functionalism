@@ -8,14 +8,29 @@ import { useIcon } from "@/registry/default/lib/icon-context";
 import { TabsSubtle, TabsSubtleItem } from "@/registry/default/tabs-subtle";
 import { Tooltip } from "@/registry/default/tooltip";
 
+export interface PlaybackButton {
+  icon: ReactNode;
+  tooltip: string;
+  onClick: () => void;
+}
+
 interface ComponentPreviewProps {
   title?: string;
   code: string;
+  /** Legacy replay callback */
   onReplay?: () => void;
+  /** Custom playback button (overrides onReplay) */
+  playbackButton?: PlaybackButton;
   children: ReactNode;
 }
 
-export function ComponentPreview({ title, code, onReplay, children }: ComponentPreviewProps) {
+export function ComponentPreview({
+  title,
+  code,
+  onReplay,
+  playbackButton,
+  children,
+}: ComponentPreviewProps) {
   const [tab, setTab] = useState(0);
   const [html, setHtml] = useState("");
   const shape = useShape();
@@ -24,6 +39,8 @@ export function ComponentPreview({ title, code, onReplay, children }: ComponentP
   useEffect(() => {
     highlight(code).then(setHtml);
   }, [code]);
+
+  const showButton = !!playbackButton || !!onReplay;
 
   return (
     <div className={`flex flex-col gap-0 w-full border border-border/60 overflow-hidden ${shape.container}`}>
@@ -41,14 +58,14 @@ export function ComponentPreview({ title, code, onReplay, children }: ComponentP
           <TabsSubtleItem index={0} label="Preview" />
           <TabsSubtleItem index={1} label="Code" />
         </TabsSubtle>
-        {onReplay && (
-          <Tooltip content="Replay animation" side="top">
+        {showButton && (
+          <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
             <button
-              onClick={onReplay}
+              onClick={playbackButton?.onClick ?? onReplay}
               className={`ml-auto w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]`}
-              aria-label="Replay animation"
+              aria-label={playbackButton?.tooltip ?? "Replay animation"}
             >
-              <ReplayIcon size={16} strokeWidth={1.5} />
+              {playbackButton?.icon ?? <ReplayIcon size={16} strokeWidth={1.5} />}
             </button>
           </Tooltip>
         )}
