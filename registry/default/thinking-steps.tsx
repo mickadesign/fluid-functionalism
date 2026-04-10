@@ -185,7 +185,7 @@ function ThinkingStep({
             <div className="flex-1 flex flex-col gap-1 min-w-0">
               <span
                 className={cn(
-                  "text-[13px] leading-tight",
+                  "text-[13px] leading-tight text-foreground",
                   isActive && "shimmer-text"
                 )}
                 style={{ fontVariationSettings: fontWeights.medium }}
@@ -194,7 +194,7 @@ function ThinkingStep({
                 {isActive && "…"}
               </span>
               {description && (
-                <span className="text-[12px] text-muted-foreground leading-snug">
+                <span className="text-[13px] text-muted-foreground leading-snug">
                   {description}
                 </span>
               )}
@@ -233,14 +233,16 @@ function ThinkingStepDetails({
       className={cn("mt-1 -ml-3", className)}
     >
       <AccordionItem value="details" className="[&>.absolute]:hidden">
-        <AccordionTrigger
-          className={cn(
-            "[&>span:first-child]:flex-none w-fit py-1 px-3 gap-1.5",
-            shape.item
-          )}
-        >
-          {summary}
-        </AccordionTrigger>
+        <div className="w-fit">
+          <AccordionTrigger
+            className={cn(
+              "[&>span:first-child]:flex-none w-auto py-1 px-3 gap-1.5",
+              shape.item
+            )}
+          >
+            {summary}
+          </AccordionTrigger>
+        </div>
         <AccordionContent>
           <div className="flex flex-col gap-0.5 pt-0.5">
             {details?.map((item, i) => (
