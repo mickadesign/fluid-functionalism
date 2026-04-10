@@ -281,7 +281,7 @@ function useSequencedSteps(
   const [fired, setFired] = useState(0);
   const elapsedRef = useRef(0); // total elapsed ms when paused
   const startRef = useRef(0);   // Date.now() when last resumed
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const total = delays.length;
 
