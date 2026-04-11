@@ -34,8 +34,9 @@ export function Sidebar({ mobile }: SidebarProps) {
       </Link>
 
       {/* Top-level navigation */}
-      <NavMenu activeSlug={pathname === "/" ? "/" : null} aria-label="Main navigation">
+      <NavMenu activeSlug={pathname === "/" ? "/" : pathname === "/docs" ? "/docs" : null} aria-label="Main navigation">
         <NavItem index={0} href="/" label="Showcase" />
+        <NavItem index={1} href="/docs" label="Introduction" />
       </NavMenu>
 
       {/* Components section */}
