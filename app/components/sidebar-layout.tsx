@@ -35,7 +35,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         ref={menuButtonRef}
         variant="ghost"
         size="icon"
-        className="md:hidden fixed top-4 left-4 z-50"
+        className="lg:hidden fixed top-4 left-4 z-50"
         onClick={() => setDrawerOpen(true)}
         aria-label="Open navigation"
       >

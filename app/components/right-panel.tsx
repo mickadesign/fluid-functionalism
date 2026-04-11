@@ -144,24 +144,26 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
       </div>
 
       {/* Credit */}
-      <div className="flex items-center gap-2 px-2">
-        <img
-          src="/micka.png"
-          alt=""
-          className="w-5 h-5 rounded-full object-cover shrink-0"
-        />
-        <p className="text-[13px] text-muted-foreground">
-          Created by{" "}
-          <a
-            href="https://x.com/micka_design"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded text-muted-foreground hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] focus-visible:ring-offset-2"
-          >
-            @micka_design
-          </a>
-        </p>
-      </div>
+      <Tooltip content="I help teams ship memorable design systems" side={tooltipSide}>
+        <div className="flex items-center gap-2 px-2">
+          <img
+            src="/micka.png"
+            alt=""
+            className="w-5 h-5 rounded-full object-cover shrink-0"
+          />
+          <p className="text-[13px] text-muted-foreground">
+            Created by{" "}
+            <a
+              href="https://x.com/micka_design"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded text-muted-foreground hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] focus-visible:ring-offset-2"
+            >
+              @micka_design
+            </a>
+          </p>
+        </div>
+      </Tooltip>
 
       {/* Telegram + GitHub buttons */}
       <div className="flex items-center gap-1 pt-1">
@@ -218,7 +220,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
 /** Desktop-only right column that mirrors the left sidebar styling. */
 export function RightPanel() {
   return (
-    <aside className="shrink-0 w-64 p-4 sticky top-4 self-start mt-4 mr-4 rounded-lg bg-muted hidden md:block">
+    <aside className="shrink-0 w-64 p-4 sticky top-4 self-start mt-4 mr-4 rounded-lg bg-muted hidden lg:block">
       <h2
         className="text-[16px] text-foreground leading-none pl-1 pt-2 pb-2"
         style={{ fontVariationSettings: fontWeights.semibold }}

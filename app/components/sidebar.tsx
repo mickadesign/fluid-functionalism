@@ -22,7 +22,7 @@ export function Sidebar({ mobile }: SidebarProps) {
         "shrink-0 w-56 overflow-y-auto p-4 flex flex-col gap-4",
         mobile
           ? "w-full"
-          : "sticky top-0 h-screen hidden md:flex"
+          : "sticky top-0 h-screen hidden lg:flex"
       )}
     >
       <Link
