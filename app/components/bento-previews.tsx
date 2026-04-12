@@ -65,24 +65,36 @@ import { Tooltip } from "@/registry/default/tooltip";
 
 function AccordionPreview() {
   return (
-    <div className="w-full max-w-[340px]">
-      <AccordionGroup type="single" defaultValue="item-1">
+    <div className="w-full max-w-[420px]">
+      <AccordionGroup type="single" defaultValue="item-1" className="w-full">
         <AccordionItem value="item-1" index={0}>
           <AccordionTrigger>What is Fluid Functionalism?</AccordionTrigger>
           <AccordionContent>
-            A design philosophy where every animation serves a functional purpose.
+            A design philosophy where every animation serves a functional purpose — motion is information, not decoration.
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="item-2" index={1}>
           <AccordionTrigger>How does proximity hover work?</AccordionTrigger>
           <AccordionContent>
-            The closest item to your cursor is highlighted before you click.
+            The closest item to your cursor is highlighted before you click, reducing targeting errors.
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="item-3" index={2}>
-          <AccordionTrigger>Can I use these with shadcn/ui?</AccordionTrigger>
+          <AccordionTrigger>Why spring physics?</AccordionTrigger>
           <AccordionContent>
-            Yes. All components follow shadcn/ui conventions.
+            Springs respond naturally to interruption — if a user reverses mid-transition, the animation adapts.
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-4" index={3}>
+          <AccordionTrigger>Is it compatible with shadcn/ui?</AccordionTrigger>
+          <AccordionContent>
+            Yes. Your existing theme, radius tokens, and setup apply automatically.
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-5" index={4}>
+          <AccordionTrigger>How do I install a component?</AccordionTrigger>
+          <AccordionContent>
+            One CLI command — dependencies and shared utilities resolve themselves.
           </AccordionContent>
         </AccordionItem>
       </AccordionGroup>
@@ -112,8 +124,8 @@ function ButtonPreview() {
 }
 
 function CheckboxPreview() {
-  const [checked, setChecked] = useState<Set<number>>(new Set([0, 2]));
-  const items = ["Design system", "Documentation", "Unit tests"];
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const items = ["Spring physics", "Proximity hover", "Font weight transitions", "Keyboard navigation", "Dark mode support"];
   return (
     <div className="w-full max-w-[220px]">
       <CheckboxGroup checkedIndices={checked}>
@@ -163,16 +175,20 @@ function DialogPreview() {
 }
 
 function DropdownPreview() {
-  const SquareLibrary = useIcon("square-library");
-  const Clock = useIcon("clock");
-  const Star = useIcon("star");
-  const Users = useIcon("users");
+  const CircleIcon = useIcon("circle");
+  const StarIcon = useIcon("star");
+  const PlusIcon = useIcon("plus");
+  const HeartIcon = useIcon("heart");
+  const CheckIcon = useIcon("check");
+  const BrainIcon = useIcon("brain");
   const [selected, setSelected] = useState<number | null>(0);
   const items = [
-    { icon: SquareLibrary, label: "Teamspaces" },
-    { icon: Clock, label: "Recents" },
-    { icon: Star, label: "Favorites" },
-    { icon: Users, label: "Shared" },
+    { icon: CircleIcon, label: "Spring animations" },
+    { icon: StarIcon, label: "Proximity hover" },
+    { icon: PlusIcon, label: "Font weight shifts" },
+    { icon: HeartIcon, label: "Accessible by default" },
+    { icon: CheckIcon, label: "Radix primitives" },
+    { icon: BrainIcon, label: "Functional clarity" },
   ];
   return (
     <div className="w-full max-w-[280px]">
@@ -194,8 +210,8 @@ function DropdownPreview() {
 
 function InputCopyPreview() {
   return (
-    <div className="w-full max-w-[280px] relative z-10">
-      <InputCopy value="npx shadcn@latest add @fluid/button" />
+    <div className="w-full max-w-[420px] relative z-10">
+      <InputCopy value="npx shadcn@latest registry add @fluid" />
     </div>
   );
 }
@@ -203,18 +219,22 @@ function InputCopyPreview() {
 function InputGroupPreview() {
   const Search = useIcon("search");
   const Mail = useIcon("mail");
+  const User = useIcon("user");
+  const Globe = useIcon("globe");
   const [search, setSearch] = useState("");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [website, setWebsite] = useState("");
   return (
     <div className="w-full max-w-[320px]">
       <InputGroup>
         <InputField
           index={0}
-          label="Search"
-          placeholder="Search..."
-          icon={Search}
-          value={search}
-          onChange={setSearch}
+          label="Name"
+          placeholder="Your name"
+          icon={User}
+          value={name}
+          onChange={setName}
         />
         <InputField
           index={1}
@@ -224,19 +244,37 @@ function InputGroupPreview() {
           value={email}
           onChange={setEmail}
         />
+        <InputField
+          index={2}
+          label="Website"
+          placeholder="fluidfunctionalism.com"
+          icon={Globe}
+          value={website}
+          onChange={setWebsite}
+        />
+        <InputField
+          index={3}
+          label="Search"
+          placeholder="Search components..."
+          icon={Search}
+          value={search}
+          onChange={setSearch}
+        />
       </InputGroup>
     </div>
   );
 }
 
 function RadioGroupPreview() {
-  const [value, setValue] = useState("comfortable");
+  const [value, setValue] = useState("moderate");
   return (
-    <div className="w-full max-w-[200px]">
+    <div className="w-full max-w-[220px]">
       <RadioGroup value={value} onValueChange={setValue}>
-        <RadioItem value="compact" index={0} label="Compact" />
-        <RadioItem value="comfortable" index={1} label="Comfortable" />
-        <RadioItem value="spacious" index={2} label="Spacious" />
+        <RadioItem value="fast" index={0} label="Fast spring" />
+        <RadioItem value="moderate" index={1} label="Moderate spring" />
+        <RadioItem value="slow" index={2} label="Slow spring" />
+        <RadioItem value="comfortable" index={3} label="Comfortable" />
+        <RadioItem value="none" index={4} label="No animation" />
       </RadioGroup>
     </div>
   );
@@ -264,7 +302,13 @@ function SliderPreview() {
   const [volume, setVolume] = useState(60);
   return (
     <div className="flex flex-col gap-8 w-full max-w-[280px]">
-      <Slider value={basic} onChange={(v) => setBasic(v as number)} />
+      <div className="flex flex-col gap-1.5 w-full">
+        <div className="flex items-center justify-between text-[13px]">
+          <span className="text-muted-foreground">Opacity</span>
+          <span className="text-muted-foreground tabular-nums">{basic}</span>
+        </div>
+        <Slider value={basic} onChange={(v) => setBasic(v as number)} showValue={false} />
+      </div>
       <SliderComfortable
         variant="scrubber"
         label="Volume"

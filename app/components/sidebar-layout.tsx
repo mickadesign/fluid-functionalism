@@ -32,6 +32,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const handleClose = useCallback(() => setDrawerOpen(false), []);
   const router = useRouter();
+  const isFullscreen = pathname === "/demo";
 
   // Arrow key navigation between pages
   useEffect(() => {
@@ -72,6 +73,14 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pathname, router]);
+
+  if (isFullscreen) {
+    return (
+      <main className="min-h-screen">
+        {children}
+      </main>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">

@@ -36,7 +36,7 @@ function formatStars(n: number): string {
 }
 
 /** The inner settings content — reused in the right column and mobile drawer. */
-export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left" | "right" }) {
+export function SettingsContent({ tooltipSide = "left", hideSocial }: { tooltipSide?: "left" | "right" | "top" | "bottom"; hideSocial?: boolean }) {
   const { theme, setTheme } = useThemeContext();
   const { shape, setShape } = useShapeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
@@ -166,7 +166,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
       </Tooltip>
 
       {/* Telegram + GitHub buttons */}
-      <div className="flex items-center gap-1 pt-1">
+      {!hideSocial && (<div className="flex items-center gap-1 pt-1">
         <a
           href="https://t.me/micka_design"
           target="_blank"
@@ -212,7 +212,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
             </span>
           )}
         </a>
-      </div>
+      </div>)}
     </div>
   );
 }
