@@ -345,7 +345,8 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
             {showLabel && (
               <motion.span
                 key="label"
-                className="overflow-hidden"
+                className="overflow-hidden pr-3"
+                style={{ maskImage: "linear-gradient(to right, black calc(100% - 12px), transparent)" }}
                 initial={{ width: 0, opacity: 0, marginLeft: 0 }}
                 animate={{ width: "auto", opacity: 1, marginLeft: 8 }}
                 exit={{ width: 0, opacity: 0, marginLeft: 0 }}
