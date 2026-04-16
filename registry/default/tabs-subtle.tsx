@@ -324,7 +324,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         onClick={() => onSelect(index)}
         className={cn(
           "relative z-10 flex items-center px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
-          !collapseLabel && "gap-2",
+          collapseLabel ? "h-8" : "gap-2",
           shape.bg,
           className
         )}
@@ -345,8 +345,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
             {showLabel && (
               <motion.span
                 key="label"
-                className="overflow-hidden pr-3"
-                style={{ maskImage: "linear-gradient(to right, black calc(100% - 12px), transparent)" }}
+                className="overflow-hidden"
                 initial={{ width: 0, opacity: 0, marginLeft: 0 }}
                 animate={{ width: "auto", opacity: 1, marginLeft: 8 }}
                 exit={{ width: 0, opacity: 0, marginLeft: 0 }}
