@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { componentList } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
@@ -8,6 +8,8 @@ import { BentoCard } from "@/app/components/bento-card";
 import { SettingsContent } from "@/app/components/right-panel";
 
 const SETTINGS_SLUG = "settings";
+const BASE_WIDTH = 680;
+const BASE_HEIGHT = 420;
 
 function SlidePreview({ slug }: { slug: string }) {
   const Preview = previewMap[slug];
@@ -26,6 +28,8 @@ export default function DemoPage() {
 function DemoPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
   const slideOrder = [
     "dropdown",
     "checkbox-group",
@@ -74,6 +78,16 @@ function DemoPageInner() {
     [slides, router]
   );
 
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const update = () => setScale(el.getBoundingClientRect().width / BASE_WIDTH);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
@@ -113,25 +127,37 @@ function DemoPageInner() {
   const current = slides[currentIndex];
 
   return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center overflow-hidden px-6">
-      {current && (
-        <div key={current.slug} className="w-full max-w-[680px]">
-          {current.type === "settings" ? (
-            <BentoCard slug="" name={current.name} style={{ height: 420 }}>
-              <SettingsContent tooltipSide="right" hideSocial />
+    <div className="h-screen w-screen flex flex-col items-center justify-center overflow-hidden px-6 md:px-12">
+      <div
+        ref={cardRef}
+        className="w-full max-w-[1200px]"
+        style={{
+          aspectRatio: `${BASE_WIDTH} / ${BASE_HEIGHT}`,
+          maxHeight: "calc(100vh - 96px)",
+        }}
+      >
+        {current && (
+          current.type === "settings" ? (
+            <BentoCard key={current.slug} slug="" name={current.name} style={{ height: "100%" }}>
+              <div style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+                <SettingsContent tooltipSide="right" hideSocial />
+              </div>
             </BentoCard>
           ) : (
             <BentoCard
+              key={current.slug}
               slug={current.slug}
               name={current.name}
               isNew={"isNew" in current ? current.isNew : undefined}
-              style={{ height: 420 }}
+              style={{ height: "100%" }}
             >
-              <SlidePreview slug={current.slug} />
+              <div style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+                <SlidePreview slug={current.slug} />
+              </div>
             </BentoCard>
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
 
       {/* Progress indicator */}
       <div className="fixed bottom-6 flex items-center gap-2.5">
