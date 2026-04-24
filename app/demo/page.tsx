@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { componentList } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
 import { BentoCard } from "@/app/components/bento-card";
 import { SettingsContent } from "@/app/components/right-panel";
+
+const SETTINGS_SLUG = "settings";
 
 function SlidePreview({ slug }: { slug: string }) {
   const Preview = previewMap[slug];
@@ -13,8 +16,16 @@ function SlidePreview({ slug }: { slug: string }) {
 }
 
 export default function DemoPage() {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  return (
+    <Suspense fallback={null}>
+      <DemoPageInner />
+    </Suspense>
+  );
+}
 
+function DemoPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const slideOrder = [
     "dropdown",
     "checkbox-group",
@@ -36,19 +47,31 @@ export default function DemoPage() {
 
   const slides = slideOrder.map((slug) => {
     if (slug === "__settings__") {
-      return { slug: "", name: "Make them yours", type: "settings" as const };
+      return { slug: SETTINGS_SLUG, name: "Make them yours", type: "settings" as const };
     }
     const c = componentMap.get(slug);
     if (!c || !previewMap[c.slug]) return null;
     return { slug: c.slug, name: c.name, isNew: c.isNew, type: "component" as const };
   }).filter((s): s is NonNullable<typeof s> => s != null);
 
+  const paramSlug = searchParams.get("c");
+  const paramIndex = slides.findIndex((s) => s.slug === paramSlug);
+  const [currentIndex, setCurrentIndex] = useState(paramIndex >= 0 ? paramIndex : 0);
+
+  useEffect(() => {
+    if (paramIndex >= 0 && paramIndex !== currentIndex) {
+      setCurrentIndex(paramIndex);
+    }
+  }, [paramIndex, currentIndex]);
+
   const goTo = useCallback(
     (index: number) => {
       if (index < 0 || index >= slides.length) return;
       setCurrentIndex(index);
+      const slug = slides[index].slug;
+      router.replace(`/demo?c=${slug}`, { scroll: false });
     },
-    [slides.length]
+    [slides, router]
   );
 
   useEffect(() => {
