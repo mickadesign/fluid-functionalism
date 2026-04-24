@@ -1,0 +1,19 @@
+{
+  "title": "Fluid Functionalism",
+  "tagline": "Refined UI components with satisfying hover.",
+  "colors": {
+    "background": "#FAFAFA",
+    "foreground": "#171717",
+    "accent": "#E5E5E5"
+  },
+  "logo": null,
+  "faviconSrc": null,
+  "faviconLetter": "FF",
+  "faviconTransparent": true,
+  "faviconLetterSize": 50,
+  "faviconDarkBg": "#000000",
+  "faviconDarkAccent": "#b3b3b3",
+  "outputDir": "public/metadata",
+  "font": "Inter",
+  "url": "fluidfunctionalism.com"
+}
