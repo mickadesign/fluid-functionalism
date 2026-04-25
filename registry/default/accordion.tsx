@@ -760,7 +760,13 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
               initial={{ height: 0 }}
               animate={{ height: "auto" }}
               exit={{ height: 0 }}
-              transition={springs.moderate}
+              // bounce: 0 — a critically damped spring on body height.
+              // springs.moderate has bounce 0.15 which overshoots the
+              // "auto" target by a few px; under an ancestor transform:
+              // scale (e.g. /demo's 1.7x card), that overshoot becomes a
+              // visible pop. Pure height has no aesthetic value in
+              // bouncing, so a smooth approach reads better.
+              transition={{ ...springs.moderate, bounce: 0 }}
               onUpdate={() => {
                 groupCtx?.remeasure();
               }}
