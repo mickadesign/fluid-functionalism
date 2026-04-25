@@ -437,6 +437,20 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "color-picker",
+      "type": "registry:ui",
+      "title": "Color Picker",
+      "description": "Color picker with HEX, RGB, HSL, and OKLCH formats, alpha channel, optional swatches, and a popover trigger. Built on the Slider component with native EyeDropper support.",
+      "dependencies": ["framer-motion"],
+      "registryDependencies": ["utils", "springs", "font-weight", "shape-context", "slider", "dropdown"],
+      "files": [
+        {
+          "path": "registry/default/color-picker.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

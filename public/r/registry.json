@@ -546,6 +546,29 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "color-picker",
+      "type": "registry:ui",
+      "title": "Color Picker",
+      "description": "Color picker with HEX, RGB, HSL, and OKLCH formats, alpha channel, optional swatches, and a popover trigger. Built on the Slider component with native EyeDropper support.",
+      "dependencies": [
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/slider.json",
+        "https://www.fluidfunctionalism.com/r/dropdown.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/color-picker.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

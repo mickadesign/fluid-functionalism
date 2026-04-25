@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useCallback,
   useMemo,
+  type CSSProperties,
   type HTMLAttributes,
 } from "react";
 import {
@@ -44,6 +45,13 @@ interface SliderProps
   formatValue?: (v: number) => string;
   label?: string;
   disabled?: boolean;
+  trackClassName?: string;
+  trackStyle?: CSSProperties;
+  fillClassName?: string;
+  fillStyle?: CSSProperties;
+  hideFill?: boolean;
+  thumbColor?: string;
+  thumbBorderColor?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +305,13 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       formatValue = String,
       label,
       disabled = false,
+      trackClassName,
+      trackStyle,
+      fillClassName,
+      fillStyle,
+      hideFill = false,
+      thumbColor,
+      thumbBorderColor,
       className,
       ...props
     },
@@ -709,8 +724,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             }}
             transition={springs.fast}
             style={{
-              backgroundColor: "white",
+              backgroundColor: thumbColor ?? "white",
               boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+              border: thumbBorderColor ? `1px solid ${thumbBorderColor}` : undefined,
             }}
           />
           {/* Focus ring */}
@@ -864,7 +880,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
             {/* Track background */}
             <motion.div
-              className="absolute border border-border overflow-hidden rounded-full"
+              className={cn("absolute border border-border overflow-hidden rounded-full", trackClassName)}
               initial={false}
               animate={{
                 height: TRACK_BG_HEIGHT,
@@ -875,16 +891,20 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                 left: TRACK_INSET,
                 right: TRACK_INSET,
                 backgroundColor: "transparent",
+                ...trackStyle,
               }}
             >
               {/* Filled range */}
+              {!hideFill && (
               <motion.div
-                className="absolute h-full bg-selected/50 dark:bg-accent/40"
+                className={cn("absolute h-full bg-selected/50 dark:bg-accent/40", fillClassName)}
                 style={{
                   left: fillLeft,
                   width: fillWidth,
+                  ...fillStyle,
                 }}
               />
+              )}
 
               {/* Hover preview */}
               <motion.div

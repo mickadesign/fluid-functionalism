@@ -42,6 +42,7 @@ const CUSTOM_ITEMS = new Set([
   "accordion",
   "badge",
   "input-copy",
+  "color-picker",
 ]);
 
 async function run() {
