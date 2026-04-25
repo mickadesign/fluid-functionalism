@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NavMenu } from "@/components/ui/nav-menu";
 import { NavItem } from "@/components/ui/nav-item";
-import { fontWeights } from "@/registry/default/lib/font-weight";
 import { componentList } from "@/lib/docs/components";
 import { cn } from "@/registry/default/lib/utils";
 
@@ -25,14 +23,6 @@ export function Sidebar({ mobile }: SidebarProps) {
           : "sticky top-0 h-screen hidden lg:flex"
       )}
     >
-      <Link
-        href="/"
-        className="block text-[16px] text-foreground mb-2 px-2 py-1 rounded outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
-        style={{ fontVariationSettings: fontWeights.bold }}
-      >
-        Fluid Functionalism
-      </Link>
-
       {/* Top-level navigation */}
       <NavMenu activeSlug={pathname === "/" ? "/" : pathname === "/docs" ? "/docs" : null} aria-label="Main navigation">
         <NavItem index={0} href="/" label="Showcase" />

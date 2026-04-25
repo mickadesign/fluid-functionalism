@@ -27,10 +27,10 @@ export default function Page() {
             </p>
             <div className="flex items-center gap-2 mt-2">
               <Link href="/docs">
-                <Button variant="primary" size="sm">Get started</Button>
+                <Button variant="primary" size="sm">Learn more</Button>
               </Link>
-              <Link href="/docs">
-                <Button variant="tertiary" size="sm">Browse components</Button>
+              <Link href="/demo">
+                <Button variant="tertiary" size="sm">See demo</Button>
               </Link>
             </div>
           </div>

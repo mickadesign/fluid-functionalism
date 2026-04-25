@@ -2,10 +2,15 @@
 
 import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { componentList } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
 import { BentoCard } from "@/app/components/bento-card";
 import { SettingsContent } from "@/app/components/right-panel";
+import { Button } from "@/registry/default/button";
+import { fontWeights } from "@/registry/default/lib/font-weight";
+import { useIcon } from "@/lib/icon-context";
+import { Tooltip } from "@/registry/default/tooltip";
 
 const SETTINGS_SLUG = "settings";
 const BASE_WIDTH = 680;
@@ -134,15 +139,61 @@ function DemoPageInner() {
   }, []);
 
   const current = slides[currentIndex];
+  const ArrowRight = useIcon("arrow-right");
+  const prevSlide = currentIndex > 0 ? slides[currentIndex - 1] : null;
+  const nextSlide = currentIndex < slides.length - 1 ? slides[currentIndex + 1] : null;
 
   return (
-    <div className="h-screen w-screen flex flex-col items-center justify-center overflow-hidden px-6 md:px-12">
+    <div className="w-screen flex flex-col items-center px-6 md:px-12">
+      <div className="w-full max-w-[1200px] pt-16 sm:pt-24 pb-8">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1
+              className="text-[22px] sm:text-[28px] text-foreground leading-none"
+              style={{ fontVariationSettings: fontWeights.bold }}
+            >
+              Fluid Functionalism
+            </h1>
+            <p className="text-[14px] text-muted-foreground">
+              Refined UI components with satisfying hover.
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Link href="/docs">
+                <Button variant="primary" size="sm">Learn more</Button>
+              </Link>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => goTo(currentIndex - 1)}
+                disabled={!prevSlide}
+                aria-label="Previous slide"
+              >
+                <ArrowRight className="rotate-180" />
+              </Button>
+            </Tooltip>
+            <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => goTo(currentIndex + 1)}
+                disabled={!nextSlide}
+                aria-label="Next slide"
+              >
+                <ArrowRight />
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
       <div
         ref={cardRef}
         className="w-full max-w-[1200px]"
         style={{
           aspectRatio: `${BASE_WIDTH} / ${BASE_HEIGHT}`,
-          maxHeight: "calc(100vh - 96px)",
         }}
       >
         {current && (
@@ -169,7 +220,7 @@ function DemoPageInner() {
       </div>
 
       {/* Progress indicator */}
-      <div className="fixed bottom-6 flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 mt-10 mb-12">
         {slides.map((s, i) => (
           <button
             key={s.slug}

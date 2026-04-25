@@ -27,9 +27,13 @@ export default function DocsIndex() {
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" disabled aria-label="No previous page">
-            <ArrowRight className="rotate-180" />
-          </Button>
+          <Tooltip content={<span>Showcase &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
+            <Link href="/" aria-label="Previous: Showcase" className="outline-none" tabIndex={-1}>
+              <Button variant="ghost" size="icon">
+                <ArrowRight className="rotate-180" />
+              </Button>
+            </Link>
+          </Tooltip>
           {firstComponent && (
             <Tooltip content={<span>{firstComponent.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
               <Link href={`/docs/${firstComponent.slug}`} aria-label={`Next: ${firstComponent.name}`} className="outline-none" tabIndex={-1}>

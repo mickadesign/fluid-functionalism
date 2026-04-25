@@ -5,6 +5,7 @@ import type { ComponentType } from "react";
 // ── Lucide ──────────────────────────────────────────────────
 import {
   ChevronRight,
+  ChevronDown,
   X,
   Copy,
   Menu,
@@ -41,11 +42,14 @@ import {
   RotateCcw,
   Play,
   Pause,
+  Pipette,
 } from "lucide-react";
 
 // ── Tabler ──────────────────────────────────────────────────
 import {
   IconChevronRight,
+  IconChevronDown,
+  IconColorPicker,
   IconX,
   IconCopy,
   IconMenu2,
@@ -87,6 +91,8 @@ import {
 // ── Phosphor ────────────────────────────────────────────────
 import {
   CaretRight as PhCaretRight,
+  CaretDown as PhCaretDown,
+  Eyedropper as PhEyedropper,
   X as PhX,
   Copy as PhCopy,
   List as PhList,
@@ -128,6 +134,8 @@ import {
 // ── HugeIcons ───────────────────────────────────────────────
 import { HugeiconsIcon } from "@hugeicons/react";
 import HiChevronRight from "@hugeicons/core-free-icons/ArrowRight01Icon";
+import HiChevronDown from "@hugeicons/core-free-icons/ArrowDown01Icon";
+import HiDropper from "@hugeicons/core-free-icons/DropperIcon";
 import HiX from "@hugeicons/core-free-icons/Cancel01Icon";
 import HiCopy from "@hugeicons/core-free-icons/Copy01Icon";
 import HiMenu from "@hugeicons/core-free-icons/Menu01Icon";
@@ -175,7 +183,7 @@ export type IconComponent = ComponentType<IconComponentProps>;
 export type IconLibrary = "lucide" | "tabler" | "phosphor" | "hugeicons";
 
 export type IconName =
-  | "chevron-right" | "x" | "copy" | "menu" | "dot"
+  | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
   | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
   | "square-library" | "clock" | "star" | "settings"
   | "plus" | "arrow-right" | "search" | "loader"
@@ -183,7 +191,7 @@ export type IconName =
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
   | "globe" | "user"
   | "image" | "link" | "check" | "rotate-ccw"
-  | "play" | "pause";
+  | "play" | "pause" | "pipette";
 
 export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons"];
 
@@ -232,6 +240,8 @@ function hugeicons(iconDef: unknown): IconComponent {
 
 const lucideMap: Record<IconName, IconComponent> = {
   "chevron-right": ChevronRight,
+  "chevron-down": ChevronDown,
+  "pipette": Pipette,
   "x": X,
   "copy": Copy,
   "menu": Menu,
@@ -272,6 +282,8 @@ const lucideMap: Record<IconName, IconComponent> = {
 
 const tablerMap: Record<IconName, IconComponent> = {
   "chevron-right": tabler(IconChevronRight),
+  "chevron-down": tabler(IconChevronDown),
+  "pipette": tabler(IconColorPicker),
   "x": tabler(IconX),
   "copy": tabler(IconCopy),
   "menu": tabler(IconMenu2),
@@ -312,6 +324,8 @@ const tablerMap: Record<IconName, IconComponent> = {
 
 const phosphorMap: Record<IconName, IconComponent> = {
   "chevron-right": phosphor(PhCaretRight),
+  "chevron-down": phosphor(PhCaretDown),
+  "pipette": phosphor(PhEyedropper),
   "x": phosphor(PhX),
   "copy": phosphor(PhCopy),
   "menu": phosphor(PhList),
@@ -352,6 +366,8 @@ const phosphorMap: Record<IconName, IconComponent> = {
 
 const hugeiconsMap: Record<IconName, IconComponent> = {
   "chevron-right": hugeicons(HiChevronRight),
+  "chevron-down": hugeicons(HiChevronDown),
+  "pipette": hugeicons(HiDropper),
   "x": hugeicons(HiX),
   "copy": hugeicons(HiCopy),
   "menu": hugeicons(HiMenu),
