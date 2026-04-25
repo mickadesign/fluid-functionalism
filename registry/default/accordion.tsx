@@ -126,15 +126,17 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
 
     const measureFullItems = useCallback(() => {
       if (!containerRef.current) return;
-      const containerRect = containerRef.current.getBoundingClientRect();
       const next = new Map<number, ItemRect>();
+      // Use offset* (layout coords) to match the proximity hook's items.
+      // getBoundingClientRect would return visual coords already scaled by
+      // any ancestor transform; once applied as CSS inside the same scaled
+      // container, the overlay would scale a second time.
       fullItemElementsRef.current.forEach((el, idx) => {
-        const r = el.getBoundingClientRect();
         next.set(idx, {
-          top: r.top - containerRect.top,
-          left: r.left - containerRect.left,
-          width: r.width,
-          height: r.height,
+          top: el.offsetTop,
+          left: el.offsetLeft,
+          width: el.offsetWidth,
+          height: el.offsetHeight,
         });
       });
       setOpenItemRects(next);
