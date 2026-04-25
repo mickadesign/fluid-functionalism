@@ -34,7 +34,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const router = useRouter();
   const isFullscreen = pathname === "/demo";
 
-  // Arrow key navigation between pages
+  // Arrow key navigation between pages — ref-based so held keys keep advancing
+  // (closures over `pathname` would re-bind per nav and lose key-repeat events).
+  const expectedIndexRef = useRef(pageOrder.indexOf(pathname));
+  useEffect(() => {
+    expectedIndexRef.current = pageOrder.indexOf(pathname);
+  }, [pathname]);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
@@ -60,19 +66,20 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       );
       if (closest) return;
 
-      const currentIndex = pageOrder.indexOf(pathname);
+      const currentIndex = expectedIndexRef.current;
       if (currentIndex === -1) return;
 
       const nextIndex = e.key === "ArrowLeft" ? currentIndex - 1 : currentIndex + 1;
       if (nextIndex < 0 || nextIndex >= pageOrder.length) return;
 
       e.preventDefault();
+      expectedIndexRef.current = nextIndex;
       router.push(pageOrder[nextIndex]);
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [pathname, router]);
+  }, [router]);
 
   if (isFullscreen) {
     return (

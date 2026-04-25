@@ -88,6 +88,15 @@ function DemoPageInner() {
     return () => ro.disconnect();
   }, []);
 
+  // Ref-based handler so held arrow keys keep advancing (closures over
+  // currentIndex/goTo would re-bind every nav and lose key-repeat events).
+  const goToRef = useRef(goTo);
+  const currentIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    goToRef.current = goTo;
+    currentIndexRef.current = currentIndex;
+  }, [goTo, currentIndex]);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
@@ -113,16 +122,16 @@ function DemoPageInner() {
 
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        goTo(currentIndex + 1);
+        goToRef.current(currentIndexRef.current + 1);
       } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        goTo(currentIndex - 1);
+        goToRef.current(currentIndexRef.current - 1);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, goTo]);
+  }, []);
 
   const current = slides[currentIndex];
 
