@@ -199,7 +199,7 @@ function DemoPageInner() {
         {current && (
           current.type === "settings" ? (
             <BentoCard key={current.slug} slug="" name={current.name} style={{ height: "100%" }}>
-              <div className="w-full max-w-[420px] mx-auto" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+              <div className="w-full max-w-[420px] mx-auto flex justify-center" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
                 <SettingsContent tooltipSide="right" hideSocial />
               </div>
             </BentoCard>
@@ -211,7 +211,7 @@ function DemoPageInner() {
               isNew={"isNew" in current ? current.isNew : undefined}
               style={{ height: "100%" }}
             >
-              <div className="w-full max-w-[420px] mx-auto" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+              <div className="w-full max-w-[420px] mx-auto flex justify-center" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
                 <SlidePreview slug={current.slug} />
               </div>
             </BentoCard>
