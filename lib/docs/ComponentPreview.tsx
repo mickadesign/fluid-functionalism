@@ -62,7 +62,7 @@ export function ComponentPreview({
           <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
             <button
               onClick={playbackButton?.onClick ?? onReplay}
-              className={`ml-auto w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]`}
+              className={`ml-auto w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground/60 hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]`}
               aria-label={playbackButton?.tooltip ?? "Replay animation"}
             >
               {playbackButton?.icon ?? <ReplayIcon size={16} strokeWidth={1.5} />}

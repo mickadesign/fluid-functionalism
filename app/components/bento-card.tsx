@@ -40,7 +40,7 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", className: ex
         <Link
           href={`/docs/${slug}`}
           aria-label={`View ${name} documentation`}
-          className="group/link shrink-0 flex items-center gap-2 px-4 py-3 border-t border-border/40 rounded-b-xl transition-colors duration-80 hover:bg-muted/50 outline-none focus-visible:shadow-[inset_0_0_0_1px_#6B97FF]"
+          className="group/link shrink-0 flex items-center gap-2 px-4 py-3 border-t border-border/40 rounded-b-xl transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_#6B97FF]"
         >
           <span
             className="text-[13px] text-muted-foreground group-hover/link:text-foreground transition-colors duration-80"

@@ -21,9 +21,9 @@ const buttonVariants = cva(
         primary: "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/80",
         secondary: "bg-accent text-foreground hover:bg-accent/80 active:bg-accent",
         tertiary:
-          "border border-border text-foreground bg-transparent hover:bg-muted active:bg-muted/60",
+          "border border-border text-foreground bg-transparent hover:bg-hover active:bg-active",
         ghost:
-          "text-muted-foreground bg-transparent hover:bg-muted hover:text-foreground active:bg-muted/60",
+          "text-muted-foreground bg-transparent hover:bg-hover hover:text-foreground active:bg-active",
       },
       size: {
         sm: "h-7 px-3 text-[12px] gap-1",

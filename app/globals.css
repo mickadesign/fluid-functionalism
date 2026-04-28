@@ -42,6 +42,13 @@
   --neutral-700: #404040;
   --neutral-800: #262626;
   --neutral-900: #171717;
+
+  --checker-a: #bbbbbb;
+  --checker-b: #ffffff;
+
+  /* Surface-relative interactive overlays (work on any elevation) */
+  --hover: color-mix(in oklab, var(--foreground) 6%, transparent);
+  --active: color-mix(in oklab, var(--foreground) 10%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -73,6 +80,9 @@
     --neutral-700: #404040;
     --neutral-800: #262626;
     --neutral-900: #171717;
+
+    --checker-a: #1f1f1f;
+    --checker-b: #2a2a2a;
   }
 }
 
@@ -94,6 +104,9 @@
 
   --destructive: #F87171;
   --destructive-light: #450A0A;
+
+  --checker-a: #1f1f1f;
+  --checker-b: #2a2a2a;
 }
 
 @theme inline {
@@ -112,6 +125,8 @@
   --color-input: var(--input);
   --color-destructive: var(--destructive);
   --color-destructive-light: var(--destructive-light);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
 }
 
 html.transitioning *,

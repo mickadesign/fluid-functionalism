@@ -20,6 +20,7 @@ import { useShape } from "@/lib/shape-context";
 import { useIcon } from "@/lib/icon-context";
 import { Slider } from "@/registry/default/slider";
 import { Dropdown, useDropdown } from "@/registry/default/dropdown";
+import { Tooltip } from "@/registry/default/tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -341,7 +342,7 @@ const PANEL_WIDTH = 280;
 const SQUARE_HEIGHT = 156;
 const CHECKER_BG: CSSProperties = {
   backgroundImage:
-    "conic-gradient(#bbb 0 25%, #fff 0 50%, #bbb 0 75%, #fff 0)",
+    "conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%, var(--checker-a) 0 75%, var(--checker-b) 0)",
   backgroundSize: "8px 8px",
 };
 
@@ -450,15 +451,23 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
       onPointerUp={onPointerUp}
       onKeyDown={onKeyDown}
       className={cn(
-        "relative w-full select-none touch-none cursor-none overflow-hidden outline-none",
+        "relative w-full select-none touch-none cursor-none outline-none",
         shape.bg
       )}
       style={{
         height: SQUARE_HEIGHT,
-        background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${h}, 100%, 50%))`,
         boxShadow: focused ? "0 0 0 2px #6B97FF" : undefined,
       }}
     >
+      <div
+        className={cn(
+          "absolute inset-0 overflow-hidden",
+          shape.bg === "rounded-[20px]" ? "rounded-2xl" : shape.bg
+        )}
+        style={{
+          background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${h}, 100%, 50%))`,
+        }}
+      />
       <motion.div
         className="absolute pointer-events-none rounded-full"
         initial={false}
@@ -555,9 +564,9 @@ function AlphaSlider({
       thumbColor={solidColor}
       thumbBorderColor="rgba(255,255,255,0.9)"
       trackStyle={{
-        backgroundImage: `linear-gradient(to right, ${transparentColor} 0%, ${solidColor} 98%), conic-gradient(#bbb 0 25%, #fff 0 50%, #bbb 0 75%, #fff 0)`,
+        backgroundImage: `linear-gradient(to right, ${transparentColor} 0%, ${solidColor} 98%), conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%, var(--checker-a) 0 75%, var(--checker-b) 0)`,
         backgroundSize: "100% 100%, 8px 8px",
-        borderColor: "transparent",
+        borderWidth: 0,
       }}
       aria-label="Alpha"
     />
@@ -681,7 +690,7 @@ function FormatDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "flex items-center justify-between gap-2 h-9 px-3 text-[13px] text-foreground border border-border bg-transparent hover:bg-accent/40 transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
+          "flex items-center justify-between gap-2 h-9 px-3 text-[13px] text-muted-foreground bg-transparent hover:bg-hover hover:text-foreground active:bg-active transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
           shape.input
         )}
         style={{ fontVariationSettings: fontWeights.medium }}
@@ -870,7 +879,7 @@ const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
         onPointerUp={onWrapperPointerUp}
         onPointerCancel={onWrapperPointerUp}
         className={cn(
-          "flex items-center h-9 px-2 border border-border bg-transparent hover:bg-accent/60 active:bg-accent/80 transition-colors duration-80 focus-within:ring-1 focus-within:ring-[#6B97FF] select-none",
+          "flex items-center h-9 px-2 bg-transparent hover:bg-hover active:bg-active transition-colors duration-80 focus-within:ring-1 focus-within:ring-[#6B97FF] select-none",
           shape.input,
           scrubbable && !editing && "cursor-ew-resize",
           className
@@ -965,7 +974,7 @@ function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
       onClick={handleClick}
       aria-label="Pick color from screen"
       className={cn(
-        "flex items-center justify-center h-9 px-3 text-foreground border border-border bg-transparent hover:bg-accent/40 transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
+        "flex items-center justify-center h-9 px-3 text-muted-foreground bg-transparent hover:bg-hover hover:text-foreground active:bg-active transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
         shape.input
       )}
     >
@@ -1227,7 +1236,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
           onChange={(s, v) => updateHsv({ s, v })}
         />
 
-        <div className="flex flex-col -my-1">
+        <div className="flex flex-col">
           <HueSlider h={hsv.h} onChange={(h) => updateHsv({ h })} />
           <AlphaSlider
             a={hsv.a}
@@ -1340,12 +1349,14 @@ function ColorInputsRow({
     const hexNoHash = parsed.hex.replace(/^#/, "").toUpperCase();
     return (
       <div className="grid grid-cols-2 gap-2">
-        <ColorInput
-          value={hexNoHash}
-          onCommit={(next) => onChannelChange("hex", next.startsWith("#") ? next : `#${next}`)}
-          ariaLabel="Hex value"
-          prefix="#"
-        />
+        <ChannelTooltip label="Hex">
+          <ColorInput
+            value={hexNoHash}
+            onCommit={(next) => onChannelChange("hex", next.startsWith("#") ? next : `#${next}`)}
+            ariaLabel="Hex value"
+            prefix="#"
+          />
+        </ChannelTooltip>
         <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
       </div>
     );
@@ -1354,9 +1365,9 @@ function ColorInputsRow({
   if (format === "rgb") {
     return (
       <div className="grid grid-cols-4 gap-1">
-        <ColorInput value={String(parsed.r)} onCommit={(n) => onChannelChange("r", n)} ariaLabel="Red" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
-        <ColorInput value={String(parsed.g)} onCommit={(n) => onChannelChange("g", n)} ariaLabel="Green" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
-        <ColorInput value={String(parsed.b)} onCommit={(n) => onChannelChange("b", n)} ariaLabel="Blue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
+        <ChannelTooltip label="Red"><ColorInput value={String(parsed.r)} onCommit={(n) => onChannelChange("r", n)} ariaLabel="Red" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+        <ChannelTooltip label="Green"><ColorInput value={String(parsed.g)} onCommit={(n) => onChannelChange("g", n)} ariaLabel="Green" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+        <ChannelTooltip label="Blue"><ColorInput value={String(parsed.b)} onCommit={(n) => onChannelChange("b", n)} ariaLabel="Blue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
         <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
       </div>
     );
@@ -1366,9 +1377,9 @@ function ColorInputsRow({
     const hsl = rgbToHsl(parsed.r, parsed.g, parsed.b);
     return (
       <div className="grid grid-cols-4 gap-1">
-        <ColorInput value={String(Math.round(hsl.h))} onCommit={(n) => onChannelChange("hSL", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
-        <ColorInput value={String(Math.round(hsl.s * 100))} onCommit={(n) => onChannelChange("sSL", n)} ariaLabel="Saturation" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
-        <ColorInput value={String(Math.round(hsl.l * 100))} onCommit={(n) => onChannelChange("lSL", n)} ariaLabel="Lightness" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
+        <ChannelTooltip label="Hue"><ColorInput value={String(Math.round(hsl.h))} onCommit={(n) => onChannelChange("hSL", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+        <ChannelTooltip label="Saturation"><ColorInput value={String(Math.round(hsl.s * 100))} onCommit={(n) => onChannelChange("sSL", n)} ariaLabel="Saturation" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+        <ChannelTooltip label="Lightness"><ColorInput value={String(Math.round(hsl.l * 100))} onCommit={(n) => onChannelChange("lSL", n)} ariaLabel="Lightness" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
         <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
       </div>
     );
@@ -1378,31 +1389,41 @@ function ColorInputsRow({
   const oklch = rgbToOklch(parsed.r, parsed.g, parsed.b);
   return (
     <div className="grid grid-cols-4 gap-1">
-      <ColorInput value={(oklch.L * 100).toFixed(0)} onCommit={(n) => onChannelChange("L", n)} ariaLabel="Lightness" align="center" inputMode="decimal" nudgeStep={1} nudgeShiftStep={10} scrubbable />
-      <ColorInput value={oklch.C.toFixed(2)} onCommit={(n) => onChannelChange("C", n)} ariaLabel="Chroma" align="center" inputMode="decimal" nudgeStep={0.01} nudgeShiftStep={0.1} decimals={2} scrubbable />
-      <ColorInput value={oklch.H.toFixed(0)} onCommit={(n) => onChannelChange("H", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable />
+      <ChannelTooltip label="Lightness"><ColorInput value={(oklch.L * 100).toFixed(0)} onCommit={(n) => onChannelChange("L", n)} ariaLabel="Lightness" align="center" inputMode="decimal" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+      <ChannelTooltip label="Chroma"><ColorInput value={oklch.C.toFixed(2)} onCommit={(n) => onChannelChange("C", n)} ariaLabel="Chroma" align="center" inputMode="decimal" nudgeStep={0.01} nudgeShiftStep={0.1} decimals={2} scrubbable /></ChannelTooltip>
+      <ChannelTooltip label="Hue"><ColorInput value={oklch.H.toFixed(0)} onCommit={(n) => onChannelChange("H", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
       <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
     </div>
   );
 }
 
+function ChannelTooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Tooltip content={label} delayDuration={300}>
+      <div>{children}</div>
+    </Tooltip>
+  );
+}
+
 function AlphaInput({ value, onCommit }: { value: number; onCommit: (n: number) => void }) {
   return (
-    <ColorInput
-      value={`${value}%`}
-      onCommit={(input) => {
-        const n = parseFloat(input.replace("%", ""));
-        if (Number.isNaN(n)) return;
-        onCommit(Math.max(0, Math.min(100, Math.round(n))));
-      }}
-      ariaLabel="Alpha"
-      align="center"
-      inputMode="numeric"
-      nudgeStep={1}
-      nudgeShiftStep={10}
-      hasPercent
-      scrubbable
-    />
+    <ChannelTooltip label="Alpha">
+      <ColorInput
+        value={`${value}%`}
+        onCommit={(input) => {
+          const n = parseFloat(input.replace("%", ""));
+          if (Number.isNaN(n)) return;
+          onCommit(Math.max(0, Math.min(100, Math.round(n))));
+        }}
+        ariaLabel="Alpha"
+        align="center"
+        inputMode="numeric"
+        nudgeStep={1}
+        nudgeShiftStep={10}
+        hasPercent
+        scrubbable
+      />
+    </ChannelTooltip>
   );
 }
 
@@ -1488,7 +1509,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
           aria-haspopup="dialog"
           aria-expanded={open}
           className={cn(
-            "flex items-center gap-2 h-9 px-2 border border-border bg-transparent hover:bg-accent/40 transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
+            "flex items-center gap-2 h-9 px-2 border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
             shape.input,
             triggerClassName
           )}
