@@ -755,6 +755,10 @@ interface ColorInputProps {
   hasPercent?: boolean;
   decimals?: number;
   scrubbable?: boolean;
+  min?: number;
+  max?: number;
+  /** When true with min and max, wrap (modulo) instead of clamping. Used for angular values like hue. */
+  wrap?: boolean;
 }
 
 const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
@@ -774,6 +778,9 @@ const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
       hasPercent = false,
       decimals,
       scrubbable = false,
+      min,
+      max,
+      wrap = false,
     },
     ref
   ) => {
@@ -807,7 +814,15 @@ const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
       decimals != null ? n.toFixed(decimals) : String(Math.round(n));
 
     const commitNumber = (n: number) => {
-      const formatted = formatNumber(n);
+      let bounded = n;
+      if (wrap && min != null && max != null) {
+        const range = max - min;
+        bounded = ((bounded - min) % range + range) % range + min;
+      } else {
+        if (min != null) bounded = Math.max(min, bounded);
+        if (max != null) bounded = Math.min(max, bounded);
+      }
+      const formatted = formatNumber(bounded);
       const withSuffix = hasPercent ? `${formatted}%` : formatted;
       setDraft(withSuffix);
       onCommit(withSuffix);
@@ -903,8 +918,14 @@ const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
           onBlur={() => {
             interactingRef.current = false;
             setEditing(false);
-            if (draft !== value) onCommit(draft);
-            else setDraft(value);
+            if (draft !== value) {
+              const numeric = parseFloat(draft.replace("%", ""));
+              if (!Number.isNaN(numeric) && (min != null || max != null)) {
+                commitNumber(numeric);
+              } else {
+                onCommit(draft);
+              }
+            } else setDraft(value);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -1131,6 +1152,12 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 
     const [hsv, setHsv] = useState(initialParsed);
 
+    // Sticky OKLCH hue: preserves the user's stated OKLCH H across the lossy
+    // RGB round-trip (so the displayed H doesn't drift after release) and
+    // across achromatic colors (where RGB-derived H would collapse to 0).
+    // Cleared whenever the color changes through a non-OKLCH-internal channel.
+    const oklchHueRef = useRef<number | null>(null);
+
     // External value sync — when controlled value changes from outside, sync HSV
     const lastEmittedRef = useRef<string>("");
     useEffect(() => {
@@ -1140,6 +1167,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
       if (cur === emitted) return;
       const p = parseColor(cur);
       if (!p) return;
+      oklchHueRef.current = null;
       const newHsv = rgbToHsv(p.r, p.g, p.b);
       setHsv((prev) => ({
         h: newHsv.s === 0 ? prev.h : newHsv.h,
@@ -1184,6 +1212,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
       (input: string) => {
         const p = parseColor(input);
         if (!p) return;
+        oklchHueRef.current = null;
         const newHsv = rgbToHsv(p.r, p.g, p.b);
         const merged = {
           h: newHsv.s === 0 ? hsv.h : newHsv.h,
@@ -1236,8 +1265,8 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
           onChange={(s, v) => updateHsv({ s, v })}
         />
 
-        <div className="flex flex-col">
-          <HueSlider h={hsv.h} onChange={(h) => updateHsv({ h })} />
+        <div className="flex flex-col [&>*]:mb-0 [&>*+*]:-mt-px">
+          <HueSlider h={hsv.h} onChange={(h) => { oklchHueRef.current = null; updateHsv({ h }); }} />
           <AlphaSlider
             a={hsv.a}
             solidColor={solidColorString}
@@ -1256,11 +1285,13 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
         <ColorInputsRow
           parsed={parsed}
           format={currentFormat}
+          oklchHue={oklchHueRef.current}
           onChannelChange={(channel, value) => {
             const p = { ...parsed };
             switch (channel) {
               case "hex": handleHexCommit(value as string); return;
               case "r": case "g": case "b": {
+                oklchHueRef.current = null;
                 const r = channel === "r" ? Number(value) : p.r;
                 const g = channel === "g" ? Number(value) : p.g;
                 const b = channel === "b" ? Number(value) : p.b;
@@ -1273,6 +1304,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
                 return;
               }
               case "hSL": case "sSL": case "lSL": {
+                if (channel === "hSL") oklchHueRef.current = null;
                 const hsl = rgbToHsl(p.r, p.g, p.b);
                 const h2 = channel === "hSL" ? Number(value) : hsl.h;
                 const s2 = channel === "sSL" ? Number(value) / 100 : hsl.s;
@@ -1288,9 +1320,13 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
               }
               case "L": case "C": case "H": {
                 const cur = rgbToOklch(p.r, p.g, p.b);
+                // For L/C edits, anchor on the user's last stated H so we
+                // don't drift along with chroma changes.
+                const baseH = oklchHueRef.current ?? cur.H;
                 const L = channel === "L" ? Number(value) / 100 : cur.L;
                 const C = channel === "C" ? Number(value) : cur.C;
-                const H = channel === "H" ? Number(value) : cur.H;
+                const H = channel === "H" ? Number(value) : baseH;
+                oklchHueRef.current = H;
                 const rgb = oklchToRgb(clamp01(L), Math.max(0, C), H);
                 const hsvVal = rgbToHsv(rgb.r, rgb.g, rgb.b);
                 updateHsv({
@@ -1337,10 +1373,13 @@ type ChannelKey =
 function ColorInputsRow({
   parsed,
   format,
+  oklchHue,
   onChannelChange,
 }: {
   parsed: ParsedColor;
   format: ColorFormat;
+  /** Sticky OKLCH hue override for display (preserves user's stated H across round-trip drift). */
+  oklchHue?: number | null;
   onChannelChange: (key: ChannelKey, value: string) => void;
 }) {
   const alphaPct = Math.round(parsed.a * 100);
@@ -1365,9 +1404,9 @@ function ColorInputsRow({
   if (format === "rgb") {
     return (
       <div className="grid grid-cols-4 gap-1">
-        <ChannelTooltip label="Red"><ColorInput value={String(parsed.r)} onCommit={(n) => onChannelChange("r", n)} ariaLabel="Red" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
-        <ChannelTooltip label="Green"><ColorInput value={String(parsed.g)} onCommit={(n) => onChannelChange("g", n)} ariaLabel="Green" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
-        <ChannelTooltip label="Blue"><ColorInput value={String(parsed.b)} onCommit={(n) => onChannelChange("b", n)} ariaLabel="Blue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+        <ChannelTooltip label="Red"><ColorInput value={String(parsed.r)} onCommit={(n) => onChannelChange("r", n)} ariaLabel="Red" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={255} /></ChannelTooltip>
+        <ChannelTooltip label="Green"><ColorInput value={String(parsed.g)} onCommit={(n) => onChannelChange("g", n)} ariaLabel="Green" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={255} /></ChannelTooltip>
+        <ChannelTooltip label="Blue"><ColorInput value={String(parsed.b)} onCommit={(n) => onChannelChange("b", n)} ariaLabel="Blue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={255} /></ChannelTooltip>
         <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
       </div>
     );
@@ -1377,9 +1416,9 @@ function ColorInputsRow({
     const hsl = rgbToHsl(parsed.r, parsed.g, parsed.b);
     return (
       <div className="grid grid-cols-4 gap-1">
-        <ChannelTooltip label="Hue"><ColorInput value={String(Math.round(hsl.h))} onCommit={(n) => onChannelChange("hSL", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
-        <ChannelTooltip label="Saturation"><ColorInput value={String(Math.round(hsl.s * 100))} onCommit={(n) => onChannelChange("sSL", n)} ariaLabel="Saturation" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
-        <ChannelTooltip label="Lightness"><ColorInput value={String(Math.round(hsl.l * 100))} onCommit={(n) => onChannelChange("lSL", n)} ariaLabel="Lightness" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+        <ChannelTooltip label="Hue"><ColorInput value={String(Math.round(hsl.h))} onCommit={(n) => onChannelChange("hSL", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={360} wrap /></ChannelTooltip>
+        <ChannelTooltip label="Saturation"><ColorInput value={String(Math.round(hsl.s * 100))} onCommit={(n) => onChannelChange("sSL", n)} ariaLabel="Saturation" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={100} /></ChannelTooltip>
+        <ChannelTooltip label="Lightness"><ColorInput value={String(Math.round(hsl.l * 100))} onCommit={(n) => onChannelChange("lSL", n)} ariaLabel="Lightness" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={100} /></ChannelTooltip>
         <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
       </div>
     );
@@ -1387,11 +1426,12 @@ function ColorInputsRow({
 
   // oklch
   const oklch = rgbToOklch(parsed.r, parsed.g, parsed.b);
+  const displayH = oklchHue ?? oklch.H;
   return (
     <div className="grid grid-cols-4 gap-1">
-      <ChannelTooltip label="Lightness"><ColorInput value={(oklch.L * 100).toFixed(0)} onCommit={(n) => onChannelChange("L", n)} ariaLabel="Lightness" align="center" inputMode="decimal" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
-      <ChannelTooltip label="Chroma"><ColorInput value={oklch.C.toFixed(2)} onCommit={(n) => onChannelChange("C", n)} ariaLabel="Chroma" align="center" inputMode="decimal" nudgeStep={0.01} nudgeShiftStep={0.1} decimals={2} scrubbable /></ChannelTooltip>
-      <ChannelTooltip label="Hue"><ColorInput value={oklch.H.toFixed(0)} onCommit={(n) => onChannelChange("H", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable /></ChannelTooltip>
+      <ChannelTooltip label="Lightness"><ColorInput value={(oklch.L * 100).toFixed(0)} onCommit={(n) => onChannelChange("L", n)} ariaLabel="Lightness" align="center" inputMode="decimal" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={100} /></ChannelTooltip>
+      <ChannelTooltip label="Chroma"><ColorInput value={oklch.C.toFixed(2)} onCommit={(n) => onChannelChange("C", n)} ariaLabel="Chroma" align="center" inputMode="decimal" nudgeStep={0.01} nudgeShiftStep={0.1} decimals={2} scrubbable min={0} max={0.4} /></ChannelTooltip>
+      <ChannelTooltip label="Hue"><ColorInput value={displayH.toFixed(0)} onCommit={(n) => onChannelChange("H", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} scrubbable min={0} max={360} wrap /></ChannelTooltip>
       <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
     </div>
   );
@@ -1422,6 +1462,8 @@ function AlphaInput({ value, onCommit }: { value: number; onCommit: (n: number) 
         nudgeShiftStep={10}
         hasPercent
         scrubbable
+        min={0}
+        max={100}
       />
     </ChannelTooltip>
   );
