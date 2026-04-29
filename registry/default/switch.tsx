@@ -76,6 +76,19 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
       }
     }, [thumbX, motionX]);
 
+    // --- KeyDown handlers
+
+    const handleKeyDown = useCallback(
+      (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (disabled) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        event.preventDefault();
+        handleToggle();
+      },
+      [disabled, handleToggle],
+    );
+
     // --- Pointer handlers ---
 
     const handlePointerDown = useCallback(
@@ -153,6 +166,10 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
     return (
       <div
         ref={ref}
+        role="switch"
+        tabIndex={disabled ? -1 : 0}
+        aria-checked={checked}
+        aria-disabled={disabled}
         className={cn(
           "relative z-10 flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none touch-none",
           disabled && "opacity-50 pointer-events-none",
@@ -165,6 +182,8 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerDown}
+        onKeyDown={handleKeyDown}
         onClick={() => {
           if (disabled || didDrag.current) return;
           onToggle();
