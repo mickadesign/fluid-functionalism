@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  createContext,
   forwardRef,
+  useContext,
   useRef,
   useState,
   useEffect,
@@ -27,6 +29,24 @@ import { Tooltip } from "@/registry/default/tooltip";
 // ---------------------------------------------------------------------------
 
 type ColorFormat = "hex" | "rgb" | "hsl" | "oklch";
+
+// Allows consumers (e.g. the /demo carousel) to portal popups inside a
+// CSS-scaled ancestor so menu/popover layers visually scale with the picker.
+const ColorPickerPortalContainerContext = createContext<HTMLElement | null>(null);
+
+function ColorPickerPortalContainer({
+  value,
+  children,
+}: {
+  value: HTMLElement | null;
+  children: ReactNode;
+}) {
+  return (
+    <ColorPickerPortalContainerContext.Provider value={value}>
+      {children}
+    </ColorPickerPortalContainerContext.Provider>
+  );
+}
 
 interface ParsedColor {
   // HSV (canonical, 0..360 / 0..1 / 0..1)
@@ -646,15 +666,40 @@ function FormatDropdown({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const shape = useShape();
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const portalContainer = useContext(ColorPickerPortalContainerContext);
+  const [pos, setPos] = useState<
+    | { mode: "fixed"; top: number; left: number; width: number }
+    | { mode: "absolute"; top: number; left: number; width: number }
+    | null
+  >(null);
 
   useEffect(() => {
-    if (open && triggerRef.current) {
-      setRect(triggerRef.current.getBoundingClientRect());
-    } else {
-      setRect(null);
+    if (!open || !triggerRef.current) {
+      setPos(null);
+      return;
     }
-  }, [open]);
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    if (portalContainer) {
+      const cRect = portalContainer.getBoundingClientRect();
+      const cWidth = portalContainer.offsetWidth;
+      const scale = cWidth > 0 ? cRect.width / cWidth : 1;
+      // Convert viewport coords into the portal container's pre-scale frame so
+      // an ancestor CSS scale visually scales the menu alongside the trigger.
+      setPos({
+        mode: "absolute",
+        top: (triggerRect.bottom - cRect.top) / scale + 6,
+        left: (triggerRect.left - cRect.left) / scale,
+        width: triggerRect.width / scale,
+      });
+    } else {
+      setPos({
+        mode: "fixed",
+        top: triggerRect.bottom + 6,
+        left: triggerRect.left,
+        width: triggerRect.width,
+      });
+    }
+  }, [open, portalContainer]);
 
   useEffect(() => {
     if (!open) return;
@@ -698,12 +743,12 @@ function FormatDropdown({
         <span>{FORMAT_LABELS[value]}</span>
         <ChevronDownIcon size={14} strokeWidth={1.5} className="text-muted-foreground" />
       </button>
-      {open && rect && typeof document !== "undefined" && createPortal(
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
           style={{
-            position: "fixed",
-            top: rect.bottom + 6,
-            left: rect.left,
+            position: pos.mode,
+            top: pos.top,
+            left: pos.left,
             zIndex: 60,
           }}
         >
@@ -712,7 +757,7 @@ function FormatDropdown({
             initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
             animate={{ opacity: 1, y: 0, scaleY: 1 }}
             transition={springs.fast}
-            style={{ transformOrigin: "top center", minWidth: rect.width }}
+            style={{ transformOrigin: "top center", minWidth: pos.width }}
           >
             <Dropdown checkedIndex={checkedIdx} className="!w-auto min-w-full">
               {formats.map((fmt, i) => (
@@ -730,7 +775,7 @@ function FormatDropdown({
             </Dropdown>
           </motion.div>
         </div>,
-        document.body
+        portalContainer ?? document.body
       )}
     </>
   );
@@ -1641,6 +1686,7 @@ ColorPickerPopover.displayName = "ColorPickerPopover";
 export {
   ColorPicker,
   ColorPickerPopover,
+  ColorPickerPortalContainer,
   ColorSwatch,
   ColorTile,
   parseColor,

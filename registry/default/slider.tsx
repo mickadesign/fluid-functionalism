@@ -394,7 +394,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Hover preview computation ---
     const computeHoverPreview = useCallback(
       (cursorX: number, trackWidth: number) => {
-        // Snap cursor to step grid (using same usable-width coordinate system as thumb/dots)
+        // cursorX and trackWidth are in layout space (offsetWidth-relative),
+        // unaffected by ancestor CSS transforms. THUMB_SIZE / TRACK_INSET are
+        // also layout-space, so the math below is consistent end-to-end.
         const usable = trackWidth - THUMB_SIZE;
         const rawPx = cursorX - THUMB_SIZE / 2;
         const clampedPx = Math.max(0, Math.min(usable, rawPx));
@@ -429,7 +431,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     useLayoutEffect(() => {
       const el = trackRef.current;
       if (!el || initialSyncDone.current) return;
-      const w = el.getBoundingClientRect().width;
+      const w = el.offsetWidth;
       trackWidthRef.current = w;
       const px0 = valueToPixel(values[0], min, max, w);
       motionX0.set(px0);
@@ -513,13 +515,18 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         e.preventDefault();
         e.stopPropagation(); // Prevent Radix from also handling the drag
 
-        const trackRect = trackRef.current?.getBoundingClientRect();
-        if (!trackRect) return;
-
-        const localX = e.clientX - trackRect.left - THUMB_SIZE / 2;
+        const trackEl = trackRef.current;
+        if (!trackEl) return;
+        const trackRect = trackEl.getBoundingClientRect();
+        const layoutWidth = trackEl.offsetWidth;
+        if (layoutWidth <= 0 || trackRect.width <= 0) return;
+        // Normalize cursor to layout space so it matches motionX (which is
+        // rendered as a CSS-pixel transform), even under ancestor CSS scale.
+        const scale = trackRect.width / layoutWidth;
+        const localX = (e.clientX - trackRect.left) / scale - THUMB_SIZE / 2;
         const clamped = Math.max(
           0,
-          Math.min(trackRect.width - THUMB_SIZE, localX)
+          Math.min(layoutWidth - THUMB_SIZE, localX)
         );
 
         // Determine which thumb to drag
@@ -543,9 +550,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          trackRect.width
+          layoutWidth
         );
-        const snappedPx = valueToPixel(snappedValue, min, max, trackRect.width);
+        const snappedPx = valueToPixel(snappedValue, min, max, layoutWidth);
 
         // Clamp for range crossing
         const finalPx = clampForRange(
@@ -561,7 +568,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          trackRect.width
+          layoutWidth
         );
         emitChange(activeDragThumb.current, finalValue);
 
@@ -574,13 +581,16 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       (e: React.PointerEvent<HTMLDivElement>) => {
         if (!dragging.current) return;
         e.stopPropagation();
-        const trackRect = trackRef.current?.getBoundingClientRect();
-        if (!trackRect) return;
-
-        const localX = e.clientX - trackRect.left - THUMB_SIZE / 2;
+        const trackEl = trackRef.current;
+        if (!trackEl) return;
+        const trackRect = trackEl.getBoundingClientRect();
+        const layoutWidth = trackEl.offsetWidth;
+        if (layoutWidth <= 0 || trackRect.width <= 0) return;
+        const scale = trackRect.width / layoutWidth;
+        const localX = (e.clientX - trackRect.left) / scale - THUMB_SIZE / 2;
         const clamped = Math.max(
           0,
-          Math.min(trackRect.width - THUMB_SIZE, localX)
+          Math.min(layoutWidth - THUMB_SIZE, localX)
         );
 
         const motionX =
@@ -592,9 +602,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          trackRect.width
+          layoutWidth
         );
-        const snappedPx = valueToPixel(snappedValue, min, max, trackRect.width);
+        const snappedPx = valueToPixel(snappedValue, min, max, layoutWidth);
         const finalPx = clampForRange(
           snappedPx,
           activeDragThumb.current
@@ -606,7 +616,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          trackRect.width
+          layoutWidth
         );
         emitChange(activeDragThumb.current, finalValue);
       },
@@ -776,11 +786,18 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           }}
           onMouseMove={(e) => {
             if (dragging.current) return;
-            const trackRect = trackRef.current?.getBoundingClientRect();
-            if (!trackRect) return;
-            const x = e.clientX - trackRect.left;
-            const clamped = Math.max(0, Math.min(trackRect.width, x));
-            computeHoverPreview(clamped, trackRect.width);
+            const trackEl = trackRef.current;
+            if (!trackEl) return;
+            const trackRect = trackEl.getBoundingClientRect();
+            const layoutWidth = trackEl.offsetWidth;
+            if (layoutWidth <= 0 || trackRect.width <= 0) return;
+            // Normalize to layout space so the formula's THUMB_SIZE / TRACK_INSET
+            // constants (layout px) match the cursor's coordinate space, even
+            // when an ancestor applies a CSS scale transform (e.g. /demo).
+            const scale = trackRect.width / layoutWidth;
+            const layoutX = (e.clientX - trackRect.left) / scale;
+            const clamped = Math.max(0, Math.min(layoutWidth, layoutX));
+            computeHoverPreview(clamped, layoutWidth);
           }}
         >
           {/* Tooltip values */}
@@ -1105,9 +1122,15 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         const rect = el.getBoundingClientRect();
         // Use clientWidth (padding box) — CSS % and absolute left/width are relative to it
         const w = el.clientWidth;
-        const borderLeft = rect.width - w > 0 ? (rect.width - w) / 2 : 0;
-        const x = clientX - rect.left - borderLeft;
-        const clamped = Math.max(0, Math.min(w, x));
+        if (w <= 0 || rect.width <= 0) return;
+        // Normalize cursor to layout space so it matches `w` (layout, padding
+        // box). offsetWidth is the layout border-box; the difference vs `w` is
+        // the horizontal border contribution split across both sides.
+        const scale = rect.width / el.offsetWidth;
+        const borderLeftLayout = (el.offsetWidth - w) / 2;
+        const visualX = clientX - rect.left;
+        const layoutX = visualX / scale - borderLeftLayout;
+        const clamped = Math.max(0, Math.min(w, layoutX));
 
         // Snap to nearest step value
         let snappedVal: number;

@@ -15,6 +15,7 @@ import {
   CheckboxGroup,
   CheckboxItem,
 } from "@/registry/default/checkbox-group";
+import { ColorPicker } from "@/registry/default/color-picker";
 import {
   Dialog,
   DialogTrigger,
@@ -459,11 +460,20 @@ function TooltipPreview() {
   );
 }
 
+function ColorPickerPreview() {
+  return (
+    <div className="w-full max-w-[280px] max-h-[400px]">
+      <ColorPicker defaultValue="#3b82f6" />
+    </div>
+  );
+}
+
 export const previewMap: Record<string, React.FC> = {
   accordion: AccordionPreview,
   badge: BadgePreview,
   button: ButtonPreview,
   "checkbox-group": CheckboxPreview,
+  "color-picker": ColorPickerPreview,
   dialog: DialogPreview,
   dropdown: DropdownPreview,
   "input-copy": InputCopyPreview,

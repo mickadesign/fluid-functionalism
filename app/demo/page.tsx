@@ -10,7 +10,8 @@ import { SettingsContent } from "@/app/components/right-panel";
 import { Button } from "@/registry/default/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip, TooltipPortalContainer } from "@/registry/default/tooltip";
+import { ColorPickerPortalContainer } from "@/registry/default/color-picker";
 
 const SETTINGS_SLUG = "settings";
 const BASE_WIDTH = 680;
@@ -35,6 +36,7 @@ function DemoPageInner() {
   const searchParams = useSearchParams();
   const cardRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [scaleEl, setScaleEl] = useState<HTMLDivElement | null>(null);
   const slideOrder = [
     "dropdown",
     "checkbox-group",
@@ -42,6 +44,7 @@ function DemoPageInner() {
     "tabs",
     "radio-group",
     "slider",
+    "color-picker",
     "input-group",
     "switch",
     "table",
@@ -199,8 +202,12 @@ function DemoPageInner() {
         {current && (
           current.type === "settings" ? (
             <BentoCard key={current.slug} slug="" name={current.name} style={{ height: "100%" }}>
-              <div className="w-full max-w-[420px] mx-auto flex justify-center" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
-                <SettingsContent tooltipSide="right" hideSocial />
+              <div ref={setScaleEl} className="w-full max-w-[420px] mx-auto flex justify-center relative" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+                <TooltipPortalContainer value={scaleEl}>
+                  <ColorPickerPortalContainer value={scaleEl}>
+                    <SettingsContent tooltipSide="right" hideSocial />
+                  </ColorPickerPortalContainer>
+                </TooltipPortalContainer>
               </div>
             </BentoCard>
           ) : (
@@ -211,8 +218,12 @@ function DemoPageInner() {
               isNew={"isNew" in current ? current.isNew : undefined}
               style={{ height: "100%" }}
             >
-              <div className="w-full max-w-[420px] mx-auto flex justify-center" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
-                <SlidePreview slug={current.slug} />
+              <div ref={setScaleEl} className="w-full max-w-[420px] mx-auto flex justify-center relative" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+                <TooltipPortalContainer value={scaleEl}>
+                  <ColorPickerPortalContainer value={scaleEl}>
+                    <SlidePreview slug={current.slug} />
+                  </ColorPickerPortalContainer>
+                </TooltipPortalContainer>
               </div>
             </BentoCard>
           )
