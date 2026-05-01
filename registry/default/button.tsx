@@ -9,21 +9,19 @@ import { useShape } from "@/lib/shape-context";
 
 const buttonVariants = cva(
   [
-    "group relative inline-flex items-center justify-center outline-none cursor-pointer",
+    "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer",
     "text-box-trim-both text-box-edge-cap-alphabetic",
-    "transition-all duration-80",
+    "transition-colors duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
   ],
   {
     variants: {
       variant: {
-        primary: "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/80",
-        secondary: "bg-accent text-foreground hover:bg-accent/80 active:bg-accent",
-        tertiary:
-          "border border-border text-foreground bg-transparent hover:bg-hover active:bg-active",
-        ghost:
-          "text-muted-foreground bg-transparent hover:bg-hover hover:text-foreground active:bg-active",
+        primary: "text-background",
+        secondary: "text-foreground",
+        tertiary: "border border-border text-foreground",
+        ghost: "text-muted-foreground hover:text-foreground",
       },
       size: {
         sm: "h-7 px-3 text-[12px] gap-1",
@@ -60,6 +58,13 @@ interface ButtonProps
   trailingIcon?: IconComponent;
 }
 
+const bgVariants: Record<string, string> = {
+  primary: "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
+  secondary: "bg-accent group-hover:bg-accent/80 group-active:bg-accent",
+  tertiary: "bg-transparent group-hover:bg-hover group-active:bg-active",
+  ghost: "bg-transparent group-hover:bg-hover group-active:bg-active",
+};
+
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
@@ -81,6 +86,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
     const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
     const shape = useShape();
+    const bgClass = bgVariants[variant ?? "primary"];
 
     return (
       <Comp
@@ -99,60 +105,69 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style={style}
         {...props}
       >
-        {loading ? (
-          <>
-            <span className="flex items-center justify-center gap-[inherit] opacity-0">
-              {LeadingIcon && !isIconOnly && (
-                <LeadingIcon size={iconSize} strokeWidth={2} />
-              )}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-0 rounded-[inherit] transition-[background-color,transform] duration-80 group-active:scale-[0.98]",
+            bgClass
+          )}
+        />
+        <span className="relative inline-flex items-center justify-center gap-[inherit]">
+          {loading ? (
+            <>
+              <span className="flex items-center justify-center gap-[inherit] opacity-0">
+                {LeadingIcon && !isIconOnly && (
+                  <LeadingIcon size={iconSize} strokeWidth={2} />
+                )}
+                {children}
+                {TrailingIcon && !isIconOnly && (
+                  <TrailingIcon size={iconSize} strokeWidth={2} />
+                )}
+              </span>
+              <span className="absolute inset-0 flex items-center justify-center">
+                <svg
+                  className="h-8 w-8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <path
+                    d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
+                    stroke="currentColor"
+                    strokeWidth="1.125"
+                    strokeLinecap="round"
+                    pathLength="100"
+                    style={{
+                      strokeDasharray: "15 85",
+                      animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
+                    }}
+                  />
+                </svg>
+              </span>
+            </>
+          ) : isIconOnly ? (
+            <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
               {children}
-              {TrailingIcon && !isIconOnly && (
-                <TrailingIcon size={iconSize} strokeWidth={2} />
-              )}
             </span>
-            <span className="absolute inset-0 flex items-center justify-center">
-              <svg
-                className="h-8 w-8"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <path
-                  d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
-                  stroke="currentColor"
-                  strokeWidth="1.125"
-                  strokeLinecap="round"
-                  pathLength="100"
-                  style={{
-                    strokeDasharray: "15 85",
-                    animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
-                  }}
+          ) : (
+            <>
+              {LeadingIcon && (
+                <LeadingIcon
+                  size={iconSize}
+                  strokeWidth={1.5}
+                  className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
-              </svg>
-            </span>
-          </>
-        ) : isIconOnly ? (
-          <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
-            {children}
-          </span>
-        ) : (
-          <>
-            {LeadingIcon && (
-              <LeadingIcon
-                size={iconSize}
-                strokeWidth={1.5}
-                className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
-              />
-            )}
-            <span>{children}</span>
-            {TrailingIcon && (
-              <TrailingIcon
-                size={iconSize}
-                strokeWidth={1.5}
-                className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
-              />
-            )}
-          </>
-        )}
+              )}
+              <span>{children}</span>
+              {TrailingIcon && (
+                <TrailingIcon
+                  size={iconSize}
+                  strokeWidth={1.5}
+                  className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+                />
+              )}
+            </>
+          )}
+        </span>
       </Comp>
     );
   }

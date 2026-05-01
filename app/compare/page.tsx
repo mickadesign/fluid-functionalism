@@ -14,22 +14,23 @@ import { useIcon } from "@/lib/icon-context";
 import { Tooltip } from "@/registry/default/tooltip";
 import "./shadcn-theme.css";
 
+// Mirrors the slide order on /demo. Components without a shadcn equivalent
+// (or without a Fluid Functionalism preview) are skipped at runtime.
 const SLIDE_ORDER = [
-  "accordion",
-  "badge",
-  "button",
-  "checkbox-group",
-  "dialog",
   "dropdown",
-  "input-group",
+  "checkbox-group",
+  "accordion",
+  "tabs",
   "radio-group",
-  "select",
   "slider",
+  "color-picker",
+  "input-group",
   "switch",
   "table",
-  "tabs",
   "tabs-subtle",
-  "tooltip",
+  "thinking-indicator",
+  "thinking-steps",
+  "input-copy",
 ];
 
 function ShadcnPreview({ slug }: { slug: string }) {
@@ -146,10 +147,10 @@ function ComparePageInner() {
               className="text-[22px] sm:text-[28px] text-foreground leading-none"
               style={{ fontVariationSettings: fontWeights.bold }}
             >
-              shadcn vs Fluid Functionalism
+              Shadcn VS Fluid Functionalism
             </h1>
             <p className="text-[14px] text-muted-foreground">
-              Same API. Refined motion.
+              Hover the difference, side by side
             </p>
             <div className="flex items-center gap-2 mt-2">
               <Link href="/docs">
