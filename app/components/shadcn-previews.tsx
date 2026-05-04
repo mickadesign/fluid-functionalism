@@ -199,7 +199,7 @@ function DropdownPreview() {
             role="menuitemradio"
             aria-checked={selected}
             onClick={() => setValue(item.value)}
-            className="relative flex w-full cursor-default select-none items-center gap-2 rounded-sm py-2 pl-8 pr-2 text-[13px] outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="relative flex w-full cursor-default select-none items-center gap-2 rounded-sm py-2 pl-8 pr-2 text-[13px] outline-none hover:bg-accent hover:text-accent-foreground"
           >
             <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
               {selected && <Check className="h-3.5 w-3.5" />}
