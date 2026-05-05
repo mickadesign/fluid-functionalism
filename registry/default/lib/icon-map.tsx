@@ -43,6 +43,9 @@ import {
   Play,
   Pause,
   Pipette,
+  Home,
+  MessageCircle,
+  Inbox,
 } from "lucide-react";
 
 // ── Tabler ──────────────────────────────────────────────────
@@ -86,6 +89,9 @@ import {
   IconRotate2,
   IconPlayerPlay,
   IconPlayerPause,
+  IconHome,
+  IconMessageCircle,
+  IconInbox,
 } from "@tabler/icons-react";
 
 // ── Phosphor ────────────────────────────────────────────────
@@ -129,6 +135,9 @@ import {
   ArrowCounterClockwise as PhRotateCcw,
   Play as PhPlay,
   Pause as PhPause,
+  House as PhHouse,
+  ChatCircle as PhChatCircle,
+  Tray as PhTray,
 } from "@phosphor-icons/react";
 
 // ── HugeIcons ───────────────────────────────────────────────
@@ -169,6 +178,9 @@ import HiImage from "@hugeicons/core-free-icons/Image01Icon";
 import HiLink from "@hugeicons/core-free-icons/Link01Icon";
 import HiCheck from "@hugeicons/core-free-icons/Tick02Icon";
 import HiRotateCcw from "@hugeicons/core-free-icons/ArrowReloadHorizontalIcon";
+import HiHome from "@hugeicons/core-free-icons/Home01Icon";
+import HiMessage from "@hugeicons/core-free-icons/BubbleChatIcon";
+import HiInbox from "@hugeicons/core-free-icons/InboxIcon";
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -191,7 +203,8 @@ export type IconName =
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
   | "globe" | "user"
   | "image" | "link" | "check" | "rotate-ccw"
-  | "play" | "pause" | "pipette";
+  | "play" | "pause" | "pipette"
+  | "home" | "message-circle" | "inbox";
 
 export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons"];
 
@@ -278,6 +291,9 @@ const lucideMap: Record<IconName, IconComponent> = {
   "rotate-ccw": RotateCcw,
   "play": Play,
   "pause": Pause,
+  "home": Home,
+  "message-circle": MessageCircle,
+  "inbox": Inbox,
 };
 
 const tablerMap: Record<IconName, IconComponent> = {
@@ -320,6 +336,9 @@ const tablerMap: Record<IconName, IconComponent> = {
   "rotate-ccw": tabler(IconRotate2),
   "play": tabler(IconPlayerPlay),
   "pause": tabler(IconPlayerPause),
+  "home": tabler(IconHome),
+  "message-circle": tabler(IconMessageCircle),
+  "inbox": tabler(IconInbox),
 };
 
 const phosphorMap: Record<IconName, IconComponent> = {
@@ -362,6 +381,9 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "rotate-ccw": phosphor(PhRotateCcw),
   "play": phosphor(PhPlay),
   "pause": phosphor(PhPause),
+  "home": phosphor(PhHouse),
+  "message-circle": phosphor(PhChatCircle),
+  "inbox": phosphor(PhTray),
 };
 
 const hugeiconsMap: Record<IconName, IconComponent> = {
@@ -404,6 +426,9 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "rotate-ccw": hugeicons(HiRotateCcw),
   "play": Play,
   "pause": Pause,
+  "home": hugeicons(HiHome),
+  "message-circle": hugeicons(HiMessage),
+  "inbox": hugeicons(HiInbox),
 };
 
 // ── Unified Map ─────────────────────────────────────────────
