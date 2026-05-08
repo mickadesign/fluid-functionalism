@@ -15,7 +15,7 @@
      Dark: additive white-opacity ladder over #171717.
      Each surface pairs 1:1 with a shadow recipe (--shadow-1 .. --shadow-8). */
   --surface-1: #FAFAFA;
-  --surface-2: #F5F5F5;
+  --surface-2: #FCFCFC;
   --surface-3: #FFFFFF;
   --surface-4: #FFFFFF;
   --surface-5: #FFFFFF;
