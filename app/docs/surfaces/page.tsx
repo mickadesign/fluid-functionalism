@@ -49,19 +49,9 @@ function PlaygroundCard({ level }: { level: number }) {
   const shape = useShape();
   return (
     <div
-      className={`flex flex-col items-center justify-center w-48 h-48 ${shape.container} ${surfaceClass(level)}`}
+      className={`w-48 h-48 ${shape.container} ${surfaceClass(level)}`}
       style={{ transition: "background-color 220ms ease, box-shadow 220ms ease" }}
-    >
-      <span
-        className="text-[28px] text-foreground leading-none tabular-nums"
-        style={{ fontVariationSettings: fontWeights.bold }}
-      >
-        {level}
-      </span>
-      <span className="text-[11px] text-muted-foreground mt-1.5 uppercase tracking-wider">
-        Surface
-      </span>
-    </div>
+    />
   );
 }
 
