@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { Slider } from "@/registry/default/slider";
 import { fontWeights } from "@/registry/default/lib/font-weight";
@@ -45,58 +45,104 @@ function surfaceClass(level: number) {
   return SURFACE_CLASSES[level];
 }
 
-function PlaygroundCard({ level }: { level: number }) {
+function NestedSurfaces({ substrate, layers }: { substrate: number; layers: number }) {
   const shape = useShape();
-  return (
-    <div
-      className={`flex flex-col items-center justify-center w-48 h-48 ${shape.container} ${surfaceClass(level)}`}
-      style={{ transition: "background-color 220ms ease, box-shadow 220ms ease" }}
-    >
-      <span
-        className="text-[28px] text-foreground leading-none tabular-nums"
-        style={{ fontVariationSettings: fontWeights.bold }}
+  const stack = Array.from({ length: layers + 1 }, (_, i) => substrate + i);
+  return stack.reduceRight<ReactElement | null>((child, level, idx) => {
+    const isInnermost = idx === stack.length - 1;
+    return (
+      <div
+        key={level}
+        className={`${shape.container} ${surfaceClass(level)} ${isInnermost ? "p-5" : "p-5"} flex flex-col gap-3`}
+        style={{ transition: "background-color 220ms ease, box-shadow 220ms ease" }}
       >
-        {level}
-      </span>
-      <span className="text-[11px] text-muted-foreground mt-1.5 uppercase tracking-wider">
-        Surface
-      </span>
-    </div>
-  );
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
+          Surface {level}
+        </span>
+        {child}
+      </div>
+    );
+  }, null);
 }
 
 function Playground() {
-  const [level, setLevel] = useState<number>(3);
+  const [substrate, setSubstrate] = useState<number>(1);
+  const [layers, setLayers] = useState<number>(2);
+  const maxLayers = 8 - substrate;
+
+  const handleSubstrate = (v: number | [number, number]) => {
+    const next = Array.isArray(v) ? v[0] : v;
+    setSubstrate(next);
+    setLayers((prev) => Math.min(prev, 8 - next));
+  };
+
+  const handleLayers = (v: number | [number, number]) => {
+    const next = Array.isArray(v) ? v[0] : v;
+    setLayers(Math.min(next, maxLayers));
+  };
+
   const shape = useShape();
+
   return (
     <div className={`flex flex-col w-full border border-border/60 overflow-hidden ${shape.container}`}>
-      <div className="flex items-center justify-center px-8 py-16 min-h-[280px] bg-background">
-        <PlaygroundCard level={level} />
+      <div
+        className="flex items-center justify-center px-8 py-16 min-h-[320px]"
+        style={{ backgroundColor: "var(--surface-1)" }}
+      >
+        <NestedSurfaces substrate={substrate} layers={layers} />
       </div>
-      <div className="flex flex-col gap-4 px-8 py-6 border-t border-border/60 bg-muted/30">
-        <div className="flex items-baseline justify-between gap-4">
-          <span
-            className="text-[13px] text-foreground"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Level {level}
-          </span>
-          <span className="text-[12px] text-muted-foreground font-mono">
-            bg-surface-{level} shadow-surface-{level}
-          </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 px-8 py-6 border-t border-border/60 bg-muted/30">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-4">
+            <span
+              className="text-[13px] text-foreground"
+              style={{ fontVariationSettings: fontWeights.semibold }}
+            >
+              Substrate
+            </span>
+            <span className="text-[12px] text-muted-foreground font-mono">
+              surface-{substrate}
+            </span>
+          </div>
+          <Slider
+            value={substrate}
+            onChange={handleSubstrate}
+            min={1}
+            max={8}
+            step={1}
+            aria-label="Substrate surface level"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono px-0.5">
+            {LEVELS.map((l) => (
+              <span key={l}>{l}</span>
+            ))}
+          </div>
         </div>
-        <Slider
-          value={level}
-          onChange={(v) => setLevel(Array.isArray(v) ? v[0] : v)}
-          min={1}
-          max={8}
-          step={1}
-          aria-label="Surface elevation level"
-        />
-        <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono px-0.5">
-          {LEVELS.map((l) => (
-            <span key={l}>{l}</span>
-          ))}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-4">
+            <span
+              className="text-[13px] text-foreground"
+              style={{ fontVariationSettings: fontWeights.semibold }}
+            >
+              Layers above
+            </span>
+            <span className="text-[12px] text-muted-foreground font-mono">
+              {layers} {layers === 1 ? "layer" : "layers"} → surface-{substrate + layers}
+            </span>
+          </div>
+          <Slider
+            value={layers}
+            onChange={handleLayers}
+            min={0}
+            max={maxLayers}
+            step={1}
+            aria-label="Number of layers above substrate"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono px-0.5">
+            {Array.from({ length: maxLayers + 1 }, (_, i) => (
+              <span key={i}>{i}</span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
