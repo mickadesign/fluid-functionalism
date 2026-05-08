@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { Slider } from "@/registry/default/slider";
-import { springs } from "@/registry/default/lib/springs";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 
@@ -50,15 +48,12 @@ function surfaceClass(level: number) {
 function PlaygroundCard({ level }: { level: number }) {
   const shape = useShape();
   return (
-    <motion.div
-      key={level}
-      initial={{ opacity: 0, scale: 0.97 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={springs.moderate}
+    <div
       className={`flex flex-col items-center justify-center w-48 h-48 ${shape.container} ${surfaceClass(level)}`}
+      style={{ transition: "background-color 220ms ease, box-shadow 220ms ease" }}
     >
       <span
-        className="text-[28px] text-foreground leading-none"
+        className="text-[28px] text-foreground leading-none tabular-nums"
         style={{ fontVariationSettings: fontWeights.bold }}
       >
         {level}
@@ -66,7 +61,7 @@ function PlaygroundCard({ level }: { level: number }) {
       <span className="text-[11px] text-muted-foreground mt-1.5 uppercase tracking-wider">
         Surface
       </span>
-    </motion.div>
+    </div>
   );
 }
 
