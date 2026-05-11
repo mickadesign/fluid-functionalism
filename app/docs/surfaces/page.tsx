@@ -208,17 +208,34 @@ export default function SurfacesDoc() {
       </DocSection>
 
       <DocSection title="Playground">
-        <div className="flex flex-col gap-6">
-          <SimplePlayground />
-          <Playground />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ThemedColumn theme="dark">
+            <SimplePlayground />
+            <Playground />
+          </ThemedColumn>
+          <ThemedColumn theme="light">
+            <SimplePlayground />
+            <Playground />
+          </ThemedColumn>
         </div>
       </DocSection>
 
       <DocSection title="The ladder">
-        <div className="flex flex-col divide-y divide-border/60">
-          {LEVELS.map((l) => (
-            <LadderRow key={l} level={l} />
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ThemedColumn theme="dark">
+            <div className="flex flex-col divide-y divide-border/60">
+              {LEVELS.map((l) => (
+                <LadderRow key={l} level={l} />
+              ))}
+            </div>
+          </ThemedColumn>
+          <ThemedColumn theme="light">
+            <div className="flex flex-col divide-y divide-border/60">
+              {LEVELS.map((l) => (
+                <LadderRow key={l} level={l} />
+              ))}
+            </div>
+          </ThemedColumn>
         </div>
       </DocSection>
 
@@ -281,6 +298,20 @@ export default function SurfacesDoc() {
         </div>
       </DocSection>
     </DocPage>
+  );
+}
+
+function ThemedColumn({ theme, children }: { theme: "dark" | "light"; children: ReactNode }) {
+  return (
+    <div className={`${theme} bento-card-border border bg-background rounded-2xl p-6 flex flex-col gap-6`}>
+      <span
+        className="text-[11px] text-muted-foreground uppercase tracking-wider"
+        style={{ fontVariationSettings: fontWeights.semibold }}
+      >
+        {theme === "dark" ? "Dark mode" : "Light mode"}
+      </span>
+      {children}
+    </div>
   );
 }
 
