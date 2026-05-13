@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useSurface } from "@/lib/surface-context";
+import { surfaceClasses } from "@/lib/surface-classes";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 /* ─────────────────────── Contexts ─────────────────────── */
@@ -148,6 +150,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
+    const substrate = useSurface();
+    // Active pill lifts 3 levels above substrate (1 above the muted track + 2 for pop).
+    // On the page (substrate 1) this lands on surface 4 — matches the original design.
+    // Inside a dialog (substrate 5) it lifts to surface 8 instead of staying at 4.
+    const indicatorLevel = Math.min(substrate + 3, 8);
     const valueOrderCtx = useContext(TabsValueOrderContext);
     const [optimisticIdx, setOptimisticIdx] = useState<number | null>(null);
 
@@ -287,7 +294,8 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
           {selectedRect && (
             <motion.div
               className={cn(
-                "absolute pointer-events-none bg-surface-4 shadow-surface-4",
+                "absolute pointer-events-none",
+                surfaceClasses(indicatorLevel),
                 shape.bg
               )}
               initial={false}

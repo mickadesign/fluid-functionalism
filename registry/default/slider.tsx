@@ -1436,7 +1436,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             className="absolute left-0 top-0 bottom-0 pointer-events-none z-[3]"
             style={{
               width: pipsFillWidthStyle,
-              backgroundColor: "color-mix(in srgb, var(--foreground) 8%, transparent)",
+              backgroundColor: "var(--active)",
             }}
           />
         )}
@@ -1494,7 +1494,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             className="absolute left-0 top-0 bottom-0 pointer-events-none"
             style={{
               width: fillWidthStyle,
-              backgroundColor: "color-mix(in srgb, var(--foreground) 8%, transparent)",
+              backgroundColor: "var(--active)",
             }}
           />
         )}

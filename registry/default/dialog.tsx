@@ -15,11 +15,11 @@ import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
 import { springs } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
-import { SurfaceProvider } from "@/lib/surface-context";
+import { SurfaceProvider, useSurface } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
 
-const DIALOG_LEVEL = 5;
+const DIALOG_OFFSET = 4;
 
 const DialogOpenContext = createContext(false);
 
@@ -55,6 +55,8 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const XIcon = useIcon("x");
     const open = useContext(DialogOpenContext);
     const shape = useShape();
+    const substrate = useSurface();
+    const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -81,7 +83,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           <motion.div
             className={cn(
               "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
-              surfaceClasses(DIALOG_LEVEL),
+              surfaceClasses(dialogLevel),
               "p-6 focus:outline-none",
               size === "sm" && "max-w-[400px]",
               size === "lg" && "max-w-[540px]",
@@ -98,7 +100,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             transition={open ? springs.slow : springs.moderate}
             onAnimationComplete={handleExitComplete}
           >
-            <SurfaceProvider value={DIALOG_LEVEL}>
+            <SurfaceProvider value={dialogLevel}>
               {children}
               <DialogPrimitive.Close asChild>
                 <Button

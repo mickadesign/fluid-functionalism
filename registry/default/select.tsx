@@ -19,8 +19,7 @@ import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
-import { useSurface, SurfaceProvider } from "@/lib/surface-context";
-import { surfaceClasses } from "@/lib/surface-classes";
+import { Elevated } from "@/lib/elevated";
 
 // ---------------------------------------------------------------------------
 // Select context
@@ -257,8 +256,6 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
   ({ className, children }, ref) => {
     const { open, setOpen, value, triggerRef } = useSelectContext();
     const shape = useShape();
-    const substrate = useSurface();
-    const level = Math.min(substrate + 2, 8);
     const containerRef = useRef<HTMLDivElement>(null);
     const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
 
@@ -410,7 +407,6 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       activeIndex !== null && activeIndex !== checkedIndex;
 
     return createPortal(
-      <SurfaceProvider value={level}>
       <SelectContentContext.Provider
         value={{ registerItem, activeIndex, checkedIndex }}
       >
@@ -429,7 +425,9 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             transition={springs.fast}
             style={{ transformOrigin: "top center" }}
           >
-          <div
+          <Elevated
+            offset={2}
+            shadowLevel={3}
             ref={(node) => {
               (
                 containerRef as React.MutableRefObject<HTMLDivElement | null>
@@ -470,7 +468,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             }}
             onKeyDown={handleKeyDown}
             className={cn(
-              `relative flex flex-col gap-0.5 max-h-[300px] overflow-y-auto ${shape.container} ${surfaceClasses(level, 3)} p-1 select-none outline-none`,
+              `relative flex flex-col gap-0.5 max-h-[300px] overflow-y-auto ${shape.container} p-1 select-none outline-none`,
               className
             )}
           >
@@ -547,11 +545,10 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             </AnimatePresence>
 
             {children}
-          </div>
+          </Elevated>
           </motion.div>
         </div>
-      </SelectContentContext.Provider>
-      </SurfaceProvider>,
+      </SelectContentContext.Provider>,
       document.body
     );
   }

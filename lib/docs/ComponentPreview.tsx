@@ -21,6 +21,10 @@ interface ComponentPreviewProps {
   onReplay?: () => void;
   /** Custom playback button (overrides onReplay) */
   playbackButton?: PlaybackButton;
+  /** Padding around the preview content. Use "compact" when the demo
+   *  is a self-contained block that already supplies its own breathing
+   *  room (dialogs, full-bleed cards). Defaults to "default". */
+  padding?: "default" | "compact";
   children: ReactNode;
 }
 
@@ -29,6 +33,7 @@ export function ComponentPreview({
   code,
   onReplay,
   playbackButton,
+  padding = "default",
   children,
 }: ComponentPreviewProps) {
   const [tab, setTab] = useState(0);
@@ -73,7 +78,11 @@ export function ComponentPreview({
 
       {/* Content */}
       {tab === 0 ? (
-        <div className="flex items-center justify-center px-8 py-12 min-h-[120px] bg-background">
+        <div
+          className={`flex items-center justify-center min-h-[120px] bg-background ${
+            padding === "compact" ? "px-4 py-4" : "px-8 py-12"
+          }`}
+        >
           {children}
         </div>
       ) : (

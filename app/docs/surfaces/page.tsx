@@ -150,7 +150,7 @@ function SurfaceChip({ level }: { level: number }) {
 
 function TokensDemo() {
   return (
-    <ComponentPreview code={TOKENS_CSS}>
+    <ComponentPreview code={TOKENS_CSS} padding="compact">
       <div className="flex flex-col gap-4 w-full">
         <div className="dark flex flex-col gap-2">
           <span
@@ -248,7 +248,7 @@ function ElevatedMenu() {
 
 function CollapseDemo() {
   return (
-    <ComponentPreview code={COLLAPSE_CODE}>
+    <ComponentPreview code={COLLAPSE_CODE} padding="compact">
       <div className="dark w-full">
         <SurfaceProvider value={5}>
           <div
@@ -306,7 +306,7 @@ function SubstrateDemo() {
   ];
 
   return (
-    <ComponentPreview code={SUBSTRATE_CODE}>
+    <ComponentPreview code={SUBSTRATE_CODE} padding="compact">
       <div className="dark grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
         {scenarios.map(({ substrate, label }) => (
           <div
@@ -346,7 +346,7 @@ function SubstrateDemo() {
 
 function ElevatedDemo() {
   return (
-    <ComponentPreview code={ELEVATED_SOURCE}>
+    <ComponentPreview code={ELEVATED_SOURCE} padding="compact">
       <div className="dark w-full">
         <div
           className={cn(
@@ -354,24 +354,16 @@ function ElevatedDemo() {
             surfaceClasses(1)
           )}
         >
-          <span className="text-[11px] text-muted-foreground font-mono">
-            substrate 1
-          </span>
+          <span className="text-[12px] text-muted-foreground">Page</span>
           <Elevated offset={2} className="rounded-2xl p-5 flex flex-col gap-3">
-            <span className="text-[11px] text-muted-foreground font-mono">
-              Elevated offset 2 → surface 3
-            </span>
+            <span className="text-[12px] text-muted-foreground">Card</span>
             <Elevated
               offset={2}
               className="rounded-2xl p-5 flex flex-col gap-3"
             >
-              <span className="text-[11px] text-muted-foreground font-mono">
-                Elevated offset 2 → surface 5
-              </span>
+              <span className="text-[12px] text-muted-foreground">Popover</span>
               <Elevated offset={2} className="rounded-2xl p-5">
-                <span className="text-[11px] text-muted-foreground font-mono">
-                  Elevated offset 2 → surface 7
-                </span>
+                <span className="text-[12px] text-muted-foreground">Menu</span>
               </Elevated>
             </Elevated>
           </Elevated>
@@ -388,7 +380,7 @@ function ElevatedDemo() {
 function ColorPickerDemo() {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   return (
-    <ComponentPreview code={COLOR_PICKER_CODE}>
+    <ComponentPreview code={COLOR_PICKER_CODE} padding="compact">
       <div
         ref={setContainerEl}
         className="dark relative w-full rounded-2xl overflow-hidden flex items-start justify-center min-h-[520px] py-12 bg-background"
@@ -489,7 +481,7 @@ function InviteDialogDemo() {
   const ChevronDown = useIcon("chevron-down");
 
   return (
-    <ComponentPreview code={INVITE_DIALOG_CODE}>
+    <ComponentPreview code={INVITE_DIALOG_CODE} padding="compact">
       <div className="dark relative w-full rounded-2xl overflow-hidden min-h-[640px] flex items-center justify-center p-6 bg-background">
         <div
           className="absolute inset-0 bg-black/30 pointer-events-none"
@@ -505,7 +497,7 @@ function InviteDialogDemo() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div
-                  className="w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-[12px]"
+                  className="shrink-0 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-[12px]"
                   style={{ fontVariationSettings: fontWeights.semibold }}
                 >
                   M
@@ -649,7 +641,7 @@ function UseLightLink({ children }: { children: ReactNode }) {
 export default function SurfacesDoc() {
   return (
     <DocPage
-      title="Elevation"
+      title="Surfaces"
       description={
         <>
           Eight surface levels that nest. Components read their substrate from

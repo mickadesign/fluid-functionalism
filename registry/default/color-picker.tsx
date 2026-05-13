@@ -1346,7 +1346,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
       <SurfaceProvider value={pickerLevel}>
       <div
         ref={ref}
-        className={cn("flex flex-col gap-2 p-3 bg-card shadow-surface-1", shape.container, className)}
+        className={cn("flex flex-col gap-2 p-3", surfaceClasses(pickerLevel, 1), shape.container, className)}
         style={{ width: PANEL_WIDTH }}
         {...props}
       >

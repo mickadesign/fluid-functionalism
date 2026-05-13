@@ -191,7 +191,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
             backgroundColor: checked
               ? hovered ? "#5C89F2" : "#6B97FF"
               : hovered
-                ? "color-mix(in oklab, var(--accent), var(--foreground) 10%)"
+                ? "color-mix(in oklab, var(--accent), rgb(var(--overlay)) 10%)"
                 : "var(--accent)",
           }}
           onClick={(e) => e.stopPropagation()}
