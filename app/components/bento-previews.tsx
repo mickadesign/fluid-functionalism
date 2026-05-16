@@ -8,13 +8,13 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/registry/default/accordion";
+} from "@/registry/radix/accordion";
 import { Badge } from "@/registry/default/badge";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import {
   CheckboxGroup,
   CheckboxItem,
-} from "@/registry/default/checkbox-group";
+} from "@/registry/radix/checkbox-group";
 import { ColorPicker, ColorPickerPortalContainer } from "@/registry/default/color-picker";
 import {
   Dialog,
@@ -25,20 +25,20 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
-} from "@/registry/default/dialog";
+} from "@/registry/radix/dialog";
 import { Dropdown } from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import { InputCopy } from "@/registry/default/input-copy";
 import { InputGroup, InputField } from "@/registry/default/input-group";
-import { RadioGroup, RadioItem } from "@/registry/default/radio-group";
+import { RadioGroup, RadioItem } from "@/registry/radix/radio-group";
 import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
 } from "@/registry/default/select";
-import { Slider, SliderComfortable } from "@/registry/default/slider";
-import { Switch } from "@/registry/default/switch";
+import { Slider, SliderComfortable } from "@/registry/radix/slider";
+import { Switch } from "@/registry/radix/switch";
 import {
   Table,
   TableHeader,
@@ -47,7 +47,7 @@ import {
   TableHead,
   TableCell,
 } from "@/registry/default/table";
-import { Tabs, TabsList, TabItem } from "@/registry/default/tabs";
+import { Tabs, TabsList, TabItem } from "@/registry/radix/tabs";
 import {
   TabsSubtle,
   TabsSubtleItem,
@@ -62,7 +62,7 @@ import {
   ThinkingStepSources,
   ThinkingStepSource,
 } from "@/registry/default/thinking-steps";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 
 function AccordionPreview() {
   return (

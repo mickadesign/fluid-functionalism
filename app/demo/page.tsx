@@ -7,10 +7,10 @@ import { componentList } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
 import { BentoCard } from "@/app/components/bento-card";
 import { SettingsContent } from "@/app/components/right-panel";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
-import { Tooltip, TooltipPortalContainer } from "@/registry/default/tooltip";
+import { Tooltip, TooltipPortalContainer } from "@/registry/radix/tooltip";
 import { ColorPickerPortalContainer } from "@/registry/default/color-picker";
 
 const SETTINGS_SLUG = "settings";

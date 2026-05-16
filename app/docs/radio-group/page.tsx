@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RadioGroup, RadioItem } from "@/registry/default/radio-group";
+import { RadioGroup, RadioItem } from "@/registry/radix/radio-group";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

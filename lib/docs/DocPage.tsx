@@ -4,10 +4,11 @@ import Link from "next/link";
 import { type ReactNode } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { InputCopy } from "@/registry/default/input-copy";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { docOrder } from "@/lib/docs/components";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
+import { useBase, installUrl, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
 
 interface DocPageProps {
   title: string;
@@ -32,6 +33,7 @@ export function DocPage({
   children,
 }: DocPageProps) {
   const ArrowRight = useIcon("arrow-right");
+  const { base } = useBase();
 
   const currentIndex = slug ? docOrder.findIndex((c) => c.slug === slug) : -1;
   const prev = currentIndex > 0
@@ -92,7 +94,23 @@ export function DocPage({
           >
             Installation
           </h2>
-          <InputCopy value={`npx shadcn@latest add https://www.fluidfunctionalism.com/r/${installSlug ?? slug}.json`} />
+          <InputCopy
+            value={`npx shadcn@latest add ${installUrl(installSlug ?? slug, base)}`}
+          />
+          {DUAL_FLAVOR_SLUGS.has(installSlug ?? slug) ? (
+            <p className="text-[12px] text-muted-foreground">
+              {base === "base"
+                ? "Installs the Base UI flavor. Switch in the right panel."
+                : "Installs the Radix flavor. Switch in the right panel."}
+            </p>
+          ) : base === "base" ? (
+            // User has Base UI selected globally, but this component has no
+            // Base flavour. Surface that so the toggle doesn't feel inert.
+            <p className="text-[12px] text-muted-foreground">
+              This component is primitive-agnostic — same source under both
+              flavors.
+            </p>
+          ) : null}
         </div>
       )}
       {children}

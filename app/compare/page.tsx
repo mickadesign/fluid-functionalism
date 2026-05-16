@@ -8,10 +8,10 @@ import { previewMap } from "@/app/components/bento-previews";
 import { shadcnPreviewMap } from "@/app/components/shadcn-previews";
 import { compareFluidPreviewMap } from "@/app/components/compare-fluid-previews";
 import { BentoCard } from "@/app/components/bento-card";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 import "./shadcn-theme.css";
 
 // Mirrors the slide order on /demo. Components without a shadcn equivalent

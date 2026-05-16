@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
-import { Tabs, TabsList, TabItem, TabPanel } from "@/registry/default/tabs";
+import { Tabs, TabsList, TabItem, TabPanel } from "@/registry/radix/tabs";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

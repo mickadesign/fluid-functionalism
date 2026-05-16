@@ -22,9 +22,9 @@ import { useShape } from "@/lib/shape-context";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { useIcon } from "@/lib/icon-context";
-import { Slider } from "@/registry/default/slider";
+import { Slider } from "@/registry/radix/slider";
 import { Dropdown, useDropdown } from "@/registry/default/dropdown";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 
 // ---------------------------------------------------------------------------
 // Types

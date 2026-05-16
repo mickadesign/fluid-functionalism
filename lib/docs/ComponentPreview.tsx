@@ -6,7 +6,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
 import { TabsSubtle, TabsSubtleItem } from "@/registry/default/tabs-subtle";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 
 export interface PlaybackButton {
   icon: ReactNode;

@@ -1,2 +1,2 @@
-export { Button, buttonVariants } from "@/registry/default/button";
-export type { ButtonProps } from "@/registry/default/button";
+export { Button, buttonVariants } from "@/registry/radix/button";
+export type { ButtonProps } from "@/registry/radix/button";

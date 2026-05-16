@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/app/components/sidebar";
 import { useIcon } from "@/lib/icon-context";
 import { MobileDrawer } from "@/registry/default/mobile-drawer";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { RightPanel, SettingsContent } from "@/app/components/right-panel";
 import { componentList } from "@/lib/docs/components";
 

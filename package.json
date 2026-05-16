@@ -10,6 +10,7 @@
     "registry:build": "shadcn build && node scripts/postbuild-registry.mjs"
   },
   "dependencies": {
+    "@base-ui/react": "^1.4.1",
     "@hugeicons/core-free-icons": "^4.1.1",
     "@hugeicons/react": "^1.1.6",
     "@phosphor-icons/react": "^2.1.10",

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { componentList } from "@/lib/docs/components";
 import { BentoGrid } from "@/app/components/bento-grid";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 
 export default function Page() {
   const ArrowRight = useIcon("arrow-right");

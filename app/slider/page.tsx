@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Slider, SliderComfortable } from "@/registry/default/slider";
+import { Slider, SliderComfortable } from "@/registry/radix/slider";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 
 // ---------------------------------------------------------------------------

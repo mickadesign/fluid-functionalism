@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Switch } from "@/registry/default/switch";
+import { Switch } from "@/registry/radix/switch";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

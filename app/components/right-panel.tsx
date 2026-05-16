@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/registry/default/lib/font-weight";
-import { buttonVariants } from "@/registry/default/button";
+import { buttonVariants } from "@/registry/radix/button";
 import {
   Select,
   SelectTrigger,
@@ -24,7 +24,8 @@ import {
   type IconLibrary,
 } from "@/lib/icon-context";
 import { SurfaceProvider } from "@/lib/surface-context";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
+import { useBase, type Base } from "@/lib/base-context";
 
 const REPO = "mickadesign/fluid-functionalism";
 
@@ -41,6 +42,7 @@ export function SettingsContent({ tooltipSide = "left", hideSocial }: { tooltipS
   const { theme, setTheme } = useThemeContext();
   const { shape, setShape } = useShapeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
+  const { base, setBase } = useBase();
   const shapeCtx = useShape();
   const [stars, setStars] = useState<number | null>(null);
 
@@ -50,6 +52,9 @@ export function SettingsContent({ tooltipSide = "left", hideSocial }: { tooltipS
   const RectHorizIcon = useIcon("rectangle-horizontal");
   const CircleIcon = useIcon("circle");
   const PaletteIcon = useIcon("palette");
+  const RadixIcon = useIcon("circle");
+  const BaseUiIcon = useIcon("square-library");
+  const PrimitiveTriggerIcon = base === "base" ? BaseUiIcon : RadixIcon;
 
   const themeOptions = [
     { label: "System", value: "system" as Theme, icon: MonitorIcon },
@@ -67,6 +72,11 @@ export function SettingsContent({ tooltipSide = "left", hideSocial }: { tooltipS
     value: lib,
     icon: PaletteIcon,
   }));
+
+  const baseOptions = [
+    { label: "Radix", value: "radix" as Base, icon: RadixIcon },
+    { label: "Base UI", value: "base" as Base, icon: BaseUiIcon },
+  ];
 
   useEffect(() => {
     fetch(`https://api.github.com/repos/${REPO}`, {
@@ -134,6 +144,25 @@ export function SettingsContent({ tooltipSide = "left", hideSocial }: { tooltipS
               />
               <SelectContent>
                 {iconOptions.map((o, i) => (
+                  <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Tooltip>
+        <Tooltip content="Switches the install command between Radix and Base UI flavors" side={tooltipSide}>
+          <div className="flex items-center justify-between px-2">
+            <span className="text-[13px] text-muted-foreground">Primitive</span>
+            <Select value={base} onValueChange={(v) => setBase(v as Base)}>
+              <SelectTrigger
+                variant="borderless"
+                className="min-w-0 w-auto h-7 px-2 text-[13px]"
+                icon={PrimitiveTriggerIcon}
+              />
+              <SelectContent>
+                {baseOptions.map((o, i) => (
                   <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
                     {o.label}
                   </SelectItem>

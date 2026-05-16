@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/registry/default/badge";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { InputGroup, InputField } from "@/registry/default/input-group";
 
 function ButtonPreview() {

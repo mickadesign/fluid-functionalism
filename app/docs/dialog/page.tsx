@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import {
   Dialog,
   DialogTrigger,
@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
-} from "@/registry/default/dialog";
+} from "@/registry/radix/dialog";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

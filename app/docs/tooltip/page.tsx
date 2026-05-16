@@ -1,6 +1,6 @@
 "use client";
 
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 import { Button } from "@/components/ui/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";

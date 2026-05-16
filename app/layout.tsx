@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ShapeProvider } from "@/registry/default/lib/shape-context";
 import { ThemeProvider } from "@/registry/default/lib/theme-context";
 import { IconProvider } from "@/registry/default/lib/icon-context";
+import { BaseProvider } from "@/lib/base-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
 import { DialRoot } from "dialkit";
 
@@ -47,10 +48,12 @@ export default function RootLayout({
         <ShapeProvider defaultShape="pill">
           <ThemeProvider>
             <IconProvider>
-              <SidebarLayout>{children}</SidebarLayout>
-              <DialRoot />
-              <Analytics />
-              <SpeedInsights />
+              <BaseProvider>
+                <SidebarLayout>{children}</SidebarLayout>
+                <DialRoot />
+                <Analytics />
+                <SpeedInsights />
+              </BaseProvider>
             </IconProvider>
           </ThemeProvider>
         </ShapeProvider>

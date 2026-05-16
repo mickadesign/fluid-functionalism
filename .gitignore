@@ -33,6 +33,9 @@ pnpm-debug.log*
 # vercel
 .vercel
 
+# claude code agent state (local-only)
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

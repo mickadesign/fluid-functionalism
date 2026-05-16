@@ -237,7 +237,58 @@
       ],
       "files": [
         {
-          "path": "registry/default/accordion.tsx",
+          "path": "registry/radix/accordion.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/accordion.tsx"
+        }
+      ]
+    },
+    {
+      "name": "accordion-base",
+      "type": "registry:ui",
+      "title": "Accordion (Base UI)",
+      "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and proximity hover in grouped mode. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/accordion.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/accordion.tsx"
+        }
+      ]
+    },
+    {
+      "name": "ask-user-questions",
+      "type": "registry:ui",
+      "title": "Ask User Questions",
+      "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
+      "dependencies": [
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/button.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/ask-user-questions.tsx",
           "type": "registry:ui"
         }
       ]
@@ -280,8 +331,49 @@
       ],
       "files": [
         {
-          "path": "registry/default/button.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/button.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/button.tsx"
+        }
+      ],
+      "css": {
+        "@keyframes spinner-move": {
+          "to": {
+            "stroke-dashoffset": "-100"
+          }
+        },
+        "@keyframes spinner-dash": {
+          "0%, 100%": {
+            "stroke-dasharray": "15 85"
+          },
+          "50%": {
+            "stroke-dasharray": "40 60"
+          }
+        }
+      }
+    },
+    {
+      "name": "button-base",
+      "type": "registry:ui",
+      "title": "Button (Base UI)",
+      "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react",
+        "class-variance-authority",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/button.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/button.tsx"
         }
       ],
       "css": {
@@ -346,8 +438,33 @@
       ],
       "files": [
         {
-          "path": "registry/default/checkbox-group.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/checkbox-group.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox-group.tsx"
+        }
+      ]
+    },
+    {
+      "name": "checkbox-group-base",
+      "type": "registry:ui",
+      "title": "Checkbox Group (Base UI)",
+      "description": "Animated checkbox group with proximity hover, contiguous selection merging, and spring-animated check marks. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/checkbox-group.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox-group.tsx"
         }
       ]
     },
@@ -369,8 +486,33 @@
       ],
       "files": [
         {
-          "path": "registry/default/radio-group.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/radio-group.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/radio-group.tsx"
+        }
+      ]
+    },
+    {
+      "name": "radio-group-base",
+      "type": "registry:ui",
+      "title": "Radio Group (Base UI)",
+      "description": "Animated radio group with proximity hover, spring-animated selection dot. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/radio-group.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/radio-group.tsx"
         }
       ]
     },
@@ -395,8 +537,36 @@
       ],
       "files": [
         {
-          "path": "registry/default/dialog.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/dialog.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/dialog.tsx"
+        }
+      ]
+    },
+    {
+      "name": "dialog-base",
+      "type": "registry:ui",
+      "title": "Dialog (Base UI)",
+      "description": "Animated modal dialog with spring-based scale and opacity transitions. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-classes.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/base/button.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/dialog.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/dialog.tsx"
         }
       ]
     },
@@ -445,6 +615,28 @@
       ]
     },
     {
+      "name": "input-message",
+      "type": "registry:ui",
+      "title": "Input Message",
+      "description": "Chat-style message composer with an auto-resizing textarea, flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-classes.json",
+        "https://www.fluidfunctionalism.com/r/button.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/input-message.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "tabs-subtle",
       "type": "registry:ui",
       "title": "Tabs Subtle",
@@ -483,8 +675,31 @@
       ],
       "files": [
         {
-          "path": "registry/default/switch.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/switch.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/switch.tsx"
+        }
+      ]
+    },
+    {
+      "name": "switch-base",
+      "type": "registry:ui",
+      "title": "Switch (Base UI)",
+      "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/switch.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/switch.tsx"
         }
       ]
     },
@@ -526,8 +741,32 @@
       ],
       "files": [
         {
-          "path": "registry/default/slider.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/slider.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/slider.tsx"
+        }
+      ]
+    },
+    {
+      "name": "slider-base",
+      "type": "registry:ui",
+      "title": "Slider (Base UI)",
+      "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/slider.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/slider.tsx"
         }
       ]
     },
@@ -551,8 +790,35 @@
       ],
       "files": [
         {
-          "path": "registry/default/tabs.tsx",
-          "type": "registry:ui"
+          "path": "registry/radix/tabs.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/tabs.tsx"
+        }
+      ]
+    },
+    {
+      "name": "tabs-base",
+      "type": "registry:ui",
+      "title": "Tabs (Base UI)",
+      "description": "Segmented control tabs with sliding active indicator, proximity hover, and spring animations. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/tabs.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/tabs.tsx"
         }
       ]
     },
@@ -636,7 +902,31 @@
       ],
       "files": [
         {
-          "path": "registry/default/tooltip.tsx",
+          "path": "registry/radix/tooltip.tsx",
+          "target": "components/ui/tooltip.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tooltip-base",
+      "type": "registry:ui",
+      "title": "Tooltip (Base UI)",
+      "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/tooltip.tsx",
+          "target": "components/ui/tooltip.tsx",
           "type": "registry:ui"
         }
       ]

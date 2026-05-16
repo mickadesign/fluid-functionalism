@@ -9,9 +9,9 @@
   ],
   "registryDependencies": [
     "utils",
-    "https://www.fluidfunctionalism.com/r/springs.json",
-    "https://www.fluidfunctionalism.com/r/font-weight.json",
-    "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+    "http://localhost:3000/r/springs.json",
+    "http://localhost:3000/r/font-weight.json",
+    "http://localhost:3000/r/use-proximity-hover.json"
   ],
   "files": [
     {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckboxGroup, CheckboxItem } from "@/registry/default/checkbox-group";
+import { CheckboxGroup, CheckboxItem } from "@/registry/radix/checkbox-group";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

@@ -7,7 +7,7 @@ import { useIcon } from "@/lib/icon-context";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { springs } from "@/lib/springs";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 
 type InputCopyVariant = "icon" | "button";
 type InputCopyAlign = "right" | "left";

@@ -4,4 +4,4 @@ export {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/registry/default/accordion";
+} from "@/registry/radix/accordion";

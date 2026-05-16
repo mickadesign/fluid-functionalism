@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { fontWeights } from "@/registry/default/lib/font-weight";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { docOrder } from "@/lib/docs/components";
 import { InputCopy } from "@/registry/default/input-copy";
-import { Tooltip } from "@/registry/default/tooltip";
+import { Tooltip } from "@/registry/radix/tooltip";
 
 export default function DocsIndex() {
   const ArrowRight = useIcon("arrow-right");

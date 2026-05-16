@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
-import { Button } from "@/registry/default/button";
+import { Button } from "@/registry/radix/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

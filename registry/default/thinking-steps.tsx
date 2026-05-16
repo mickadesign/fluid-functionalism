@@ -18,7 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/registry/default/accordion";
+} from "@/registry/radix/accordion";
 import { Badge } from "@/registry/default/badge";
 import type { BadgeColor } from "@/registry/default/badge";
 

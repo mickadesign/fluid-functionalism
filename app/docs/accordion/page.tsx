@@ -6,7 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/registry/default/accordion";
+} from "@/registry/radix/accordion";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

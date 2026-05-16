@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Slider, SliderComfortable } from "@/registry/default/slider";
+import { Slider, SliderComfortable } from "@/registry/radix/slider";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
