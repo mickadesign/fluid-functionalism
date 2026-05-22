@@ -132,6 +132,18 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     const shape = useShape();
     const ArrowRight = useIcon("arrow-right");
 
+    // Detect the platform so the Continue shortcut hint shows the right
+    // modifier: ⌘ on macOS, ⌃ (Control) elsewhere. Resolved after mount to
+    // avoid a hydration mismatch (the server can't know the platform).
+    const [isMac, setIsMac] = useState(false);
+    useEffect(() => {
+      const nav = navigator as Navigator & {
+        userAgentData?: { platform?: string };
+      };
+      const platform = nav.userAgentData?.platform || nav.platform || "";
+      setIsMac(/mac/i.test(platform));
+    }, []);
+
     const reactId = useId();
     const total = questions.length;
     const safeIndex = Math.max(0, Math.min(index, Math.max(0, total - 1)));
@@ -173,6 +185,24 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       measureItems();
     }, [measureItems, qId, rowCount, shape]);
 
+    // ── Animated height ──────────────────────────────────────────
+    // Track the natural height of the Q/A content and animate the wrapper's
+    // REAL height to it. Animating the actual height (not a layout transform)
+    // means the card border and the footer below reflow frame-by-frame, so the
+    // height morph and the footer move together. A ResizeObserver keeps the
+    // target in sync across question swaps, shape changes, and text wrapping.
+    const contentMeasureRef = useRef<HTMLDivElement>(null);
+    const [contentHeight, setContentHeight] = useState<number | "auto">("auto");
+    useEffect(() => {
+      const el = contentMeasureRef.current;
+      if (!el) return;
+      const update = () => setContentHeight(el.offsetHeight);
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
     // Reset transient state when question changes
@@ -180,12 +210,6 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       setActiveIndex(null);
       setFocusedIndex(null);
     }, [safeIndex, setActiveIndex]);
-
-    // Skip the slide-in animation on first mount
-    const hasMounted = useRef(false);
-    useEffect(() => {
-      hasMounted.current = true;
-    }, []);
 
     // ── Answer actions ───────────────────────────────────────────
     const goNext = useCallback(
@@ -327,7 +351,13 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       handleMultiToggle,
     ]);
 
-    // ── Arrow key navigation between rows ────────────────────────
+    // ── Keyboard navigation ──────────────────────────────────────
+    // Up/Down move the highlight between rows using the SAME indicator as
+    // mouse hover (activeIndex → bg-hover), so keyboard and pointer focus look
+    // identical. Left = Back, Right = Skip. We stopPropagation on the arrows we
+    // handle so the doc page's ←/→ page-change nav (a window listener) doesn't
+    // also fire — important for multi-select, whose container is role="group"
+    // (not "radiogroup") and so isn't auto-skipped by that handler.
     const focusRow = (idx: number) => {
       const el = rowsContainerRef.current?.querySelector(
         `[data-proximity-index="${idx}"]`
@@ -335,24 +365,73 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       el?.focus();
     };
 
-    const handleRowKey = (
-      e: ReactKeyboardEvent<HTMLDivElement>,
-      idx: number
-    ) => {
-      if (rowCount === 0) return;
-      if (["ArrowDown", "ArrowRight"].includes(e.key)) {
+    const moveActive = useCallback(
+      (next: number) => {
+        setActiveIndex(next);
+        // The Other row is a text field — focus the input directly so typing
+        // works; everything else focuses the row for Enter/Space selection.
+        if (allowOther && next === otherIndex) otherInputRef.current?.focus();
+        else focusRow(next);
+      },
+      [allowOther, otherIndex, setActiveIndex]
+    );
+
+    const handleNavKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      // Inside the Other text field, every key behaves natively (caret moves,
+      // Home/End jump within the text). The field manages its own keys, and the
+      // doc page's ←/→ nav already ignores inputs, so there's nothing to block.
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      )
+        return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
-        focusRow((idx + 1) % rowCount);
-      } else if (["ArrowUp", "ArrowLeft"].includes(e.key)) {
-        e.preventDefault();
-        focusRow((idx - 1 + rowCount) % rowCount);
-      } else if (e.key === "Home") {
-        e.preventDefault();
-        focusRow(0);
-      } else if (e.key === "End") {
-        e.preventDefault();
-        focusRow(rowCount - 1);
+        e.stopPropagation();
+        if (e.key === "ArrowLeft") {
+          if (safeIndex > 0) handleBack();
+        } else if (isSkippable && total > 1) {
+          handleSkip();
+        }
+        return;
       }
+
+      if (rowCount === 0) return;
+      if (
+        e.key === "ArrowDown" ||
+        e.key === "ArrowUp" ||
+        e.key === "Home" ||
+        e.key === "End"
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        let next: number;
+        if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = rowCount - 1;
+        else {
+          const base = activeIndex ?? -1;
+          next = e.key === "ArrowDown" ? base + 1 : base - 1;
+          next = (next + rowCount) % rowCount;
+        }
+        moveActive(next);
+      }
+    };
+
+    // Cmd+Enter (macOS) / Ctrl+Enter (Windows/Linux) commits a multi-select
+    // question, mirroring the Continue button. Handled at the root so it works
+    // wherever focus sits inside the card, and scoped to this instance because
+    // the event has to bubble up from a focused descendant (no global listener,
+    // so stacked demos don't all fire at once).
+    const handleRootKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Enter") return;
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (!mod || !isMulti) return;
+      e.preventDefault(); // keep a focused button/row from also activating
+      const hasAnswer = selectedIds.length > 0 || otherText.trim().length > 0;
+      if (hasAnswer) handleMultiNext();
     };
 
     if (!question) {
@@ -446,33 +525,38 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
           className
         )}
         {...rest}
+        onKeyDown={(e) => {
+          rest.onKeyDown?.(e);
+          handleRootKey(e);
+        }}
       >
-        <motion.div
-          layout
-          transition={springs.slow}
-          className="flex flex-col gap-3.5 px-4 sm:px-5 pt-4 sm:pt-5 pb-2.5 sm:pb-3 overflow-hidden"
-        >
-          {/* Header — persistent, lives outside the per-question content
-              remount so the "Question N of N" counter stays in place while
-              only its number morphs as the question changes. */}
-          <div className="flex items-center text-[12px] text-muted-foreground">
-            <span>
-              Question {safeIndex + 1} of {total}
-            </span>
-          </div>
+        {/* Header — static top, fixed across questions; only the number
+            changes. Lives outside the morphing region so it never shifts. */}
+        <div className="flex items-center px-4 sm:px-5 pt-4 sm:pt-5 pb-3.5 text-[12px] text-muted-foreground">
+          <span>
+            Question {safeIndex + 1} of {total}
+          </span>
+        </div>
 
-          {/* No AnimatePresence: the question content remounts on qId via
-              the motion.div key. Old content disappears the same commit the
-              parent's layout spring starts, so the height change and the
-              opacity ramp on the new content are driven by the exact same
-              render — no popLayout reconciliation frame between them. */}
-          <motion.div
-            key={qId}
-            initial={hasMounted.current ? { opacity: 0 } : { opacity: 1 }}
-            animate={{ opacity: 1 }}
-            transition={springs.slow}
-            className="flex flex-col gap-3.5"
+        {/* Morphing Q/A region — its REAL height animates to the measured
+            natural height of the content below, so the card border and the
+            footer reflow in lockstep with the spring. overflow-hidden clips
+            the instantly-swapped content, revealing it as the height opens.
+            Header and footer sit outside, so neither is clipped or yanked. */}
+        <motion.div
+          animate={{ height: contentHeight }}
+          initial={false}
+          transition={springs.slow}
+          className="overflow-hidden"
+        >
+          <div
+            ref={contentMeasureRef}
+            className={cn(
+              "px-4 sm:px-5",
+              showFooter ? "pb-2" : "pb-2.5 sm:pb-3"
+            )}
           >
+            <div key={qId} className="flex flex-col gap-3.5">
             {/* Question title */}
             <h3
               id={`${reactId}-${qId}-title`}
@@ -490,6 +574,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
               onMouseEnter={handlers.onMouseEnter}
               onMouseMove={handlers.onMouseMove}
               onMouseLeave={handlers.onMouseLeave}
+              onKeyDown={handleNavKey}
               className="relative flex flex-col gap-0.5 -mx-3"
             >
               {/* Other-row input hint — shown only when the Other input is
@@ -646,8 +731,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                 const oid = optionKey(opt, i);
                 const isSelected = selectedIds.includes(oid);
                 const isHover = activeIndex === i;
-                const isFocus = focusedIndex === i;
-                const showArrow = !isMulti && (isFocus || isHover);
+                const showArrow = !isMulti && isHover;
                 return (
                   <Row
                     key={oid}
@@ -663,21 +747,25 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                         ? 0
                         : -1
                     }
-                    onFocusVisible={() => setFocusedIndex(i)}
+                    onFocusVisible={() => setActiveIndex(i)}
                     onBlurAny={() =>
-                      setFocusedIndex((prev) => (prev === i ? null : prev))
+                      setActiveIndex((prev) => (prev === i ? null : prev))
                     }
                     onClick={() =>
                       isMulti ? handleMultiToggle(oid) : handleSingleSelect(oid)
                     }
                     onKeyDown={(e) => {
-                      if (e.key === " " || e.key === "Enter") {
+                      // Let ⌘/Ctrl+Enter fall through to the root handler
+                      // (Continue) instead of toggling the focused row.
+                      if (
+                        (e.key === " " || e.key === "Enter") &&
+                        !e.metaKey &&
+                        !e.ctrlKey
+                      ) {
                         e.preventDefault();
                         if (isMulti) handleMultiToggle(oid);
                         else handleSingleSelect(oid);
-                        return;
                       }
-                      handleRowKey(e, i);
                     }}
                     shape={shape}
                     aria-checked={isSelected}
@@ -813,12 +901,16 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                 </Row>
               )}
             </div>
-          </motion.div>
+          </div>
+          </div>
+        </motion.div>
 
-          {/* Footer — lives outside the per-question content remount so the
-              action row stays put while the question content cross-fades.
-              Buttons appear/disappear directly; their swap is the morph. */}
-          {showFooter && (
+        {/* Footer — outside the morphing region, so the animating height never
+            clips it. Because the height is a real layout value (not a
+            transform), the footer reflows frame-by-frame and rides the morph
+            in lockstep. */}
+        {showFooter && (
+          <div className="px-4 sm:px-5 pt-1.5 pb-2.5 sm:pb-3">
             <div className="flex items-center justify-between gap-2 -mx-2 sm:-mx-3">
               <div className="flex items-center gap-2">
                 {showBack && (
@@ -837,21 +929,35 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   <Button
                     variant="primary"
                     size="sm"
-                    trailingIcon={ArrowRight}
                     onClick={handleMultiNext}
                     disabled={
                       selectedIds.length === 0 &&
                       otherText.trim().length === 0
                     }
                   >
-                    {question.nextLabel ??
-                      (safeIndex >= total - 1 ? "Finish" : "Continue")}
+                    <span className="inline-flex items-center gap-1.5">
+                      {question.nextLabel ??
+                        (safeIndex >= total - 1 ? "Finish" : "Continue")}
+                      {/* Shortcut hint — replaces the trailing arrow. Sits
+                          inside the button so it dims with the disabled state.
+                          ⌘↵ on macOS, ⌃↵ elsewhere. */}
+                      <kbd
+                        aria-hidden
+                        className={cn(
+                          "inline-flex items-center gap-0.5 px-1 h-[18px] text-[11px] leading-none font-sans tracking-wide bg-background/15 text-background",
+                          shape.bg
+                        )}
+                      >
+                        {isMac ? "⌘" : "⌃"}
+                        {"↵"}
+                      </kbd>
+                    </span>
                   </Button>
                 )}
               </div>
             </div>
-          )}
-        </motion.div>
+          </div>
+        )}
       </div>
     );
   }

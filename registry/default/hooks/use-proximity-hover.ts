@@ -1,6 +1,14 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect, type RefObject } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 
 export interface ItemRect {
   top: number;
@@ -15,7 +23,7 @@ interface UseProximityHoverOptions {
 
 interface UseProximityHoverReturn {
   activeIndex: number | null;
-  setActiveIndex: (index: number | null) => void;
+  setActiveIndex: Dispatch<SetStateAction<number | null>>;
   itemRects: ItemRect[];
   sessionRef: RefObject<number>;
   handlers: {
