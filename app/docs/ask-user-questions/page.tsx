@@ -1102,25 +1102,41 @@ export default function AskUserQuestionsDoc() {
       </DocSection>
 
       <DocSection title="Multiple questions">
-        <ReplayableExample code={multipleCode}>
+        <ReplayableExample
+          code={multipleCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
+        >
           {(k) => <AskUserQuestions key={k} questions={multipleQuestions} />}
         </ReplayableExample>
       </DocSection>
 
       <DocSection title="Multi-select">
-        <ReplayableExample code={multiSelectCode}>
+        <ReplayableExample
+          code={multiSelectCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
+        >
           {(k) => <AskUserQuestions key={k} questions={multiSelectQuestions} />}
         </ReplayableExample>
       </DocSection>
 
       <DocSection title="With other">
-        <ReplayableExample code={otherCode}>
+        <ReplayableExample
+          code={otherCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
+        >
           {(k) => <AskUserQuestions key={k} questions={otherQuestions} />}
         </ReplayableExample>
       </DocSection>
 
       <DocSection title="Skippable">
-        <ReplayableExample code={skipCode}>
+        <ReplayableExample
+          code={skipCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
+        >
           {(k) => <AskUserQuestions key={k} questions={skipQuestions} />}
         </ReplayableExample>
       </DocSection>
@@ -1129,7 +1145,7 @@ export default function AskUserQuestionsDoc() {
         <ReplayableExample
           code={stackedCode}
           align="bottom"
-          minHeightClass="min-h-[640px]"
+          minHeightClass="min-h-[560px]"
         >
           {(k) => <AskUserQuestions key={k} questions={stackedQuestions} />}
         </ReplayableExample>
@@ -1138,6 +1154,8 @@ export default function AskUserQuestionsDoc() {
       <DocSection title="Controlled">
         <ReplayableExample
           code={controlledCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
           onReset={() => {
             setIndex(0);
             setAnswers({});

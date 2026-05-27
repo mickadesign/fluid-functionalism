@@ -20,6 +20,7 @@ import {
   Star,
   Settings,
   Plus,
+  ArrowLeft,
   ArrowRight,
   ArrowUp,
   Search,
@@ -70,6 +71,7 @@ import {
   IconStar,
   IconSettings,
   IconPlus,
+  IconArrowLeft,
   IconArrowRight,
   IconArrowUp,
   IconSearch,
@@ -119,6 +121,7 @@ import {
   Star as PhStar,
   Gear as PhGear,
   Plus as PhPlus,
+  ArrowLeft as PhArrowLeft,
   ArrowRight as PhArrowRight,
   ArrowUp as PhArrowUp,
   MagnifyingGlass as PhMagnifyingGlass,
@@ -167,6 +170,7 @@ import HiClock from "@hugeicons/core-free-icons/Clock01Icon";
 import HiStar from "@hugeicons/core-free-icons/StarIcon";
 import HiSettings from "@hugeicons/core-free-icons/Settings01Icon";
 import HiPlus from "@hugeicons/core-free-icons/PlusSignIcon";
+import HiArrowLeft from "@hugeicons/core-free-icons/ArrowLeft01Icon";
 import HiArrowRight from "@hugeicons/core-free-icons/ArrowRight01Icon";
 import HiArrowUp from "@hugeicons/core-free-icons/ArrowUp01Icon";
 import HiSearch from "@hugeicons/core-free-icons/Search01Icon";
@@ -210,7 +214,7 @@ export type IconName =
   | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
   | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
   | "square-library" | "clock" | "star" | "settings"
-  | "plus" | "arrow-right" | "arrow-up" | "search" | "loader"
+  | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "search" | "loader"
   | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
   | "globe" | "user"
@@ -282,6 +286,7 @@ const lucideMap: Record<IconName, IconComponent> = {
   "star": Star,
   "settings": Settings,
   "plus": Plus,
+  "arrow-left": ArrowLeft,
   "arrow-right": ArrowRight,
   "arrow-up": ArrowUp,
   "search": Search,
@@ -330,6 +335,7 @@ const tablerMap: Record<IconName, IconComponent> = {
   "star": tabler(IconStar),
   "settings": tabler(IconSettings),
   "plus": tabler(IconPlus),
+  "arrow-left": tabler(IconArrowLeft),
   "arrow-right": tabler(IconArrowRight),
   "arrow-up": tabler(IconArrowUp),
   "search": tabler(IconSearch),
@@ -378,6 +384,7 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "star": phosphor(PhStar),
   "settings": phosphor(PhGear),
   "plus": phosphor(PhPlus),
+  "arrow-left": phosphor(PhArrowLeft),
   "arrow-right": phosphor(PhArrowRight),
   "arrow-up": phosphor(PhArrowUp),
   "search": phosphor(PhMagnifyingGlass),
@@ -426,6 +433,7 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "star": hugeicons(HiStar),
   "settings": hugeicons(HiSettings),
   "plus": hugeicons(HiPlus),
+  "arrow-left": hugeicons(HiArrowLeft),
   "arrow-right": hugeicons(HiArrowRight),
   "arrow-up": hugeicons(HiArrowUp),
   "search": hugeicons(HiSearch),
