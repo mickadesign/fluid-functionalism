@@ -27,7 +27,10 @@ const shapeMap: Record<ShapeVariant, ShapeClasses> = {
   pill: {
     item: "rounded-[20px]",
     bg: "rounded-[20px]",
-    focusRing: "rounded-[20px]",
+    // +2px over `item` because the focus ring sits 2px outside the element
+    // (top/left -2, width/height +4); this keeps the corners concentric so a
+    // pill element gets a pill ring (matches the rounded-mode 8px→10px bump).
+    focusRing: "rounded-[22px]",
     mergedBg: "rounded-2xl",
     container: "rounded-3xl",
     button: "rounded-[20px]",

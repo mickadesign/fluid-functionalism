@@ -404,15 +404,16 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
 
     const handleNavKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
-      // Inside the Other text field, every key behaves natively (caret moves,
-      // Home/End jump within the text). The field manages its own keys, and the
-      // doc page's ←/→ nav already ignores inputs, so there's nothing to block.
-      if (
+      const isTextInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      )
-        return;
+        target.isContentEditable;
+
+      // Inside the Other text field, ←/→ and Home/End move the caret natively.
+      // But ↑/↓ don't move a single-line caret, so we still use them to
+      // navigate out to the option rows above/below — otherwise focus gets
+      // trapped in the field with no way back via the keyboard.
+      if (isTextInput && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
 
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
@@ -438,7 +439,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
         if (e.key === "Home") next = 0;
         else if (e.key === "End") next = rowCount - 1;
         else {
-          const base = activeIndex ?? -1;
+          // When focus is in the Other field, treat it as the Other row.
+          const base = isTextInput ? otherIndex : activeIndex ?? -1;
           next = e.key === "ArrowDown" ? base + 1 : base - 1;
           next = (next + rowCount) % rowCount;
         }
@@ -546,7 +548,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       <div
         ref={ref}
         className={cn(
-          "relative w-full max-w-[520px] bg-card border border-border",
+          // overflow-hidden crops the footer buttons to the card's rounded
+          // bounds, so a button animating out (e.g. Continue on exit) is
+          // clipped at the edge instead of visibly flying outside the card.
+          "relative w-full max-w-[520px] overflow-hidden bg-card border border-border",
           shape.container,
           className
         )}
@@ -558,7 +563,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       >
         {/* Header — static top, fixed across questions; only the number
             changes. Lives outside the morphing region so it never shifts. */}
-        <div className="flex items-center px-4 sm:px-5 pt-4 sm:pt-5 pb-3.5 text-[12px] text-muted-foreground">
+        <div className="flex items-center px-4 sm:px-5 pt-4 sm:pt-5 pb-2 text-[12px] text-muted-foreground">
           <span>
             Question {safeIndex + 1} of {total}
           </span>
@@ -579,10 +584,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             ref={contentMeasureRef}
             className={cn(
               "px-4 sm:px-5",
-              showFooter ? "pb-2" : "pb-2.5 sm:pb-3"
+              showFooter ? "pb-1" : "pb-2.5 sm:pb-3"
             )}
           >
-            <div key={qId} className="flex flex-col gap-3.5">
+            <div key={qId} className="flex flex-col gap-2">
             {/* Question title */}
             <h3
               id={`${reactId}-${qId}-title`}
@@ -942,60 +947,107 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             transform), the footer reflows frame-by-frame and rides the morph
             in lockstep. */}
         {showFooter && (
-          <div className="px-4 sm:px-5 pt-1.5 pb-2">
+          <div className="px-4 sm:px-5 pt-1 pb-2">
             <div className="flex items-center justify-between gap-2 -mx-2 sm:-mx-3">
-              <div className="flex items-center gap-2">
-                {showBack && (
-                  // Bare ← icon via the Button's icon slot, so it gets the
-                  // proper tighter icon-side padding (and a balanced focus ring).
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leadingIcon={ArrowLeft}
-                    onClick={handleBack}
-                  >
-                    Back
-                  </Button>
-                )}
+              {/* Each button is wrapped in a motion.div so it fades + scales
+                  when it appears/disappears (e.g. Continue on multi-select).
+                  popLayout pops the exiting button out of flow so its
+                  neighbours slide to their new spot *at the same time* it fades
+                  (not sequentially). The group is `relative` so the popped
+                  (absolutely positioned) button stays put instead of flying to
+                  the page origin. */}
+              <div className="relative flex items-center gap-2">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {showBack && (
+                    <motion.div
+                      key="back"
+                      layout="position"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{
+                        ...springs.fast,
+                        opacity: { duration: 0.1 },
+                      }}
+                    >
+                      {/* Bare ← icon via the Button's icon slot, so it gets the
+                          proper tighter icon-side padding. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leadingIcon={ArrowLeft}
+                        onClick={handleBack}
+                      >
+                        Back
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              <div className="flex items-center gap-2">
-                {showSkip && (
-                  // Bare → icon via the Button's icon slot (mirror of Back).
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    trailingIcon={ArrowRight}
-                    onClick={handleSkip}
-                  >
-                    {skipLabel}
-                  </Button>
-                )}
-                {isMulti && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleMultiNext}
-                    disabled={
-                      selectedIds.length === 0 &&
-                      otherText.trim().length === 0
-                    }
-                    // The shortcut chip acts as a trailing icon, so tighten the
-                    // right padding to match the Button's iconRight treatment.
-                    className="pr-[6px]"
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      {question.nextLabel ??
-                        (safeIndex >= total - 1 ? "Finish" : "Continue")}
-                      {/* Shortcut hint — replaces the trailing arrow. Sits
-                          inside the button so it dims with the disabled state.
-                          ⌘↵ on macOS, ⌃↵ elsewhere. */}
-                      <ShortcutChip shape={shape} tone="inverted">
-                        {isMac ? "⌘" : "⌃"}
-                        {"↵"}
-                      </ShortcutChip>
-                    </span>
-                  </Button>
-                )}
+              <div className="relative flex items-center gap-2">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {showSkip && (
+                    <motion.div
+                      key="skip"
+                      layout="position"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{
+                        ...springs.fast,
+                        opacity: { duration: 0.1 },
+                      }}
+                    >
+                      {/* Bare → icon via the Button's icon slot (mirror of Back). */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        trailingIcon={ArrowRight}
+                        onClick={handleSkip}
+                      >
+                        {skipLabel}
+                      </Button>
+                    </motion.div>
+                  )}
+                  {isMulti && (
+                    <motion.div
+                      key="continue"
+                      layout="position"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{
+                        ...springs.fast,
+                        opacity: { duration: 0.1 },
+                      }}
+                    >
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleMultiNext}
+                        disabled={
+                          selectedIds.length === 0 &&
+                          otherText.trim().length === 0
+                        }
+                        // The shortcut chip acts as a trailing icon, so tighten
+                        // the right padding to match the Button's iconRight.
+                        className="pr-[6px]"
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          {question.nextLabel ??
+                            (safeIndex >= total - 1 ? "Finish" : "Continue")}
+                          {/* Shortcut hint — replaces the trailing arrow. Sits
+                              inside the button so it dims with the disabled
+                              state. ⌘↵ on macOS, ⌃↵ elsewhere. */}
+                          <ShortcutChip shape={shape} tone="inverted">
+                            {isMac ? "⌘" : "⌃"}
+                            {"↵"}
+                          </ShortcutChip>
+                        </span>
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
