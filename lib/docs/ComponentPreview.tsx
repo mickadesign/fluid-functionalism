@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { highlight } from "./highlight";
+import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
@@ -49,6 +50,13 @@ export function ComponentPreview({
   const [html, setHtml] = useState("");
   const shape = useShape();
   const ReplayIcon = useIcon("rotate-ccw");
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // Clicking an empty part of the preview routes keyboard control into the demo
+  // (focuses its first interactive element); :focus-within then shows the
+  // contrasted border. Clicking outside / Tab away hands keys back to the page.
+  const handlePreviewMouseDown = (e: MouseEvent<HTMLDivElement>) =>
+    routeKeyboardOnMouseDown(e, previewRef.current);
 
   useEffect(() => {
     highlight(code).then(setHtml);
@@ -57,7 +65,7 @@ export function ComponentPreview({
   const showButton = !!playbackButton || !!onReplay;
 
   return (
-    <div className={`flex flex-col gap-0 w-full border border-border/60 overflow-hidden ${shape.container}`}>
+    <div className={`flex flex-col gap-0 w-full border border-border/60 overflow-hidden transition-[border-color] duration-80 focus-within:border-foreground/40 ${shape.container}`}>
       {/* Tab bar */}
       <div className="flex items-center gap-0 px-3 pt-3">
         {title && (
@@ -88,6 +96,8 @@ export function ComponentPreview({
       {/* Content */}
       {tab === 0 ? (
         <div
+          ref={previewRef}
+          onMouseDown={handlePreviewMouseDown}
           className={`flex ${align === "bottom" ? "items-end" : "items-center"} justify-center ${minHeightClass} bg-background ${
             padding === "compact" ? "px-4 py-4" : "px-8 py-12"
           }`}

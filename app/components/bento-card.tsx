@@ -5,25 +5,13 @@ import { useRef, type ReactNode, type CSSProperties, type MouseEvent } from "rea
 import { cn } from "@/registry/default/lib/utils";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Badge } from "@/registry/default/badge";
+import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 
 const sizeClasses: Record<string, string> = {
   large: "md:col-span-2 md:row-span-2",
   medium: "md:col-span-2",
   small: "col-span-1",
 };
-
-// Anything that can hold keyboard focus. Used to (a) detect clicks that should
-// keep their native focus behaviour, and (b) find the element to focus when the
-// user clicks an empty part of the card.
-const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  '[role="slider"]',
-  '[tabindex]:not([tabindex="-1"])',
-].join(",");
 
 interface BentoCardProps {
   slug: string;
@@ -45,19 +33,8 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", className: ex
   // inner component's own shortcut handlers receive keys. Clicking an
   // interactive element keeps native focus; clicking outside the card blurs it,
   // so shortcuts fall back to the page level.
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-    const card = cardRef.current;
-    const content = contentRef.current;
-    if (!card || !content) return;
-    const target = e.target as HTMLElement;
-    if (target.closest(FOCUSABLE_SELECTOR)) return; // let the element focus itself
-    e.preventDefault(); // don't let an empty-space click blur to <body>
-    // Already keyboard-active inside this card — keep the current focus.
-    if (card.contains(document.activeElement) && document.activeElement !== card)
-      return;
-    const focusable = content.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    (focusable ?? card).focus();
-  };
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) =>
+    routeKeyboardOnMouseDown(e, contentRef.current, cardRef.current);
 
   return (
     <div

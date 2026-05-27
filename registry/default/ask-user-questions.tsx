@@ -130,6 +130,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     );
 
     const shape = useShape();
+    const ArrowLeft = useIcon("arrow-left");
     const ArrowRight = useIcon("arrow-right");
 
     // Detect the platform so the Continue shortcut hint shows the right
@@ -211,16 +212,38 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       setFocusedIndex(null);
     }, [safeIndex, setActiveIndex]);
 
+    // ── Keyboard focus restoration across question changes ───────
+    // The question content remounts on qId, which destroys the focused row and
+    // drops focus to <body>. If we navigated *from within* the rows (i.e. the
+    // user was driving with the keyboard), refocus the new question's first row
+    // so focus-within is kept and arrows keep routing here instead of falling
+    // through to page-level navigation.
+    const restoreFocusRef = useRef(false);
+    const markFocusRestore = useCallback(() => {
+      if (rowsContainerRef.current?.contains(document.activeElement)) {
+        restoreFocusRef.current = true;
+      }
+    }, []);
+    useEffect(() => {
+      if (!restoreFocusRef.current) return;
+      restoreFocusRef.current = false;
+      const firstRow = rowsContainerRef.current?.querySelector(
+        '[data-proximity-index="0"]'
+      ) as HTMLElement | null;
+      firstRow?.focus();
+    }, [safeIndex]);
+
     // ── Answer actions ───────────────────────────────────────────
     const goNext = useCallback(
       (snapshot: Record<string, AskUserAnswer>) => {
         if (safeIndex >= total - 1) {
           onComplete?.(snapshot);
         } else {
+          markFocusRestore();
           setIndex(safeIndex + 1);
         }
       },
-      [safeIndex, total, onComplete, setIndex]
+      [safeIndex, total, onComplete, setIndex, markFocusRestore]
     );
 
     const handleSingleSelect = useCallback(
@@ -315,8 +338,11 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     }, [goNext, answers]);
 
     const handleBack = useCallback(() => {
-      if (safeIndex > 0) setIndex(safeIndex - 1);
-    }, [safeIndex, setIndex]);
+      if (safeIndex > 0) {
+        markFocusRestore();
+        setIndex(safeIndex - 1);
+      }
+    }, [safeIndex, setIndex, markFocusRestore]);
 
     // ── Keyboard shortcuts: 1-9 ──────────────────────────────────
     useEffect(() => {
@@ -674,8 +700,14 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                       key={`selected-${group.id}`}
                       aria-hidden
                       className={cn(
+                        // Use the same radius token as the hover indicator
+                        // (shape.bg) so selected and hover backgrounds match.
+                        // shape.mergedBg differs from shape.bg in pill mode
+                        // (16px vs 20px), which made a single selected row look
+                        // less rounded than its hover. Rounded mode is unchanged
+                        // (both 8px).
                         "absolute pointer-events-none bg-active",
-                        shape.mergedBg
+                        shape.bg
                       )}
                       initial={false}
                       animate={{
@@ -910,18 +942,31 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             transform), the footer reflows frame-by-frame and rides the morph
             in lockstep. */}
         {showFooter && (
-          <div className="px-4 sm:px-5 pt-1.5 pb-2.5 sm:pb-3">
+          <div className="px-4 sm:px-5 pt-1.5 pb-2">
             <div className="flex items-center justify-between gap-2 -mx-2 sm:-mx-3">
               <div className="flex items-center gap-2">
                 {showBack && (
-                  <Button variant="ghost" size="sm" onClick={handleBack}>
+                  // Bare ← icon via the Button's icon slot, so it gets the
+                  // proper tighter icon-side padding (and a balanced focus ring).
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leadingIcon={ArrowLeft}
+                    onClick={handleBack}
+                  >
                     Back
                   </Button>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 {showSkip && (
-                  <Button variant="ghost" size="sm" onClick={handleSkip}>
+                  // Bare → icon via the Button's icon slot (mirror of Back).
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    trailingIcon={ArrowRight}
+                    onClick={handleSkip}
+                  >
                     {skipLabel}
                   </Button>
                 )}
@@ -934,6 +979,9 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                       selectedIds.length === 0 &&
                       otherText.trim().length === 0
                     }
+                    // The shortcut chip acts as a trailing icon, so tighten the
+                    // right padding to match the Button's iconRight treatment.
+                    className="pr-[6px]"
                   >
                     <span className="inline-flex items-center gap-1.5">
                       {question.nextLabel ??
@@ -941,16 +989,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                       {/* Shortcut hint — replaces the trailing arrow. Sits
                           inside the button so it dims with the disabled state.
                           ⌘↵ on macOS, ⌃↵ elsewhere. */}
-                      <kbd
-                        aria-hidden
-                        className={cn(
-                          "inline-flex items-center gap-0.5 px-1 h-[18px] text-[11px] leading-none font-sans tracking-wide bg-background/15 text-background",
-                          shape.bg
-                        )}
-                      >
+                      <ShortcutChip shape={shape} tone="inverted">
                         {isMac ? "⌘" : "⌃"}
                         {"↵"}
-                      </kbd>
+                      </ShortcutChip>
                     </span>
                   </Button>
                 )}
@@ -964,6 +1006,35 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
 );
 
 AskUserQuestions.displayName = "AskUserQuestions";
+
+// ── Shortcut chip ─────────────────────────────────────────────
+// Small keycap showing the keyboard shortcut for an action, so Back (←),
+// Skip (→) and Continue (⌘↵ / ⌃↵) all read consistently. `tone="inverted"`
+// sits on the dark primary button; the default reads on quiet ghost buttons.
+function ShortcutChip({
+  children,
+  tone = "muted",
+  shape,
+}: {
+  children: React.ReactNode;
+  tone?: "muted" | "inverted";
+  shape: ReturnType<typeof useShape>;
+}) {
+  return (
+    <kbd
+      aria-hidden
+      className={cn(
+        "inline-flex items-center justify-center gap-0.5 px-1 min-w-[18px] h-[18px] text-[11px] leading-none font-sans tracking-wide",
+        tone === "inverted"
+          ? "bg-background/15 text-background"
+          : "bg-foreground/10 text-muted-foreground",
+        shape.bg
+      )}
+    >
+      {children}
+    </kbd>
+  );
+}
 
 // ── Row sub-component ─────────────────────────────────────────
 
