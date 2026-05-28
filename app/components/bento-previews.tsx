@@ -192,7 +192,7 @@ function DropdownPreview() {
     { icon: StarIcon, label: "Proximity hover" },
     { icon: PlusIcon, label: "Font weight shifts" },
     { icon: HeartIcon, label: "Accessible by default" },
-    { icon: CheckIcon, label: "Radix primitives" },
+    { icon: CheckIcon, label: "Radix or Base UI" },
     { icon: BrainIcon, label: "Functional clarity" },
   ];
   return (

@@ -34,7 +34,7 @@ const itemProps: PropDef[] = [
   { name: "index", type: "number", description: "Position index within the group." },
   { name: "selected", type: "boolean", description: "Whether this item is selected." },
   { name: "onSelect", type: "() => void", description: "Called when this item is selected." },
-  { name: "value", type: "string", description: "Optional Radix value for form integration." },
+  { name: "value", type: "string", description: "Optional value forwarded to the underlying primitive (Radix or Base UI) for form integration." },
 ];
 
 export default function RadioGroupDoc() {

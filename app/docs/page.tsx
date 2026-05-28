@@ -91,7 +91,11 @@ export default function DocsIndex() {
             Drop-in compatible
           </h3>
           <p>
-            Built on shadcn/ui with Radix primitives. Your existing theme and tokens apply automatically. One CLI command to install — dependencies resolve themselves.
+            Built on shadcn/ui. Each component ships in two flavors —
+            Radix and Base UI — so you can pick the primitive your project
+            already uses. Your existing theme and tokens apply automatically,
+            and one CLI command installs whichever flavor you choose;
+            dependencies resolve themselves.
           </p>
         </div>
       </section>
