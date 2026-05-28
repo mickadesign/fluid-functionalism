@@ -569,7 +569,7 @@ function ColorPickerPreview() {
   return (
     <div ref={setContainer} className="relative w-full max-w-[280px]">
       <ColorPickerPortalContainer value={container}>
-        <ColorPicker defaultValue="#3b82f6" />
+        <ColorPicker defaultValue="#6B97FF" />
       </ColorPickerPortalContainer>
     </div>
   );

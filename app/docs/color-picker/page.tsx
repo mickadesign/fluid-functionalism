@@ -8,19 +8,19 @@ import { DocPage, DocSection } from "@/lib/docs/DocPage";
 
 const basicCode = `import { ColorPicker } from "./components";
 
-<ColorPicker defaultValue="#ff0000" />`;
+<ColorPicker defaultValue="#6B97FF" />`;
 
 const popoverCode = `import { ColorPickerPopover } from "./components";
 
 <ColorPickerPopover
   triggerLabel="Fill"
-  defaultValue="#FFFFFF"
+  defaultValue="#6B97FF"
 />`;
 
 const swatchesCode = `import { ColorPicker } from "./components";
 
 <ColorPicker
-  defaultValue="#ff3b30"
+  defaultValue="#6B97FF"
   swatches={[
     "#000000",
     "#FFFFFF",
@@ -34,12 +34,12 @@ const swatchesCode = `import { ColorPicker } from "./components";
 
 const oklchCode = `import { ColorPicker } from "./components";
 
-<ColorPicker defaultFormat="oklch" defaultValue="oklch(70% 0.18 25)" />`;
+<ColorPicker defaultFormat="oklch" defaultValue="#6B97FF" />`;
 
 const controlledCode = `import { useState } from "react";
 import { ColorPicker } from "./components";
 
-const [color, setColor] = useState("#3b82f6");
+const [color, setColor] = useState("#6B97FF");
 
 <ColorPicker
   value={color}
@@ -50,7 +50,7 @@ const [color, setColor] = useState("#3b82f6");
 const removeCode = `import { useState } from "react";
 import { ColorPickerPopover } from "./components";
 
-const [color, setColor] = useState<string | null>("#10b981");
+const [color, setColor] = useState<string | null>("#6B97FF");
 
 color
   ? <ColorPickerPopover
@@ -60,11 +60,11 @@ color
       value={color}
       onValueChange={(v) => setColor(v)}
     />
-  : <button onClick={() => setColor("#10b981")}>+ Add fill</button>`;
+  : <button onClick={() => setColor("#6B97FF")}>+ Add fill</button>`;
 
 const colorPickerProps: PropDef[] = [
   { name: "value", type: "string", description: "Controlled color value (any of the supported formats)." },
-  { name: "defaultValue", type: "string", default: '"#ff0000"', description: "Initial color when uncontrolled." },
+  { name: "defaultValue", type: "string", default: '"#6B97FF"', description: "Initial color when uncontrolled." },
   { name: "onValueChange", type: "(value, parsed) => void", description: "Fired on every change. Receives the formatted string and a parsed color object with all formats." },
   { name: "format", type: '"hex" | "rgb" | "hsl" | "oklch"', description: "Controlled format selection." },
   { name: "defaultFormat", type: '"hex" | "rgb" | "hsl" | "oklch"', default: '"hex"', description: "Initial format when uncontrolled." },
@@ -84,8 +84,8 @@ const popoverProps: PropDef[] = [
 ];
 
 export default function ColorPickerDoc() {
-  const [color, setColor] = useState("#3b82f6");
-  const [removableColor, setRemovableColor] = useState<string | null>("#10b981");
+  const [color, setColor] = useState("#6B97FF");
+  const [removableColor, setRemovableColor] = useState<string | null>("#6B97FF");
 
   return (
     <DocPage
@@ -95,20 +95,20 @@ export default function ColorPickerDoc() {
     >
       <DocSection title="Default">
         <ComponentPreview code={basicCode}>
-          <ColorPicker defaultValue="#ff0000" />
+          <ColorPicker defaultValue="#6B97FF" />
         </ComponentPreview>
       </DocSection>
 
       <DocSection title="Popover">
         <ComponentPreview code={popoverCode}>
-          <ColorPickerPopover triggerLabel="Fill" defaultValue="#FFFFFF" />
+          <ColorPickerPopover triggerLabel="Fill" defaultValue="#6B97FF" />
         </ComponentPreview>
       </DocSection>
 
       <DocSection title="With Swatches">
         <ComponentPreview code={swatchesCode}>
           <ColorPicker
-            defaultValue="#ff3b30"
+            defaultValue="#6B97FF"
             swatches={[
               "#000000",
               "#FFFFFF",
@@ -124,7 +124,7 @@ export default function ColorPickerDoc() {
 
       <DocSection title="OKLCH Format">
         <ComponentPreview code={oklchCode}>
-          <ColorPicker defaultFormat="oklch" defaultValue="oklch(70% 0.18 25)" />
+          <ColorPicker defaultFormat="oklch" defaultValue="#6B97FF" />
         </ComponentPreview>
       </DocSection>
 
@@ -152,7 +152,7 @@ export default function ColorPickerDoc() {
           ) : (
             <button
               type="button"
-              onClick={() => setRemovableColor("#10b981")}
+              onClick={() => setRemovableColor("#6B97FF")}
               className="text-[13px] text-muted-foreground hover:text-foreground border border-dashed border-border px-3 h-9 rounded-lg cursor-pointer"
             >
               + Add fill
