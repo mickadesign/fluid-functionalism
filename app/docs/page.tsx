@@ -55,7 +55,12 @@ export default function DocsIndex() {
             Motion that communicates
           </h3>
           <p>
-            Every transition makes a state change legible. Background merges show contiguous items, proximity hover reveals your target before you click. Nothing moves for decoration — motion is information.
+            Every animation here points at something. When two list items
+            merge their backgrounds, the component is telling you they
+            belong together. The hover highlight slides toward your
+            cursor before you click, so the row you&apos;re about to land
+            on confirms itself first. Motion has to do that job, or it
+            doesn&apos;t ship.
           </p>
         </div>
 
@@ -67,7 +72,11 @@ export default function DocsIndex() {
             Hover as preview
           </h3>
           <p>
-            Interactions start before the click. Proximity highlights show where your action will land, font weight shifts give buttons a tactile quality. The interface responds to intention, not just contact.
+            The interaction starts before you click. The closest
+            interactive thing to your cursor gets a faint highlight;
+            buttons gain a little weight as you approach. By the time
+            your finger lands, you&apos;ve had a moment to reconsider,
+            which is mostly the point.
           </p>
         </div>
 
@@ -79,7 +88,11 @@ export default function DocsIndex() {
             Spring physics, not durations
           </h3>
           <p>
-            Springs replace fixed durations. If a user reverses mid-transition, the animation adapts instead of restarting. Three presets — fast, moderate, slow — cover every use case while keeping motion consistent.
+            Animations use springs, not fixed-duration eases. Toggle a
+            switch and immediately toggle it back: the spring picks up
+            wherever it was and reverses, instead of finishing the first
+            animation before starting the second. Three presets, named
+            fast, moderate, and slow, cover most of the library.
           </p>
         </div>
 
@@ -91,11 +104,11 @@ export default function DocsIndex() {
             Drop-in compatible
           </h3>
           <p>
-            Built on shadcn/ui. Each component ships in two flavors —
-            Radix and Base UI — so you can pick the primitive your project
-            already uses. Your existing theme and tokens apply automatically,
-            and one CLI command installs whichever flavor you choose;
-            dependencies resolve themselves.
+            Built on shadcn/ui. Each component comes in two flavors,
+            Radix or Base UI, so you can match whichever primitive
+            library you&apos;ve already chosen. Your theme tokens
+            (colors, radii, fonts) work as-is. One CLI command installs
+            a component along with whatever it needs.
           </p>
         </div>
       </section>
