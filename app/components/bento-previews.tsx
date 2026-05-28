@@ -561,8 +561,13 @@ function TooltipPreview() {
 
 function ColorPickerPreview() {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  // `relative` is load-bearing: the FormatDropdown (HEX/RGB/HSL/OKLCH) portals
+  // INTO this wrapper and uses absolute positioning computed against the
+  // wrapper's bounding rect. Without `relative`, the menu's absolute coords
+  // resolve against the next positioned ancestor (the BentoCard's `.relative`
+  // outer wrapper), so the dropdown lands far to the left of the picker.
   return (
-    <div ref={setContainer} className="w-full max-w-[280px]">
+    <div ref={setContainer} className="relative w-full max-w-[280px]">
       <ColorPickerPortalContainer value={container}>
         <ColorPicker defaultValue="#3b82f6" />
       </ColorPickerPortalContainer>
