@@ -28,6 +28,80 @@ const [value, setValue] = useState("");
   onSend={(text) => console.log("send:", text)}
 />`;
 
+const attachmentsCode = `import { useEffect, useRef, useState } from "react";
+import { InputMessage, ChatMessage } from "./components";
+
+type Msg = { from: "user" | "assistant"; text: string; files?: File[] };
+
+const [value, setValue] = useState("");
+const [files, setFiles] = useState<File[]>([]);
+const [messages, setMessages] = useState<Msg[]>([]);
+
+// Pre-fill the composer with a real image + PDF. Images use object-cover;
+// PDFs render their first page via pdfjs. Both show the × remove button.
+useEffect(() => {
+  Promise.all([
+    fetch("/avatar.png")
+      .then((r) => r.blob())
+      .then((b) => new File([b], "avatar.png", { type: "image/png" })),
+    fetch("/design-notes.pdf")
+      .then((r) => r.blob())
+      .then((b) => new File([b], "design-notes.pdf", { type: "application/pdf" })),
+  ]).then(setFiles);
+}, []);
+
+// Float the composer over the history: measure its height to reserve scroll
+// padding, and keep the transcript pinned to the bottom as it grows.
+const inputRef = useRef<HTMLDivElement>(null);
+const [inputH, setInputH] = useState(0);
+useEffect(() => {
+  const el = inputRef.current;
+  if (!el) return;
+  const ro = new ResizeObserver(() => setInputH(el.offsetHeight));
+  ro.observe(el);
+  setInputH(el.offsetHeight);
+  return () => ro.disconnect();
+}, []);
+
+const scrollRef = useRef<HTMLDivElement>(null);
+useEffect(() => {
+  const el = scrollRef.current;
+  if (el) el.scrollTop = el.scrollHeight;
+}, [messages, inputH]);
+
+<div className="relative w-full h-[440px]">
+  <div ref={scrollRef} className="absolute inset-0 overflow-y-auto scrollbar-hide">
+    <div
+      className="flex min-h-full flex-col justify-start gap-2"
+      style={{ paddingBottom: inputH + 12 }}
+    >
+      {messages.map((m, i) => (
+        <ChatMessage key={i} from={m.from} files={m.files}>
+          {m.text}
+        </ChatMessage>
+      ))}
+    </div>
+  </div>
+  <InputMessage
+    ref={inputRef}
+    className="absolute inset-x-0 bottom-0"
+    value={value}
+    onValueChange={setValue}
+    files={files}
+    onFilesChange={setFiles}
+    // Send pushes the message along with its attachments into the transcript.
+    onSend={(text, attachments) => {
+      if (!text && attachments.length === 0) return;
+      setMessages((prev) => [
+        ...prev,
+        { from: "user", text, files: attachments },
+      ]);
+      setValue("");
+      setFiles([]);
+    }}
+  />
+</div>`;
+
 const actionsCode = `import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { InputMessage, ChatMessage, Button, Dropdown, MenuItem, Tooltip } from "./components";
@@ -83,7 +157,7 @@ const FileTextIcon = useIcon("square-library");
 <div className="relative w-full h-[440px]">
   <div ref={scrollRef} className="absolute inset-0 overflow-y-auto scrollbar-hide">
     <div
-      className="flex min-h-full flex-col justify-end gap-2"
+      className="flex min-h-full flex-col justify-start gap-2"
       style={{ paddingBottom: inputH + 12 }}
     >
       {messages.map((m, i) => (
@@ -339,6 +413,67 @@ export default function InputMessageDoc() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [actionsMessages, actionsInputH]);
 
+  // "Attachments" demo: a composer pre-filled with a real image + PDF, loaded
+  // from public assets at mount. Sending pushes the message (with its
+  // attachments) into a transcript and an assistant reply follows.
+  const [attachValue, setAttachValue] = useState("");
+  const [attachFiles, setAttachFiles] = useState<File[]>([]);
+  const [attachMessages, setAttachMessages] = useState<
+    { from: "user" | "assistant"; text: string; files?: File[] }[]
+  >([]);
+  // Keep the originally-loaded files so "Reset" can re-fill the composer.
+  const initialAttachFiles = useRef<File[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch("/micka.png")
+        .then((r) => r.blob())
+        .then((b) => new File([b], "micka.png", { type: b.type || "image/png" })),
+      fetch("/design-notes.pdf")
+        .then((r) => r.blob())
+        .then(
+          (b) =>
+            new File([b], "design-notes.pdf", {
+              type: b.type || "application/pdf",
+            })
+        ),
+    ])
+      .then((files) => {
+        if (cancelled) return;
+        initialAttachFiles.current = files;
+        setAttachFiles(files);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const resetAttachDemo = () => {
+    setAttachMessages([]);
+    setAttachValue("");
+    setAttachFiles(initialAttachFiles.current);
+  };
+
+  // Same floating-composer treatment as the main Example: measure the composer
+  // to reserve scroll padding, and keep the transcript pinned to the bottom.
+  const attachInputRef = useRef<HTMLDivElement>(null);
+  const [attachInputH, setAttachInputH] = useState(0);
+  useEffect(() => {
+    const el = attachInputRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setAttachInputH(el.offsetHeight));
+    ro.observe(el);
+    setAttachInputH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
+  const attachScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = attachScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [attachMessages, attachInputH]);
+
   const PlusIcon = useIcon("plus");
   const ChevronDownIcon = useIcon("chevron-down");
   const ImageIcon = useIcon("image");
@@ -373,7 +508,7 @@ export default function InputMessageDoc() {
               className="absolute inset-0 overflow-y-auto scrollbar-hide"
             >
               <div
-                className="flex min-h-full flex-col justify-end gap-2"
+                className="flex min-h-full flex-col justify-start gap-2"
                 style={{ paddingBottom: actionsInputH + 12 }}
               >
                 {actionsMessages.map((m, i) => (
@@ -498,6 +633,59 @@ export default function InputMessageDoc() {
               value={basicValue}
               onValueChange={setBasicValue}
               onSend={() => setBasicValue("")}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Attachments">
+        <ComponentPreview
+          code={attachmentsCode}
+          minHeightClass="h-[440px]"
+          align="bottom"
+          padding="compact"
+          playbackButton={
+            attachMessages.length > 0
+              ? {
+                  icon: <ResetIcon size={16} strokeWidth={1.5} />,
+                  tooltip: "Reset",
+                  onClick: resetAttachDemo,
+                }
+              : undefined
+          }
+        >
+          <div className="relative w-full self-stretch">
+            <div
+              ref={attachScrollRef}
+              className="absolute inset-0 overflow-y-auto scrollbar-hide"
+            >
+              <div
+                className="flex min-h-full flex-col justify-start gap-2"
+                style={{ paddingBottom: attachInputH + 12 }}
+              >
+                {attachMessages.map((m, i) => (
+                  <ChatMessage key={i} from={m.from} files={m.files}>
+                    {m.text}
+                  </ChatMessage>
+                ))}
+              </div>
+            </div>
+            <InputMessage
+              ref={attachInputRef}
+              className="absolute inset-x-0 bottom-0"
+              value={attachValue}
+              onValueChange={setAttachValue}
+              files={attachFiles}
+              onFilesChange={setAttachFiles}
+              onSend={(text, attachments) => {
+                if (!text && attachments.length === 0) return;
+                setAttachMessages((prev) => [
+                  ...prev,
+                  { from: "user", text, files: attachments },
+                ]);
+                setAttachValue("");
+                setAttachFiles([]);
+              }}
             />
           </div>
         </ComponentPreview>

@@ -162,6 +162,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       filePreviewSize = 80,
       textareaProps,
       className,
+      style,
       ...props
     },
     ref
@@ -173,6 +174,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [focusVisible, setFocusVisible] = useState(false);
     const [dragOver, setDragOver] = useState(false);
+    const [hovered, setHovered] = useState(false);
 
     const filesArr = useMemo(() => files ?? [], [files]);
     const supportsFiles = onFilesChange !== undefined;
@@ -193,6 +195,22 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 
     const trimmed = value.trim();
     const canSend = !disabled && (trimmed.length > 0 || filesArr.length > 0);
+
+    // Edge = the box-shadow's 1px ring, recoloured in place per state so the
+    // stroke gains contrast without ever appearing to thicken (no second
+    // border band layered beside it). The drop (`0 1px 1px`) is kept so the
+    // composer holds its lift across states. Applied inline (not via a Tailwind
+    // `shadow-*` utility, which mangles multi-layer arbitrary values) with the
+    // precedence drag > focus > hover; when none are active, the className's
+    // `shadow-surface-2` supplies the resting edge.
+    const EDGE_DROP = "0 1px 1px -0.5px var(--shadow-color)";
+    const edgeShadow = dragOver
+      ? `0 0 0 1px #6B97FF, ${EDGE_DROP}`
+      : focusVisible
+        ? `0 0 0 1px color-mix(in oklab, var(--foreground) 20%, transparent), ${EDGE_DROP}`
+        : hovered && clickToFocus && !disabled
+          ? `0 0 0 1px var(--border), ${EDGE_DROP}`
+          : undefined;
 
     const handleSend = useCallback(() => {
       if (!canSend) return;
@@ -356,28 +374,20 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          // Edge comes from surface-2 + shadow-surface-2; the border is a
-          // transparent placeholder so swapping in the hover / focus / drag-
-          // over colour doesn't shift layout. Hover and focus both use the
-          // neutral border token (just bumped contrast) — no blue ring —
-          // so the composer stays quiet inside chat layouts.
-          "flex flex-col gap-1 p-2 border border-transparent transition-colors duration-80",
+          // The edge is the box-shadow's hairline ring (from surface-2), not a
+          // border. State changes recolor that same 1px ring in place rather
+          // than layering a second colored border beside it — so hover / focus
+          // bump *contrast* without ever appearing to thicken the stroke.
+          "flex flex-col gap-1 p-2 transition-[box-shadow,color] duration-80",
           surfaceClasses(2, 2),
           shape.container,
           clickToFocus && !disabled && "cursor-text",
-          // Edge state precedence (highest → lowest):
-          //   1. drag-over → blue focus-ring colour (drop affordance)
-          //   2. focus     → neutral border bump
-          //   3. hover     → subtle neutral border
-          // Only one rule is attached at a time so Tailwind's `:hover`
-          // cascade can't beat the JS-applied focus / drag colours.
-          dragOver && "border-[#6B97FF]",
-          !dragOver && focusVisible && "border-foreground/20",
-          !dragOver && !focusVisible && clickToFocus && !disabled &&
-            "hover:border-border",
           disabled && "opacity-50 pointer-events-none",
           className
         )}
+        style={edgeShadow ? { boxShadow: edgeShadow, ...style } : style}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         {...props}
       >
         <SurfaceProvider value={2}>
