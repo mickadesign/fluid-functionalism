@@ -67,7 +67,7 @@ export function ComponentPreview({
   const showButton = !!playbackButton || !!onReplay;
 
   return (
-    <div className={`flex flex-col gap-0 w-full border border-border/60 overflow-hidden transition-[border-color] duration-80 focus-within:border-foreground/40 ${shape.container}`}>
+    <div className={`flex flex-col gap-0 w-full border border-border/60 transition-[border-color] duration-80 focus-within:border-foreground/40 ${shape.container}`}>
       {/* Tab bar — min-height reserves the playback button's height (h-10 + pt-3)
           so the header doesn't shift when the button mounts/unmounts. */}
       <div className="flex items-center gap-0 px-3 pt-3 min-h-[52px]">
@@ -96,27 +96,41 @@ export function ComponentPreview({
         )}
       </div>
 
-      {/* Content */}
-      {tab === 0 ? (
-        <div
-          ref={previewRef}
-          onMouseDown={handlePreviewMouseDown}
-          className={`flex ${align === "bottom" ? "items-end" : "items-center"} justify-center ${minHeightClass} bg-background ${
-            padding === "compact"
-              ? "px-4 py-4"
-              : padding === "responsive"
-                ? "px-4 py-4 sm:px-8 sm:py-12"
-                : "px-8 py-12"
-          }`}
-        >
-          {children}
-        </div>
-      ) : (
-        <div
-          className={`overflow-auto text-[13px] [&_pre]:m-0 [&_pre]:p-4 ${minHeightClass.replace("min-h-", "[&_pre]:min-h-")} [&_.shiki]:!bg-transparent`}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      )}
+      {/* Content. Wrapped so its rectangular bottom corners get clipped
+          to the outer container's rounded shape (rounded-xl / rounded-3xl
+          depending on shape). overflow-hidden alone on the outer would
+          re-clip the TabsSubtle focus ring above; this scoped clipper
+          uses `border-bottom-*-radius: inherit` so it adopts whichever
+          shape is active, and leaves the top corners square (the tab
+          bar sits above, well below the outer's curved top edge). */}
+      <div
+        className="overflow-hidden"
+        style={{
+          borderBottomLeftRadius: "inherit",
+          borderBottomRightRadius: "inherit",
+        }}
+      >
+        {tab === 0 ? (
+          <div
+            ref={previewRef}
+            onMouseDown={handlePreviewMouseDown}
+            className={`flex ${align === "bottom" ? "items-end" : "items-center"} justify-center ${minHeightClass} bg-background ${
+              padding === "compact"
+                ? "px-4 py-4"
+                : padding === "responsive"
+                  ? "px-4 py-4 sm:px-8 sm:py-12"
+                  : "px-8 py-12"
+            }`}
+          >
+            {children}
+          </div>
+        ) : (
+          <div
+            className={`overflow-auto text-[13px] [&_pre]:m-0 [&_pre]:p-4 ${minHeightClass.replace("min-h-", "[&_pre]:min-h-")} [&_.shiki]:!bg-transparent`}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   type RefObject,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { springs } from "@/lib/springs";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 
@@ -139,7 +138,12 @@ export function MobileDrawer({
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%", transition: { duration: 0.12 } }}
-            transition={springs.moderate}
+            // Critically damped spring — same perceived duration as
+            // springs.moderate but bounce: 0, so the panel decelerates
+            // into x: 0 without overshooting. The previous bounce: 0.15
+            // briefly pushed the panel past its rest position, exposing
+            // the page background through the gap on the left edge.
+            transition={{ type: "spring", duration: 0.16, bounce: 0 }}
           >
             <SurfaceProvider value={level}>
               {children}

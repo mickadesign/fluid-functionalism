@@ -44,6 +44,7 @@ function DemoPageInner() {
     "tabs",
     "radio-group",
     "slider",
+    "ask-user-questions",
     "color-picker",
     "input-group",
     "switch",

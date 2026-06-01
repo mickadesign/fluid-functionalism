@@ -40,6 +40,15 @@ export interface AskUserQuestion {
    *  - "stacked": title above, description below — useful when descriptions
    *    are long enough to wrap. */
   layout?: "inline" | "stacked";
+  /** Which side of the row the numbered chip sits on.
+   *  - "right" (default): chip on the right; the single-select submit
+   *    arrow overlays it on hover/focus.
+   *  - "left": chip on the left, before the body. The submit arrow
+   *    still appears on the right edge of the row, so the action
+   *    affordance stays where the eye expects it.
+   *  Works with every other option (single/multi-select, allowOther,
+   *  inline/stacked layout). */
+  chipPosition?: "left" | "right";
 }
 
 export interface AskUserAnswer {
@@ -194,11 +203,9 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
 
     // ── Refs & proximity hover ───────────────────────────────────
     const rowsContainerRef = useRef<HTMLDivElement>(null);
+    // The Other field is a multi-line textarea — it auto-resizes to fit
+    // wrapped content and lets users press Enter for a newline.
     const otherInputRef = useRef<HTMLTextAreaElement>(null);
-    // True when the Other textarea has wrapped past its first line. Drives the
-    // submit-arrow nudge so it stays optically aligned with the first line
-    // rather than the growing field's centre.
-    const [otherMultiline, setOtherMultiline] = useState(false);
     // Stable IDs for contiguous-selection runs (see selectedGroups below).
     const groupIdCounterRef = useRef(0);
     const prevGroupMapRef = useRef(new Map<number, number>());
@@ -217,6 +224,45 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       measureItems();
     }, [measureItems, qId, rowCount, shape]);
 
+    // ── Other-row textarea auto-resize ──────────────────────────
+    // The Other field is a textarea so users can write a multi-line answer.
+    // Browsers don't auto-fit textarea height to content, so we set it
+    // manually: reset to 0 (so the field can shrink when lines are deleted),
+    // then expand to scrollHeight. Remeasure the proximity rows after — the
+    // hover, selected and focus indicators absolutely-position against
+    // itemRects, so they need fresh rects when the row's height changes.
+    //
+    // We also track whether the textarea is currently displaying more than
+    // one line (either via explicit \n or text that wraps). Only then do
+    // we switch the Other row to `topAlign`; in the 1-line state the row
+    // stays `items-center` so a single line sits at the row's optical
+    // centre, matching the surrounding option rows.
+    const [isOtherMultiline, setIsOtherMultiline] = useState(false);
+    // Reset the multi-line flag when the question changes so the new
+    // question's first paint of an empty Other row doesn't inherit a
+    // stale `true` from the previous question's multi-line draft (which
+    // would briefly apply `items-start` + the -5px chip nudge on an
+    // empty single-line row before the resize effect below corrects it).
+    useEffect(() => {
+      setIsOtherMultiline(false);
+    }, [qId]);
+    useEffect(() => {
+      const el = otherInputRef.current;
+      if (!el) return;
+      el.style.height = "0px";
+      el.style.height = `${el.scrollHeight}px`;
+      // Threshold against the textarea's *measured* line-height, not a
+      // hard-coded 22px — so the flag stays correct at high browser
+      // font-size / zoom settings where line-height grows past 22 even
+      // for a single line. 1.5× line-height is a generous fudge below
+      // a true second wrapped line (2× line-height) but well above any
+      // single-line rounding artefact.
+      const lineHeight =
+        parseFloat(window.getComputedStyle(el).lineHeight) || 18;
+      setIsOtherMultiline(el.scrollHeight > lineHeight * 1.5);
+      measureItems();
+    }, [otherText, measureItems, qId]);
+
     // ── Animated height ──────────────────────────────────────────
     // Track the natural height of the Q/A content and animate the wrapper's
     // REAL height to it. Animating the actual height (not a layout transform)
@@ -228,17 +274,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     useEffect(() => {
       const el = contentMeasureRef.current;
       if (!el) return;
-      const update = () => {
-        setContentHeight(el.offsetHeight);
-        // Re-measure row rects so the selected-row background tracks rows that
-        // grow taller as the Other textarea wraps to multiple lines.
-        measureItems();
-      };
+      const update = () => setContentHeight(el.offsetHeight);
       update();
       const ro = new ResizeObserver(update);
       ro.observe(el);
       return () => ro.disconnect();
-    }, [measureItems]);
+    }, []);
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
@@ -337,18 +378,6 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       },
       [question, qId, writeAnswers]
     );
-
-    // Track whether the Other textarea has wrapped past one line, so the
-    // submit arrow can be nudged to stay aligned with the first line.
-    useEffect(() => {
-      const el = otherInputRef.current;
-      if (!el) {
-        setOtherMultiline(false);
-        return;
-      }
-      const lh = parseFloat(getComputedStyle(el).lineHeight) || 18;
-      setOtherMultiline(el.scrollHeight > lh * 1.5);
-    }, [otherText]);
 
     const handleOtherSubmit = useCallback(() => {
       if (!question) return;
@@ -458,17 +487,27 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
         target.isContentEditable;
 
       // Inside the Other text field, ←/→ and Home/End move the caret natively.
-      // ↑/↓ move the caret between the textarea's wrapped lines; we only steal
-      // them to navigate out to the option rows when the caret is already at the
-      // field's edge (↑ at the very start, ↓ at the very end) — so a multi-line
-      // answer stays editable but focus is never trapped.
-      if (isTextInput) {
-        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-        const field = target as HTMLTextAreaElement;
-        const atStart = field.selectionStart === 0;
-        const atEnd = field.selectionStart === field.value.length;
-        if (e.key === "ArrowUp" && !atStart) return;
-        if (e.key === "ArrowDown" && !atEnd) return;
+      // ↑/↓ are dual-purpose in the textarea: when the caret has more lines
+      // to move to in that direction (there's a \n before/after it), let the
+      // browser handle native caret movement; only steal the keystroke to
+      // navigate to an adjacent option row when the caret is already at the
+      // first / last line — otherwise the user can't edit a multi-line draft
+      // without focus jumping out of the field.
+      if (isTextInput && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if (
+        isTextInput &&
+        (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+        target.tagName === "TEXTAREA"
+      ) {
+        // Position-bounds check — works for BOTH explicit `\n` AND visual
+        // line wraps. Only steal the key when the caret has nowhere left
+        // to go inside the textarea: ArrowUp at the very start, or
+        // ArrowDown at the very end. Anywhere else, let the textarea
+        // handle native caret movement (line-by-line up/down, including
+        // through wrapped lines without `\n`).
+        const ta = target as HTMLTextAreaElement;
+        if (e.key === "ArrowUp" && ta.selectionStart > 0) return;
+        if (e.key === "ArrowDown" && ta.selectionEnd < ta.value.length) return;
       }
 
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -867,6 +906,11 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                     isMulti={isMulti}
                     showArrow={showArrow}
                     bodyLayout={question.layout === "stacked" ? "stacked" : "inline"}
+                    // Anchor the chip to the first text line whenever the
+                    // body can wrap to multiple lines (stacked layouts
+                    // pair a title with a description that often wraps).
+                    topAlign={question.layout === "stacked"}
+                    chipPosition={question.chipPosition ?? "right"}
                     arrowIcon={
                       <ArrowRight
                         size={14}
@@ -937,9 +981,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   chipContent={otherIndex + 1}
                   chipFilled={otherText.length > 0}
                   isMulti={isMulti}
-                  endSlotClassName={
-                    otherMultiline ? "self-start -mt-px" : undefined
-                  }
+                  // Other body is a textarea that may grow past one line;
+                  // only switch to top-aligned when it actually wraps, so
+                  // the 1-line empty / single-line state stays visually
+                  // centred like the surrounding option rows.
+                  topAlign={isOtherMultiline}
+                  chipPosition={question.chipPosition ?? "right"}
                   ariaLabel={
                     question.otherPlaceholder ?? "Describe in your own words"
                   }
@@ -963,18 +1010,6 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   }
                 >
                   <span className="inline-grid w-full">
-                    {/* Mirror — invisible, holds the same text so the grid cell
-                        grows to the wrapped height. The textarea overlays the
-                        same cell and stretches to fill it (auto-grow without JS
-                        height math). The trailing space keeps the last line's
-                        height when text ends in a newline. */}
-                    <span
-                      aria-hidden
-                      className="col-start-1 row-start-1 invisible whitespace-pre-wrap break-words text-[13px] leading-snug"
-                      style={{ fontVariationSettings: fontWeights.medium }}
-                    >
-                      {otherText ? otherText + "​" : "​"}
-                    </span>
                     <textarea
                       ref={otherInputRef}
                       rows={1}
@@ -994,15 +1029,29 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                         )
                       }
                       onKeyDown={(e) => {
-                        // Enter submits; Shift+Enter inserts a newline.
-                        if (e.key === "Enter" && !e.shiftKey && !isMulti) {
+                        // Standard chat pattern: plain Enter submits,
+                        // Shift+Enter inserts a newline. Works for both
+                        // desktop and mobile soft keyboards (where ⌘/⌃
+                        // isn't reachable). In multi-select we leave plain
+                        // Enter to the textarea (newline) and let the
+                        // root handler catch ⌘/⌃+Enter for Continue —
+                        // multi-select has its own Continue button as the
+                        // primary submit affordance.
+                        if (e.key !== "Enter") return;
+                        if (e.shiftKey) return; // Shift+Enter = newline
+                        if (!isMulti) {
                           e.preventDefault();
                           handleOtherSubmit();
                         }
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className={cn(
-                        "col-start-1 row-start-1 resize-none overflow-hidden bg-transparent outline-none text-[13px] leading-snug text-foreground placeholder:text-muted-foreground w-full"
+                        // Reset every textarea default that would otherwise
+                        // make the field taller/boxier than the single-line
+                        // input it replaces — no border, no padding, no
+                        // resize handle, no scrollbars (height is JS-driven,
+                        // see the auto-resize effect above).
+                        "col-start-1 row-start-1 block w-full bg-transparent border-0 p-0 m-0 outline-none resize-none overflow-hidden text-[13px] leading-snug text-foreground placeholder:text-muted-foreground"
                       )}
                       style={{ fontVariationSettings: fontWeights.medium }}
                     />
@@ -1192,12 +1241,19 @@ interface RowProps {
   showArrow?: boolean;
   arrowIcon?: React.ReactNode;
   onArrowClick?: () => void;
-  /** Extra classes for the trailing chip/arrow slot. Used by the Other row to
-   *  top-align + nudge the arrow once its textarea wraps to multiple lines. */
-  endSlotClassName?: string;
   /** Body content layout. "inline" keeps title + description on one line;
    *  "stacked" puts description below the title with extra vertical padding. */
   bodyLayout?: "inline" | "stacked";
+  /** Anchor the chip to the first line of the body instead of vertically
+   *  centering it on the row. Use when the body can grow taller than one
+   *  line (Other row's textarea, stacked title + description, or any
+   *  wrapping content) — otherwise the chip drifts toward the middle of a
+   *  tall row and stops reading as a marker for the row's title. */
+  topAlign?: boolean;
+  /** Mirrors the per-question `chipPosition`. "left" moves the chip to
+   *  the leading edge of the row; the trailing arrow slot still sits on
+   *  the right. Defaults to "right". */
+  chipPosition?: "left" | "right";
   children: React.ReactNode;
 }
 
@@ -1219,8 +1275,9 @@ function Row({
   showArrow,
   arrowIcon,
   onArrowClick,
-  endSlotClassName,
   bodyLayout = "inline",
+  topAlign = false,
+  chipPosition = "right",
   children,
   ...aria
 }: RowProps) {
@@ -1230,6 +1287,112 @@ function Row({
     registerItem(index, rowRef.current);
     return () => registerItem(index, null);
   }, [index, registerItem]);
+
+  // The arrow keeps the same animation regardless of which slot it lands
+  // in — pull it out so the chip-on-right (overlay) and chip-on-left
+  // (separate right slot) paths can reuse the exact same element.
+  const arrowOverlay = (
+    <AnimatePresence>
+      {showArrow && (
+        <motion.span
+          aria-hidden={!onArrowClick}
+          role={onArrowClick ? "button" : undefined}
+          onClick={
+            onArrowClick
+              ? (e) => {
+                  e.stopPropagation();
+                  onArrowClick();
+                }
+              : undefined
+          }
+          className={cn(
+            "absolute inset-0 inline-flex items-center justify-center bg-foreground text-background",
+            shape.bg,
+            onArrowClick && "cursor-pointer"
+          )}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{
+            opacity: 0,
+            scale: 0.6,
+            transition: { duration: 0.06 },
+          }}
+          transition={{
+            ...springs.fast,
+            opacity: { duration: 0.08 },
+          }}
+        >
+          {arrowIcon}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+
+  // The chip "slot" is a fixed 28×28 cell holding the chip number/circle.
+  // When topAlign is on, the slot floats up so the chip's vertical centre
+  // lines up with the centre of a `text-[13px] leading-snug` first line
+  // (line-height ≈ 18px → centre 9px; chip centre 14px → diff 5px).
+  // Stacked rows pair a title with a description, so we add 4px of
+  // breathing room back on top (effective shift -1px) — that lands the
+  // chip near the title's baseline rather than its optical centre, which
+  // reads as "row marker" instead of "title label" when descriptions wrap.
+  // The arrow overlay only co-renders here when `chipPosition === "right"`
+  // — in chip-on-left mode the arrow has its own right-edge slot so the
+  // chip stays visible while the submit affordance lives where users
+  // expect it (the trailing end of the row).
+  const chipSlot = (
+    <span
+      className={cn(
+        "shrink-0 w-7 h-7 relative inline-flex items-center justify-center",
+        topAlign &&
+          (bodyLayout === "stacked" ? "-mt-[1px]" : "-mt-[5px]")
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inline-flex items-center justify-center w-5 h-5 text-[11px] transition-opacity duration-80",
+          isMulti && shape.bg,
+          isMulti
+            ? chipFilled
+              ? "bg-foreground text-background"
+              : "border border-border text-muted-foreground"
+            : chipFilled
+            ? "text-foreground"
+            : "text-muted-foreground",
+          // Only fade the chip when it shares a slot with the arrow — for
+          // chip-on-left the arrow has its own slot on the right, so the
+          // chip stays in place.
+          chipPosition === "right" && showArrow && "opacity-0"
+        )}
+        style={{
+          fontVariationSettings: chipFilled
+            ? fontWeights.semibold
+            : fontWeights.medium,
+        }}
+      >
+        {chipContent}
+      </span>
+      {chipPosition === "right" && arrowOverlay}
+    </span>
+  );
+
+  // Right-edge arrow slot — only used when the chip is on the LEFT and
+  // the row can show an arrow (single-select only; in multi-select
+  // showArrow is always false and there's nothing to anchor here). Mirrors
+  // the chip slot's stacked-vs-inline shift so both end markers stay on
+  // the same horizontal line at all times.
+  const rightArrowSlot = chipPosition === "left" && !isMulti && (
+    <span
+      className={cn(
+        "shrink-0 w-7 h-7 relative inline-flex items-center justify-center",
+        topAlign &&
+          (bodyLayout === "stacked" ? "-mt-[1px]" : "-mt-[5px]")
+      )}
+    >
+      {arrowOverlay}
+    </span>
+  );
 
   return (
     <div
@@ -1249,8 +1412,28 @@ function Row({
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "relative z-10 flex items-center gap-3 pl-3 pr-1.5 cursor-pointer select-none outline-none",
+        "relative z-10 flex cursor-pointer select-none outline-none",
+        // Tighter gap when the chip sits on the left — it reads as a
+        // leading list marker, so coupling it close to the title looks
+        // more intentional than the larger right-side gap (where the
+        // chip is a trailing affordance instead).
+        chipPosition === "left" ? "gap-2" : "gap-3",
+        // items-start when the body may exceed one line (stacked layouts,
+        // multi-line textareas) so the chip tracks the first line instead
+        // of sliding to the row's vertical centre. When topAlign is OFF,
+        // items-center keeps a 1-line row visually centred — that's why
+        // the Other row defers topAlign until its textarea actually wraps.
+        topAlign ? "items-start" : "items-center",
         bodyLayout === "stacked" ? "min-h-14 py-2" : "min-h-10 py-1.5",
+        // Mirror the horizontal padding based on chip side so the row
+        // reads visually balanced in both orientations. For chip-on-left
+        // + multi-select there's no right slot, so widen the right padding
+        // to match the chip-on-right's 12px / 6px asymmetry mirrored.
+        chipPosition === "left"
+          ? isMulti
+            ? "pl-1.5 pr-3"
+            : "pl-1.5 pr-1.5"
+          : "pl-3 pr-1.5",
         shape.item
       )}
     >
@@ -1258,7 +1441,9 @@ function Row({
           selections can merge into a single block (see AskUserQuestions's
           selectedGroups / merged-bg block). Row keeps z-10 to sit above it. */}
 
-      {/* Body — left, fills row */}
+      {chipPosition === "left" && chipSlot}
+
+      {/* Body — fills row */}
       <span
         className={cn(
           "min-w-0 flex-1 text-[13px] leading-snug",
@@ -1270,73 +1455,7 @@ function Row({
         {children}
       </span>
 
-      {/* End slot — chip with optional arrow overlay */}
-      <span
-        className={cn(
-          "shrink-0 w-7 h-7 relative inline-flex items-center justify-center",
-          endSlotClassName
-        )}
-      >
-        {/* Chip — number or icon */}
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inline-flex items-center justify-center w-5 h-5 text-[11px] transition-opacity duration-80",
-            isMulti && shape.bg,
-            isMulti
-              ? chipFilled
-                ? "bg-foreground text-background"
-                : "border border-border text-muted-foreground"
-              : chipFilled
-              ? "text-foreground"
-              : "text-muted-foreground",
-            showArrow && "opacity-0"
-          )}
-          style={{
-            fontVariationSettings: chipFilled
-              ? fontWeights.semibold
-              : fontWeights.medium,
-          }}
-        >
-          {chipContent}
-        </span>
-
-        {/* Arrow overlay — covers chip on hover/focus in single-select */}
-        <AnimatePresence>
-          {showArrow && (
-            <motion.span
-              aria-hidden={!onArrowClick}
-              role={onArrowClick ? "button" : undefined}
-              onClick={
-                onArrowClick
-                  ? (e) => {
-                      e.stopPropagation();
-                      onArrowClick();
-                    }
-                  : undefined
-              }
-              className={cn(
-                "absolute inset-0 inline-flex items-center justify-center bg-foreground text-background",
-                shape.bg,
-                onArrowClick && "cursor-pointer"
-              )}
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{
-                opacity: 0,
-                scale: 0.6,
-                transition: { duration: 0.06 },
-              }}
-              transition={{
-                ...springs.fast,
-                opacity: { duration: 0.08 },
-              }}
-            >
-              {arrowIcon}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </span>
+      {chipPosition === "right" ? chipSlot : rightArrowSlot}
     </div>
   );
 }
