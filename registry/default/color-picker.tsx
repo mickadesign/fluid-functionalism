@@ -1205,7 +1205,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
   (
     {
       value,
-      defaultValue = "#ff0000",
+      defaultValue = "#6B97FF",
       onValueChange,
       format,
       defaultFormat = "hex",
@@ -1604,7 +1604,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
     const level = Math.min(substrate + 2, 8);
 
     const isControlled = pickerProps.value !== undefined;
-    const [internalValue, setInternalValue] = useState(pickerProps.value ?? pickerProps.defaultValue ?? "#ff0000");
+    const [internalValue, setInternalValue] = useState(pickerProps.value ?? pickerProps.defaultValue ?? "#6B97FF");
     const currentValue = isControlled ? (pickerProps.value as string) : internalValue;
 
     const onValueChange = useCallback(

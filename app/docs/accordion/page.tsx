@@ -42,8 +42,8 @@ const groupedCode = `import { AccordionGroup, AccordionItem, AccordionTrigger, A
   <AccordionItem value="item-3" index={2}>
     <AccordionTrigger>Accessibility</AccordionTrigger>
     <AccordionContent>
-      Built on Radix UI Accordion with WAI-ARIA attributes, keyboard
-      navigation, and focus management.
+      Built on Radix UI or Base UI Accordion (your pick) with WAI-ARIA
+      attributes, keyboard navigation, and focus management.
     </AccordionContent>
   </AccordionItem>
   <AccordionItem value="item-4" index={3}>
@@ -145,8 +145,9 @@ export default function AccordionDoc() {
             <AccordionItem value="item-3" index={2}>
               <AccordionTrigger>Accessibility</AccordionTrigger>
               <AccordionContent>
-                Built on Radix UI Accordion with WAI-ARIA attributes, keyboard
-                navigation, and focus management.
+                Built on Radix UI or Base UI Accordion (your pick) with
+                WAI-ARIA attributes, keyboard navigation, and focus
+                management.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-4" index={3}>

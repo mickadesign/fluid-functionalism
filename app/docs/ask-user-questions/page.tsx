@@ -554,6 +554,85 @@ const questions = [
 
 <AskUserQuestions questions={questions} />`;
 
+// Chip-on-left works with every other option. This walks through:
+// single-select inline, single-select stacked, multi-select inline,
+// allow-other (multi-line textarea), and skippable: false — all with
+// chipPosition: "left". The single-select submit arrow still appears
+// on the right edge of the row.
+const chipLeftCode = `const questions = [
+  {
+    id: "role",
+    title: "Pick your role",
+    chipPosition: "left",
+    options: [
+      { id: "design", title: "Designer", description: "Prototyping flows" },
+      { id: "eng", title: "Engineer", description: "Shipping production UI" },
+      { id: "pm", title: "PM", description: "Aligning the team" },
+    ],
+  },
+  {
+    id: "template",
+    title: "Which starting template fits your project?",
+    chipPosition: "left",
+    layout: "stacked",
+    options: [
+      {
+        id: "marketing",
+        title: "Marketing site",
+        description: "Hero, features grid, pricing, footer. Best when you need to ship a story-driven page fast.",
+      },
+      {
+        id: "chat",
+        title: "AI chat app",
+        description: "InputMessage, ThinkingSteps and message bubbles wired together. Ideal for assistants and copilots.",
+      },
+      {
+        id: "admin",
+        title: "Admin dashboard",
+        description: "Sidebar shell, sortable tables, and form-heavy detail views. Built for back-office tools.",
+      },
+    ],
+  },
+  {
+    id: "frameworks",
+    title: "Where will you ship these components?",
+    chipPosition: "left",
+    multiSelect: true,
+    nextLabel: "Continue",
+    options: [
+      { id: "next", title: "Next.js", description: "App Router projects" },
+      { id: "remix", title: "Remix", description: "Full-stack apps" },
+      { id: "vite", title: "Vite + React", description: "SPAs and dashboards" },
+      { id: "astro", title: "Astro", description: "Content-first sites" },
+    ],
+  },
+  {
+    id: "feedback",
+    title: "Anything else we should build?",
+    chipPosition: "left",
+    options: [
+      { id: "data", title: "Data table", description: "Sortable, filterable rows" },
+      { id: "calendar", title: "Calendar", description: "Date picker and range" },
+      { id: "command", title: "Command menu", description: "Fast keyboard launcher" },
+    ],
+    allowOther: true,
+    otherPlaceholder: "Tell us in a few lines…",
+  },
+  {
+    id: "recommend",
+    title: "Would you recommend Fluid Functionalism?",
+    chipPosition: "left",
+    skippable: false,
+    options: [
+      { id: "yes", title: "Yes", description: "Already have" },
+      { id: "soon", title: "Soon", description: "Once it covers more ground" },
+      { id: "unsure", title: "Not sure yet", description: "Still evaluating" },
+    ],
+  },
+];
+
+<AskUserQuestions questions={questions} />`;
+
 const controlledCode = `const [index, setIndex] = useState(0);
 const [answers, setAnswers] = useState({});
 
@@ -586,11 +665,12 @@ const questionProps: PropDef[] = [
   { name: "title", type: "string", description: "Question text shown above the options." },
   { name: "options", type: "AskUserOption[]", description: "2–5 options to choose from." },
   { name: "multiSelect", type: "boolean", default: "false", description: "Allow multiple options to be selected. Adds a Next button at the bottom." },
-  { name: "allowOther", type: "boolean", default: "false", description: "Render an always-visible inline text input for free-form answers." },
-  { name: "otherPlaceholder", type: "string", default: '"Describe in your own words…"', description: "Placeholder for the Other input." },
+  { name: "allowOther", type: "boolean", default: "false", description: "Render an always-visible inline textarea for free-form, multi-line answers. Enter submits (single-select); Shift+Enter inserts a newline." },
+  { name: "otherPlaceholder", type: "string", default: '"Describe in your own words…"', description: "Placeholder for the Other textarea." },
   { name: "skippable", type: "boolean", default: "true", description: "Show the Skip control in the header." },
   { name: "nextLabel", type: "string", description: "Label for the Next button in multi-select mode. Defaults to 'Next' or 'Finish'." },
   { name: "layout", type: '"inline" | "stacked"', default: '"inline"', description: "Row layout. 'stacked' places the description on its own line under the title — use when descriptions are long enough to wrap." },
+  { name: "chipPosition", type: '"left" | "right"', default: '"right"', description: "Which side of the row the numbered chip sits on. With 'left', the single-select submit arrow still appears on the row's right edge. Works with single/multi-select, allowOther, and inline/stacked layouts." },
 ];
 
 const optionProps: PropDef[] = [
@@ -1051,6 +1131,81 @@ const stackedQuestions: AskUserQuestion[] = [
   },
 ];
 
+const chipLeftQuestions: AskUserQuestion[] = [
+  {
+    id: "role",
+    title: "Pick your role",
+    chipPosition: "left",
+    options: [
+      { id: "design", title: "Designer", description: "Prototyping flows" },
+      { id: "eng", title: "Engineer", description: "Shipping production UI" },
+      { id: "pm", title: "PM", description: "Aligning the team" },
+    ],
+  },
+  {
+    id: "template",
+    title: "Which starting template fits your project?",
+    chipPosition: "left",
+    layout: "stacked",
+    options: [
+      {
+        id: "marketing",
+        title: "Marketing site",
+        description:
+          "Hero, features grid, pricing, footer. Best when you need to ship a story-driven page fast.",
+      },
+      {
+        id: "chat",
+        title: "AI chat app",
+        description:
+          "InputMessage, ThinkingSteps and message bubbles wired together. Ideal for assistants and copilots.",
+      },
+      {
+        id: "admin",
+        title: "Admin dashboard",
+        description:
+          "Sidebar shell, sortable tables, and form-heavy detail views. Built for back-office tools.",
+      },
+    ],
+  },
+  {
+    id: "frameworks",
+    title: "Where will you ship these components?",
+    chipPosition: "left",
+    multiSelect: true,
+    nextLabel: "Continue",
+    options: [
+      { id: "next", title: "Next.js", description: "App Router projects" },
+      { id: "remix", title: "Remix", description: "Full-stack apps" },
+      { id: "vite", title: "Vite + React", description: "SPAs and dashboards" },
+      { id: "astro", title: "Astro", description: "Content-first sites" },
+    ],
+  },
+  {
+    id: "feedback",
+    title: "Anything else we should build?",
+    chipPosition: "left",
+    options: [
+      { id: "data", title: "Data table", description: "Sortable, filterable rows" },
+      { id: "calendar", title: "Calendar", description: "Date picker and range" },
+      { id: "command", title: "Command menu", description: "Fast keyboard launcher" },
+    ],
+    allowOther: true,
+    otherPlaceholder: "Tell us in a few lines…",
+  },
+  {
+    id: "recommend",
+    title: "Would you recommend Fluid Functionalism?",
+    chipPosition: "left",
+    skippable: false,
+    options: [
+      { id: "yes", title: "Yes", description: "Already have" },
+      { id: "soon", title: "Soon", description: "Once it covers more ground" },
+      { id: "unsure", title: "Not sure yet", description: "Still evaluating" },
+    ],
+  },
+];
+
 const skipQuestions: AskUserQuestion[] = [
   {
     id: "experience",
@@ -1139,6 +1294,16 @@ export default function AskUserQuestionsDoc() {
           minHeightClass="min-h-[560px]"
         >
           {(k) => <AskUserQuestions key={k} questions={skipQuestions} />}
+        </ReplayableExample>
+      </DocSection>
+
+      <DocSection title="Chip on left">
+        <ReplayableExample
+          code={chipLeftCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
+        >
+          {(k) => <AskUserQuestions key={k} questions={chipLeftQuestions} />}
         </ReplayableExample>
       </DocSection>
 

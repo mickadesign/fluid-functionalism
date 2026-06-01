@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, type ReactNode, type CSSProperties, type MouseEvent } from "react";
+import { type ReactNode, type CSSProperties } from "react";
 import { cn } from "@/registry/default/lib/utils";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Badge } from "@/registry/default/badge";
-import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 
 const sizeClasses: Record<string, string> = {
   large: "md:col-span-2 md:row-span-2",
@@ -24,34 +23,31 @@ interface BentoCardProps {
 }
 
 export function BentoCard({ slug, name, isNew, gridSize = "small", className: extraClassName, style, children }: BentoCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  // Clicking anywhere on the card routes keyboard control into it: focus the
-  // preview's first interactive element (falling back to the card itself).
-  // From then on the card is :focus-within (the contrasted border) and the
-  // inner component's own shortcut handlers receive keys. Clicking an
-  // interactive element keeps native focus; clicking outside the card blurs it,
-  // so shortcuts fall back to the page level.
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) =>
-    routeKeyboardOnMouseDown(e, contentRef.current, cardRef.current);
-
+  // No click-to-focus wiring here. Previously a mousedown on empty space
+  // inside the card routed focus to the preview's first interactive element
+  // (so the user could keyboard-drive the demo afterwards). In practice it
+  // caused unintended visual focus state on the first item — the
+  // checked-state on radios, the selected tab on TabsSubtle, the open
+  // accordion section, etc. — making cards look "primed" the moment a user
+  // clicked anywhere in them. Now clicking only focuses what the user
+  // actually clicked; Tab still routes into the card naturally.
   return (
     <div
-      ref={cardRef}
-      tabIndex={-1}
-      onMouseDown={handleMouseDown}
       className={cn(
-        "group relative flex flex-col rounded-xl border overflow-hidden outline-none transition-[shadow,border-color] duration-80 bento-card-border",
+        // No unnamed `group` here — many of the components rendered inside
+        // (Button, Select, InputCopy, …) use Tailwind's unnamed `group-hover:`
+        // for their own hover styling. Tailwind's `.group-hover:` matches the
+        // nearest *any* `.group` ancestor, so an unnamed group on the card
+        // would fire every inner button's hover state at once whenever the
+        // card itself was hovered. The footer link below uses a NAMED
+        // `group/link`, which is properly scoped.
+        "relative flex flex-col rounded-xl border overflow-hidden outline-none transition-[shadow,border-color] duration-80 bento-card-border",
         sizeClasses[gridSize],
         extraClassName,
       )}
       style={style}
     >
-      <div
-        ref={contentRef}
-        className="flex-1 min-h-0 flex items-center justify-center px-6 py-16 overflow-hidden"
-      >
+      <div className="flex-1 min-h-0 flex items-center justify-center px-6 py-16">
         {children}
       </div>
 

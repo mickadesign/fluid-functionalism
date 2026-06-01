@@ -63,6 +63,10 @@ import {
   ThinkingStepSource,
 } from "@/registry/default/thinking-steps";
 import { Tooltip } from "@/registry/radix/tooltip";
+import {
+  AskUserQuestions,
+  type AskUserQuestion,
+} from "@/registry/default/ask-user-questions";
 
 function AccordionPreview() {
   return (
@@ -188,7 +192,7 @@ function DropdownPreview() {
     { icon: StarIcon, label: "Proximity hover" },
     { icon: PlusIcon, label: "Font weight shifts" },
     { icon: HeartIcon, label: "Accessible by default" },
-    { icon: CheckIcon, label: "Radix primitives" },
+    { icon: CheckIcon, label: "Radix or Base UI" },
     { icon: BrainIcon, label: "Functional clarity" },
   ];
   return (
@@ -218,11 +222,9 @@ function InputCopyPreview() {
 }
 
 function InputGroupPreview() {
-  const Search = useIcon("search");
   const Mail = useIcon("mail");
   const User = useIcon("user");
   const Globe = useIcon("globe");
-  const [search, setSearch] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
@@ -252,14 +254,6 @@ function InputGroupPreview() {
           icon={Globe}
           value={website}
           onChange={setWebsite}
-        />
-        <InputField
-          index={3}
-          label="Search"
-          placeholder="Search components..."
-          icon={Search}
-          value={search}
-          onChange={setSearch}
         />
       </InputGroup>
     </div>
@@ -413,6 +407,111 @@ function ThinkingIndicatorPreview() {
   return <ThinkingIndicator />;
 }
 
+// Same eight questions as the docs page's first "Example" section, so the
+// home-page bento card and demo slide stay in sync with the canonical demo
+// the docs link to.
+const askUserExampleQuestions: AskUserQuestion[] = [
+  {
+    id: "role",
+    title: "How do you plan to use Fluid Functionalism?",
+    options: [
+      { id: "design", title: "Designer", description: "Prototyping flows and pages" },
+      { id: "eng", title: "Engineer", description: "Shipping production UI" },
+      { id: "pm", title: "PM", description: "Aligning the team on patterns" },
+      { id: "founder", title: "Founder", description: "Bootstrapping a product" },
+    ],
+  },
+  {
+    id: "shape",
+    title: "Which shape language fits your brand?",
+    options: [
+      { id: "rounded", title: "Rounded", description: "Soft, familiar corners" },
+      { id: "pill", title: "Pill", description: "Fully rounded, friendly" },
+    ],
+  },
+  {
+    id: "components",
+    title: "Which components are you reaching for first?",
+    multiSelect: true,
+    options: [
+      { id: "input", title: "InputMessage", description: "Chat-style composer with attachments" },
+      { id: "thinking", title: "ThinkingSteps", description: "Streamed reasoning steps" },
+      { id: "ask", title: "AskUserQuestions", description: "Stepped question flows" },
+      { id: "tabs", title: "TabsSubtle", description: "Quiet segmented tabs" },
+      { id: "nav", title: "NavMenu", description: "Sidebar navigation" },
+    ],
+    nextLabel: "Continue",
+  },
+  {
+    id: "drew",
+    title: "What drew you to Fluid Functionalism?",
+    options: [
+      { id: "motion", title: "Motion", description: "Springs that feel alive" },
+      { id: "craft", title: "Craft", description: "Pixel-level polish" },
+      { id: "tokens", title: "Tokens", description: "Shape and elevation systems" },
+    ],
+    allowOther: true,
+    otherPlaceholder: "Something else?",
+  },
+  {
+    id: "frameworks",
+    title: "Where will you ship these components?",
+    multiSelect: true,
+    options: [
+      { id: "next", title: "Next.js", description: "App Router projects" },
+      { id: "remix", title: "Remix", description: "Full-stack apps" },
+      { id: "vite", title: "Vite + React", description: "SPAs and dashboards" },
+      { id: "astro", title: "Astro", description: "Content-first sites" },
+    ],
+  },
+  {
+    id: "themes",
+    title: "Which theme mode do you support?",
+    options: [
+      { id: "light", title: "Light only" },
+      { id: "dark", title: "Dark only" },
+      { id: "system", title: "System-aware" },
+      { id: "toggle", title: "User toggle" },
+    ],
+  },
+  {
+    id: "missing",
+    title: "What's missing from the registry today?",
+    multiSelect: true,
+    options: [
+      { id: "data", title: "Data table", description: "Sortable, filterable rows" },
+      { id: "calendar", title: "Calendar", description: "Date picker and range" },
+      { id: "command", title: "Command menu", description: "Fast keyboard launcher" },
+    ],
+    allowOther: true,
+    otherPlaceholder: "Tell us what to build next…",
+    nextLabel: "Send feedback",
+  },
+  {
+    id: "recommend",
+    title: "Would you recommend Fluid Functionalism to a teammate?",
+    skippable: false,
+    options: [
+      { id: "yes", title: "Yes", description: "Already have" },
+      { id: "soon", title: "Soon", description: "Once it covers more ground" },
+      { id: "unsure", title: "Not sure yet", description: "Still evaluating" },
+    ],
+  },
+];
+
+function AskUserQuestionsPreview() {
+  // self-end overrides the BentoCard's `items-center` so the AskUserQuestions
+  // card sits flush with the bottom of the preview area — its content height
+  // changes per question (taller multi-select vs short single-select), so
+  // anchoring the bottom keeps the footer button + chip column in the same
+  // spot instead of drifting up and down as the user navigates.
+  return (
+    <div className="w-full max-w-[420px] self-end">
+      <AskUserQuestions questions={askUserExampleQuestions} />
+    </div>
+  );
+}
+
 function ThinkingStepsPreview() {
   return (
     <div className="w-full max-w-[380px]">
@@ -462,14 +561,15 @@ function TooltipPreview() {
 
 function ColorPickerPreview() {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  // `relative` is load-bearing: the FormatDropdown (HEX/RGB/HSL/OKLCH) portals
+  // INTO this wrapper and uses absolute positioning computed against the
+  // wrapper's bounding rect. Without `relative`, the menu's absolute coords
+  // resolve against the next positioned ancestor (the BentoCard's `.relative`
+  // outer wrapper), so the dropdown lands far to the left of the picker.
   return (
-    <div
-      ref={setContainer}
-      className="w-full max-w-[280px]"
-      style={{ transform: "scale(0.7)", transformOrigin: "center" }}
-    >
+    <div ref={setContainer} className="relative w-full max-w-[280px]">
       <ColorPickerPortalContainer value={container}>
-        <ColorPicker defaultValue="#3b82f6" />
+        <ColorPicker defaultValue="#6B97FF" />
       </ColorPickerPortalContainer>
     </div>
   );
@@ -477,6 +577,7 @@ function ColorPickerPreview() {
 
 export const previewMap: Record<string, React.FC> = {
   accordion: AccordionPreview,
+  "ask-user-questions": AskUserQuestionsPreview,
   badge: BadgePreview,
   button: ButtonPreview,
   "checkbox-group": CheckboxPreview,

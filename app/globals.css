@@ -39,7 +39,14 @@
   --foreground: #171717;
   --card: var(--surface-3);
   --card-foreground: #171717;
-  --muted: var(--surface-2);
+  /* `muted` decouples from surface-2 in light. The light surface ladder is
+     so compressed (#FAFAFA → #FCFCFC → #FFFFFF) that bg-muted reads as
+     near-white, which makes anything sitting on it (Tabs track, etc.)
+     blend together. A slightly more grey value gives muted real semantic
+     presence in light mode. Dark mode keeps --muted: var(--surface-2)
+     (= #1E1E1E) — see the @media (prefers-color-scheme: dark) and .dark
+     blocks below. */
+  --muted: #F4F4F5;
   --muted-foreground: #737373;
 
   /* Interactive states */
@@ -171,7 +178,8 @@
   --foreground: #171717;
   --card: var(--surface-3);
   --card-foreground: #171717;
-  --muted: var(--surface-2);
+  /* Light --muted is decoupled from surface-2 — see :root for the rationale. */
+  --muted: #F4F4F5;
   --muted-foreground: #737373;
 
   --accent: #E5E5E5;
