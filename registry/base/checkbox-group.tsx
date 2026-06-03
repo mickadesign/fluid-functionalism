@@ -135,8 +135,11 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
             setActiveIndex(null);
           }}
           onKeyDown={(e) => {
+            // Scope to row wrappers only. The inner checkbox primitive also
+            // carries role="checkbox", so a bare [role="checkbox"] selector
+            // matches twice per row and arrows skip onto the hidden control.
             const items = Array.from(
-              containerRef.current?.querySelectorAll('[role="checkbox"]') ?? []
+              containerRef.current?.querySelectorAll("[data-proximity-index]") ?? []
             ) as HTMLElement[];
             const currentIdx = items.indexOf(e.target as HTMLElement);
             if (currentIdx === -1) return;
