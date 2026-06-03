@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { useMergeSplitBlocks, SelectionBackgrounds } from "@/hooks/use-merge-split";
 import { useShape } from "@/lib/shape-context";
 
 interface CheckboxGroupContextValue {
@@ -100,6 +101,10 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
       activeIndex !== null && !checkedIndices.has(activeIndex);
     const shape = useShape();
 
+    // Selected backgrounds, with the merge/split boundary animation when one
+    // unchecked row bridges or splits two checked runs.
+    const blocks = useMergeSplitBlocks(checkedGroups, itemRects, shape.mergedRadius);
+
     return (
       <CheckboxGroupContext.Provider value={{ registerItem, activeIndex }}>
         <div
@@ -157,38 +162,10 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           )}
           {...props}
         >
-          {/* Selected backgrounds (merged for contiguous checked items) */}
-          <AnimatePresence>
-            {checkedGroups.map((group) => {
-              const startRect = itemRects[group.start];
-              const endRect = itemRects[group.end];
-              if (!startRect || !endRect) return null;
-              const mergedTop = startRect.top;
-              const mergedHeight =
-                endRect.top + endRect.height - startRect.top;
-              const mergedLeft = Math.min(startRect.left, endRect.left);
-              const mergedWidth = Math.max(startRect.width, endRect.width);
-              return (
-                <motion.div
-                  key={`group-${group.id}`}
-                  className={`absolute ${shape.mergedBg} bg-active pointer-events-none`}
-                  initial={false}
-                  animate={{
-                    top: mergedTop,
-                    left: mergedLeft,
-                    width: mergedWidth,
-                    height: mergedHeight,
-                    opacity: isHoveringOther ? 0.8 : 1,
-                  }}
-                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                  transition={{
-                    ...springs.moderate,
-                    opacity: { duration: 0.08 },
-                  }}
-                />
-              );
-            })}
-          </AnimatePresence>
+          {/* Selected backgrounds (merged for contiguous checked items).
+              A run is normally one block; mid merge/split it is drawn as two
+              abutting halves — see useMergeSplitBlocks. */}
+          <SelectionBackgrounds blocks={blocks} dimmed={isHoveringOther} />
 
           {/* Hover background */}
           <AnimatePresence>

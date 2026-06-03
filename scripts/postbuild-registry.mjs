@@ -46,6 +46,7 @@ const CUSTOM_ITEMS = new Set([
   "icon-map",
   "springs",
   "use-proximity-hover",
+  "use-merge-split",
   // primitive-touching components (have both Radix and Base flavours)
   ...DUAL_FLAVOR_SLUGS,
   // primitive-agnostic UI components (single source under @fluid)

@@ -21,6 +21,11 @@ interface ShapeClasses {
   container: string;
   button: string;
   input: string;
+  // Numeric counterparts of `bg` / `mergedBg`, in px. Needed where individual
+  // corners are animated (e.g. the selected-background merge/split animation),
+  // which requires per-corner numeric border-radii rather than a class.
+  bgRadius: number;
+  mergedRadius: number;
 }
 
 const shapeMap: Record<ShapeVariant, ShapeClasses> = {
@@ -35,6 +40,8 @@ const shapeMap: Record<ShapeVariant, ShapeClasses> = {
     container: "rounded-3xl",
     button: "rounded-[20px]",
     input: "rounded-[20px]",
+    bgRadius: 20,
+    mergedRadius: 16,
   },
   rounded: {
     item: "rounded-lg",
@@ -44,6 +51,8 @@ const shapeMap: Record<ShapeVariant, ShapeClasses> = {
     container: "rounded-xl",
     button: "rounded-lg",
     input: "rounded-lg",
+    bgRadius: 8,
+    mergedRadius: 8,
   },
 };
 

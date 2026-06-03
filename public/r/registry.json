@@ -218,6 +218,21 @@
       ]
     },
     {
+      "name": "use-merge-split",
+      "type": "registry:hook",
+      "title": "useMergeSplitBlocks",
+      "description": "React hook + renderer for the selected-background merge/split animation. When one row bridges or splits two contiguous selected runs, their inner edges glide together (or apart) and swap to a single block, instead of one block spring-growing over the union.",
+      "registryDependencies": [
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/hooks/use-merge-split.tsx",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
       "name": "accordion",
       "type": "registry:ui",
       "title": "Accordion",
@@ -284,6 +299,7 @@
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/use-merge-split.json",
         "https://www.fluidfunctionalism.com/r/button.json"
       ],
       "files": [
@@ -434,7 +450,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/use-merge-split.json"
       ],
       "files": [
         {
@@ -458,7 +475,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/use-merge-split.json"
       ],
       "files": [
         {

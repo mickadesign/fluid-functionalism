@@ -18,6 +18,7 @@ import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { useIcon } from "@/lib/icon-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { useMergeSplitBlocks, SelectionBackgrounds } from "@/hooks/use-merge-split";
 import { Button } from "@/components/ui/button";
 
 export interface AskUserOption {
@@ -643,6 +644,11 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     const isHoveringNonSelected =
       activeIndex !== null && !selectedIndices.has(activeIndex);
 
+    // Selected backgrounds, with the merge/split boundary animation when one
+    // unselected row bridges or splits two selected runs. Selected backgrounds
+    // use shape.bg, so corners animate around its radius.
+    const blocks = useMergeSplitBlocks(selectedGroups, itemRects, shape.bgRadius);
+
     const showBack = total > 1 && safeIndex > 0;
     const showSkip = total > 1 && isSkippable;
     const showFooter = showBack || showSkip || isMulti;
@@ -790,50 +796,16 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
               </AnimatePresence>
 
               {/* Selected-row backgrounds (merged for contiguous selections).
-                  Uses bg-active (overlay-aware) to match CheckboxGroup, and
-                  renders ABOVE the hover indicator so the selected state stays
-                  readable when the user mouses over a selected row. */}
-              <AnimatePresence>
-                {selectedGroups.map((group) => {
-                  const startRect = itemRects[group.start];
-                  const endRect = itemRects[group.end];
-                  if (!startRect || !endRect) return null;
-                  const mergedTop = startRect.top;
-                  const mergedHeight =
-                    endRect.top + endRect.height - startRect.top;
-                  const mergedLeft = Math.min(startRect.left, endRect.left);
-                  const mergedWidth = Math.max(startRect.width, endRect.width);
-                  return (
-                    <motion.div
-                      key={`selected-${group.id}`}
-                      aria-hidden
-                      className={cn(
-                        // Use the same radius token as the hover indicator
-                        // (shape.bg) so selected and hover backgrounds match.
-                        // shape.mergedBg differs from shape.bg in pill mode
-                        // (16px vs 20px), which made a single selected row look
-                        // less rounded than its hover. Rounded mode is unchanged
-                        // (both 8px).
-                        "absolute pointer-events-none bg-active",
-                        shape.bg
-                      )}
-                      initial={false}
-                      animate={{
-                        top: mergedTop,
-                        left: mergedLeft,
-                        width: mergedWidth,
-                        height: mergedHeight,
-                        opacity: isHoveringNonSelected ? 0.8 : 1,
-                      }}
-                      exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                      transition={{
-                        ...springs.moderate,
-                        opacity: { duration: 0.08 },
-                      }}
-                    />
-                  );
-                })}
-              </AnimatePresence>
+                  A run is normally one block; mid merge/split it is drawn as two
+                  abutting halves — see useMergeSplitBlocks. Uses bg-active
+                  (overlay-aware) and renders ABOVE the hover indicator so the
+                  selected state stays readable when mousing over a row. Corners
+                  are driven numerically (around shape.bg's radius) so a single
+                  selected row matches its hover. */}
+              <SelectionBackgrounds
+                blocks={blocks}
+                dimmed={isHoveringNonSelected}
+              />
 
               {/* Single morphing focus ring */}
               <AnimatePresence>
