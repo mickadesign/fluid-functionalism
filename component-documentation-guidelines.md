@@ -51,10 +51,12 @@ Add an item to the `items` array:
 
 ### 3. Generated Registry JSON (`public/r/<component-name>.json`)
 
-Run the registry build script to generate the JSON file. It must contain:
+Run the registry build script (`npm run registry:build`) to generate the JSON file. It must contain:
 - `$schema: "https://ui.shadcn.com/schema/registry-item.json"`
 - Full source code embedded in `files[].content`
 - All metadata matching `registry.json`
+
+> **Rebuild on every source edit, not just new components.** The JSONs in `public/r/` embed a *copy* of the source, so editing any registry file — a component **or** a shared lib like `lib/font-weight.ts` — leaves the published registry stale until you re-run `npm run registry:build`. Editing a shared lib only regenerates that lib's JSON (e.g. `font-weight.json`); consumers reference it by `registryDependencies`, so they don't need rebuilding, but the lib does. Commit the regenerated JSONs alongside the source, and rebuild before any `vercel --prod` deploy.
 
 ### 4. Component List Entry (`lib/docs/components.ts`)
 
@@ -153,6 +155,8 @@ When text gets heavier on an interactive state (selected, checked, active, open,
 - Both spans share the cell via `col-start-1 row-start-1` inside an `inline-grid` (or `grid`/`inline-grid flex-1` when it must fill a row).
 - The transition **must** include `font-variation-settings` in its property list (e.g. `transition-[color,font-variation-settings] duration-80`). Plain `transition-colors` / `transition-opacity` will *not* animate weight — it snaps. Use `duration-80` (the slider's value readout is the one intentional exception at `duration-100`).
 - Skip the ghost span only when the weight is **static** for the lifetime of the node (e.g. table header vs body rows never change) or the element is already a **fixed-size box** (e.g. a `w-5 h-5` chip holding a single digit) — there is nothing to reflow.
+- **Standard weight pairs:** resting `normal` → active `semibold` (400 → 550) is the default for selected/checked/active/open states. Use `medium` as the *resting* weight only when the component's default text is already medium and you want a smaller jump to `semibold` (e.g. ask-user options, 450 → 550). The slider's value readout is the lone `normal` → `medium` case. Don't invent new pairs — pick from these so the whole system animates at consistent magnitudes.
+- **If you change the weight tokens or introduce much larger text,** re-measure and re-tune the paired `opsz` values. Method: render the label in an offscreen `<span style="font-optical-sizing:none">`, measure `getBoundingClientRect().width` at the resting `wght/opsz` vs each candidate bold `opsz`, and pick the `opsz` that centers the closed→bold width delta on zero across representative labels (longer strings dominate the perceived shift). The current values were tuned this way against real component labels.
 
 Reference implementations: `menu-item.tsx`, `nav-item.tsx`, `tabs-subtle.tsx`, `accordion.tsx`, `checkbox-group.tsx`, `radio-group.tsx`, `color-picker.tsx`, `ask-user-questions.tsx`.
 
