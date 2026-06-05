@@ -40,6 +40,9 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local-only test/scratch pages (kept private, not deployed)
+/app/test/
+
 # editor
 .vscode/*
 !.vscode/extensions.json
