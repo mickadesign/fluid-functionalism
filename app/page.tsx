@@ -26,10 +26,10 @@ export default function Page() {
               Refined UI components with satisfying hover.
             </p>
             <div className="flex items-center gap-2 mt-2">
-              <Link href="/docs">
+              <Link href="/docs" className="outline-none" tabIndex={-1}>
                 <Button variant="primary" size="sm">Learn more</Button>
               </Link>
-              <Link href="/demo">
+              <Link href="/demo" className="outline-none" tabIndex={-1}>
                 <Button variant="tertiary" size="sm">See demo</Button>
               </Link>
             </div>
