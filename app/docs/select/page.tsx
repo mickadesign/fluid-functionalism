@@ -237,6 +237,21 @@ const itemProps: PropDef[] = [
   },
 ];
 
+const contentProps: PropDef[] = [
+  {
+    name: "scrollFade",
+    type: "boolean",
+    default: "true",
+    description:
+      "Show a fade + chevron cue at the scroll edges when the list overflows its max-height. Auto-activates on overflow; set to false to disable.",
+  },
+  {
+    name: "className",
+    type: "string",
+    description: "Additional classes for the menu container.",
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Doc Page
 // ---------------------------------------------------------------------------
@@ -409,6 +424,10 @@ export default function SelectDoc() {
 
       <DocSection title="API Reference — SelectTrigger">
         <PropsTable props={triggerProps} />
+      </DocSection>
+
+      <DocSection title="API Reference — SelectContent">
+        <PropsTable props={contentProps} />
       </DocSection>
 
       <DocSection title="API Reference — SelectItem">
