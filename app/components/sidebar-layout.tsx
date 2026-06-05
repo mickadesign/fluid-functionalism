@@ -7,11 +7,12 @@ import { useIcon } from "@/lib/icon-context";
 import { MobileDrawer } from "@/registry/default/mobile-drawer";
 import { Button } from "@/registry/radix/button";
 import { RightPanel, SettingsContent, GitHubStarButton } from "@/app/components/right-panel";
-import { componentList } from "@/lib/docs/components";
+import { systemList, componentList } from "@/lib/docs/components";
 
 const pageOrder = [
   "/",
   "/docs",
+  ...systemList.map((s) => `/docs/${s.slug}`),
   ...componentList.map((c) => `/docs/${c.slug}`),
 ];
 
