@@ -75,6 +75,19 @@ export function QueuedChatDemo({
   const [queue, setQueue] = useState<QueuedMessage[]>([]);
   const [chatStatus, setChatStatus] = useState<"idle" | "streaming">("idle");
   const [chat, setChat] = useState<Turn[]>([]);
+  // The id of the message currently playing its queued→sent morph. The morph
+  // props (layout/layoutId) are applied ONLY to this one, ONLY for the brief
+  // transition — then cleared. Otherwise every transcript reflow (a new message
+  // appearing below) would re-fire the layout animation and visibly shift the
+  // text inside the settled bubble.
+  const [morphingId, setMorphingId] = useState<string | null>(null);
+  const morphTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (morphTimerRef.current) clearTimeout(morphTimerRef.current);
+    },
+    []
+  );
 
   // ── Pausable stepper: drives the in-flight reply (think → stream word-by-
   // word). One reply animates at a time, so a single controller is enough. The
@@ -139,6 +152,15 @@ export function QueuedChatDemo({
       { from: "assistant", text: "", thinking: true },
     ]);
     setChatStatus("streaming");
+
+    // A dispatched (from-queue) text message morphs from its stack card; flag it
+    // so the transcript applies the morph props, then release them once the
+    // shared-layout transition has settled so later reflows stay static.
+    if (queuedId && files.length === 0) {
+      setMorphingId(queuedId);
+      if (morphTimerRef.current) clearTimeout(morphTimerRef.current);
+      morphTimerRef.current = setTimeout(() => setMorphingId(null), 450);
+    }
 
     const patchAssistant = (
       fn: (m: { text: string; thinking?: boolean }) => {
@@ -390,9 +412,12 @@ export function QueuedChatDemo({
                 <ChatMessage key={i} from="assistant">
                   <ThinkingIndicator showIcon={false} className="px-0 py-0" />
                 </ChatMessage>
-              ) : m.id && !(m.files && m.files.length) ? (
-                // Text-only dispatch → clean shared-layout morph from the front
-                // card (text scale-corrected so it doesn't stretch).
+              ) : m.id && m.id === morphingId ? (
+                // Text-only dispatch, mid-morph → shared-layout morph from the
+                // front card (text scale-corrected so it doesn't stretch). The
+                // morph props are dropped once `morphingId` clears, so a settled
+                // bubble no longer re-animates its layout when the transcript
+                // reflows underneath it.
                 <ChatMessage
                   key={i}
                   from={m.from}
@@ -406,10 +431,10 @@ export function QueuedChatDemo({
                   </motion.span>
                 </ChatMessage>
               ) : (
-                // Idle/assistant turns, or a dispatch that carries attachments.
-                // Attachment cards skip the box-scale morph (it squishes the
-                // thumbnails + text since the card lays them out inline and the
-                // bubble stacks them) and instead fade in cleanly.
+                // Settled messages, idle/assistant turns, or a dispatch that
+                // carries attachments. Attachment cards skip the box-scale morph
+                // (it squishes the thumbnails + text since the card lays them out
+                // inline and the bubble stacks them) and fade in cleanly.
                 <ChatMessage key={i} from={m.from} files={m.files}>
                   {m.text}
                 </ChatMessage>
