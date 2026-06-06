@@ -15,7 +15,7 @@ import {
   type ReactNode,
   type TextareaHTMLAttributes,
 } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, Reorder, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { springs } from "@/lib/springs";
@@ -44,6 +44,15 @@ interface InputMessageSlotContext {
 type InputMessageSlot =
   | ReactNode
   | ((ctx: InputMessageSlotContext) => ReactNode);
+
+/** A message held in the queue while the assistant is responding. Carries the
+ *  trimmed text plus a snapshot of the files attached when it was queued, so
+ *  double-click-to-edit can restore both. `id` is a stable key minted on enqueue. */
+interface QueuedMessage {
+  id: string;
+  text: string;
+  files: File[];
+}
 
 interface InputMessageProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -88,6 +97,28 @@ interface InputMessageProps
     TextareaHTMLAttributes<HTMLTextAreaElement>,
     "value" | "onChange" | "onKeyDown" | "disabled" | "placeholder"
   >;
+  /** Assistant response state. When `"streaming"`, the send button becomes a
+   *  Stop control (empty draft) or a Queue action (non-empty draft); on the
+   *  `streaming → idle` edge the next queued message auto-dispatches via `onSend`.
+   *  Leave undefined to keep the legacy send-immediately behavior. */
+  status?: "idle" | "streaming";
+  /** Fired when the Stop control is pressed (streaming, empty draft). The
+   *  consumer should halt the current response and flip `status` to `"idle"`,
+   *  which immediately dispatches the next queued message. */
+  onStop?: () => void;
+  /** Controlled queue of pending messages. Requires `status` to be controlled. */
+  queue?: QueuedMessage[];
+  /** Called when the queue changes (enqueue, edit, delete, reorder, dispatch). */
+  onQueueChange?: (queue: QueuedMessage[]) => void;
+  /** Render the built-in reorderable queue rows above the textarea. Set to
+   *  `false` to suppress them and render the queue yourself (e.g. as full-width
+   *  rows above the composer) — enqueue + auto-dispatch still run. */
+  showQueue?: boolean;
+  /** Previously-sent messages, oldest first. When the textarea is focused,
+   *  ArrowUp (caret on the first line) recalls the previous one and walks
+   *  backward through history; ArrowDown (caret on the last line) walks forward
+   *  toward the in-progress draft. Editing or sending exits history mode. */
+  history?: string[];
 }
 
 // ─── File preview tile ────────────────────────────────────────────────────
@@ -139,6 +170,106 @@ function FilePreviewTile({ file, onRemove, size }: FilePreviewTileProps) {
   );
 }
 
+// ─── Queued message row ───────────────────────────────────────────────────
+// A pending message in the queue: a recessed, draggable row that reads as
+// "staged, not live". Double-click (or Enter/F2) edits it back into the
+// composer; the hover-revealed × (or Delete) removes it; drag — or Alt+↑/↓ —
+// reorders. Top of the list is next to dispatch.
+interface QueuedRowProps {
+  item: QueuedMessage;
+  index: number;
+  total: number;
+  reduceMotion: boolean;
+  onEdit: (item: QueuedMessage) => void;
+  onRemove: (item: QueuedMessage) => void;
+  onMove: (item: QueuedMessage, dir: -1 | 1) => void;
+}
+
+function QueuedRow({
+  item,
+  index,
+  total,
+  reduceMotion,
+  onEdit,
+  onRemove,
+  onMove,
+}: QueuedRowProps) {
+  const XIcon = useIcon("x");
+  const ImageIcon = useIcon("image");
+  const fileCount = item.files.length;
+  const label =
+    item.text || `${fileCount} attachment${fileCount === 1 ? "" : "s"}`;
+
+  return (
+    <Reorder.Item
+      value={item}
+      layout
+      // Enter: spring-fast chip category. Exit slightly faster (0.06s linear),
+      // per animation-guidelines.md. Reduced-motion drops the scale.
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={
+        reduceMotion
+          ? { opacity: 0 }
+          : { opacity: 0, scale: 0.97, transition: { duration: 0.06 } }
+      }
+      transition={springs.fast}
+      aria-label={`Queued message ${index + 1} of ${total}: ${label}`}
+      tabIndex={0}
+      onDoubleClick={() => onEdit(item)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === "F2") {
+          e.preventDefault();
+          onEdit(item);
+        } else if (e.key === "Delete" || e.key === "Backspace") {
+          e.preventDefault();
+          onRemove(item);
+        } else if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+          e.preventDefault();
+          onMove(item, e.key === "ArrowUp" ? -1 : 1);
+        }
+      }}
+      className={cn(
+        "group/qrow flex items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5",
+        "text-[13px] text-foreground/85 select-none outline-none",
+        "cursor-grab active:cursor-grabbing",
+        "focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+      )}
+      style={{ fontVariationSettings: fontWeights.normal }}
+    >
+      {fileCount > 0 && (
+        <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
+          <ImageIcon size={13} />
+          {item.text && <span className="tabular-nums">{fileCount}</span>}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <Tooltip content="Remove" side="top">
+        <button
+          type="button"
+          // Stop the pointer-down from starting a Reorder drag, and the click
+          // from bubbling to the row's double-click/edit handler.
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(item);
+          }}
+          aria-label={`Remove queued message: ${label}`}
+          className={cn(
+            "shrink-0 flex h-5 w-5 items-center justify-center rounded-full",
+            "text-muted-foreground hover:text-foreground hover:bg-hover",
+            "opacity-0 group-hover/qrow:opacity-100 focus-visible:opacity-100",
+            "transition-opacity duration-80 cursor-pointer outline-none",
+            "focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+          )}
+        >
+          <XIcon size={13} strokeWidth={2.5} />
+        </button>
+      </Tooltip>
+    </Reorder.Item>
+  );
+}
+
 // ─── InputMessage ─────────────────────────────────────────────────────────
 
 const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
@@ -161,6 +292,12 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       maxFiles,
       filePreviewSize = 80,
       textareaProps,
+      status,
+      onStop,
+      queue,
+      onQueueChange,
+      showQueue = true,
+      history = [],
       className,
       style,
       ...props
@@ -169,6 +306,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
   ) => {
     const shape = useShape();
     const ArrowUpIcon = useIcon("arrow-up");
+    const reduceMotion = useReducedMotion() ?? false;
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -178,6 +316,24 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 
     const filesArr = useMemo(() => files ?? [], [files]);
     const supportsFiles = onFilesChange !== undefined;
+
+    // Queue is active only when both the status is controlled and a change
+    // handler is wired — same opt-in shape as `supportsFiles`.
+    const queueArr = useMemo(() => queue ?? [], [queue]);
+    // Always-current view of the queue, so enqueue/edit/remove/move read the
+    // latest value even if a handler closure is stale (e.g. two submits land
+    // before the controlled `queue` prop round-trips back).
+    const queueRef = useRef(queueArr);
+    queueRef.current = queueArr;
+    const supportsQueue = status !== undefined && onQueueChange !== undefined;
+    const streaming = status === "streaming";
+    const [liveMsg, setLiveMsg] = useState("");
+
+    // Sent-message history navigation (readline-style). `historyIndex` is null
+    // when not browsing; `draftBeforeHistory` stashes the in-progress text so
+    // ArrowDown past the newest entry restores it.
+    const [historyIndex, setHistoryIndex] = useState<number | null>(null);
+    const draftBeforeHistory = useRef("");
 
     useIsoLayoutEffect(() => {
       const el = textareaRef.current;
@@ -214,18 +370,186 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 
     const handleSend = useCallback(() => {
       if (!canSend) return;
+      setHistoryIndex(null);
+      // While the assistant is streaming, a submit enqueues instead of sending:
+      // snapshot the draft (text + currently-attached files) into a queue item,
+      // then clear the composer and keep focus.
+      if (streaming && supportsQueue) {
+        const item: QueuedMessage = {
+          id: crypto.randomUUID(),
+          text: trimmed,
+          files: filesArr,
+        };
+        onQueueChange?.([...queueRef.current, item]);
+        onValueChange("");
+        if (supportsFiles) onFilesChange?.([]);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+        return;
+      }
       onSend?.(trimmed, filesArr);
-    }, [canSend, onSend, trimmed, filesArr]);
+    }, [
+      canSend,
+      streaming,
+      supportsQueue,
+      onSend,
+      trimmed,
+      filesArr,
+      onQueueChange,
+      onValueChange,
+      supportsFiles,
+      onFilesChange,
+    ]);
+
+    const handleStop = useCallback(() => onStop?.(), [onStop]);
+
+    // Auto-dispatch: on the streaming → idle edge (whether the response
+    // finished on its own or the user pressed Stop), fire the head of the
+    // queue and drop it. The consumer is expected to set status back to
+    // "streaming" inside onSend, which re-arms this for the next item.
+    const prevStatusRef = useRef(status);
+    useEffect(() => {
+      const prev = prevStatusRef.current;
+      prevStatusRef.current = status;
+      if (!supportsQueue) return;
+      if (prev === "streaming" && status === "idle" && queueArr.length > 0) {
+        const [next, ...rest] = queueArr;
+        onQueueChange?.(rest);
+        onSend?.(next.text, next.files);
+        setLiveMsg(
+          `Message sent.${rest.length ? ` ${rest.length} still queued.` : ""}`
+        );
+      }
+    }, [status, supportsQueue, queueArr, onQueueChange, onSend]);
+
+    // ── Queue item actions ────────────────────────────────────────────
+    const editQueued = useCallback(
+      (item: QueuedMessage) => {
+        if (!supportsQueue) return;
+        // Silent replace: pull the item out of the queue into the composer,
+        // overwriting any current draft. Re-sending re-queues it to the end.
+        setHistoryIndex(null);
+        onValueChange(item.text);
+        if (supportsFiles) {
+          onFilesChange?.(
+            maxFiles != null ? item.files.slice(0, maxFiles) : item.files
+          );
+        }
+        onQueueChange?.(queueRef.current.filter((q) => q.id !== item.id));
+        requestAnimationFrame(() => {
+          const el = textareaRef.current;
+          if (!el) return;
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        });
+      },
+      [
+        supportsQueue,
+        supportsFiles,
+        onValueChange,
+        onFilesChange,
+        maxFiles,
+        onQueueChange,
+      ]
+    );
+
+    const removeQueued = useCallback(
+      (item: QueuedMessage) =>
+        onQueueChange?.(queueRef.current.filter((q) => q.id !== item.id)),
+      [onQueueChange]
+    );
+
+    const moveQueued = useCallback(
+      (item: QueuedMessage, dir: -1 | 1) => {
+        const cur = queueRef.current;
+        const i = cur.findIndex((q) => q.id === item.id);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= cur.length) return;
+        const next = [...cur];
+        [next[i], next[j]] = [next[j], next[i]];
+        onQueueChange?.(next);
+      },
+      [onQueueChange]
+    );
+
+    // Send button morph: Stop (streaming + empty draft) → Queue (streaming +
+    // draft) → Send (idle). Send and Queue share the arrow-up glyph; only the
+    // Stop⇄arrow swap animates.
+    const buttonMode: "send" | "queue" | "stop" = !streaming
+      ? "send"
+      : canSend && supportsQueue
+        ? "queue"
+        : onStop
+          ? "stop"
+          : "send";
+    const buttonLabel =
+      buttonMode === "stop"
+        ? "Stop"
+        : buttonMode === "queue"
+          ? "Queue message"
+          : sendLabel;
+
+    const setCaretEnd = useCallback(() => {
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (el) el.setSelectionRange(el.value.length, el.value.length);
+      });
+    }, []);
 
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
         if (e.nativeEvent.isComposing) return;
+
+        // Readline-style history. Only plain ArrowUp/ArrowDown navigate (no
+        // modifiers), and only when the caret is on the first/last line so
+        // multi-line editing still works normally.
+        if (
+          history.length > 0 &&
+          (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+          !e.shiftKey &&
+          !e.altKey &&
+          !e.metaKey &&
+          !e.ctrlKey
+        ) {
+          const el = e.currentTarget;
+          const caret = el.selectionStart ?? 0;
+          const end = el.selectionEnd ?? caret;
+          if (e.key === "ArrowUp" && !value.slice(0, caret).includes("\n")) {
+            const start = historyIndex == null ? history.length : historyIndex;
+            if (start > 0) {
+              e.preventDefault();
+              if (historyIndex == null) draftBeforeHistory.current = value;
+              const ni = start - 1;
+              setHistoryIndex(ni);
+              onValueChange(history[ni]);
+              setCaretEnd();
+            }
+            return;
+          }
+          if (
+            e.key === "ArrowDown" &&
+            historyIndex != null &&
+            !value.slice(end).includes("\n")
+          ) {
+            e.preventDefault();
+            const ni = historyIndex + 1;
+            if (ni >= history.length) {
+              setHistoryIndex(null);
+              onValueChange(draftBeforeHistory.current);
+            } else {
+              setHistoryIndex(ni);
+              onValueChange(history[ni]);
+            }
+            setCaretEnd();
+            return;
+          }
+        }
+
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
         }
       },
-      [handleSend]
+      [history, value, historyIndex, onValueChange, setCaretEnd, handleSend]
     );
 
     const handleContainerMouseDown = useCallback(
@@ -235,7 +559,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
         if (target === textareaRef.current) return;
         if (
           target.closest(
-            'button, a, input, select, textarea, [contenteditable], [role="button"]'
+            'button, a, input, select, textarea, [contenteditable], [role="button"], [data-im-queue]'
           )
         ) {
           return;
@@ -438,10 +762,57 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
             )}
           </AnimatePresence>
 
+          {/* Queued messages — reorderable rows above the textarea. The outer
+              motion.div collapses the region height when the queue empties;
+              the Reorder.Group handles drag-reorder (top = next to dispatch)
+              and AnimatePresence handles per-row enter/exit. */}
+          {supportsQueue && showQueue && (
+            <AnimatePresence initial={false}>
+              {queueArr.length > 0 && (
+                <motion.div
+                  key="queue-row"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ ...springs.moderate, bounce: 0 }}
+                  className="overflow-hidden"
+                >
+                  <Reorder.Group
+                    axis="y"
+                    values={queueArr}
+                    onReorder={(next) => onQueueChange?.(next)}
+                    data-im-queue
+                    className="flex flex-col gap-1 pb-1"
+                  >
+                    <AnimatePresence initial={false}>
+                      {queueArr.map((item, i) => (
+                        <QueuedRow
+                          key={item.id}
+                          item={item}
+                          index={i}
+                          total={queueArr.length}
+                          reduceMotion={reduceMotion}
+                          onEdit={editQueued}
+                          onRemove={removeQueued}
+                          onMove={moveQueued}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </Reorder.Group>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => onValueChange(e.target.value)}
+            onChange={(e) => {
+              // Real typing exits history mode (recall sets the value
+              // programmatically, which doesn't fire onChange).
+              setHistoryIndex(null);
+              onValueChange(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             onFocus={(e) => {
               if (e.target.matches(":focus-visible")) setFocusVisible(true);
@@ -471,14 +842,41 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                 type="button"
                 variant="primary"
                 size="icon-sm"
-                onClick={handleSend}
-                disabled={!canSend}
-                aria-label={sendLabel}
+                onClick={buttonMode === "stop" ? handleStop : handleSend}
+                disabled={buttonMode === "stop" ? disabled : !canSend}
+                aria-label={buttonLabel}
               >
-                <ArrowUpIcon />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={buttonMode === "stop" ? "stop" : "arrow"}
+                    initial={
+                      reduceMotion
+                        ? { opacity: 0 }
+                        : { opacity: 0, scale: 0.6 }
+                    }
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={
+                      reduceMotion
+                        ? { opacity: 0 }
+                        : { opacity: 0, scale: 0.6, transition: { duration: 0.06 } }
+                    }
+                    transition={springs.fast}
+                    className="inline-flex items-center justify-center"
+                  >
+                    {buttonMode === "stop" ? (
+                      <span className="h-2.5 w-2.5 rounded-[3px] bg-current" />
+                    ) : (
+                      <ArrowUpIcon />
+                    )}
+                  </motion.span>
+                </AnimatePresence>
               </Button>
             </div>
           </div>
+          {/* Politely announces auto-dispatch of queued messages. */}
+          <span className="sr-only" role="status" aria-live="polite">
+            {liveMsg}
+          </span>
         </SurfaceProvider>
       </div>
     );
@@ -488,5 +886,5 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 InputMessage.displayName = "InputMessage";
 
 export { InputMessage };
-export type { InputMessageProps, InputMessageSlotContext };
+export type { InputMessageProps, InputMessageSlotContext, QueuedMessage };
 export default InputMessage;

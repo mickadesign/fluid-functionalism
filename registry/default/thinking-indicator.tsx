@@ -16,10 +16,14 @@ const circleB =
 
 const words = ["Thinking", "Moonwalking", "Planning", "Refining"];
 
-const ThinkingIndicator = forwardRef<
-  HTMLDivElement,
-  HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+interface ThinkingIndicatorProps extends HTMLAttributes<HTMLDivElement> {
+  /** Show the morphing circle⇄infinity glyph before the label. Set to `false`
+   *  for a text-only indicator (e.g. inline before a streamed reply). */
+  showIcon?: boolean;
+}
+
+const ThinkingIndicator = forwardRef<HTMLDivElement, ThinkingIndicatorProps>(
+  ({ className, showIcon = true, ...props }, ref) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -36,32 +40,34 @@ const ThinkingIndicator = forwardRef<
       className={cn("flex items-center gap-2 px-3 py-2", className)}
       {...props}
     >
-      <motion.svg
-        aria-hidden
-        width={20}
-        height={20}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-muted-foreground shrink-0"
-      >
-        <motion.path
-          animate={{
-            d: [circleA, infinity, circleB, infinity, circleA],
-          }}
-          transition={{
-            d: {
-              duration: 6,
-              ease: "easeInOut",
-              repeat: Infinity,
-              times: [0, 0.25, 0.5, 0.75, 1.0],
-            },
-          }}
-        />
-      </motion.svg>
+      {showIcon && (
+        <motion.svg
+          aria-hidden
+          width={20}
+          height={20}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-muted-foreground shrink-0"
+        >
+          <motion.path
+            animate={{
+              d: [circleA, infinity, circleB, infinity, circleA],
+            }}
+            transition={{
+              d: {
+                duration: 6,
+                ease: "easeInOut",
+                repeat: Infinity,
+                times: [0, 0.25, 0.5, 0.75, 1.0],
+              },
+            }}
+          />
+        </motion.svg>
+      )}
       <span
         className="inline-grid text-[13px] overflow-hidden"
         style={{ fontVariationSettings: fontWeights.medium }}
@@ -91,4 +97,5 @@ const ThinkingIndicator = forwardRef<
 ThinkingIndicator.displayName = "ThinkingIndicator";
 
 export { ThinkingIndicator };
+export type { ThinkingIndicatorProps };
 export default ThinkingIndicator;

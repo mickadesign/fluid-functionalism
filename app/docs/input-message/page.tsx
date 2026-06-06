@@ -2,20 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { InputMessage } from "@/registry/default/input-message";
+import {
+  InputMessage,
+  type QueuedMessage,
+} from "@/registry/default/input-message";
 import { ChatMessage } from "@/registry/default/chat-message";
+import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
 import { Button } from "@/registry/radix/button";
 import { Dropdown } from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
 import { springs } from "@/registry/default/lib/springs";
+import { useShape } from "@/registry/default/lib/shape-context";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 
 const MODELS = ["Sonnet 5", "Sonnet 4.6", "Sonnet 4.5", "Haiku 4"] as const;
 type Model = (typeof MODELS)[number];
+
+// Sonner-style queued stack tuning. Cards are one truncated line (fixed CARD_H).
+// Collapsed, the front card is full and up to STACK_MAX_PEEK cards peek behind
+// it (offset up STACK_PEEK px, scaled down STACK_SCALE each); deeper cards hide.
+// Hovering fans them into a vertical list (STACK_GAP between cards).
+const CARD_H = 44;
+const STACK_PEEK = 12;
+const STACK_SCALE = 0.05;
+const STACK_GAP = 8;
+const STACK_MAX_PEEK = 2;
 
 const basicCode = `import { useState } from "react";
 import { InputMessage } from "./components";
@@ -333,6 +348,112 @@ const [messages, setMessages] = useState<string[]>([]);
   />
 </div>`;
 
+const queuedCode = `import { useEffect, useRef, useState } from "react";
+import {
+  InputMessage, ChatMessage, ThinkingIndicator, type QueuedMessage,
+} from "./components";
+
+type Turn = { from: "user" | "assistant"; text: string; thinking?: boolean };
+
+const [value, setValue] = useState("");
+const [queue, setQueue] = useState<QueuedMessage[]>([]);
+const [status, setStatus] = useState<"idle" | "streaming">("idle");
+const [chat, setChat] = useState<Turn[]>([]);
+const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+// Stand-in for a real assistant: append the user turn plus an assistant
+// placeholder in its "thinking" state, hold there for a beat, then stream the
+// reply in word-by-word. The final streaming→idle edge releases the next
+// queued message.
+const respond = (text: string) => {
+  const reply = \`Replying to "\${text}". A fuller answer that streams in…\`;
+  setChat((c) => [...c, { from: "user", text }, { from: "assistant", text: "", thinking: true }]);
+  setStatus("streaming");
+
+  const words = reply.split(" ");
+  timers.current.push(setTimeout(() => {
+    words.forEach((_, i) => {
+      timers.current.push(setTimeout(() => {
+        setChat((c) => c.map((m, k) =>
+          k === c.length - 1
+            ? { from: "assistant", text: words.slice(0, i + 1).join(" ") }
+            : m
+        ));
+        if (i === words.length - 1) setStatus("idle");
+      }, i * 150));
+    });
+  }, 4000)); // think before streaming
+};
+
+useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+<>
+  {chat.map((m, i) =>
+    m.thinking ? (
+      <ChatMessage key={i} from="assistant">
+        <ThinkingIndicator showIcon={false} className="px-0 py-0" />
+      </ChatMessage>
+    ) : (
+      <ChatMessage key={i} from={m.from}>{m.text}</ChatMessage>
+    )
+  )}
+
+  {/* Render the queue yourself as a Sonner-style stack overlaying just above
+      the composer: a fixed-height pile that fans out on hover. Front card
+      (queue[0]) is next to dispatch. Double-click edits, × removes. */}
+  {queue.length > 0 && (
+    <div
+      className="absolute inset-x-0 z-10"
+      style={{ bottom: inputHeight + 8, height: hovered ? expandedH : collapsedH }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {queue.map((item, i) => {
+        const peek = Math.min(i, 2);
+        const t = hovered
+          ? { y: -i * (CARD_H + 8), scale: 1, opacity: 1 }
+          : { y: -peek * 12, scale: 1 - peek * 0.05, opacity: i <= 2 ? 1 : 0 };
+        return (
+          <motion.div
+            key={item.id}
+            animate={t}
+            transition={{ type: "spring", duration: 0.16 }}
+            style={{ height: CARD_H, transformOrigin: "bottom center", zIndex: 100 - i }}
+            onDoubleClick={() => { setValue(item.text); setQueue((q) => q.filter((x) => x.id !== item.id)); }}
+            className="absolute inset-x-0 bottom-0 flex items-center gap-2 rounded-3xl bg-surface-3 px-3.5 text-[14px] text-foreground/80 shadow-surface-3"
+          >
+            <span className="min-w-0 flex-1 truncate">{item.text}</span>
+            <button onClick={() => setQueue((q) => q.filter((x) => x.id !== item.id))} aria-label="Remove queued message">
+              ✕
+            </button>
+          </motion.div>
+        );
+      })}
+    </div>
+  )}
+
+  <InputMessage
+    value={value}
+    onValueChange={setValue}
+    status={status}
+    queue={queue}
+    onQueueChange={setQueue}
+    showQueue={false} // render the queue yourself (full-width rows above) instead
+    // Sent user turns, oldest first — ArrowUp/ArrowDown recall them.
+    history={chat.filter((m) => m.from === "user").map((m) => m.text)}
+    // While idle this sends; the component also calls onSend itself to
+    // auto-dispatch the head of the queue on each streaming→idle edge.
+    onSend={(text) => { if (text) respond(text); setValue(""); }}
+    // Stop ends the current response; returning to idle immediately releases
+    // the next queued message.
+    onStop={() => { timers.current.forEach(clearTimeout); setStatus("idle"); }}
+    placeholder="Send while I'm responding to queue a message…"
+  />
+</>
+
+// Queue interactions: double-click (or Enter/F2) a row to edit it back into
+// the composer, × (or Delete) to remove, drag or Alt+↑/↓ to reorder.`;
+
 const disabledCode = `import { InputMessage } from "./components";
 
 <InputMessage
@@ -359,6 +480,12 @@ const inputMessageProps: PropDef[] = [
   { name: "maxFiles", type: "number", description: "Maximum number of attached files. Extra files beyond this limit are dropped." },
   { name: "filePreviewSize", type: "number", default: "80", description: "Side length (in pixels) of each preview tile. Images use object-cover; PDFs render the first page via pdfjs; other types fall back to a centered icon." },
   { name: "textareaProps", type: "TextareaHTMLAttributes", description: "Extra props forwarded to the underlying textarea (value, onChange, onKeyDown, disabled and placeholder are controlled by the component)." },
+  { name: "status", type: '"idle" | "streaming"', description: "Assistant response state. When \"streaming\", the send button becomes a Stop control (empty draft) or a Queue action (non-empty draft). On the streaming→idle edge the next queued message auto-dispatches via onSend. Leave undefined for the legacy send-immediately behavior." },
+  { name: "onStop", type: "() => void", description: "Fires when the Stop control is pressed (streaming + empty draft). Halt the current response and set status to \"idle\" — that edge immediately dispatches the next queued message." },
+  { name: "queue", type: "QueuedMessage[]", description: "Controlled queue of pending messages, rendered as reorderable rows above the textarea. Double-click (or Enter/F2) edits a row back into the composer; the × (or Delete) removes it; drag — or Alt+↑/↓ — reorders. Requires status to be controlled." },
+  { name: "onQueueChange", type: "(queue: QueuedMessage[]) => void", description: "Called whenever the queue changes — enqueue, edit, delete, reorder, or auto-dispatch. Each QueuedMessage is { id, text, files }." },
+  { name: "showQueue", type: "boolean", default: "true", description: "Render the built-in reorderable queue rows above the textarea. Set to false to suppress them and render the queue yourself (e.g. as full-width rows above the composer) — enqueue and auto-dispatch still run." },
+  { name: "history", type: "string[]", default: "[]", description: "Previously-sent messages, oldest first. With the textarea focused, ArrowUp (caret on the first line) recalls the previous message and walks backward; ArrowDown (caret on the last line) walks forward toward the in-progress draft. Editing or sending exits history mode." },
 ];
 
 export default function InputMessageDoc() {
@@ -474,11 +601,209 @@ export default function InputMessageDoc() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [attachMessages, attachInputH]);
 
+  // "Queued messages" demo: while the assistant is "responding" (status =
+  // "streaming"), submitting enqueues instead of sending. The queue
+  // auto-dispatches one message per streaming→idle edge; Stop ends the current
+  // response and releases the next.
+  const [queuedValue, setQueuedValue] = useState("");
+  const [queue, setQueue] = useState<QueuedMessage[]>([]);
+  const [chatStatus, setChatStatus] = useState<"idle" | "streaming">("idle");
+  const [queuedChat, setQueuedChat] = useState<
+    { from: "user" | "assistant"; text: string; thinking?: boolean }[]
+  >([]);
+  // A single pausable stepper drives the in-flight reply (think → stream
+  // word-by-word). Only one reply animates at a time, so one controller is
+  // enough. The replay button uses it to pause/resume; the cascade pauses with
+  // it, since status only reaches "idle" once a reply finishes streaming.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  // Whether the queued stack is hovered (fanned out) vs collapsed into a pile.
+  const [stackHovered, setStackHovered] = useState(false);
+  const stepRef = useRef<{
+    id: ReturnType<typeof setTimeout> | null;
+    cb: (() => void) | null;
+    remaining: number;
+    startedAt: number;
+  }>({ id: null, cb: null, remaining: 0, startedAt: 0 });
+
+  const fireStep = () => {
+    const s = stepRef.current;
+    s.id = null;
+    const cb = s.cb;
+    s.cb = null;
+    cb?.();
+  };
+  // Arm the next step. While paused, it stays armed (cb set) but doesn't tick.
+  const armStep = (cb: () => void, delay: number) => {
+    const s = stepRef.current;
+    s.cb = cb;
+    s.remaining = delay;
+    if (pausedRef.current) return;
+    s.startedAt = performance.now();
+    s.id = setTimeout(fireStep, delay);
+  };
+  const clearStep = () => {
+    const s = stepRef.current;
+    if (s.id != null) clearTimeout(s.id);
+    s.id = null;
+    s.cb = null;
+    s.remaining = 0;
+  };
+  const pauseAnim = () => {
+    const s = stepRef.current;
+    if (s.id != null) {
+      clearTimeout(s.id);
+      s.id = null;
+      // Keep only the time left in the current step.
+      s.remaining = Math.max(0, s.remaining - (performance.now() - s.startedAt));
+    }
+    pausedRef.current = true;
+    setPaused(true);
+  };
+  const resumeAnim = () => {
+    pausedRef.current = false;
+    setPaused(false);
+    const s = stepRef.current;
+    if (s.cb != null && s.id == null) {
+      s.startedAt = performance.now();
+      s.id = setTimeout(fireStep, s.remaining);
+    }
+  };
+
+  const respond = (text: string) => {
+    const reply = `Replying to “${text}”. Here's a fuller answer that streams in a word at a time so you can watch the queue release the next message.`;
+    // Append the user turn plus an assistant placeholder in its "thinking"
+    // state, then keep status streaming through the think + stream phases.
+    setQueuedChat((c) => [
+      ...c,
+      { from: "user", text },
+      { from: "assistant", text: "", thinking: true },
+    ]);
+    setChatStatus("streaming");
+
+    // Patch the trailing assistant turn (the placeholder) by ref-from-end —
+    // nothing else appends while we're streaming, so it's reliably last.
+    const patchAssistant = (
+      fn: (m: { text: string; thinking?: boolean }) => {
+        text: string;
+        thinking?: boolean;
+      }
+    ) =>
+      setQueuedChat((c) => {
+        const next = [...c];
+        for (let k = next.length - 1; k >= 0; k--) {
+          if (next[k].from === "assistant") {
+            next[k] = { from: "assistant", ...fn(next[k]) };
+            break;
+          }
+        }
+        return next;
+      });
+
+    // Think (4000ms), then reveal words one at a time (150ms each) — all on the
+    // pausable stepper so the replay button can pause/resume mid-flight.
+    const words = reply.split(" ");
+    const revealWord = (i: number) => {
+      patchAssistant(() => ({
+        text: words.slice(0, i + 1).join(" "),
+        thinking: false,
+      }));
+      if (i === words.length - 1) {
+        setChatStatus("idle");
+        return;
+      }
+      armStep(() => revealWord(i + 1), 150);
+    };
+    armStep(() => revealWord(0), 4000);
+  };
+
+  // Cancel any in-flight step on unmount so a late callback can't fire.
+  useEffect(() => () => clearStep(), []);
+
+  const queuedInputRef = useRef<HTMLDivElement>(null);
+  const [queuedInputH, setQueuedInputH] = useState(0);
+  useEffect(() => {
+    const el = queuedInputRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setQueuedInputH(el.offsetHeight));
+    ro.observe(el);
+    setQueuedInputH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+  const queuedScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = queuedScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [queuedChat, queuedInputH, queue]);
+
+  const resetQueuedDemo = () => {
+    clearStep();
+    pausedRef.current = false;
+    setPaused(false);
+    setQueuedChat([]);
+    setQueue([]);
+    setQueuedValue("");
+    setChatStatus("idle");
+  };
+
+  // The queue renders as a Sonner-style stack above the composer (showQueue is
+  // off), so the demo owns the edit / delete handlers.
+  const editQueuedMsg = (item: QueuedMessage) => {
+    setQueuedValue(item.text); // silent replace of the current draft
+    setQueue((q) => q.filter((x) => x.id !== item.id));
+    requestAnimationFrame(() => {
+      const el = queuedInputRef.current?.querySelector("textarea");
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    });
+  };
+  const removeQueuedMsg = (item: QueuedMessage) =>
+    setQueue((q) => q.filter((x) => x.id !== item.id));
+
+  // Stack heights. Collapsed grows a little for the first couple cards then
+  // stays FIXED (caps at STACK_MAX_PEEK); expanded fits the full fanned-out list.
+  const stackCount = queue.length;
+  const collapsedStackH =
+    CARD_H + Math.min(Math.max(stackCount - 1, 0), STACK_MAX_PEEK) * STACK_PEEK;
+  const expandedStackH =
+    stackCount * CARD_H + Math.max(stackCount - 1, 0) * STACK_GAP;
+
+  // Drag-to-reorder the (expanded) stack. Manual, because framer's Reorder
+  // can't share an element with the stacking transforms. The stack stays
+  // expanded while dragging even if the pointer leaves.
+  const stackRef = useRef<HTMLDivElement>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const stackExpanded = stackHovered || draggingId !== null;
+
+  const reorderByDrag = (item: QueuedMessage, pointerY: number) => {
+    const el = stackRef.current;
+    if (!el) return;
+    const fromBottom = el.getBoundingClientRect().bottom - pointerY;
+    setQueue((q) => {
+      const slot = Math.max(
+        0,
+        Math.min(q.length - 1, Math.floor(fromBottom / (CARD_H + STACK_GAP)))
+      );
+      const cur = q.findIndex((x) => x.id === item.id);
+      if (cur === -1 || cur === slot) return q;
+      const next = [...q];
+      next.splice(cur, 1);
+      next.splice(slot, 0, item);
+      return next;
+    });
+  };
+
+  const shape = useShape();
   const PlusIcon = useIcon("plus");
   const ChevronDownIcon = useIcon("chevron-down");
   const ImageIcon = useIcon("image");
   const FileTextIcon = useIcon("square-library");
   const ResetIcon = useIcon("rotate-ccw");
+  const PlayIcon = useIcon("play");
+  const PauseIcon = useIcon("pause");
+  const XIcon = useIcon("x");
 
   return (
     <DocPage
@@ -686,6 +1011,216 @@ export default function InputMessageDoc() {
                 setAttachValue("");
                 setAttachFiles([]);
               }}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Queued messages">
+        <ComponentPreview
+          code={queuedCode}
+          minHeightClass="h-[440px]"
+          align="bottom"
+          padding="compact"
+          playbackButton={
+            // While a reply is animating, the button pauses it; once paused it
+            // resumes; when settled it resets the demo.
+            paused
+              ? {
+                  icon: <PlayIcon size={16} strokeWidth={1.5} />,
+                  tooltip: "Resume",
+                  onClick: resumeAnim,
+                }
+              : chatStatus === "streaming"
+                ? {
+                    icon: <PauseIcon size={16} strokeWidth={1.5} />,
+                    tooltip: "Pause",
+                    onClick: pauseAnim,
+                  }
+                : queuedChat.length > 0 || queue.length > 0
+                  ? {
+                      icon: <ResetIcon size={16} strokeWidth={1.5} />,
+                      tooltip: "Reset",
+                      onClick: resetQueuedDemo,
+                    }
+                  : undefined
+          }
+        >
+          <div className="relative w-full self-stretch">
+            <div
+              ref={queuedScrollRef}
+              className="absolute inset-0 overflow-y-auto scrollbar-hide"
+            >
+              <div
+                className="flex min-h-full flex-col justify-end gap-2"
+                style={{
+                  paddingBottom:
+                    queuedInputH + 8 + (stackCount > 0 ? collapsedStackH + 8 : 0),
+                }}
+              >
+                {queuedChat.map((m, i) =>
+                  m.thinking ? (
+                    <ChatMessage key={i} from="assistant">
+                      <ThinkingIndicator
+                        showIcon={false}
+                        className="px-0 py-0"
+                      />
+                    </ChatMessage>
+                  ) : (
+                    <ChatMessage key={i} from={m.from}>
+                      {m.text}
+                    </ChatMessage>
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Queued messages — Sonner-style stack overlaying just above the
+                composer. Collapsed it's a fixed-height pile (front card full,
+                the rest peeking behind); hovering fans them into a list. Front
+                card (queue[0]) is next to dispatch. Double-click edits, × removes. */}
+            <AnimatePresence>
+              {stackCount > 0 && (
+                <motion.div
+                  ref={stackRef}
+                  className="absolute inset-x-0 z-10"
+                  style={{ bottom: queuedInputH + 8 }}
+                  initial={{ opacity: 0 }}
+                  animate={{
+                    opacity: 1,
+                    height: stackExpanded ? expandedStackH : collapsedStackH,
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{ ...springs.moderate, bounce: 0 }}
+                  onMouseEnter={() => setStackHovered(true)}
+                  onMouseLeave={() => setStackHovered(false)}
+                >
+                  <AnimatePresence initial={false}>
+                    {queue.map((item, i) => {
+                      const peek = Math.min(i, STACK_MAX_PEEK);
+                      const isDragging = draggingId === item.id;
+                      // Dragged card sits at its slot (driven by animate, not a
+                      // free drag offset), so it snaps cleanly between positions.
+                      const target = stackExpanded
+                        ? {
+                            y: -i * (CARD_H + STACK_GAP),
+                            scale: isDragging ? 1.03 : 1,
+                            opacity: 1,
+                          }
+                        : {
+                            y: -peek * STACK_PEEK,
+                            scale: 1 - peek * STACK_SCALE,
+                            opacity: i <= STACK_MAX_PEEK ? 1 : 0,
+                          };
+                      return (
+                        <motion.div
+                          key={item.id}
+                          onDoubleClick={() => editQueuedMsg(item)}
+                          // Manual drag-to-reorder once fanned out (top = next to
+                          // send). The pointer only picks the target slot; the card
+                          // snaps to it via `animate` rather than free-floating.
+                          onPointerDown={(e) => {
+                            if (!stackExpanded || e.button !== 0) return;
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            setDraggingId(item.id);
+                          }}
+                          onPointerMove={(e) => {
+                            if (draggingId === item.id)
+                              reorderByDrag(item, e.clientY);
+                          }}
+                          onPointerUp={(e) => {
+                            if (draggingId !== item.id) return;
+                            try {
+                              e.currentTarget.releasePointerCapture(e.pointerId);
+                            } catch {}
+                            setDraggingId(null);
+                          }}
+                          onPointerCancel={() => {
+                            if (draggingId === item.id) setDraggingId(null);
+                          }}
+                          initial={{ opacity: 0, y: 14, scale: 0.96 }}
+                          animate={target}
+                          exit={{
+                            opacity: 0,
+                            scale: 0.9,
+                            transition: { duration: 0.12 },
+                          }}
+                          transition={isDragging ? springs.fast : springs.moderate}
+                          style={{
+                            height: CARD_H,
+                            transformOrigin: "bottom center",
+                            zIndex: isDragging ? 200 : 100 - i,
+                            cursor: stackExpanded ? "grab" : "default",
+                          }}
+                          className={`group/qm absolute inset-x-0 bottom-0 flex select-none items-center gap-2 bg-surface-3 px-3.5 text-[14px] text-foreground/80 shadow-surface-3 active:cursor-grabbing ${shape.container}`}
+                        >
+                          <span className="pointer-events-none min-w-0 flex-1 truncate">
+                            {item.text ||
+                              `${item.files.length} attachment${
+                                item.files.length === 1 ? "" : "s"
+                              }`}
+                          </span>
+                          <Tooltip content="Remove" side="top">
+                            <button
+                              type="button"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeQueuedMsg(item);
+                              }}
+                              aria-label={`Remove queued message: ${item.text}`}
+                              className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+                            >
+                              <XIcon size={14} strokeWidth={2.5} />
+                            </button>
+                          </Tooltip>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <InputMessage
+              ref={queuedInputRef}
+              className="absolute inset-x-0 bottom-0"
+              value={queuedValue}
+              onValueChange={setQueuedValue}
+              status={chatStatus}
+              queue={queue}
+              onQueueChange={setQueue}
+              showQueue={false}
+              // Sent user turns, oldest first — ArrowUp/ArrowDown walk them.
+              history={queuedChat
+                .filter((m) => m.from === "user")
+                .map((m) => m.text)}
+              onSend={(text) => {
+                if (text) respond(text);
+                setQueuedValue("");
+              }}
+              onStop={() => {
+                clearStep();
+                pausedRef.current = false;
+                setPaused(false);
+                // Finalize the in-flight assistant turn: if it never got past
+                // thinking, mark it stopped; otherwise keep the partial text.
+                setQueuedChat((c) => {
+                  const next = [...c];
+                  for (let k = next.length - 1; k >= 0; k--) {
+                    if (next[k].from === "assistant") {
+                      if (next[k].thinking || next[k].text === "") {
+                        next[k] = { from: "assistant", text: "Stopped." };
+                      } else {
+                        next[k] = { ...next[k], thinking: false };
+                      }
+                      break;
+                    }
+                  }
+                  return next;
+                });
+                setChatStatus("idle");
+              }}
+              placeholder="Send while I’m responding to queue a message…"
             />
           </div>
         </ComponentPreview>
