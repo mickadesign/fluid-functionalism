@@ -9,6 +9,7 @@ import {
 } from "@/registry/default/input-message";
 import { ChatMessage } from "@/registry/default/chat-message";
 import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
+import { FileThumbnail } from "@/registry/default/file-thumbnail";
 import { Button } from "@/registry/radix/button";
 import { Dropdown } from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
@@ -351,7 +352,7 @@ const [messages, setMessages] = useState<string[]>([]);
 
 const queuedCode = `import { useEffect, useRef, useState } from "react";
 import {
-  InputMessage, ChatMessage, ThinkingIndicator, type QueuedMessage,
+  InputMessage, ChatMessage, ThinkingIndicator, FileThumbnail, type QueuedMessage,
 } from "./components";
 
 type Turn = { from: "user" | "assistant"; text: string; thinking?: boolean };
@@ -423,6 +424,15 @@ useEffect(() => () => timers.current.forEach(clearTimeout), []);
             onDoubleClick={() => { setValue(item.text); setQueue((q) => q.filter((x) => x.id !== item.id)); }}
             className="absolute bottom-0 left-7 right-0 flex items-center gap-2 rounded-[20px] bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] px-3.5 text-[14px] text-muted-foreground shadow-surface-3"
           >
+            {/* Attachments: small thumbnails (1 or many; +N past 3). */}
+            {item.files.length > 0 && (
+              <div className="flex shrink-0 items-center gap-1">
+                {item.files.slice(0, 3).map((f, fi) => (
+                  <FileThumbnail key={fi} file={f} size={28} className="rounded-md" />
+                ))}
+                {item.files.length > 3 && <span>+{item.files.length - 3}</span>}
+              </div>
+            )}
             <span className="min-w-0 flex-1 truncate">{item.text}</span>
             <button onClick={() => setQueue((q) => q.filter((x) => x.id !== item.id))} aria-label="Remove queued message">
               ✕
@@ -724,6 +734,44 @@ export default function InputMessageDoc() {
 
   // Cancel any in-flight step on unmount so a late callback can't fire.
   useEffect(() => () => clearStep(), []);
+
+  // Auto-demo: load this section already paused mid-reply, with a few messages
+  // queued (some carrying attachments) so the feature reads at a glance. It
+  // starts paused — the front card nudges the user to press ▶ to resume and
+  // watch the queue release. Reset clears it; it doesn't re-run.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch("/micka.png")
+        .then((r) => r.blob())
+        .then((b) => new File([b], "photo.png", { type: b.type || "image/png" })),
+      fetch("/design-notes.pdf")
+        .then((r) => r.blob())
+        .then(
+          (b) =>
+            new File([b], "design-notes.pdf", {
+              type: b.type || "application/pdf",
+            })
+        ),
+    ])
+      .then(([img, pdf]) => {
+        if (cancelled) return;
+        // Pause before arming so the reply holds at "thinking".
+        pausedRef.current = true;
+        setPaused(true);
+        respond("Show me how queued messages work");
+        setQueue([
+          { id: crypto.randomUUID(), text: "Press ▶ to send these", files: [img] },
+          { id: crypto.randomUUID(), text: "Compare these two files", files: [img, pdf] },
+          { id: crypto.randomUUID(), text: "Then summarize the result", files: [] },
+        ]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
+  }, []);
 
   const queuedInputRef = useRef<HTMLDivElement>(null);
   const [queuedInputH, setQueuedInputH] = useState(0);
@@ -1225,6 +1273,26 @@ export default function InputMessageDoc() {
                           // a left gutter for the queue affordance icon.
                           className={`group/qm absolute bottom-0 left-7 right-0 flex select-none items-center gap-2 bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] px-3.5 text-[14px] text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
                         >
+                          {/* Attachments — small rounded thumbnails inside the
+                              card. Works for 1 or many: up to 3 show, the rest
+                              collapse into a +N tile. */}
+                          {item.files.length > 0 && (
+                            <div className="pointer-events-none flex shrink-0 items-center gap-1">
+                              {item.files.slice(0, 3).map((f, fi) => (
+                                <FileThumbnail
+                                  key={`${f.name}-${f.size}-${fi}`}
+                                  file={f}
+                                  size={28}
+                                  className="rounded-md"
+                                />
+                              ))}
+                              {item.files.length > 3 && (
+                                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80">
+                                  +{item.files.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           <span className="pointer-events-none min-w-0 flex-1 truncate">
                             {item.text ||
                               `${item.files.length} attachment${
