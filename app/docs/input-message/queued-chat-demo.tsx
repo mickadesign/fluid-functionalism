@@ -196,9 +196,35 @@ export function QueuedChatDemo({
 
   useEffect(() => () => clearStep(), []);
 
-  // Auto-demo: load already paused mid-reply with a few messages queued (some
-  // carrying attachments) so the feature reads at a glance. The front card
-  // nudges the user to press ▶ to resume and release the queue.
+  // Attachments for the seeded demo, cached so Reset can rebuild the exact
+  // initial state without re-fetching.
+  const demoFilesRef = useRef<File[]>([]);
+
+  // Seed (or re-seed) the initial state: a reply paused mid-think with a few
+  // messages queued — the first carrying the cached attachments — so the
+  // feature reads at a glance and the front card nudges the user to press ▶.
+  const loadInitialDemo = () => {
+    pausedRef.current = true;
+    setPaused(true);
+    respond("Help me polish the dashboard design");
+    const [img, pdf] = demoFilesRef.current;
+    setQueue([
+      // A message with attachments, a short one, and a longer one.
+      {
+        id: crypto.randomUUID(),
+        text: "Match these mockups",
+        files: img && pdf ? [img, pdf] : [],
+      },
+      { id: crypto.randomUUID(), text: "Tighten the spacing", files: [] },
+      {
+        id: crypto.randomUUID(),
+        text: "Audit the color contrast across the dashboard and suggest accessible token values",
+        files: [],
+      },
+    ]);
+  };
+
+  // Auto-demo on mount: fetch the attachments, cache them, then seed the state.
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -216,21 +242,13 @@ export function QueuedChatDemo({
     ])
       .then(([img, pdf]) => {
         if (cancelled) return;
-        pausedRef.current = true;
-        setPaused(true);
-        respond("Help me polish the dashboard design");
-        setQueue([
-          // A message with attachments, a short one, and a longer one.
-          { id: crypto.randomUUID(), text: "Match these mockups", files: [img, pdf] },
-          { id: crypto.randomUUID(), text: "Tighten the spacing", files: [] },
-          {
-            id: crypto.randomUUID(),
-            text: "Audit the color contrast across the dashboard and suggest accessible token values",
-            files: [],
-          },
-        ]);
+        demoFilesRef.current = [img, pdf];
+        loadInitialDemo();
       })
-      .catch(() => {});
+      // Still seed the textual demo even if the assets fail to load.
+      .catch(() => {
+        if (!cancelled) loadInitialDemo();
+      });
     return () => {
       cancelled = true;
     };
@@ -255,15 +273,16 @@ export function QueuedChatDemo({
     if (el) el.scrollTop = el.scrollHeight;
   }, [chat, inputH, queue]);
 
+  // Reset returns the preview to its *initial* seeded state (paused mid-reply
+  // with the messages queued), not an empty composer.
   const resetDemo = () => {
     clearStep();
-    pausedRef.current = false;
-    setPaused(false);
-    setChat([]);
-    setQueue([]);
     setValue("");
     setComposerFiles([]);
+    setChat([]);
+    setQueue([]);
     setChatStatus("idle");
+    loadInitialDemo();
   };
 
   const editQueuedMsg = (item: QueuedMessage) => {
