@@ -492,12 +492,13 @@ export function QueuedChatDemo({
                 side="left"
               >
                 <div
-                  className="absolute bottom-0 left-0 flex items-center justify-center text-muted-foreground"
-                  style={{ height: CARD_H, width: 28 }}
+                  className="absolute bottom-0 left-0 flex items-center justify-end gap-1 pr-1 text-muted-foreground"
+                  style={{ height: CARD_H, width: 40 }}
                 >
-                  {/* Total queued count, sitting just above the arrow — surfaced
-                      once the stack overflows its visible peeks. Hidden while
-                      expanded (every card is then visible). */}
+                  {/* Total queued count, to the LEFT of the arrow — surfaced once
+                      the stack overflows its visible peeks. Hidden while expanded
+                      (every card is then visible). justify-end pins the arrow so
+                      the number fades in beside it without nudging it. */}
                   <AnimatePresence>
                     {!stackExpanded && hiddenCount > 0 && (
                       <motion.span
@@ -506,8 +507,7 @@ export function QueuedChatDemo({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.6 }}
                         transition={springs.fast}
-                        className="pointer-events-none absolute inset-x-0 text-center text-[10px] font-semibold leading-none tabular-nums text-muted-foreground"
-                        style={{ bottom: CARD_H / 2 + 9 }}
+                        className="pointer-events-none text-[10px] font-semibold leading-none tabular-nums text-muted-foreground"
                       >
                         {stackCount}
                       </motion.span>
@@ -576,7 +576,7 @@ export function QueuedChatDemo({
                       // With attachments, use 8px side padding to match the ~8px
                       // above/below the 28px thumbnail in the 44px card (square
                       // inset); otherwise the roomier 14px for text-only cards.
-                      className={`group/qm absolute bottom-0 left-7 right-7 flex select-none items-center gap-2 bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] ${item.files.length > 0 ? "px-2" : "px-3.5"} text-[14px] text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
+                      className={`group/qm absolute bottom-0 left-10 right-10 flex select-none items-center gap-2 bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] ${item.files.length > 0 ? "px-2" : "px-3.5"} text-[14px] text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
                     >
                       {item.files.length > 0 && (
                         <div className="pointer-events-none flex shrink-0 items-center gap-1">
