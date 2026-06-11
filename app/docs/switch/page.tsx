@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Switch } from "@/registry/radix/switch";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useFlavorComponents } from "@/lib/docs/use-flavor";
 
 const basicCode = `import { Switch } from "./components";
 import { useState } from "react";
@@ -32,6 +32,7 @@ const switchProps: PropDef[] = [
 ];
 
 export default function SwitchDoc() {
+  const { Switch } = useFlavorComponents();
   const [checked, setChecked] = useState(false);
 
   return (

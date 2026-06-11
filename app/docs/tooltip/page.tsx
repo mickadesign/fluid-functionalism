@@ -1,10 +1,9 @@
 "use client";
 
-import { Tooltip } from "@/registry/radix/tooltip";
-import { Button } from "@/components/ui/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useFlavorComponents } from "@/lib/docs/use-flavor";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -86,6 +85,8 @@ const tooltipProps: PropDef[] = [
 // ---------------------------------------------------------------------------
 
 export default function TooltipDoc() {
+  const { Tooltip, Button } = useFlavorComponents();
+
   return (
     <DocPage
       title="Tooltip"

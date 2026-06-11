@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Slider, SliderComfortable } from "@/registry/radix/slider";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useFlavorComponents } from "@/lib/docs/use-flavor";
 
 // ---------------------------------------------------------------------------
 // Code snippets — Slider (compact)
@@ -240,6 +240,7 @@ const comfortableProps: PropDef[] = [
 const qualityLabels = ["Off", "Low", "Medium", "High", "Ultra"];
 
 export default function SliderDoc() {
+  const { Slider, SliderComfortable } = useFlavorComponents();
   const [basic, setBasic] = useState(25);
   const [range, setRange] = useState<[number, number]>([25, 75]);
   const [stepped, setStepped] = useState(50);

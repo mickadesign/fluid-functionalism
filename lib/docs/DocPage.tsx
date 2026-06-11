@@ -8,7 +8,7 @@ import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { docOrder } from "@/lib/docs/components";
 import { Tooltip } from "@/registry/radix/tooltip";
-import { useBase, installUrl, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
+import { useBase, installUrl, DUAL_FLAVOR_SLUGS, FLAVOR_AWARE_SLUGS } from "@/lib/base-context";
 
 interface DocPageProps {
   title: string;
@@ -102,6 +102,14 @@ export function DocPage({
               {base === "base"
                 ? "Installs the Base UI flavor. Switch in the right panel."
                 : "Installs the Radix flavor. Switch in the right panel."}
+            </p>
+          ) : FLAVOR_AWARE_SLUGS.has(installSlug ?? slug) ? (
+            // Single source, but its registry deps include dual-flavour
+            // primitives, so the install URL is still flavour-specific.
+            <p className="text-[12px] text-muted-foreground">
+              {base === "base"
+                ? "Installs with Base UI primitives. Switch in the right panel."
+                : "Installs with Radix primitives. Switch in the right panel."}
             </p>
           ) : base === "base" ? (
             // User has Base UI selected globally, but this component has no

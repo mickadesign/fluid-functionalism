@@ -18,9 +18,9 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/registry/radix/accordion";
-import { Badge } from "@/registry/default/badge";
-import type { BadgeColor } from "@/registry/default/badge";
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import type { BadgeColor } from "@/components/ui/badge";
 
 // ─── ThinkingSteps (root) ───────────────────────────────────────────────────
 

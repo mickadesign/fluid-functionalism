@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
-import { Tabs, TabsList, TabItem, TabPanel } from "@/registry/radix/tabs";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useFlavorComponents } from "@/lib/docs/use-flavor";
 
 /* ────────── Code snippets ────────── */
 
@@ -86,6 +86,7 @@ const tabPanelProps: PropDef[] = [
 /* ────────── Page ────────── */
 
 export default function TabsDoc() {
+  const { Tabs, TabsList, TabItem, TabPanel } = useFlavorComponents();
   const SquareLibrary = useIcon("square-library");
   const Clock = useIcon("clock");
   const Star = useIcon("star");

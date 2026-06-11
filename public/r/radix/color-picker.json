@@ -13,8 +13,8 @@
     "https://www.fluidfunctionalism.com/r/shape-context.json",
     "https://www.fluidfunctionalism.com/r/surface-context.json",
     "https://www.fluidfunctionalism.com/r/surface-classes.json",
-    "https://www.fluidfunctionalism.com/r/slider.json",
-    "https://www.fluidfunctionalism.com/r/tooltip.json",
+    "https://www.fluidfunctionalism.com/r/radix/slider.json",
+    "https://www.fluidfunctionalism.com/r/radix/tooltip.json",
     "https://www.fluidfunctionalism.com/r/dropdown.json"
   ],
   "files": [

@@ -15,8 +15,8 @@
     "https://www.fluidfunctionalism.com/r/surface-context.json",
     "https://www.fluidfunctionalism.com/r/surface-classes.json",
     "https://www.fluidfunctionalism.com/r/file-thumbnail.json",
-    "https://www.fluidfunctionalism.com/r/button.json",
-    "https://www.fluidfunctionalism.com/r/tooltip.json"
+    "https://www.fluidfunctionalism.com/r/radix/button.json",
+    "https://www.fluidfunctionalism.com/r/radix/tooltip.json"
   ],
   "files": [
     {

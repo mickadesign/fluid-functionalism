@@ -9,7 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { DUAL_FLAVOR_SLUGS as DUAL_FLAVOR_SLUG_LIST } from "./dual-flavor-slugs.mjs";
+import {
+  DUAL_FLAVOR_SLUGS as DUAL_FLAVOR_SLUG_LIST,
+  FLAVOR_AWARE_SLUGS as FLAVOR_AWARE_SLUG_LIST,
+} from "./dual-flavor-slugs.mjs";
 
 export type Base = "radix" | "base";
 
@@ -26,8 +29,8 @@ const STORAGE_KEY = "ff:base";
  * Wraps the app and provides the currently selected primitive flavour
  * (Radix or Base UI). Persisted to localStorage. Default: "radix".
  *
- * The selected flavour drives the install URL surfaced in DocPage and (later)
- * the rendered code preview / live demo for primitive-touching components.
+ * The selected flavour drives the install URL surfaced in DocPage and the live
+ * demo on dual-flavour doc pages (via `useFlavorComponents`).
  *
  * **Hydration strategy:** the initial state is always `"radix"` so the server
  * render matches the client's first render. After mount, a `useEffect` reads
@@ -82,12 +85,18 @@ export function useBase(): BaseContextValue {
 export const DUAL_FLAVOR_SLUGS: Set<string> = new Set(DUAL_FLAVOR_SLUG_LIST);
 
 /**
+ * Slugs of single-source components whose registry deps include dual-flavour
+ * components, so their install URL is flavour-specific too.
+ */
+export const FLAVOR_AWARE_SLUGS: Set<string> = new Set(FLAVOR_AWARE_SLUG_LIST);
+
+/**
  * Build the full registry install URL for a given slug + currently-selected
  * base. For primitive-agnostic components (Badge, Table, etc.), the base is
  * ignored — there's only one source.
  */
 export function installUrl(slug: string, base: Base): string {
-  if (base === "base" && DUAL_FLAVOR_SLUGS.has(slug)) {
+  if (base === "base" && (DUAL_FLAVOR_SLUGS.has(slug) || FLAVOR_AWARE_SLUGS.has(slug))) {
     return `https://www.fluidfunctionalism.com/r/base/${slug}.json`;
   }
   return `https://www.fluidfunctionalism.com/r/${slug}.json`;

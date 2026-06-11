@@ -23,9 +23,9 @@ import { useShape } from "@/lib/shape-context";
 import { useIcon } from "@/lib/icon-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { SurfaceProvider } from "@/lib/surface-context";
-import { FileThumbnail } from "@/registry/default/file-thumbnail";
-import { Button } from "@/registry/radix/button";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { FileThumbnail } from "@/components/ui/file-thumbnail";
+import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;

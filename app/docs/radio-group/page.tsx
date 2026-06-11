@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { RadioGroup, RadioItem } from "@/registry/radix/radio-group";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useFlavorComponents } from "@/lib/docs/use-flavor";
 
 const basicCode = `import { RadioGroup, RadioItem } from "./components";
 import { useState } from "react";
@@ -38,6 +38,7 @@ const itemProps: PropDef[] = [
 ];
 
 export default function RadioGroupDoc() {
+  const { RadioGroup, RadioItem } = useFlavorComponents();
   const options = ["Option A", "Option B", "Option C"];
   const [selected, setSelected] = useState(0);
 

@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionGroup,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/registry/radix/accordion";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { useFlavorComponents } from "@/lib/docs/use-flavor";
 
 const standaloneCode = `import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./components";
 
@@ -101,6 +95,14 @@ const contentProps: PropDef[] = [
 ];
 
 export default function AccordionDoc() {
+  const {
+    Accordion,
+    AccordionGroup,
+    AccordionItem,
+    AccordionTrigger,
+    AccordionContent,
+  } = useFlavorComponents();
+
   return (
     <DocPage
       title="Accordion"

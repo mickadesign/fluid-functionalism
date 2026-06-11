@@ -5,7 +5,7 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
-import { FileThumbnail } from "@/registry/default/file-thumbnail";
+import { FileThumbnail } from "@/components/ui/file-thumbnail";
 
 interface ChatMessageProps
   extends Omit<HTMLMotionProps<"div">, "children"> {
