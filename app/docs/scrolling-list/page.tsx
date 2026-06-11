@@ -1,11 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useIcon } from "@/lib/icon-context";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
-import { ScrollArea } from "@/registry/default/scroll-area";
+import { useScrollEdges, ScrollEdgeCue } from "@/lib/scroll-fade";
+import { ScrollArea } from "@/registry/radix/scroll-area";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/registry/default/table";
 import {
   Select,
   SelectTrigger,
@@ -49,6 +58,17 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+const CITIES = [
+  "Amsterdam", "Berlin", "Copenhagen", "Dublin", "Helsinki", "Lisbon",
+  "London", "Madrid", "Oslo", "Paris", "Prague", "Stockholm",
+  "Vienna", "Warsaw", "Zurich",
+];
+
+// Deterministic fake metric so the table renders identically on every pass.
+function metric(row: number, col: number) {
+  return (((row + 3) * (col + 7) * 37) % 900) + 100;
+}
+
 // ---------------------------------------------------------------------------
 // Code snippets
 // ---------------------------------------------------------------------------
@@ -75,31 +95,61 @@ const edges = useScrollEdges(scrollerRef, { axis: "vertical" });
 
 // Inside the scroller: sticky mode adds zero layout height.
 // The gradient reads useSurface() from context, so it matches
-// the actual background at any elevation.
-<div ref={scrollerRef} className="overflow-y-auto ...">
-  <ScrollEdgeCue edge="top" visible={edges.top} />
+// the actual background at any elevation. \`inset\` matches the
+// scroller's own padding (p-3 = 12) so the band reaches the
+// visible edge.
+<div ref={scrollerRef} className="h-56 overflow-y-auto p-3 ...">
+  <ScrollEdgeCue edge="top" visible={edges.top} inset={12} />
   {children}
-  <ScrollEdgeCue edge="bottom" visible={edges.bottom} />
+  <ScrollEdgeCue edge="bottom" visible={edges.bottom} inset={12} />
 </div>`;
 
 const SCROLL_AREA_CODE = `import { ScrollArea } from "./components";
 
 // Cues + restyled scrollbars + native fallback on touch, in one
 // wrapper. Vertical by default.
-<ScrollArea className="h-64">
-  {items.map((item) => <Row key={item} label={item} />)}
-</ScrollArea>`;
-
-const VERTICAL_CODE = `import { ScrollArea } from "./components";
-
 <ScrollArea className="h-64 w-72">
-  <div className="flex flex-col gap-0.5 p-3">
+  <div className="flex flex-col p-3">
     {releases.map((release) => (
       <div key={release} className="px-3 py-2 text-[13px]">
         {release}
       </div>
     ))}
   </div>
+</ScrollArea>`;
+
+const TABLE_CODE = `import { ScrollArea } from "./components";
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from "./components";
+
+// Double overflow: a Table both taller and wider than its
+// container. orientation="both" tracks all four edges and adds
+// both scrollbars plus the corner. w-max lets the table grow
+// past the viewport width instead of squeezing into it.
+<ScrollArea orientation="both" className="h-64 w-full max-w-md">
+  <Table className="w-max">
+    <TableHeader>
+      <TableRow>
+        <TableHead>City</TableHead>
+        {months.map((m) => (
+          <TableHead key={m} className="text-right">{m}</TableHead>
+        ))}
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {cities.map((city, r) => (
+        <TableRow key={city} index={r}>
+          <TableCell>{city}</TableCell>
+          {months.map((m, c) => (
+            <TableCell key={m} className="text-right tabular-nums">
+              {metric(r, c)}
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
 </ScrollArea>`;
 
 const HORIZONTAL_CODE = `import { ScrollArea } from "./components";
@@ -227,7 +277,7 @@ const scrollEdgeCueProps: PropDef[] = [
     type: "number",
     default: "4",
     description:
-      "Sticky-mode bleed in px so the band covers the scroller's padding (4 for p-1, 16 for p-4).",
+      "Sticky-mode bleed in px. Must match the scroller's own padding (4 for p-1, 16 for p-4) so the band — and the chevron's 8px offset — land exactly on the visible edge.",
   },
 ];
 
@@ -235,9 +285,9 @@ const scrollEdgeCueProps: PropDef[] = [
 // Demos
 // ---------------------------------------------------------------------------
 
-function ReleaseRows() {
+function ReleaseRows({ padded = true }: { padded?: boolean }) {
   return (
-    <div className="flex flex-col p-3">
+    <div className={`flex flex-col ${padded ? "p-3" : ""}`}>
       {RELEASES.map((release) => (
         <div
           key={release}
@@ -284,14 +334,79 @@ function ProblemDemo() {
   );
 }
 
-function VerticalDemo() {
+// Edge primitives, raw: a plain overflow div owning its own scroller, with
+// the hook + sticky cues wired by hand — exactly what Select does internally.
+// The padding lives on the scroller itself and `inset` matches it (p-3 = 12),
+// so the cue band reaches the visible edge and the chevron lands at the same
+// 8px offset as the absolute-mode cues in ScrollArea.
+function RawEdgesDemo() {
+  const shape = useShape();
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const edges = useScrollEdges(scrollerRef);
+  return (
+    <ComponentPreview code={HOOK_CODE}>
+      <div
+        ref={scrollerRef}
+        className={`h-56 w-72 overflow-y-auto p-3 border border-border ${shape.container}`}
+      >
+        <ScrollEdgeCue edge="top" visible={edges.top} inset={12} />
+        <ReleaseRows padded={false} />
+        <ScrollEdgeCue edge="bottom" visible={edges.bottom} inset={12} />
+      </div>
+    </ComponentPreview>
+  );
+}
+
+function WrapperDemo() {
   const shape = useShape();
   return (
-    <ComponentPreview code={VERTICAL_CODE}>
+    <ComponentPreview code={SCROLL_AREA_CODE}>
       <ScrollArea
         className={`h-64 w-72 border border-border ${shape.container}`}
       >
         <ReleaseRows />
+      </ScrollArea>
+    </ComponentPreview>
+  );
+}
+
+function TableDemo() {
+  const shape = useShape();
+  return (
+    <ComponentPreview code={TABLE_CODE}>
+      <ScrollArea
+        orientation="both"
+        className={`h-64 w-full max-w-md border border-border ${shape.container}`}
+      >
+        <Table className="w-max">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">City</TableHead>
+              {MONTHS.map((m) => (
+                <TableHead key={m} className="text-right whitespace-nowrap">
+                  {m}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {CITIES.map((city, r) => (
+              <TableRow key={city} index={r}>
+                <TableCell className="text-foreground whitespace-nowrap">
+                  {city}
+                </TableCell>
+                {MONTHS.map((m, c) => (
+                  <TableCell
+                    key={m}
+                    className="text-right tabular-nums whitespace-nowrap"
+                  >
+                    {metric(r, c)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </ScrollArea>
     </ComponentPreview>
   );
@@ -433,13 +548,7 @@ export default function ScrollingListDoc() {
           — a menu elevated two levels above a dialog fades into the menu
           colour, not the page colour.
         </P>
-        <ComponentPreview code={HOOK_CODE} padding="compact">
-          <div className="text-[13px] text-muted-foreground px-4 py-8 text-center max-w-sm">
-            Sticky mode is what Select uses inside its listbox — zero layout
-            height, no wrapper element. Open the demo under Examples to see it
-            live.
-          </div>
-        </ComponentPreview>
+        <RawEdgesDemo />
 
         <H3>ScrollArea</H3>
         <P>
@@ -450,8 +559,9 @@ export default function ScrollingListDoc() {
           </kbd>
           ) and falls back to native overflow scrolling on touch-primary
           devices, where platform scroll physics beat any custom scrollbar.
-          The edge cues stay active in both modes. Scrollbar machinery is
-          built on Radix Scroll Area, adapted from{" "}
+          The edge cues stay active in both modes. Ships in Radix and Base UI
+          flavors (same API — switch with the Primitive toggle); scrollbar
+          machinery adapted from{" "}
           <a
             href="https://lina.sameer.sh"
             target="_blank"
@@ -462,27 +572,24 @@ export default function ScrollingListDoc() {
           </a>
           .
         </P>
-        <ComponentPreview code={SCROLL_AREA_CODE} padding="compact">
-          <div className="text-[13px] text-muted-foreground px-4 py-8 text-center max-w-sm">
-            New scrolling surfaces reach for ScrollArea by default; components
-            that must own their scroller (Select, MobileDrawer) use the
-            primitives directly.
-          </div>
-        </ComponentPreview>
+        <WrapperDemo />
       </DocSection>
 
       <DocSection title="Examples">
-        <H3>Vertical</H3>
-        <P>
-          The default. Cues appear only at edges with more content — at the
-          top of the list only the bottom cue shows, at the end only the top
-          one.
-        </P>
-        <VerticalDemo />
-
         <H3>Horizontal</H3>
         <P>Left/right chevrons, same gradient logic per edge.</P>
         <HorizontalDemo />
+
+        <H3>Double overflow</H3>
+        <P>
+          A table both taller and wider than its container.{" "}
+          <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
+            orientation=&quot;both&quot;
+          </code>{" "}
+          tracks all four edges independently and adds both scrollbars plus
+          the corner.
+        </P>
+        <TableDemo />
 
         <H3>Without fade</H3>
         <P>
