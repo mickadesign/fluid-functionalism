@@ -10,7 +10,6 @@ import {
   useContext,
   type ReactNode,
   type HTMLAttributes,
-  type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
-import { useSurface } from "@/lib/surface-context";
+import { useScrollEdges, ScrollEdgeCue } from "@/lib/scroll-fade";
 import { Elevated } from "@/lib/elevated";
 
 // ---------------------------------------------------------------------------
@@ -246,88 +245,6 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
 SelectTrigger.displayName = "SelectTrigger";
 
 // ---------------------------------------------------------------------------
-// ScrollEdgeFade — surface gradient + chevron cue pinned to a scroll edge
-//
-// Rendered as a sticky, zero-height overlay so it adds no layout height. A
-// surface-colour gradient fades the content out toward the edge, with a small
-// chevron centred in the band hinting at the scroll direction. Shown only when
-// there is more content to scroll that way.
-// ---------------------------------------------------------------------------
-
-function ScrollEdgeFade({
-  edge,
-  visible,
-  surfaceLevel,
-}: {
-  edge: "top" | "bottom";
-  visible: boolean;
-  surfaceLevel: number;
-}) {
-  const isTop = edge === "top";
-  // Gradient direction where 100% == the hard outer edge.
-  const dir = isTop ? "to top" : "to bottom";
-  const surface = `var(--surface-${surfaceLevel})`;
-
-  return (
-    <div
-      aria-hidden
-      style={
-        {
-          position: "sticky",
-          [isTop ? "top" : "bottom"]: 0,
-          height: 0,
-          zIndex: 30,
-          pointerEvents: "none",
-        } as CSSProperties
-      }
-    >
-      <div
-        style={
-          {
-            position: "absolute",
-            left: -4,
-            right: -4,
-            [isTop ? "top" : "bottom"]: -4,
-            height: 52,
-            opacity: visible ? 1 : 0,
-            transition: "opacity 160ms ease",
-          } as CSSProperties
-        }
-      >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: `linear-gradient(${dir}, transparent 0%, color-mix(in srgb, ${surface} 75%, transparent) 65%, ${surface} 100%)`,
-          }}
-        />
-        <svg
-          width={16}
-          height={16}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-muted-foreground"
-          style={
-            {
-              position: "absolute",
-              left: "50%",
-              transform: "translateX(-50%)",
-              [isTop ? "top" : "bottom"]: 8,
-            } as CSSProperties
-          }
-        >
-          <path d={isTop ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // SelectContent
 // ---------------------------------------------------------------------------
 
@@ -347,10 +264,12 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
 
-    // Surface level the dropdown renders at (Elevated offset of 2), so the
-    // fade gradient matches the actual menu background at any nesting depth.
-    const surfaceLevel = Math.min(useSurface() + 2, 8);
-    const [edges, setEdges] = useState({ top: false, bottom: false });
+    // Scroll-edge cues show only when there's more content above/below the
+    // visible area. `triggerRect !== null` gates attachment until the portal
+    // (and thus containerRef.current) has mounted.
+    const edges = useScrollEdges(containerRef, {
+      enabled: open && scrollFade && triggerRect !== null,
+    });
 
     const {
       activeIndex,
@@ -442,36 +361,6 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       window.addEventListener("scroll", onScroll, { passive: true });
       return () => window.removeEventListener("scroll", onScroll);
     }, [open, setOpen]);
-
-    // Scroll-edge fade: track overflow + scroll position so the fade bars show
-    // only when there's more content above/below the visible area.
-    useEffect(() => {
-      if (!open || !scrollFade) {
-        setEdges({ top: false, bottom: false });
-        return;
-      }
-      const el = containerRef.current;
-      if (!el) return;
-      const update = () => {
-        const { scrollTop, scrollHeight, clientHeight } = el;
-        const overflowing = scrollHeight - clientHeight > 1;
-        setEdges({
-          top: overflowing && scrollTop > 1,
-          bottom: overflowing && scrollTop + clientHeight < scrollHeight - 1,
-        });
-      };
-      update();
-      // Recompute once layout settles after the open animation.
-      const raf = requestAnimationFrame(update);
-      el.addEventListener("scroll", update, { passive: true });
-      const ro = new ResizeObserver(update);
-      ro.observe(el);
-      return () => {
-        cancelAnimationFrame(raf);
-        el.removeEventListener("scroll", update);
-        ro.disconnect();
-      };
-    }, [open, triggerRect, scrollFade]);
 
     // Keyboard nav inside content
     const handleKeyDown = useCallback(
@@ -667,22 +556,14 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
               )}
             </AnimatePresence>
 
-            {scrollFade && (
-              <ScrollEdgeFade
-                edge="top"
-                visible={edges.top}
-                surfaceLevel={surfaceLevel}
-              />
-            )}
+            {/* Cues read the elevated surface level from Elevated's provider,
+                so the gradient matches the menu background at any depth. */}
+            {scrollFade && <ScrollEdgeCue edge="top" visible={edges.top} />}
 
             {children}
 
             {scrollFade && (
-              <ScrollEdgeFade
-                edge="bottom"
-                visible={edges.bottom}
-                surfaceLevel={surfaceLevel}
-              />
+              <ScrollEdgeCue edge="bottom" visible={edges.bottom} />
             )}
           </Elevated>
           </motion.div>
