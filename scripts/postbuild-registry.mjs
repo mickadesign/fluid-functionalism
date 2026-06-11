@@ -63,7 +63,6 @@ const CUSTOM_ITEMS = new Set([
   "input-copy",
   "input-group",
   "menu-item",
-  "scroll-area",
   "select",
   "table",
   "tabs-subtle",

@@ -966,7 +966,30 @@
       ],
       "files": [
         {
-          "path": "registry/default/scroll-area.tsx",
+          "path": "registry/radix/scroll-area.tsx",
+          "target": "components/ui/scroll-area.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "scroll-area-base",
+      "type": "registry:ui",
+      "title": "Scroll Area (Base UI)",
+      "description": "Scroll container with restyled overlay scrollbars and surface-gradient scroll-edge cues. Falls back to native overflow scrolling on touch-primary devices. Base UI flavor; adapted from Lina (https://lina.sameer.sh).",
+      "dependencies": [
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/scroll-fade.json",
+        "https://www.fluidfunctionalism.com/r/use-touch-primary.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/scroll-area.tsx",
+          "target": "components/ui/scroll-area.tsx",
           "type": "registry:ui"
         }
       ]
