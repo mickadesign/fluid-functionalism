@@ -30,6 +30,21 @@ import { Tooltip } from "@/registry/radix/tooltip";
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+// Touch devices have no hover, so hover-revealed affordances (like a queued
+// row's × button) would never appear. `(hover: none)` flags those so they can
+// be shown persistently instead. SSR-safe: starts false, resolves on mount.
+function useIsTouch() {
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: none)");
+    const update = () => setIsTouch(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isTouch;
+}
+
 const DEFAULT_ACCEPT = "image/png,image/jpeg,application/pdf";
 
 interface InputMessageSlotContext {
@@ -187,6 +202,7 @@ interface QueuedRowProps {
   index: number;
   total: number;
   reduceMotion: boolean;
+  isTouch: boolean;
   onEdit: (item: QueuedMessage) => void;
   onRemove: (item: QueuedMessage) => void;
   onMove: (item: QueuedMessage, dir: -1 | 1) => void;
@@ -197,6 +213,7 @@ function QueuedRow({
   index,
   total,
   reduceMotion,
+  isTouch,
   onEdit,
   onRemove,
   onMove,
@@ -265,7 +282,11 @@ function QueuedRow({
           className={cn(
             "shrink-0 flex h-5 w-5 items-center justify-center rounded-full",
             "text-muted-foreground hover:text-foreground hover:bg-hover",
-            "opacity-0 group-hover/qrow:opacity-100 focus-visible:opacity-100",
+            // Hover devices reveal × on row-hover; touch has no hover, so keep
+            // it persistently visible there.
+            isTouch
+              ? "opacity-100"
+              : "opacity-0 group-hover/qrow:opacity-100 focus-visible:opacity-100",
             "transition-opacity duration-80 cursor-pointer outline-none",
             "focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
           )}
@@ -314,6 +335,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const shape = useShape();
     const ArrowUpIcon = useIcon("arrow-up");
     const reduceMotion = useReducedMotion() ?? false;
+    const isTouch = useIsTouch();
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -799,6 +821,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                           index={i}
                           total={queueArr.length}
                           reduceMotion={reduceMotion}
+                          isTouch={isTouch}
                           onEdit={editQueued}
                           onRemove={removeQueued}
                           onMove={moveQueued}

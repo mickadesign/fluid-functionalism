@@ -555,7 +555,12 @@ export default function InputMessageDoc() {
       description="Chat-style message composer with an auto-resizing textarea, flexible left/right action slots, and a built-in send button on a Surface-2 substrate."
     >
       <DocSection title="Example">
-        <QueuedChatDemo code={actionsCode} rich minHeightClass="h-[560px]" />
+        <QueuedChatDemo
+          code={actionsCode}
+          rich
+          minHeightClass="h-[560px]"
+          placeholder="Ask me anything…"
+        />
       </DocSection>
 
       <DocSection title="Basic">

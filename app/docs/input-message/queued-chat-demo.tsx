@@ -53,10 +53,12 @@ export function QueuedChatDemo({
   code,
   rich = false,
   minHeightClass = "h-[440px]",
+  placeholder = "Send while I’m responding to queue a message…",
 }: {
   code: string;
   rich?: boolean;
   minHeightClass?: string;
+  placeholder?: string;
 }) {
   const shape = useShape();
   const ResetIcon = useIcon("rotate-ccw");
@@ -321,8 +323,31 @@ export function QueuedChatDemo({
   const dragStartYRef = useRef(0);
   const queueLenRef = useRef(queue.length);
   queueLenRef.current = queue.length;
+
+  // Touch devices have no hover, so the stack can't fan out on pointer-over.
+  // Track `(hover: none)` to drive a tap-to-expand affordance instead: tapping
+  // a collapsed card expands the stack and pins it open until the collapse
+  // button is tapped.
+  const [isTouch, setIsTouch] = useState(false);
+  const [tapExpanded, setTapExpanded] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: none)");
+    const update = () => setIsTouch(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  // Collapse the (touch) stack whenever it empties, so a fresh fill starts
+  // collapsed rather than re-opening from the previous pinned state.
+  useEffect(() => {
+    if (queue.length === 0) setTapExpanded(false);
+  }, [queue.length]);
+
   const stackExpanded =
-    stackHovered || pointerDownId !== null || draggingId !== null;
+    stackHovered ||
+    pointerDownId !== null ||
+    draggingId !== null ||
+    tapExpanded;
   const slotY = (i: number) => -i * (CARD_H + STACK_GAP);
 
   // ── Enqueue feedback: once the collapsed stack hits its peek cap, a new
@@ -506,35 +531,56 @@ export function QueuedChatDemo({
               {/* Recoils as a whole on enqueue (see stackBump) so a message
                   landing behind the peek cap is still felt by the user. */}
               <motion.div animate={stackBump} className="absolute inset-0">
-              <Tooltip
-                content={`${stackCount} queued message${stackCount === 1 ? "" : "s"}`}
-                side="left"
-              >
-                <div
-                  className="absolute bottom-0 left-0 flex items-center justify-end gap-1 pr-1 text-muted-foreground"
-                  style={{ height: CARD_H, width: 40 }}
+              {isTouch && stackExpanded ? (
+                // Touch: the stack stays pinned open, so it needs an explicit way
+                // back. The collapse button takes the gutter slot the arrow + count
+                // occupied while collapsed.
+                <Tooltip content="Collapse" side="left">
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTapExpanded(false);
+                    }}
+                    aria-label="Collapse queued messages"
+                    className={`absolute bottom-0 left-0 flex items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-[#6B97FF] ${shape.button}`}
+                    style={{ height: CARD_H, width: 40 }}
+                  >
+                    <ChevronDownIcon size={18} strokeWidth={2} />
+                  </button>
+                </Tooltip>
+              ) : (
+                <Tooltip
+                  content={`${stackCount} queued message${stackCount === 1 ? "" : "s"}`}
+                  side="left"
                 >
-                  {/* Total queued count, to the LEFT of the arrow — surfaced once
-                      the stack overflows its visible peeks, and kept visible on
-                      hover too. justify-end pins the arrow so the number fades in
-                      beside it without nudging it. */}
-                  <AnimatePresence>
-                    {hiddenCount > 0 && (
-                      <motion.span
-                        key="count"
-                        initial={{ opacity: 0, scale: 0.6 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.6 }}
-                        transition={springs.fast}
-                        className="pointer-events-none text-[10px] font-semibold leading-none tabular-nums text-muted-foreground"
-                      >
-                        {stackCount}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                  <CornerDownRightIcon size={16} strokeWidth={2} />
-                </div>
-              </Tooltip>
+                  <div
+                    className="absolute bottom-0 left-0 flex items-center justify-end gap-1 pr-1 text-muted-foreground"
+                    style={{ height: CARD_H, width: 40 }}
+                  >
+                    {/* Total queued count, to the LEFT of the arrow — surfaced once
+                        the stack overflows its visible peeks, and kept visible on
+                        hover too. justify-end pins the arrow so the number fades in
+                        beside it without nudging it. */}
+                    <AnimatePresence>
+                      {hiddenCount > 0 && (
+                        <motion.span
+                          key="count"
+                          initial={{ opacity: 0, scale: 0.6 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.6 }}
+                          transition={springs.fast}
+                          className="pointer-events-none text-[10px] font-semibold leading-none tabular-nums text-muted-foreground"
+                        >
+                          {stackCount}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                    <CornerDownRightIcon size={16} strokeWidth={2} />
+                  </div>
+                </Tooltip>
+              )}
               <AnimatePresence initial={false}>
                 {queue.map((item, i) => {
                   const peek = Math.min(i, STACK_MAX_PEEK);
@@ -570,6 +616,12 @@ export function QueuedChatDemo({
                           : `qm-${item.id}`
                       }
                       onDoubleClick={() => editQueuedMsg(item)}
+                      onClick={() => {
+                        // Touch tap-to-expand: a collapsed pile fans out on tap
+                        // (there's no hover to fan it out). No-op once expanded so
+                        // it doesn't swallow drags or button taps.
+                        if (isTouch && !stackExpanded) setTapExpanded(true);
+                      }}
                       onPointerDown={(e) => {
                         if (!stackExpanded || e.button !== 0) return;
                         dragStartYRef.current = e.clientY;
@@ -589,6 +641,10 @@ export function QueuedChatDemo({
                         transformOrigin: "bottom center",
                         zIndex: isDragging ? 200 : 100 - i,
                         cursor: stackExpanded ? "grab" : "default",
+                        // Once expanded the card is draggable: claim the vertical
+                        // gesture so a touch-drag reorders instead of scrolling
+                        // the transcript underneath.
+                        touchAction: stackExpanded ? "none" : undefined,
                       }}
                       // Equal left/right gutters (the left holds the queue icon)
                       // so the cards sit centered above the composer.
@@ -620,11 +676,15 @@ export function QueuedChatDemo({
                             item.files.length === 1 ? "" : "s"
                           }`}
                       </span>
-                      {/* Edit (same as double-click) then remove. The group is
-                          hidden until the card is hovered — so it's out of layout
-                          by default and the text gets the full width — with 4px
-                          between the two buttons. */}
-                      <div className="hidden shrink-0 items-center gap-1 group-hover/qm:flex">
+                      {/* Edit (same as double-click) then remove. On hover-capable
+                          devices the group is hidden until the card is hovered — so
+                          it's out of layout by default and the text gets the full
+                          width. On touch (no hover) it's always shown. */}
+                      <div
+                        className={`shrink-0 items-center gap-1 ${
+                          isTouch ? "flex" : "hidden group-hover/qm:flex"
+                        }`}
+                      >
                         <Tooltip content="Edit" side="top">
                           <button
                             type="button"
@@ -705,7 +765,7 @@ export function QueuedChatDemo({
             });
             setChatStatus("idle");
           }}
-          placeholder="Send while I’m responding to queue a message…"
+          placeholder={placeholder}
           leftSlot={
             rich
               ? ({ openFilePicker }) => (

@@ -75,13 +75,19 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
         {children != null && children !== "" && (
           <div
             className={cn(
-              "py-2 text-[14px] whitespace-pre-wrap break-words text-pretty",
+              "py-2 text-[14px] whitespace-pre-wrap break-words",
               // User keeps the bubble chrome (rounded fill + horizontal padding);
               // the assistant reply is flush-left plain text with no background.
               isUser
                 ? cn(
                     shape.bg,
-                    "px-3.5 bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] text-accent-foreground"
+                    // `text-pretty` is reserved for settled user bubbles. On the
+                    // assistant reply it's left off on purpose: `text-wrap: pretty`
+                    // re-balances the last lines on every content change, so a
+                    // word-by-word stream visibly reflows earlier words to new
+                    // lines. Default (normal) wrapping appends left-to-right and
+                    // stays put as the text grows.
+                    "px-3.5 text-pretty bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] text-accent-foreground"
                   )
                 : "text-foreground"
             )}
