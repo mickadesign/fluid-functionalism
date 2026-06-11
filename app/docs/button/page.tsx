@@ -12,7 +12,8 @@ const variantsCode = `import { Button } from "./components";
 <Button variant="primary">Primary</Button>
 <Button variant="secondary">Secondary</Button>
 <Button variant="tertiary">Tertiary</Button>
-<Button variant="ghost">Ghost</Button>`;
+<Button variant="ghost">Ghost</Button>
+<Button variant="destructive">Destructive</Button>`;
 
 const sizesCode = `import { Button } from "./components";
 import { Plus } from "lucide-react";
@@ -41,7 +42,7 @@ import { Loader } from "lucide-react";
 <Button disabled>Disabled</Button>`;
 
 const buttonProps: PropDef[] = [
-  { name: "variant", type: '"primary" | "secondary" | "tertiary" | "ghost"', default: '"primary"', description: "Visual style of the button." },
+  { name: "variant", type: '"primary" | "secondary" | "tertiary" | "ghost" | "destructive"', default: '"primary"', description: "Visual style of the button." },
   { name: "size", type: '"sm" | "md" | "lg" | "icon-sm" | "icon" | "icon-lg"', default: '"md"', description: "Size of the button." },
   { name: "loading", type: "boolean", default: "false", description: "Shows a spinner and disables the button." },
   { name: "leadingIcon", type: "IconComponent", description: "Icon displayed before the label." },
@@ -71,6 +72,7 @@ export default function ButtonDoc() {
             <Button variant="secondary">Secondary</Button>
             <Button variant="tertiary">Tertiary</Button>
             <Button variant="ghost">Ghost</Button>
+            <Button variant="destructive">Destructive</Button>
           </div>
         </ComponentPreview>
       </DocSection>

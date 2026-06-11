@@ -535,6 +535,54 @@
       ]
     },
     {
+      "name": "alert-dialog",
+      "type": "registry:ui",
+      "title": "Alert Dialog",
+      "description": "Animated modal alert dialog that interrupts the user and expects a response. Built on Radix UI Alert Dialog with header, footer, title, description, cancel, and action sub-components.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-alert-dialog"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-classes.json"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/alert-dialog.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/alert-dialog.tsx"
+        }
+      ]
+    },
+    {
+      "name": "alert-dialog-base",
+      "type": "registry:ui",
+      "title": "Alert Dialog (Base UI)",
+      "description": "Animated modal alert dialog that interrupts the user and expects a response. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-classes.json"
+      ],
+      "files": [
+        {
+          "path": "registry/base/alert-dialog.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/alert-dialog.tsx"
+        }
+      ]
+    },
+    {
       "name": "dialog",
       "type": "registry:ui",
       "title": "Dialog",

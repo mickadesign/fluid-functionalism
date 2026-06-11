@@ -288,7 +288,7 @@
       "name": "ask-user-questions",
       "type": "registry:ui",
       "title": "Ask User Questions",
-      "description": "Stepped question flow with numbered options, keyboard shortcuts (1\u20139), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
+      "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
       "dependencies": [
         "framer-motion"
       ],
@@ -535,6 +535,54 @@
       ]
     },
     {
+      "name": "alert-dialog",
+      "type": "registry:ui",
+      "title": "Alert Dialog",
+      "description": "Animated modal alert dialog that interrupts the user and expects a response. Built on Radix UI Alert Dialog with header, footer, title, description, cancel, and action sub-components.",
+      "dependencies": [
+        "framer-motion",
+        "@radix-ui/react-alert-dialog"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "shape-context",
+        "surface-context",
+        "surface-classes"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/alert-dialog.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/alert-dialog.tsx"
+        }
+      ]
+    },
+    {
+      "name": "alert-dialog-base",
+      "type": "registry:ui",
+      "title": "Alert Dialog (Base UI)",
+      "description": "Animated modal alert dialog that interrupts the user and expects a response. Base UI flavor.",
+      "dependencies": [
+        "framer-motion",
+        "@base-ui/react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "shape-context",
+        "surface-context",
+        "surface-classes"
+      ],
+      "files": [
+        {
+          "path": "registry/base/alert-dialog.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/alert-dialog.tsx"
+        }
+      ]
+    },
+    {
       "name": "dialog",
       "type": "registry:ui",
       "title": "Dialog",
@@ -637,7 +685,9 @@
       "type": "registry:ui",
       "title": "Input Message",
       "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
-      "dependencies": ["framer-motion"],
+      "dependencies": [
+        "framer-motion"
+      ],
       "registryDependencies": [
         "utils",
         "springs",
@@ -662,8 +712,13 @@
       "type": "registry:ui",
       "title": "File Thumbnail",
       "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting.",
-      "dependencies": ["pdfjs-dist"],
-      "registryDependencies": ["utils", "shape-context"],
+      "dependencies": [
+        "pdfjs-dist"
+      ],
+      "registryDependencies": [
+        "utils",
+        "shape-context"
+      ],
       "files": [
         {
           "path": "registry/default/file-thumbnail.tsx",
@@ -676,8 +731,15 @@
       "type": "registry:ui",
       "title": "Chat Message",
       "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
-      "dependencies": ["framer-motion"],
-      "registryDependencies": ["utils", "springs", "shape-context", "file-thumbnail"],
+      "dependencies": [
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "shape-context",
+        "file-thumbnail"
+      ],
       "files": [
         {
           "path": "registry/default/chat-message.tsx",

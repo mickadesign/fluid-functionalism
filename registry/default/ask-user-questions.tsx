@@ -81,6 +81,11 @@ function optionKey(o: AskUserOption, i: number) {
   return o.id ?? `o-${i}`;
 }
 
+/** Focus without scrolling the document — demos often sit mid-page. */
+function focusNoScroll(el: HTMLElement | null | undefined) {
+  el?.focus({ preventScroll: true });
+}
+
 const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
   function AskUserQuestions(
     {
@@ -308,7 +313,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       const firstRow = rowsContainerRef.current?.querySelector(
         '[data-proximity-index="0"]'
       ) as HTMLElement | null;
-      firstRow?.focus();
+      focusNoScroll(firstRow);
     }, [safeIndex]);
 
     // ── Answer actions ───────────────────────────────────────────
@@ -423,37 +428,41 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     }, [safeIndex, setIndex, markFocusRestore]);
 
     // ── Keyboard shortcuts: 1-9 ──────────────────────────────────
-    useEffect(() => {
-      if (!question) return;
-      const handler = (e: KeyboardEvent) => {
+    // Handled at the root (like ⌘/⌃+Enter) so only the demo that owns
+    // focus receives the key — stacked doc-page previews don't all toggle
+    // at once. Click a preview first (focus-within border) to activate it.
+    const handleDigitKey = useCallback(
+      (e: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (!question) return;
         if (e.metaKey || e.ctrlKey || e.altKey) return;
-        const target = e.target as HTMLElement | null;
-        if (!target) return;
+        const target = e.target as HTMLElement;
         const tag = target.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable)
+          return;
         const code = e.key;
         if (code < "1" || code > "9") return;
         const idx = parseInt(code, 10) - 1;
         if (idx >= 0 && idx < options.length) {
           e.preventDefault();
+          e.stopPropagation();
           const oid = optionKey(options[idx], idx);
           if (isMulti) handleMultiToggle(oid);
           else handleSingleSelect(oid);
         } else if (idx === options.length && allowOther) {
           e.preventDefault();
-          otherInputRef.current?.focus();
+          e.stopPropagation();
+          focusNoScroll(otherInputRef.current);
         }
-      };
-      document.addEventListener("keydown", handler);
-      return () => document.removeEventListener("keydown", handler);
-    }, [
-      question,
-      options,
-      isMulti,
-      allowOther,
-      handleSingleSelect,
-      handleMultiToggle,
-    ]);
+      },
+      [
+        question,
+        options,
+        isMulti,
+        allowOther,
+        handleSingleSelect,
+        handleMultiToggle,
+      ]
+    );
 
     // ── Keyboard navigation ──────────────────────────────────────
     // Up/Down move the highlight between rows using the SAME indicator as
@@ -466,7 +475,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       const el = rowsContainerRef.current?.querySelector(
         `[data-proximity-index="${idx}"]`
       ) as HTMLElement | null;
-      el?.focus();
+      focusNoScroll(el);
     };
 
     const moveActive = useCallback(
@@ -474,7 +483,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
         setActiveIndex(next);
         // The Other row is a text field — focus the input directly so typing
         // works; everything else focuses the row for Enter/Space selection.
-        if (allowOther && next === otherIndex) otherInputRef.current?.focus();
+        if (allowOther && next === otherIndex)
+          focusNoScroll(otherInputRef.current);
         else focusRow(next);
       },
       [allowOther, otherIndex, setActiveIndex]
@@ -667,6 +677,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
         {...rest}
         onKeyDown={(e) => {
           rest.onKeyDown?.(e);
+          handleDigitKey(e);
           handleRootKey(e);
         }}
       >
@@ -974,7 +985,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                       prev === otherIndex ? null : prev
                     )
                   }
-                  onClick={() => otherInputRef.current?.focus()}
+                  onClick={() => focusNoScroll(otherInputRef.current)}
                   shape={shape}
                   chipContent={otherIndex + 1}
                   chipFilled={otherText.length > 0}
