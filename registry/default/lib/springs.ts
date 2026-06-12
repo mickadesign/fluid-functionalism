@@ -7,11 +7,11 @@ export const springs = {
   moderate: {
     type: "spring" as const,
     duration: 0.16,
-    bounce: 0.15,
+    bounce: 0.08,
   },
   slow: {
     type: "spring" as const,
     duration: 0.24,
-    bounce: 0.15,
+    bounce: 0.12,
   },
 } as const;

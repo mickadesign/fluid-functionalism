@@ -323,6 +323,42 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Native scrollbar theme — matches the ScrollArea thumb language (narrow,
+   low-contrast, darkens on hover) so surfaces that fall back to native
+   scrollbars (the docs sidebar, the root page, touch-device viewports) stay
+   consistent with the custom scrollbar. Only on fine pointers; touch devices
+   keep their overlay momentum bars. color-mix on --foreground adapts to dark
+   mode automatically. `.scrollbar-hide` still wins (higher specificity). */
+@media (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground), transparent 75%) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    /* 3px transparent border + content-box clip leaves a ~4px visible thumb
+       inside the 10px hit area, mirroring the custom thumb's resting width. */
+    background-color: color-mix(in oklab, var(--foreground), transparent 75%);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--foreground), transparent 55%);
+  }
+}
+
 html, body {
   margin: 0;
   min-height: 100vh;

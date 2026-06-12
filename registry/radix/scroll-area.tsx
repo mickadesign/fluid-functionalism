@@ -168,12 +168,18 @@ const ScrollBar = forwardRef<
       // 160ms in, 120ms out (exits faster, per the animation guidelines);
       // spring tokens are framer-motion configs and don't apply here.
       className={cn(
-        "z-20 flex touch-none select-none p-px",
+        // The 10px track stays as a comfortable hit target; the thumb inside
+        // it rests narrow and low-contrast, then widens + darkens on hover so
+        // it gets out of the way until you reach for it.
+        "group/scrollbar z-20 flex touch-none select-none",
+        // Show immediately; on hide, wait out the 150ms thumb shrink before
+        // fading so the thumb visibly narrows back first instead of the fade
+        // masking it.
         "transition-opacity duration-120 ease-out data-[state=visible]:duration-160",
         "data-[state=visible]:opacity-100 data-[state=hidden]:opacity-0",
-        "hover:bg-hover",
-        orientation === "vertical" && "h-full w-2.5 border-l border-l-transparent",
-        orientation === "horizontal" && "h-2.5 flex-col border-t border-t-transparent",
+        "data-[state=hidden]:delay-160 data-[state=visible]:delay-0",
+        orientation === "vertical" && "h-full w-2.5",
+        orientation === "horizontal" && "h-2.5 w-full flex-col",
         className
       )}
       {...props}
@@ -181,10 +187,13 @@ const ScrollBar = forwardRef<
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
         className={cn(
-          "relative flex-1 origin-center bg-border transition-[scale]",
+          "relative bg-foreground/25 transition-[background-color,width,height] duration-160 ease-in-out",
+          "group-hover/scrollbar:bg-foreground/45 active:!bg-foreground/60",
           shape.bg,
-          orientation === "vertical" && "my-1 active:scale-y-95",
-          orientation === "horizontal" && "active:scale-x-[0.98]"
+          orientation === "vertical" &&
+            "mx-auto my-1 w-1 group-hover/scrollbar:w-1.5",
+          orientation === "horizontal" &&
+            "my-auto mx-1 h-1 group-hover/scrollbar:h-1.5"
         )}
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>

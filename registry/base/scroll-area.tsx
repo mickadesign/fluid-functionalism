@@ -172,15 +172,19 @@ const ScrollBar = forwardRef<
       // animation guidelines); spring tokens are framer-motion configs and
       // don't apply here.
       className={cn(
-        "absolute z-20 flex touch-none select-none p-px",
-        "opacity-0 transition-opacity duration-120 ease-out",
+        // The 10px track stays as a comfortable hit target; the thumb inside
+        // it rests narrow and low-contrast, then widens + darkens on hover so
+        // it gets out of the way until you reach for it.
+        "group/scrollbar absolute z-20 flex touch-none select-none",
+        // Show immediately; on hide, wait out the 150ms thumb shrink before
+        // fading so the thumb visibly narrows back first instead of the fade
+        // masking it.
+        "opacity-0 transition-opacity duration-120 ease-out delay-160",
         "data-[hovering]:duration-160 data-[scrolling]:duration-160",
         "data-[hovering]:opacity-100 data-[scrolling]:opacity-100",
-        "hover:bg-hover",
-        orientation === "vertical" &&
-          "top-0 right-0 h-full w-2.5 border-l border-l-transparent",
-        orientation === "horizontal" &&
-          "bottom-0 left-0 w-full h-2.5 flex-col border-t border-t-transparent",
+        "data-[hovering]:delay-0 data-[scrolling]:delay-0",
+        orientation === "vertical" && "top-0 right-0 h-full w-2.5",
+        orientation === "horizontal" && "bottom-0 left-0 h-2.5 w-full flex-col",
         className
       )}
       {...props}
@@ -188,12 +192,13 @@ const ScrollBar = forwardRef<
       <ScrollAreaPrimitive.Thumb
         data-slot="scroll-area-thumb"
         className={cn(
-          "relative origin-center bg-border transition-[scale]",
+          "relative bg-foreground/25 transition-[background-color,width,height] duration-160 ease-in-out",
+          "group-hover/scrollbar:bg-foreground/45 active:!bg-foreground/60",
           shape.bg,
           orientation === "vertical" &&
-            "w-full h-[var(--scroll-area-thumb-height)] my-1 active:scale-y-95",
+            "mx-auto my-1 w-1 h-[var(--scroll-area-thumb-height)] group-hover/scrollbar:w-1.5",
           orientation === "horizontal" &&
-            "h-full w-[var(--scroll-area-thumb-width)] active:scale-x-[0.98]"
+            "my-auto mx-1 h-1 w-[var(--scroll-area-thumb-width)] group-hover/scrollbar:h-1.5"
         )}
       />
     </ScrollAreaPrimitive.Scrollbar>
