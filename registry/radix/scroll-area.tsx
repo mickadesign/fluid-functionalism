@@ -164,11 +164,12 @@ const ScrollBar = forwardRef<
       ref={ref}
       orientation={orientation}
       data-slot="scroll-area-scrollbar"
-      // Scrollbar show/hide is plain CSS opacity (160ms, matching the cue
-      // fade) — spring tokens are framer-motion configs and don't apply here.
+      // Scrollbar show/hide is plain CSS opacity matching the cue fade —
+      // 160ms in, 120ms out (exits faster, per the animation guidelines);
+      // spring tokens are framer-motion configs and don't apply here.
       className={cn(
         "z-20 flex touch-none select-none p-px",
-        "transition-opacity duration-160 ease-out",
+        "transition-opacity duration-120 ease-out data-[state=visible]:duration-160",
         "data-[state=visible]:opacity-100 data-[state=hidden]:opacity-0",
         "hover:bg-hover",
         orientation === "vertical" && "h-full w-2.5 border-l border-l-transparent",

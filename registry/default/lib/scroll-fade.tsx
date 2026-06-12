@@ -87,11 +87,22 @@ export function useScrollEdges(
     const ro = new ResizeObserver(update);
     ro.observe(el);
     // Async content (items loading in, streamed text) changes scrollHeight
-    // without resizing the container itself.
-    const mo = new MutationObserver(update);
+    // without resizing the container itself. Coalesce to one update per
+    // frame: update() reads layout, and doing that synchronously after
+    // every mutation forces a reflow per insertion in streaming content.
+    let moRaf = 0;
+    const scheduleUpdate = () => {
+      if (moRaf) return;
+      moRaf = requestAnimationFrame(() => {
+        moRaf = 0;
+        update();
+      });
+    };
+    const mo = new MutationObserver(scheduleUpdate);
     mo.observe(el, { childList: true, subtree: true, characterData: true });
     return () => {
       cancelAnimationFrame(raf);
+      if (moRaf) cancelAnimationFrame(moRaf);
       el.removeEventListener("scroll", update);
       ro.disconnect();
       mo.disconnect();
@@ -150,7 +161,10 @@ export function ScrollEdgeCue({
   chevron = true,
 }: ScrollEdgeCueProps) {
   const contextLevel = useSurface();
-  const surface = `var(--surface-${surfaceLevel ?? contextLevel})`;
+  // Clamp to the ladder (1–8), mirroring SurfaceProvider — an out-of-range
+  // override would interpolate an invalid var and silently kill the gradient.
+  const level = Math.max(1, Math.min(8, surfaceLevel ?? contextLevel));
+  const surface = `var(--surface-${level})`;
   const vertical = edge === "top" || edge === "bottom";
   const sizePx = CUE_SIZES[size];
   // Gradient direction where 100% == the hard outer edge.

@@ -167,12 +167,14 @@ const ScrollBar = forwardRef<
       orientation={orientation}
       data-slot="scroll-area-scrollbar"
       // Base UI keeps the scrollbar mounted while scrollable; visibility is
-      // a plain opacity transition off its hover/scroll state attributes
-      // (160ms, matching the cue fade — spring tokens are framer-motion
-      // configs and don't apply here).
+      // a plain opacity transition off its hover/scroll state attributes,
+      // matching the cue fade — 160ms in, 120ms out (exits faster, per the
+      // animation guidelines); spring tokens are framer-motion configs and
+      // don't apply here.
       className={cn(
         "absolute z-20 flex touch-none select-none p-px",
-        "opacity-0 transition-opacity duration-160 ease-out",
+        "opacity-0 transition-opacity duration-120 ease-out",
+        "data-[hovering]:duration-160 data-[scrolling]:duration-160",
         "data-[hovering]:opacity-100 data-[scrolling]:opacity-100",
         "hover:bg-hover",
         orientation === "vertical" &&
