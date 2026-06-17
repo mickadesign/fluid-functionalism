@@ -202,6 +202,55 @@ import HiPencil from "@hugeicons/core-free-icons/PencilEdit01Icon";
 import HiSkipForward from "@hugeicons/core-free-icons/NextIcon";
 import HiCornerDownRight from "@hugeicons/core-free-icons/ArrowMoveDownRightIcon";
 
+// ── Untitled UI ─────────────────────────────────────────────
+// Aliased with a Uui prefix to avoid collisions with the Lucide imports above.
+import {
+  ChevronRight as UuiChevronRight,
+  ChevronDown as UuiChevronDown,
+  Dropper as UuiDropper,
+  XClose as UuiX,
+  Copy01 as UuiCopy,
+  Menu01 as UuiMenu,
+  Monitor01 as UuiMonitor,
+  Sun as UuiSun,
+  Moon01 as UuiMoon,
+  Square as UuiSquare,
+  Circle as UuiCircle,
+  BookClosed as UuiBook,
+  Clock as UuiClock,
+  Star01 as UuiStar,
+  Settings01 as UuiSettings,
+  Plus as UuiPlus,
+  ArrowLeft as UuiArrowLeft,
+  ArrowRight as UuiArrowRight,
+  ArrowUp as UuiArrowUp,
+  SearchMd as UuiSearch,
+  Loading01 as UuiLoader,
+  Users01 as UuiUsers,
+  Lock01 as UuiLock,
+  Mail01 as UuiMail,
+  Bell01 as UuiBell,
+  Shield01 as UuiShield,
+  Palette as UuiPalette,
+  Lightbulb01 as UuiLightbulb,
+  Rocket01 as UuiRocket,
+  Heart as UuiHeart,
+  Brush01 as UuiBrush,
+  CpuChip01 as UuiCpuChip,
+  Globe01 as UuiGlobe,
+  User01 as UuiUser,
+  Image01 as UuiImage,
+  Link01 as UuiLink,
+  Check as UuiCheck,
+  RefreshCcw01 as UuiRotateCcw,
+  Home01 as UuiHome,
+  MessageCircle01 as UuiMessage,
+  Inbox01 as UuiInbox,
+  Pencil01 as UuiPencil,
+  SkipForward as UuiSkipForward,
+  CornerDownRight as UuiCornerDownRight,
+} from "@untitledui/icons";
+
 // ── Types ───────────────────────────────────────────────────
 
 export interface IconComponentProps {
@@ -212,7 +261,7 @@ export interface IconComponentProps {
 
 export type IconComponent = ComponentType<IconComponentProps>;
 
-export type IconLibrary = "lucide" | "tabler" | "phosphor" | "hugeicons";
+export type IconLibrary = "lucide" | "tabler" | "phosphor" | "hugeicons" | "untitledui";
 
 export type IconName =
   | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
@@ -227,13 +276,14 @@ export type IconName =
   | "home" | "message-circle" | "inbox"
   | "pencil" | "skip-forward" | "corner-down-right";
 
-export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons"];
+export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons", "untitledui"];
 
 export const iconLibraryLabels: Record<IconLibrary, string> = {
   lucide: "Lucide",
   tabler: "Tabler",
   phosphor: "Phosphor",
   hugeicons: "HugeIcons",
+  untitledui: "Untitled UI",
 };
 
 // ── Adapter Factories ───────────────────────────────────────
@@ -267,6 +317,14 @@ function hugeicons(iconDef: unknown): IconComponent {
         className={className}
       />
     );
+  };
+}
+
+// Untitled UI: standard 24px SVG components — `strokeWidth`/`className` pass
+// through natively; only `size` needs mapping to `width`/`height`.
+function untitledui(Icon: ComponentType<{ width?: number; height?: number; strokeWidth?: number; className?: string }>): IconComponent {
+  return function UntitledUiAdapter({ size, strokeWidth, className }: IconComponentProps) {
+    return <Icon width={size} height={size} strokeWidth={strokeWidth} className={className} />;
   };
 }
 
@@ -472,6 +530,60 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "corner-down-right": hugeicons(HiCornerDownRight),
 };
 
+const untitleduiMap: Record<IconName, IconComponent> = {
+  "chevron-right": untitledui(UuiChevronRight),
+  "chevron-down": untitledui(UuiChevronDown),
+  "pipette": untitledui(UuiDropper),
+  "x": untitledui(UuiX),
+  "copy": untitledui(UuiCopy),
+  "menu": untitledui(UuiMenu),
+  // No bare dot in the set — reuse Circle (matches HugeIcons' dot handling).
+  "dot": untitledui(UuiCircle),
+  "monitor": untitledui(UuiMonitor),
+  "sun": untitledui(UuiSun),
+  "moon": untitledui(UuiMoon),
+  "rectangle-horizontal": untitledui(UuiSquare),
+  "circle": untitledui(UuiCircle),
+  "square-library": untitledui(UuiBook),
+  "clock": untitledui(UuiClock),
+  "star": untitledui(UuiStar),
+  "settings": untitledui(UuiSettings),
+  "plus": untitledui(UuiPlus),
+  "arrow-left": untitledui(UuiArrowLeft),
+  "arrow-right": untitledui(UuiArrowRight),
+  "arrow-up": untitledui(UuiArrowUp),
+  "search": untitledui(UuiSearch),
+  "loader": untitledui(UuiLoader),
+  "users": untitledui(UuiUsers),
+  "lock": untitledui(UuiLock),
+  "mail": untitledui(UuiMail),
+  "bell": untitledui(UuiBell),
+  "shield": untitledui(UuiShield),
+  "palette": untitledui(UuiPalette),
+  "lightbulb": untitledui(UuiLightbulb),
+  "rocket": untitledui(UuiRocket),
+  "heart": untitledui(UuiHeart),
+  "paintbrush": untitledui(UuiBrush),
+  // No brain icon in the free set — CpuChip01 carries the "intelligence" metaphor.
+  "brain": untitledui(UuiCpuChip),
+  "globe": untitledui(UuiGlobe),
+  "user": untitledui(UuiUser),
+  "image": untitledui(UuiImage),
+  "link": untitledui(UuiLink),
+  "check": untitledui(UuiCheck),
+  "rotate-ccw": untitledui(UuiRotateCcw),
+  // Only enclosed Pause variants exist; fall back to Lucide for a bare pair
+  // (matches HugeIcons' play/pause handling).
+  "play": Play,
+  "pause": Pause,
+  "home": untitledui(UuiHome),
+  "message-circle": untitledui(UuiMessage),
+  "inbox": untitledui(UuiInbox),
+  "pencil": untitledui(UuiPencil),
+  "skip-forward": untitledui(UuiSkipForward),
+  "corner-down-right": untitledui(UuiCornerDownRight),
+};
+
 // ── Unified Map ─────────────────────────────────────────────
 
 export const iconMap: Record<IconLibrary, Record<IconName, IconComponent>> = {
@@ -479,4 +591,5 @@ export const iconMap: Record<IconLibrary, Record<IconName, IconComponent>> = {
   tabler: tablerMap,
   phosphor: phosphorMap,
   hugeicons: hugeiconsMap,
+  untitledui: untitleduiMap,
 };

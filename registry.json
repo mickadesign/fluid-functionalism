@@ -206,13 +206,14 @@
       "name": "icon-map",
       "type": "registry:lib",
       "title": "Icon Map",
-      "description": "Canonical icon name mapping across Lucide, Tabler, Phosphor, and HugeIcons.",
+      "description": "Canonical icon name mapping across Lucide, Tabler, Phosphor, HugeIcons, and Untitled UI.",
       "dependencies": [
         "lucide-react",
         "@tabler/icons-react",
         "@phosphor-icons/react",
         "@hugeicons/react",
-        "@hugeicons/core-free-icons"
+        "@hugeicons/core-free-icons",
+        "@untitledui/icons"
       ],
       "files": [
         {
