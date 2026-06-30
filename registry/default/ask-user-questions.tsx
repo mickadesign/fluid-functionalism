@@ -755,17 +755,22 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
               <div
                 onClick={() => otherInputRef.current?.focus()}
                 className={cn(
-                  "relative mt-1 min-h-[76px] px-3 py-2.5 cursor-text transition-colors",
+                  // -mx-3 + px-3 mirrors the option rows / "Something else"
+                  // field: the box bleeds 12px each side (so its fill spans the
+                  // same width as the hover/selected backgrounds) while the
+                  // text starts at the content edge, aligned with the option
+                  // titles and the question heading.
+                  "relative mt-1 -mx-3 min-h-[76px] px-3 py-2.5 cursor-text transition-colors",
                   shape.bg,
                   // Mirror the "Something else" field instead of a blue focus
-                  // ring. Empty: a quiet bordered field that lightens with
-                  // bg-hover on hover and shows the bg-card hint on focus.
-                  // Once it has text it fills with the same bg-active overlay
-                  // the selected option rows use (focus-within comes after
-                  // hover in the cascade, so focusing wins over hovering).
+                  // ring. Empty + at rest: no border, fully quiet. Hover
+                  // lightens with bg-hover; focus shows the bg-card + border
+                  // hint. Once it has text it fills with the same bg-active
+                  // overlay the selected option rows use (focus-within comes
+                  // after hover in the cascade, so focusing wins over hovering).
                   otherText.length > 0
                     ? "bg-active"
-                    : "ring-1 ring-inset ring-border hover:bg-hover focus-within:bg-card"
+                    : "hover:bg-hover focus-within:bg-card focus-within:ring-1 focus-within:ring-inset focus-within:ring-border"
                 )}
               >
                 <textarea
