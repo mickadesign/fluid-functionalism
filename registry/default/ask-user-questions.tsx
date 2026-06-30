@@ -61,6 +61,17 @@ export interface AskUserQuestion {
   freeText?: boolean;
   /** Placeholder for the `freeText` textarea. */
   freeTextPlaceholder?: string;
+  /** Whether the `freeText` field starts at multi-line height. Defaults to
+   *  `true` — a taller field that invites a few sentences. Set `false` for a
+   *  single-line field (one row tall) where a short answer is expected;
+   *  plain Enter then submits instead of inserting a newline. Either way the
+   *  textarea still grows to fit longer content as it wraps. */
+  freeTextMultiline?: boolean;
+  /** Validate the `freeText` value when the user tries to submit (button or
+   *  ⌘/⌃+Enter). Return an error message to block submission and surface it in
+   *  the footer; return null/undefined to allow it. The error clears as soon
+   *  as the user edits the field. */
+  freeTextValidate?: (value: string) => string | null | undefined;
 }
 
 export interface AskUserAnswer {
@@ -203,6 +214,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     const isMulti = !!question?.multiSelect;
     const isSkippable = question?.skippable !== false;
     const isFreeText = !!question?.freeText;
+    // Multi-line is the default; single-line is opt-out via freeTextMultiline.
+    const isFreeTextMultiline = question?.freeTextMultiline !== false;
     // freeText owns the whole answer area, so the inline Other row is
     // suppressed even if a caller sets both.
     const allowOther = !isFreeText && !!question?.allowOther;
@@ -309,11 +322,14 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     }, []);
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+    // Validation message for the current freeText question (null = valid).
+    const [freeTextError, setFreeTextError] = useState<string | null>(null);
 
     // Reset transient state when question changes
     useEffect(() => {
       setActiveIndex(null);
       setFocusedIndex(null);
+      setFreeTextError(null);
     }, [safeIndex, setActiveIndex]);
 
     // ── Keyboard focus restoration across question changes ───────
@@ -393,6 +409,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     const handleOtherChange = useCallback(
       (text: string) => {
         if (!question) return;
+        // Editing clears a standing validation error — the user is fixing it.
+        setFreeTextError(null);
         writeAnswers((prev) => ({
           ...prev,
           [qId]: {
@@ -410,6 +428,16 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       if (!question) return;
       const text = (answers[qId]?.otherText ?? "").trim();
       if (!text) return;
+      // freeText questions may validate on submit; a returned message blocks
+      // navigation and surfaces in the footer.
+      if (question.freeText && question.freeTextValidate) {
+        const message = question.freeTextValidate(text);
+        if (message) {
+          setFreeTextError(message);
+          return;
+        }
+      }
+      setFreeTextError(null);
       const snapshot = writeAnswers((prev) => ({
         ...prev,
         [qId]: {
@@ -760,7 +788,11 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   // same width as the hover/selected backgrounds) while the
                   // text starts at the content edge, aligned with the option
                   // titles and the question heading.
-                  "relative mt-1 -mx-3 min-h-[76px] px-3 py-2.5 cursor-text transition-colors",
+                  "relative mt-1 -mx-3 px-3 py-2.5 cursor-text transition-colors",
+                  // Resting height: a few lines for multi-line, one row for
+                  // single-line. The textarea still auto-resizes above this
+                  // floor as content wraps.
+                  isFreeTextMultiline ? "min-h-[76px]" : "min-h-10",
                   shape.bg,
                   // Mirror the "Something else" field instead of a blue focus
                   // ring. Empty + at rest: no border, fully quiet. Hover
@@ -782,8 +814,17 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   }
                   aria-labelledby={`${reactId}-${qId}-title`}
                   onChange={(e) => handleOtherChange(e.target.value)}
-                  // Plain Enter inserts a newline — the root handler catches
-                  // ⌘/⌃+Enter for submit, mirroring multi-select.
+                  onKeyDown={(e) => {
+                    // Multi-line: plain Enter is a newline; ⌘/⌃+Enter submits
+                    // (caught by the root handler). Single-line: plain Enter
+                    // submits like an input, so a newline is never inserted.
+                    if (e.key !== "Enter") return;
+                    if (e.shiftKey || e.metaKey || e.ctrlKey) return;
+                    if (!isFreeTextMultiline) {
+                      e.preventDefault();
+                      handleOtherSubmit();
+                    }
+                  }}
                   className="block w-full bg-transparent border-0 p-0 m-0 outline-none resize-none overflow-hidden text-[13px] leading-snug text-foreground placeholder:text-muted-foreground"
                   style={{ fontVariationSettings: fontWeights.medium }}
                 />
@@ -1158,7 +1199,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   (not sequentially). The group is `relative` so the popped
                   (absolutely positioned) button stays put instead of flying to
                   the page origin. */}
-              <div className="relative flex items-center gap-2">
+              {/* Left cluster: Back, then any validation error. flex-1 so the
+                  error fills the row up to the right-hand buttons; min-w-0 lets
+                  a long message wrap instead of overflowing. */}
+              <div className="relative flex flex-1 min-w-0 items-center gap-2">
                 <AnimatePresence mode="popLayout" initial={false}>
                   {showBack && (
                     <motion.div
@@ -1188,6 +1232,26 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                     </motion.div>
                   )}
                 </AnimatePresence>
+                {/* Validation error — left-aligned at the content edge (the
+                    px-2/sm:px-3 cancels the row's -mx), or just after Back when
+                    present. Conditionally rendered (no exit animation) so
+                    clearing it on edit removes the node immediately instead of
+                    leaving an invisible spacer. */}
+                {freeTextError && (
+                  <motion.p
+                    key="ft-error"
+                    role="alert"
+                    initial={{ opacity: 0, y: -2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      ...spring.fast,
+                      opacity: { duration: 0.12 },
+                    }}
+                    className="min-w-0 px-2 sm:px-3 text-left text-[12px] leading-snug text-destructive"
+                  >
+                    {freeTextError}
+                  </motion.p>
+                )}
               </div>
               <div className="relative flex items-center gap-2">
                 <AnimatePresence mode="popLayout" initial={false}>

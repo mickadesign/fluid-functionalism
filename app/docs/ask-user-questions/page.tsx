@@ -70,6 +70,13 @@ const questions = [
     ],
   },
   {
+    id: "name",
+    title: "What should we call your workspace?",
+    freeText: true,
+    freeTextMultiline: false, // single-line; Enter submits
+    freeTextPlaceholder: "e.g. Acme Design",
+  },
+  {
     id: "shape",
     title: "Which shape language fits your brand?",
     options: [
@@ -640,6 +647,7 @@ const freeTextCode = `const questions = [
     id: "name",
     title: "What should we call your workspace?",
     freeText: true,
+    freeTextMultiline: false, // single-line; Enter submits
     freeTextPlaceholder: "e.g. Acme Design",
   },
   {
@@ -654,6 +662,24 @@ const freeTextCode = `const questions = [
     freeText: true,
     skippable: false,
     nextLabel: "Finish",
+  },
+];
+
+<AskUserQuestions questions={questions} />`;
+
+// freeTextValidate runs on submit; a returned message blocks navigation and
+// shows in the footer, left-aligned. It clears as soon as the user edits.
+const validateCode = `const questions = [
+  {
+    id: "email",
+    title: "Your work email?",
+    freeText: true,
+    freeTextMultiline: false,
+    freeTextPlaceholder: "you@company.com",
+    freeTextValidate: (value) =>
+      /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(value)
+        ? null
+        : "Please enter a valid email so we can reach out.",
   },
 ];
 
@@ -699,6 +725,8 @@ const questionProps: PropDef[] = [
   { name: "chipPosition", type: '"left" | "right"', default: '"right"', description: "Which side of the row the numbered chip sits on. With 'left', the single-select submit arrow still appears on the row's right edge. Works with single/multi-select, allowOther, and inline/stacked layouts." },
   { name: "freeText", type: "boolean", default: "false", description: "Render a single multi-line textarea as the only answer — no option rows. The field auto-focuses; ⌘/⌃+Enter or the bottom submit button commits, and the answer is returned in otherText. Distinct from allowOther (which appends a free-text row alongside options); options is ignored when set." },
   { name: "freeTextPlaceholder", type: "string", default: '"Type your answer…"', description: "Placeholder for the freeText textarea." },
+  { name: "freeTextMultiline", type: "boolean", default: "true", description: "Whether the freeText field starts at multi-line height. Set false for a single-line field (one row tall) where plain Enter submits instead of inserting a newline. The textarea still grows to fit longer content either way." },
+  { name: "freeTextValidate", type: "(value: string) => string | null", description: "Validate the freeText value on submit (button or ⌘/⌃+Enter). Return an error message to block submission and show it in the footer (left-aligned); return null to allow. The error clears as the user edits." },
 ];
 
 const optionProps: PropDef[] = [
@@ -726,6 +754,13 @@ const exampleQuestions: AskUserQuestion[] = [
       { id: "pm", title: "PM", description: "Aligning the team on patterns" },
       { id: "founder", title: "Founder", description: "Bootstrapping a product" },
     ],
+  },
+  {
+    id: "name",
+    title: "What should we call your workspace?",
+    freeText: true,
+    freeTextMultiline: false,
+    freeTextPlaceholder: "e.g. Acme Design",
   },
   {
     id: "shape",
@@ -1239,6 +1274,7 @@ const freeTextQuestions: AskUserQuestion[] = [
     id: "name",
     title: "What should we call your workspace?",
     freeText: true,
+    freeTextMultiline: false,
     freeTextPlaceholder: "e.g. Acme Design",
   },
   {
@@ -1253,6 +1289,20 @@ const freeTextQuestions: AskUserQuestion[] = [
     freeText: true,
     skippable: false,
     nextLabel: "Finish",
+  },
+];
+
+const validateQuestions: AskUserQuestion[] = [
+  {
+    id: "email",
+    title: "Your work email?",
+    freeText: true,
+    freeTextMultiline: false,
+    freeTextPlaceholder: "you@company.com",
+    freeTextValidate: (value) =>
+      /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)
+        ? null
+        : "Please enter a valid email so we can reach out.",
   },
 ];
 
@@ -1344,6 +1394,16 @@ export default function AskUserQuestionsDoc() {
           minHeightClass="min-h-[560px]"
         >
           {(k) => <AskUserQuestions key={k} questions={freeTextQuestions} />}
+        </ReplayableExample>
+      </DocSection>
+
+      <DocSection title="Free text validation">
+        <ReplayableExample
+          code={validateCode}
+          align="bottom"
+          minHeightClass="min-h-[560px]"
+        >
+          {(k) => <AskUserQuestions key={k} questions={validateQuestions} />}
         </ReplayableExample>
       </DocSection>
 
