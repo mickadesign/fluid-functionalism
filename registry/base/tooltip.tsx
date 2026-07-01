@@ -34,6 +34,48 @@ function TooltipPortalContainer({
 }
 
 // ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
+const DEFAULT_DELAY = 200;
+
+// Tracks whether an app-level <TooltipProvider> is above us. Each Tooltip
+// only wraps itself in a local primitive Provider when there isn't one —
+// a per-instance Provider would defeat cross-tooltip skip-delay grouping
+// (moving between adjacent tooltips would re-wait the full delay).
+const TooltipGroupContext = createContext(false);
+
+interface TooltipProviderProps {
+  children: ReactNode;
+  /** Hover delay before tooltips open, in ms. Defaults to 200. */
+  delayDuration?: number;
+  /** After a tooltip closes, adjacent tooltips opened within this window
+   *  skip the hover delay, in ms. Defaults to 300. */
+  skipDelayDuration?: number;
+}
+
+/** Groups descendant Tooltips so that once one opens, moving to an adjacent
+ *  trigger shows its tooltip instantly instead of re-waiting the full delay.
+ *  Wrap once at the app (or section) level; bare Tooltips still work without
+ *  it via a per-instance fallback. */
+function TooltipProvider({
+  children,
+  delayDuration = DEFAULT_DELAY,
+  skipDelayDuration = 300,
+}: TooltipProviderProps) {
+  return (
+    <TooltipGroupContext.Provider value={true}>
+      <TooltipPrimitive.Provider
+        delay={delayDuration}
+        timeout={skipDelayDuration}
+      >
+        {children}
+      </TooltipPrimitive.Provider>
+    </TooltipGroupContext.Provider>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -44,6 +86,8 @@ interface TooltipProps {
   children: React.ReactElement;
   side?: TooltipSide;
   sideOffset?: number;
+  /** Hover delay before this tooltip opens, in ms. Defaults to 200, or to the
+   *  ambient TooltipProvider's delayDuration when one is present. */
   delayDuration?: number;
   className?: string;
   /** When true, forces the tooltip open. When false, forces it closed. When undefined, uses default hover/focus behavior. */
@@ -78,7 +122,7 @@ function Tooltip({
   children,
   side = "top",
   sideOffset = 8,
-  delayDuration = 200,
+  delayDuration,
   className,
   forceOpen,
   onOpenChange: onOpenChangeProp,
@@ -87,71 +131,83 @@ function Tooltip({
   const open = forceOpen !== undefined ? forceOpen : internalOpen;
   const shape = useShape();
   const portalContainer = useContext(TooltipPortalContainerContext);
+  const hasAmbientProvider = useContext(TooltipGroupContext);
 
   const slideOffset = getSlideOffset(side);
 
-  return (
-    <TooltipPrimitive.Provider delay={delayDuration}>
-      <TooltipPrimitive.Root
-        open={open}
-        onOpenChange={(v) => {
-          setInternalOpen(v);
-          onOpenChangeProp?.(v);
-        }}
-      >
-        <TooltipPrimitive.Trigger render={children} />
-        <TooltipPrimitive.Portal container={portalContainer ?? undefined}>
-          <TooltipPrimitive.Positioner
-            side={side}
-            sideOffset={sideOffset}
-            className="z-50"
+  const tooltip = (
+    <TooltipPrimitive.Root
+      open={open}
+      onOpenChange={(v) => {
+        setInternalOpen(v);
+        onOpenChangeProp?.(v);
+      }}
+    >
+      {/* An explicit delayDuration overrides the ambient provider's delay;
+          left undefined, the trigger inherits it from the provider. */}
+      <TooltipPrimitive.Trigger render={children} delay={delayDuration} />
+      <TooltipPrimitive.Portal container={portalContainer ?? undefined}>
+        <TooltipPrimitive.Positioner
+          side={side}
+          sideOffset={sideOffset}
+          className="z-50"
+        >
+          <TooltipPrimitive.Popup
+            render={(props, state) => {
+              const exiting = state.transitionStatus === "ending";
+              const {
+                style: baseStyle,
+                // motion.div has incompatible drag/animation event signatures —
+                // strip the React-DOM versions so they don't fight motion's own.
+                onDrag: _onDrag,
+                onDragStart: _onDragStart,
+                onDragEnd: _onDragEnd,
+                onAnimationStart: _onAnimationStart,
+                onAnimationEnd: _onAnimationEnd,
+                onAnimationIteration: _onAnimationIteration,
+                ...rest
+              } = props as React.HTMLAttributes<HTMLDivElement>;
+              return (
+                <motion.div
+                  {...rest}
+                  className={cn(
+                    "bg-foreground text-background text-[12px] px-2 py-1",
+                    shape.bg,
+                    className
+                  )}
+                  style={{
+                    ...(baseStyle as React.CSSProperties | undefined),
+                    fontVariationSettings: fontWeights.medium,
+                  }}
+                  initial={{ opacity: 0, ...slideOffset }}
+                  animate={
+                    exiting
+                      ? { opacity: 0, ...slideOffset }
+                      : { opacity: 1, x: 0, y: 0 }
+                  }
+                  transition={exiting ? spring.fast.exit : spring.fast}
+                />
+              );
+            }}
           >
-            <TooltipPrimitive.Popup
-              render={(props, state) => {
-                const exiting = state.transitionStatus === "ending";
-                const {
-                  style: baseStyle,
-                  // motion.div has incompatible drag/animation event signatures —
-                  // strip the React-DOM versions so they don't fight motion's own.
-                  onDrag: _onDrag,
-                  onDragStart: _onDragStart,
-                  onDragEnd: _onDragEnd,
-                  onAnimationStart: _onAnimationStart,
-                  onAnimationEnd: _onAnimationEnd,
-                  onAnimationIteration: _onAnimationIteration,
-                  ...rest
-                } = props as React.HTMLAttributes<HTMLDivElement>;
-                return (
-                  <motion.div
-                    {...rest}
-                    className={cn(
-                      "bg-foreground text-background text-[12px] px-2 py-1",
-                      shape.bg,
-                      className
-                    )}
-                    style={{
-                      ...(baseStyle as React.CSSProperties | undefined),
-                      fontVariationSettings: fontWeights.medium,
-                    }}
-                    initial={{ opacity: 0, ...slideOffset }}
-                    animate={
-                      exiting
-                        ? { opacity: 0, ...slideOffset }
-                        : { opacity: 1, x: 0, y: 0 }
-                    }
-                    transition={exiting ? { duration: 0.1 } : spring.fast}
-                  />
-                );
-              }}
-            >
-              {content}
-            </TooltipPrimitive.Popup>
-          </TooltipPrimitive.Positioner>
-        </TooltipPrimitive.Portal>
-      </TooltipPrimitive.Root>
+            {content}
+          </TooltipPrimitive.Popup>
+        </TooltipPrimitive.Positioner>
+      </TooltipPrimitive.Portal>
+    </TooltipPrimitive.Root>
+  );
+
+  // Fallback: without an ambient TooltipProvider, give this instance its own
+  // so a bare <Tooltip> keeps the library's default delay. Grouped skip-delay
+  // needs the shared app-level TooltipProvider.
+  if (hasAmbientProvider) return tooltip;
+
+  return (
+    <TooltipPrimitive.Provider delay={delayDuration ?? DEFAULT_DELAY}>
+      {tooltip}
     </TooltipPrimitive.Provider>
   );
 }
 
-export { Tooltip, TooltipPortalContainer };
-export type { TooltipProps, TooltipSide };
+export { Tooltip, TooltipPortalContainer, TooltipProvider };
+export type { TooltipProps, TooltipProviderProps, TooltipSide };

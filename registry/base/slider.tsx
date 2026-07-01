@@ -467,18 +467,23 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     }, [isRange, motionX0, motionX1]);
 
     // --- Sync motion values on value change (keyboard, programmatic) ---
+    // Depend on a primitive key rather than the `values` array — its identity
+    // changes every render (toRadixValue allocates), which would restart the
+    // animation on unrelated re-renders (hover/tooltip state churn).
+    const valuesKey = values.join(",");
     useEffect(() => {
       if (!initialSyncDone.current) return;
       if (dragging.current) return;
       const tw = trackWidthRef.current;
       if (tw <= 0) return;
-      const px0 = valueToPixel(values[0], min, max, tw);
+      const v = valuesRef.current;
+      const px0 = valueToPixel(v[0], min, max, tw);
       animate(motionX0, px0, spring.moderate);
-      if (isRange && values[1] !== undefined) {
-        const px1 = valueToPixel(values[1], min, max, tw);
+      if (isRange && v[1] !== undefined) {
+        const px1 = valueToPixel(v[1], min, max, tw);
         animate(motionX1, px1, spring.moderate);
       }
-    }, [values, min, max, isRange, motionX0, motionX1]);
+    }, [valuesKey, min, max, isRange, motionX0, motionX1]);
 
     // --- Range crossing prevention ---
     const clampForRange = useCallback(
@@ -688,6 +693,15 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // --- Interaction state for tooltip ---
     const isInteracting = isHovered || isPressed;
 
+    // --- Per-thumb accessible names ---
+    // aria-label on Root lands on a role-less div and never reaches the
+    // thumb's input, so each Thumb gets its own label.
+    const thumbAriaLabel = (index: number): string | undefined => {
+      if (!isRange) return label;
+      if (!label) return index === 0 ? "Minimum" : "Maximum";
+      return index === 0 ? `${label} minimum` : `${label} maximum`;
+    };
+
     // --- Value display component ---
     const valueDisplay = showValue && valuePosition !== "tooltip" && (
       <ValueDisplay
@@ -830,7 +844,6 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             max={max}
             step={step}
             disabled={disabled}
-            aria-label={label}
             className="absolute inset-0 opacity-0 pointer-events-none"
             style={{ height: THUMB_SIZE }}
           >
@@ -839,6 +852,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                 <SliderPrimitive.Indicator />
               </SliderPrimitive.Track>
               <SliderPrimitive.Thumb
+                index={0}
+                aria-label={thumbAriaLabel(0)}
                 className="block outline-none"
                 style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
                 onFocus={(e) => { if ((e.currentTarget as HTMLElement).matches(":focus-visible")) setFocusedThumb(0); }}
@@ -846,6 +861,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               />
               {isRange && (
                 <SliderPrimitive.Thumb
+                  index={1}
+                  aria-label={thumbAriaLabel(1)}
                   className="block outline-none"
                   style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
                   onFocus={(e) => { if ((e.currentTarget as HTMLElement).matches(":focus-visible")) setFocusedThumb(1); }}
@@ -863,6 +880,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
           >
             {/* Extended hit area — 8px beyond each edge */}
             <div
@@ -871,6 +889,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
             />
             {/* Hover value tooltip */}
             <AnimatePresence>
@@ -1301,6 +1320,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         />
         {/* Hover value tooltip — outside overflow-hidden container */}
         <AnimatePresence>
@@ -1346,6 +1366,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         {...props}
       >
         {/* Invisible Base UI Slider for keyboard nav + a11y */}
@@ -1363,6 +1384,8 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
               <SliderPrimitive.Indicator />
             </SliderPrimitive.Track>
             <SliderPrimitive.Thumb
+              index={0}
+              aria-label={label}
               className="block outline-none"
               onFocus={(e) => {
                 if ((e.currentTarget as HTMLElement).matches(":focus-visible")) setIsFocused(true);
@@ -1561,6 +1584,7 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
             onPointerDown={handleResizePointerDown}
             onPointerMove={handleResizePointerMove}
             onPointerUp={handleResizePointerUp}
+            onPointerCancel={handleResizePointerUp}
           />
         )}
       </motion.div>

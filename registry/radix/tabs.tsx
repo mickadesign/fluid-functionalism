@@ -97,10 +97,14 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       });
     }, []);
 
-    // Resolve value: explicit value > selectedIndex lookup > defaultValue
+    // Resolve value: explicit value > selectedIndex lookup > uncontrolled state.
+    // Uncontrolled with no defaultValue falls back to the first tab so the
+    // FF layer's selectedValue matches what the primitive shows.
     const resolvedValue =
       value ??
-      (selectedIndex != null ? valueOrder[selectedIndex] : uncontrolledValue);
+      (selectedIndex != null
+        ? valueOrder[selectedIndex]
+        : uncontrolledValue ?? valueOrder[0]);
 
     const handleValueChange = useCallback(
       (newValue: string) => {
@@ -113,7 +117,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
           if (idx !== -1) onSelect(idx);
         }
       },
-      [onValueChange, onSelect, valueOrder]
+      [onValueChange, onSelect, valueOrder, value, selectedIndex]
     );
 
     return (
@@ -124,11 +128,18 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
           selectedValue: resolvedValue,
         }}
       >
+        {/*
+          Always controlled: feeding the primitive an undefined-then-defined
+          value flips it from uncontrolled to controlled, which Radix warns
+          about in dev. valueOrder is empty on the first commit, so fall back
+          to an empty-string sentinel — TabsList's layout effect populates
+          valueOrder pre-paint, so the corrected value lands before anything
+          is visible.
+        */}
         <TabsPrimitive.Root
           ref={ref}
-          value={resolvedValue}
+          value={resolvedValue ?? ""}
           onValueChange={handleValueChange}
-          defaultValue={resolvedValue == null ? defaultValue : undefined}
           activationMode="automatic"
           {...props}
         >
@@ -235,9 +246,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const isHoveringSelected = hoveredIndex === activeSelectedIdx;
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
-    // Auto-assign _index to children
+    // Auto-assign _index to children.
+    // Skip plain DOM elements — injecting _index into e.g. a <div>
+    // triggers React's unknown-prop warning.
     const indexedChildren = Children.map(children, (child, i) => {
-      if (isValidElement(child)) {
+      if (isValidElement(child) && typeof child.type !== "string") {
         return cloneElement(child, { _index: i } as Record<string, unknown>);
       }
       return child;

@@ -268,6 +268,20 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         aria-checked={checked}
         aria-label={label}
         onClick={onToggle}
+        onMouseDown={(e) => {
+          // Clicking the 15px checkbox square would natively focus the hidden
+          // primitive (nearest focusable ancestor of the click target), after
+          // which arrow-key nav dead-zones: the group keydown handler can't
+          // find the target among the row wrappers. Prevent the native focus
+          // move (click still fires) and land focus on the row instead. Skip
+          // genuinely interactive children so we don't hijack their focus.
+          const interactive = (e.target as HTMLElement).closest(
+            'button:not([tabindex="-1"]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (interactive && interactive !== e.currentTarget) return;
+          e.preventDefault();
+          e.currentTarget.focus();
+        }}
         onKeyDown={(e) => {
           if (e.key === " " || e.key === "Enter") {
             e.preventDefault();

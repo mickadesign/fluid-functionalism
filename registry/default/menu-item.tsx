@@ -18,13 +18,17 @@ interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   icon?: IconComponent;
   label: string;
   index: number;
+  /** When a boolean, the item is a radio-style option (role="menuitemradio"
+   *  with aria-checked). When undefined, it is a plain action item
+   *  (role="menuitem", no checked state announced). */
   checked?: boolean;
   onSelect?: () => void;
+  disabled?: boolean;
 }
 
 const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
   (
-    { icon: Icon, label, index, checked, onSelect, className, ...props },
+    { icon: Icon, label, index, checked, onSelect, disabled, className, ...props },
     ref
   ) => {
     const internalRef = useRef<HTMLDivElement>(null);
@@ -51,12 +55,15 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
-        tabIndex={index === (checkedIndex ?? 0) ? 0 : -1}
-        role="menuitemradio"
-        aria-checked={!!checked}
+        // Disabled items are never the roving tab stop.
+        tabIndex={!disabled && index === (checkedIndex ?? 0) ? 0 : -1}
+        role={typeof checked === "boolean" ? "menuitemradio" : "menuitem"}
+        aria-checked={typeof checked === "boolean" ? checked : undefined}
+        aria-disabled={disabled || undefined}
         aria-label={label}
-        onClick={onSelect}
+        onClick={disabled ? undefined : onSelect}
         onKeyDown={(e) => {
+          if (disabled) return;
           if (e.key === " " || e.key === "Enter") {
             e.preventDefault();
             onSelect?.();
@@ -64,6 +71,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         }}
         className={cn(
           `relative z-10 flex items-center gap-2 ${shape.item} px-2 py-2 cursor-pointer outline-none`,
+          disabled && "opacity-50 pointer-events-none",
           className
         )}
         {...props}

@@ -5,6 +5,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   createContext,
   useContext,
   forwardRef,
@@ -37,7 +38,6 @@ interface AccordionGroupContextValue {
   remeasure: () => void;
   openValues: Set<string>;
   openItemRects: Map<number, ItemRect>;
-  toggleValue: (value: string) => void;
 }
 
 const AccordionGroupContext =
@@ -51,7 +51,6 @@ interface AccordionItemContextValue {
   index?: number;
   value: string;
   isOpen: boolean;
-  onToggle: () => void;
   triggerRef: React.MutableRefObject<HTMLDivElement | null>;
 }
 
@@ -158,16 +157,25 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     });
     const singleOnValueChange = (props as AccordionGroupSingleProps).onValueChange;
     const multipleOnValueChange = (props as AccordionGroupMultipleProps).onValueChange;
-    const controlledMultipleValue = (props as AccordionGroupMultipleProps).value;
 
-    const openValues = new Set<string>(
+    const openValuesList: string[] =
       type === "multiple"
         ? (props as AccordionGroupMultipleProps).value ?? internalMultipleValue
         : (() => {
             const v =
               (props as AccordionGroupSingleProps).value ?? internalSingleValue;
             return v ? [v] : [];
-          })()
+          })();
+
+    // Keyed on the joined values so the Set (and the group context value
+    // below) keeps a stable identity across re-renders where the open values
+    // haven't actually changed.
+    const openValuesKey = openValuesList.join(",");
+
+    const openValues = useMemo(
+      () => new Set(openValuesList),
+      // Deliberately keyed on the joined string, not the (fresh) array.
+      [openValuesKey]
     );
 
     const handleSingleValueChange = useCallback(
@@ -188,32 +196,10 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       [multipleOnValueChange]
     );
 
-    const toggleValue = useCallback(
-      (val: string) => {
-        if (type === "multiple") {
-          const current =
-            (props as AccordionGroupMultipleProps).value ??
-            internalMultipleValue;
-          handleMultipleValueChange(current.filter((v) => v !== val));
-        } else {
-          handleSingleValueChange("");
-        }
-      },
-      [
-        type,
-        handleSingleValueChange,
-        handleMultipleValueChange,
-        internalMultipleValue,
-        controlledMultipleValue,
-      ]
-    );
-
     useEffect(() => {
       measureItems();
       measureFullItems();
     }, [measureItems, measureFullItems, children]);
-
-    const openValuesKey = [...openValues].join(",");
 
     useEffect(() => {
       measureItems();
@@ -255,22 +241,35 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       else handleSingleValueChange(next[0] ?? "");
     };
 
+    const remeasure = useCallback(() => {
+      measureItems();
+      measureFullItems();
+    }, [measureItems, measureFullItems]);
+
+    // Memoized: the group re-renders on every proximity-hover mousemove; a
+    // fresh context object each time would re-render every item with it.
+    const groupContextValue = useMemo<AccordionGroupContextValue>(
+      () => ({
+        registerItem,
+        registerFullItem,
+        activeIndex,
+        grouped: true,
+        remeasure,
+        openValues,
+        openItemRects,
+      }),
+      [
+        registerItem,
+        registerFullItem,
+        activeIndex,
+        remeasure,
+        openValues,
+        openItemRects,
+      ]
+    );
+
     return (
-      <AccordionGroupContext.Provider
-        value={{
-          registerItem,
-          registerFullItem,
-          activeIndex,
-          grouped: true,
-          remeasure: () => {
-            measureItems();
-            measureFullItems();
-          },
-          openValues,
-          openItemRects,
-          toggleValue,
-        }}
-      >
+      <AccordionGroupContext.Provider value={groupContextValue}>
         <AccordionPrimitive.Root
           value={baseValue}
           onValueChange={baseOnValueChange}
@@ -508,19 +507,6 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
       [onValueChange]
     );
 
-    const standaloneToggle = useCallback(
-      (val: string) => {
-        if (type === "multiple") {
-          const current =
-            (value as string[] | undefined) ?? internalMultipleValue;
-          handleMultipleChange(current.filter((v) => v !== val));
-        } else {
-          handleSingleChange("");
-        }
-      },
-      [type, value, internalMultipleValue, handleSingleChange, handleMultipleChange]
-    );
-
     const baseValue: string[] =
       type === "multiple"
         ? (value as string[] | undefined) ?? internalMultipleValue
@@ -552,9 +538,7 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
               {...props}
             >
               <StandaloneOpenContext.Provider value={openValues}>
-                <StandaloneToggleContext.Provider value={standaloneToggle}>
-                  {children}
-                </StandaloneToggleContext.Provider>
+                {children}
               </StandaloneOpenContext.Provider>
             </div>
           );
@@ -567,9 +551,6 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
 Accordion.displayName = "Accordion";
 
 const StandaloneOpenContext = createContext<Set<string>>(new Set());
-const StandaloneToggleContext = createContext<(value: string) => void>(
-  () => {}
-);
 
 // ─── AccordionItem ───────────────────────────────────────────────────────────
 
@@ -585,7 +566,6 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
     const internalRef = useRef<HTMLDivElement>(null);
     const groupCtx = useAccordionGroup();
     const standaloneOpen = useContext(StandaloneOpenContext);
-    const standaloneToggle = useContext(StandaloneToggleContext);
     const shape = useShape();
 
     const isOpen = groupCtx?.grouped
@@ -593,14 +573,6 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
       : standaloneOpen.has(value);
 
     const triggerRef = useRef<HTMLDivElement>(null);
-
-    const onToggle = useCallback(() => {
-      if (groupCtx?.grouped) {
-        groupCtx.toggleValue(value);
-      } else {
-        standaloneToggle(value);
-      }
-    }, [groupCtx, standaloneToggle, value]);
 
     useEffect(() => {
       if (groupCtx?.grouped && index !== undefined) {
@@ -621,7 +593,7 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
     }, [index, groupCtx, isOpen]);
 
     return (
-      <AccordionItemContext.Provider value={{ index, value, isOpen, onToggle, triggerRef }}>
+      <AccordionItemContext.Provider value={{ index, value, isOpen, triggerRef }}>
         <AccordionPrimitive.Item
           value={value}
           disabled={disabled}
@@ -791,39 +763,78 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
     const groupCtx = useAccordionGroup();
     const { isOpen } = useAccordionItemContext();
 
-    // We deliberately do NOT wrap with `<AccordionPrimitive.Panel>` here.
-    // The Panel applies `display: none` to its DOM node when its parent item
-    // is closed, which freezes framer-motion's height exit animation. Since
-    // the FF wrapper already drives `isOpen` from group state, we render the
-    // motion.div directly — matching the Radix flavour's `forceMount asChild`
-    // pattern in effective behaviour. Trigger + Header still provide ARIA.
+    // Whether the framer-motion height exit animation has fully finished.
+    // Base UI's Panel would apply `hidden` the moment a controlled item
+    // closes (useCollapsibleRoot sets `mounted = false` in a layout effect
+    // when no CSS transition/animation is detected on the panel element, and
+    // useCollapsiblePanel derives `hidden = !open && !mounted`) — which is
+    // `display: none` and would freeze the exit animation mid-flight. So we
+    // take over the `hidden` attribute below and only apply it once the exit
+    // has actually completed.
+    const [exitComplete, setExitComplete] = useState(true);
+    if (isOpen && exitComplete) {
+      // Reset during render so the panel is un-hidden before the opening
+      // animation's first paint.
+      setExitComplete(false);
+    }
+
+    // Render through `<AccordionPrimitive.Panel keepMounted>` so the panel
+    // element persists through the exit animation and the trigger ↔ panel
+    // ARIA contract stays intact: the panel carries `role="region"`,
+    // `aria-labelledby` and the id that the Trigger's `aria-controls` points
+    // to. The framer-motion mount/unmount + height animation is unchanged,
+    // one level down inside the persistent panel element.
     return (
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            ref={ref}
-            className={cn("overflow-hidden", className)}
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            // bounce: 0 — pure height looks better without overshoot. See
-            // comment in radix flavor.
-            transition={{ ...spring.moderate, bounce: 0 }}
-            onUpdate={() => {
-              groupCtx?.remeasure();
-            }}
-            onAnimationComplete={() => {
-              groupCtx?.remeasure();
-            }}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            {...(props as any)}
-          >
-            <div className="px-3 pb-3 pt-1 text-[13px] text-muted-foreground">
-              {children}
+      <AccordionPrimitive.Panel
+        keepMounted
+        render={(panelProps) => {
+          const {
+            // Applied too early for our exit animation (see above); we
+            // control the attribute ourselves.
+            hidden: _baseHidden,
+            // Only carries the --accordion-panel-height/width vars, which
+            // stay 'auto' since Base UI never measures JS-driven animations;
+            // dropped for parity with the Root/Item render props above.
+            style: _baseStyle,
+            ...restPanel
+          } = panelProps as React.HTMLAttributes<HTMLDivElement> & {
+            hidden?: boolean;
+          };
+          return (
+            <div {...restPanel} hidden={!isOpen && exitComplete}>
+              <AnimatePresence
+                initial={false}
+                onExitComplete={() => setExitComplete(true)}
+              >
+                {isOpen && (
+                  <motion.div
+                    ref={ref}
+                    className={cn("overflow-hidden", className)}
+                    initial={{ height: 0 }}
+                    animate={{ height: "auto" }}
+                    exit={{ height: 0 }}
+                    // bounce: 0 — pure height looks better without overshoot. See
+                    // comment in radix flavor.
+                    transition={{ ...spring.moderate, bounce: 0 }}
+                    onUpdate={() => {
+                      groupCtx?.remeasure();
+                    }}
+                    onAnimationComplete={() => {
+                      groupCtx?.remeasure();
+                    }}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    {...(props as any)}
+                  >
+                    <div className="px-3 pb-3 pt-1 text-[13px] text-muted-foreground">
+                      {children}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          );
+        }}
+      />
     );
   }
 );

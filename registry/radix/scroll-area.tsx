@@ -113,6 +113,13 @@ const ScrollBar = forwardRef<
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       ref={ref}
       orientation={orientation}
+      // Radix wraps hover-type scrollbars in Presence, which unmounts on hide
+      // and only waits for CSS *animations* — the opacity *transition* below
+      // would never play (with scrollHideDelay=0 the element unmounts
+      // instantly). forceMount keeps it in the DOM so the fade actually runs;
+      // data-state drives visibility, matching the always-mounted Base UI
+      // flavour.
+      forceMount
       data-slot="scroll-area-scrollbar"
       // Scrollbar show/hide is plain CSS opacity matching the cue fade —
       // 160ms in, 120ms out (exits faster, per the animation guidelines);
@@ -128,6 +135,9 @@ const ScrollBar = forwardRef<
         "transition-opacity duration-120 ease-out data-[state=visible]:duration-160",
         "data-[state=visible]:opacity-100 data-[state=hidden]:opacity-0",
         "data-[state=hidden]:delay-160 data-[state=visible]:delay-0",
+        // Faded out = gone: the always-mounted track must not eat clicks or
+        // hovers on content along the edge.
+        "data-[state=hidden]:pointer-events-none",
         orientation === "vertical" && "h-full w-2.5",
         orientation === "horizontal" && "h-2.5 w-full flex-col",
         className

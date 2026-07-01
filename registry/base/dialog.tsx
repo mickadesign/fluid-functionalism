@@ -51,10 +51,16 @@ const DialogClose = DialogPrimitive.Close;
 
 interface DialogContentProps extends HTMLAttributes<HTMLDivElement> {
   size?: "sm" | "lg";
+  /** Portal target. When set, the overlay and panel render inside this element
+   *  (positioned `absolute`) instead of covering the viewport (`fixed`). Pair
+   *  with a `position: relative; overflow: hidden` container — and usually
+   *  `<Dialog modal={false}>` — to scope a dialog to a bounded region, e.g. a
+   *  docs preview. Defaults to the document body / full-viewport behaviour. */
+  container?: HTMLElement | null;
 }
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, size = "sm", ...props }, ref) => {
+  ({ className, children, size = "sm", container, ...props }, ref) => {
     const XIcon = useIcon("x");
     const shape = useShape();
     const substrate = useSurface();
@@ -65,7 +71,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     // tween below to finish (via `element.getAnimations()`) before unmounting.
     // Returning null early would short-circuit the closing animation.
     return (
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={container ?? undefined}>
         <DialogPrimitive.Backdrop
           render={(backdropProps, state) => {
             const exiting = state.transitionStatus === "ending";
@@ -82,7 +88,10 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             return (
               <motion.div
                 {...rest}
-                className="fixed inset-0 z-50 bg-black/40 dark:bg-black/80"
+                className={cn(
+                  container ? "absolute" : "fixed",
+                  "inset-0 z-50 bg-black/40 dark:bg-black/80"
+                )}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: exiting ? 0 : 1 }}
                 transition={exiting ? spring.slow.exit : spring.slow}
@@ -122,7 +131,8 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
                   | "onAnimationIteration"
                 >)}
                 className={cn(
-                  "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
+                  container ? "absolute" : "fixed",
+                  "left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
                   surfaceClasses(dialogLevel),
                   "p-6 focus:outline-none",
                   size === "sm" && "max-w-[400px]",

@@ -93,9 +93,14 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       });
     }, []);
 
+    // Resolve value: explicit value > selectedIndex lookup > uncontrolled state.
+    // Uncontrolled with no defaultValue falls back to the first tab so the
+    // FF layer's selectedValue matches what the primitive shows.
     const resolvedValue =
       value ??
-      (selectedIndex != null ? valueOrder[selectedIndex] : uncontrolledValue);
+      (selectedIndex != null
+        ? valueOrder[selectedIndex]
+        : uncontrolledValue ?? valueOrder[0]);
 
     // Base UI passes (value, eventDetails); we only need value.
     const handleValueChange = useCallback(
@@ -121,11 +126,17 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
           selectedValue: resolvedValue,
         }}
       >
+        {/*
+          Always controlled: Base UI's useControlled logs a dev warning when
+          value flips undefined → defined. valueOrder is empty on the first
+          commit, so fall back to an empty-string sentinel — TabsList's
+          layout effect populates valueOrder pre-paint, so the corrected
+          value lands before anything is visible.
+        */}
         <TabsPrimitive.Root
           ref={ref}
-          value={resolvedValue}
+          value={resolvedValue ?? ""}
           onValueChange={handleValueChange}
-          defaultValue={resolvedValue == null ? defaultValue : undefined}
           {...props}
         >
           {children}
@@ -221,7 +232,9 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
     const indexedChildren = Children.map(children, (child, i) => {
-      if (isValidElement(child)) {
+      // Skip plain DOM elements — injecting _index into e.g. a <div>
+      // triggers React's unknown-prop warning.
+      if (isValidElement(child) && typeof child.type !== "string") {
         return cloneElement(child, { _index: i } as Record<string, unknown>);
       }
       return child;

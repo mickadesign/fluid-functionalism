@@ -5,6 +5,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   createContext,
   useContext,
   forwardRef,
@@ -37,7 +38,6 @@ interface AccordionGroupContextValue {
   remeasure: () => void;
   openValues: Set<string>;
   openItemRects: Map<number, ItemRect>;
-  toggleValue: (value: string) => void;
 }
 
 const AccordionGroupContext =
@@ -51,7 +51,6 @@ interface AccordionItemContextValue {
   index?: number;
   value: string;
   isOpen: boolean;
-  onToggle: () => void;
   triggerRef: React.MutableRefObject<HTMLDivElement | null>;
 }
 
@@ -163,16 +162,25 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     });
     const singleOnValueChange = (props as AccordionGroupSingleProps).onValueChange;
     const multipleOnValueChange = (props as AccordionGroupMultipleProps).onValueChange;
-    const controlledMultipleValue = (props as AccordionGroupMultipleProps).value;
 
-    const openValues = new Set<string>(
+    const openValuesList: string[] =
       type === "multiple"
         ? (props as AccordionGroupMultipleProps).value ?? internalMultipleValue
         : (() => {
             const v =
               (props as AccordionGroupSingleProps).value ?? internalSingleValue;
             return v ? [v] : [];
-          })()
+          })();
+
+    // Keyed on the joined values so the Set (and the group context value
+    // below) keeps a stable identity across re-renders where the open values
+    // haven't actually changed.
+    const openValuesKey = openValuesList.join(",");
+
+    const openValues = useMemo(
+      () => new Set(openValuesList),
+      // Deliberately keyed on the joined string, not the (fresh) array.
+      [openValuesKey]
     );
 
     const handleSingleValueChange = useCallback(
@@ -193,35 +201,13 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       [multipleOnValueChange]
     );
 
-    const toggleValue = useCallback(
-      (val: string) => {
-        if (type === "multiple") {
-          const current =
-            (props as AccordionGroupMultipleProps).value ??
-            internalMultipleValue;
-          handleMultipleValueChange(current.filter((v) => v !== val));
-        } else {
-          handleSingleValueChange("");
-        }
-      },
-      [
-        type,
-        handleSingleValueChange,
-        handleMultipleValueChange,
-        internalMultipleValue,
-        controlledMultipleValue,
-      ]
-    );
-
     useEffect(() => {
       measureItems();
       measureFullItems();
     }, [measureItems, measureFullItems, children]);
 
-    // Remeasure synchronously when open values change so the first
-    // paint already reflects shifted trigger positions.
-    const openValuesKey = [...openValues].join(",");
-
+    // Remeasure when open values change so the first paint already
+    // reflects shifted trigger positions.
     useEffect(() => {
       measureItems();
       measureFullItems();
@@ -265,22 +251,35 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
             onValueChange: handleSingleValueChange,
           };
 
+    const remeasure = useCallback(() => {
+      measureItems();
+      measureFullItems();
+    }, [measureItems, measureFullItems]);
+
+    // Memoized: the group re-renders on every proximity-hover mousemove; a
+    // fresh context object each time would re-render every item with it.
+    const groupContextValue = useMemo<AccordionGroupContextValue>(
+      () => ({
+        registerItem,
+        registerFullItem,
+        activeIndex,
+        grouped: true,
+        remeasure,
+        openValues,
+        openItemRects,
+      }),
+      [
+        registerItem,
+        registerFullItem,
+        activeIndex,
+        remeasure,
+        openValues,
+        openItemRects,
+      ]
+    );
+
     return (
-      <AccordionGroupContext.Provider
-        value={{
-          registerItem,
-          registerFullItem,
-          activeIndex,
-          grouped: true,
-          remeasure: () => {
-            measureItems();
-            measureFullItems();
-          },
-          openValues,
-          openItemRects,
-          toggleValue,
-        }}
-      >
+      <AccordionGroupContext.Provider value={groupContextValue}>
         <AccordionPrimitive.Root {...radixProps} asChild>
           <div
             ref={(node) => {
@@ -502,32 +501,20 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
       [onValueChange]
     );
 
-    const standaloneToggle = useCallback(
-      (val: string) => {
-        if (type === "multiple") {
-          const current =
-            (value as string[] | undefined) ?? internalMultipleValue;
-          handleMultipleChange(current.filter((v) => v !== val));
-        } else {
-          handleSingleChange("");
-        }
-      },
-      [type, value, internalMultipleValue, handleSingleChange, handleMultipleChange]
-    );
-
+    // `value` is always defined here (internal state is seeded from
+    // `defaultValue` above), so the Radix root is permanently controlled and
+    // forwarding `defaultValue` would be dead.
     const radixProps =
       type === "multiple"
         ? {
             type: "multiple" as const,
             value: (value as string[] | undefined) ?? internalMultipleValue,
-            defaultValue: defaultValue as string[] | undefined,
             onValueChange: handleMultipleChange,
           }
         : {
             type: "single" as const,
             collapsible,
             value: (value as string | undefined) ?? internalSingleValue,
-            defaultValue: defaultValue as string | undefined,
             onValueChange: handleSingleChange,
           };
 
@@ -542,9 +529,7 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
           {...props}
         >
           <StandaloneOpenContext.Provider value={openValues}>
-            <StandaloneToggleContext.Provider value={standaloneToggle}>
-              {children}
-            </StandaloneToggleContext.Provider>
+            {children}
           </StandaloneOpenContext.Provider>
         </div>
       </AccordionPrimitive.Root>
@@ -554,11 +539,8 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
 
 Accordion.displayName = "Accordion";
 
-// Standalone contexts to provide open values and toggle without AccordionGroup
+// Standalone context to provide open values without AccordionGroup
 const StandaloneOpenContext = createContext<Set<string>>(new Set());
-const StandaloneToggleContext = createContext<(value: string) => void>(
-  () => {}
-);
 
 // ─── AccordionItem ───────────────────────────────────────────────────────────
 
@@ -574,7 +556,6 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
     const internalRef = useRef<HTMLDivElement>(null);
     const groupCtx = useAccordionGroup();
     const standaloneOpen = useContext(StandaloneOpenContext);
-    const standaloneToggle = useContext(StandaloneToggleContext);
     const shape = useShape();
 
     const isOpen = groupCtx?.grouped
@@ -582,14 +563,6 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
       : standaloneOpen.has(value);
 
     const triggerRef = useRef<HTMLDivElement>(null);
-
-    const onToggle = useCallback(() => {
-      if (groupCtx?.grouped) {
-        groupCtx.toggleValue(value);
-      } else {
-        standaloneToggle(value);
-      }
-    }, [groupCtx, standaloneToggle, value]);
 
     // Register trigger element (not full item) for proximity hover
     useEffect(() => {
@@ -612,7 +585,7 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
     }, [index, groupCtx, isOpen]);
 
     return (
-      <AccordionItemContext.Provider value={{ index, value, isOpen, onToggle, triggerRef }}>
+      <AccordionItemContext.Provider value={{ index, value, isOpen, triggerRef }}>
         <AccordionPrimitive.Item
           ref={(node) => {
             (

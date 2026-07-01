@@ -6,9 +6,10 @@ import {
   useState,
   useEffect,
   useCallback,
+  useId,
   type HTMLAttributes,
 } from "react";
-import { motion, useMotionValue, animate } from "framer-motion";
+import { motion, useMotionValue, animate, type Transition } from "framer-motion";
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
@@ -18,6 +19,7 @@ interface SwitchProps extends HTMLAttributes<HTMLDivElement> {
   checked: boolean;
   onToggle: () => void;
   disabled?: boolean;
+  thumbTransition?: Transition;
 }
 
 const TRACK_WIDTH = 34;
@@ -31,7 +33,8 @@ const PRESS_SHRINK = 4;
 const DRAG_DEAD_ZONE = 2;
 
 const Switch = forwardRef<HTMLDivElement, SwitchProps>(
-  ({ label, checked, onToggle, disabled = false, className, ...props }, ref) => {
+  ({ label, checked, onToggle, disabled = false, thumbTransition, className, ...props }, ref) => {
+    const labelId = useId();
     const hasMounted = useRef(false);
     const [hovered, setHovered] = useState(false);
     const [pressed, setPressed] = useState(false);
@@ -68,9 +71,9 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
       if (!hasMounted.current) {
         motionX.set(thumbX);
       } else {
-        animate(motionX, thumbX, spring.moderate);
+        animate(motionX, thumbX, thumbTransition ?? spring.moderate);
       }
-    }, [thumbX, motionX]);
+    }, [thumbX, motionX, thumbTransition]);
 
     const handlePointerDown = useCallback(
       (e: React.PointerEvent<HTMLDivElement>) => {
@@ -130,7 +133,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
             const snapTarget = checked
               ? THUMB_OFFSET + THUMB_TRAVEL
               : THUMB_OFFSET;
-            animate(motionX, snapTarget, spring.moderate);
+            animate(motionX, snapTarget, thumbTransition ?? spring.moderate);
           }
 
           requestAnimationFrame(() => {
@@ -140,7 +143,25 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
 
         pointerStart.current = null;
       },
-      [checked, onToggle, motionX]
+      [checked, onToggle, motionX, thumbTransition]
+    );
+
+    const handlePointerCancel = useCallback(
+      () => {
+        if (!pointerStart.current) return;
+        setPressed(false);
+
+        if (dragging.current) {
+          dragging.current = false;
+          const snapTarget = checked
+            ? THUMB_OFFSET + THUMB_TRAVEL
+            : THUMB_OFFSET;
+          animate(motionX, snapTarget, thumbTransition ?? spring.moderate);
+        }
+
+        pointerStart.current = null;
+      },
+      [checked, motionX, thumbTransition]
     );
 
     return (
@@ -158,6 +179,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onClick={() => {
           if (disabled || didDrag.current) return;
           onToggle();
@@ -167,6 +189,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         {/* Switch */}
         <SwitchPrimitive.Root
           checked={checked}
+          aria-labelledby={labelId}
           // Base UI passes (checked, eventDetails); narrow to () => void for our onToggle.
           onCheckedChange={() => {
             if (didDrag.current) return;
@@ -216,7 +239,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
                     width: thumbWidth,
                     height: thumbHeight,
                   }}
-                  transition={hasMounted.current ? spring.moderate : { duration: 0 }}
+                  transition={hasMounted.current ? (thumbTransition ?? spring.moderate) : { duration: 0 }}
                 />
               );
             }}
@@ -225,6 +248,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
 
         {/* Label */}
         <span
+          id={labelId}
           className={cn(
             "text-[13px] transition-[color] duration-80",
             checked ? "text-foreground" : "text-muted-foreground"
