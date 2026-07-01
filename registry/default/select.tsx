@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
-import { useScrollEdges, ScrollEdgeCue } from "@/lib/scroll-fade";
 import { Elevated } from "@/lib/elevated";
 
 // ---------------------------------------------------------------------------
@@ -251,25 +250,14 @@ SelectTrigger.displayName = "SelectTrigger";
 interface SelectContentProps {
   className?: string;
   children: ReactNode;
-  /** Show a fade + chevron cue at the scroll edges when the list overflows its
-   *  max-height, signalling there's more to scroll. Auto-activates on overflow;
-   *  set to `false` to disable. Defaults to `true`. */
-  scrollFade?: boolean;
 }
 
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
-  ({ className, children, scrollFade = true }, ref) => {
+  ({ className, children }, ref) => {
     const { open, setOpen, value, triggerRef } = useSelectContext();
     const shape = useShape();
     const containerRef = useRef<HTMLDivElement>(null);
     const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
-
-    // Scroll-edge cues show only when there's more content above/below the
-    // visible area. `triggerRect !== null` gates attachment until the portal
-    // (and thus containerRef.current) has mounted.
-    const edges = useScrollEdges(containerRef, {
-      enabled: open && scrollFade && triggerRect !== null,
-    });
 
     const {
       activeIndex,
@@ -556,15 +544,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
               )}
             </AnimatePresence>
 
-            {/* Cues read the elevated surface level from Elevated's provider,
-                so the gradient matches the menu background at any depth. */}
-            {scrollFade && <ScrollEdgeCue edge="top" visible={edges.top} />}
-
             {children}
-
-            {scrollFade && (
-              <ScrollEdgeCue edge="bottom" visible={edges.bottom} />
-            )}
           </Elevated>
           </motion.div>
         </div>

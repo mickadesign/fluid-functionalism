@@ -239,13 +239,6 @@ const itemProps: PropDef[] = [
 
 const contentProps: PropDef[] = [
   {
-    name: "scrollFade",
-    type: "boolean",
-    default: "true",
-    description:
-      "Show a fade + chevron cue at the scroll edges when the list overflows its max-height. Auto-activates on overflow; set to false to disable.",
-  },
-  {
     name: "className",
     type: "string",
     description: "Additional classes for the menu container.",

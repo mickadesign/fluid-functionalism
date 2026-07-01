@@ -36,6 +36,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const isFullscreen =
     pathname === "/demo" ||
     pathname === "/compare" ||
+    pathname === "/stars" ||
     pathname.startsWith("/concepts");
 
   // Arrow key navigation between pages — ref-based so held keys keep advancing

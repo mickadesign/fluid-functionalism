@@ -2,27 +2,20 @@
 
 // Adapted from Lina by SameerJS6 (https://lina.sameer.sh) — lina-radix
 // scroll-area. Changes from the original: Lina's gradient-only ScrollMask is
-// replaced by the shared scroll-fade primitives (surface-aware gradient +
-// chevron cues via useScrollEdges/ScrollEdgeCue), the scrollbar is restyled to
-// the Fluid Functionalism shape system, and tw-animate-css visibility classes
-// are swapped for a plain opacity transition.
+// dropped, the scrollbar is restyled to the Fluid Functionalism shape system,
+// and tw-animate-css visibility classes are swapped for a plain opacity
+// transition. Falls back to native overflow scrolling on touch-primary devices.
 
 import {
   createContext,
   forwardRef,
   useContext,
-  useRef,
   type ComponentPropsWithoutRef,
   type ComponentRef,
 } from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
-import {
-  useScrollEdges,
-  ScrollEdgeCue,
-  type ScrollEdgeCueSize,
-} from "@/lib/scroll-fade";
 import { useTouchPrimary } from "@/hooks/use-touch-primary";
 
 // On touch-primary devices the Radix machinery is skipped entirely in favour
@@ -35,16 +28,7 @@ type Orientation = "vertical" | "horizontal" | "both";
 interface ScrollAreaProps
   extends ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   viewportClassName?: string;
-  /** Surface-gradient + chevron cues at edges with more content. Auto-shows
-   *  on overflow; set to `false` to disable. Defaults to `true`. */
-  scrollFade?: boolean;
-  /** Cue band size along the scroll axis: `"tight"` (32px) or
-   *  `"comfortable"` (60px). Defaults to `"comfortable"`. */
-  cueSize?: ScrollEdgeCueSize;
-  /** Show the directional chevron in the cues. The gradient fade always
-   *  renders; set to `false` for fade-only cues. Defaults to `true`. */
-  chevron?: boolean;
-  /** Which axes get scrollbars and edge cues. Defaults to `"vertical"`. */
+  /** Which axes get scrollbars. Defaults to `"vertical"`. */
   orientation?: Orientation;
 }
 
@@ -58,42 +42,12 @@ const ScrollArea = forwardRef<
       children,
       scrollHideDelay = 0,
       viewportClassName,
-      scrollFade = true,
-      cueSize = "comfortable",
-      chevron = true,
       orientation = "vertical",
       ...props
     },
     ref
   ) => {
-    const viewportRef = useRef<HTMLDivElement>(null);
     const isTouch = useTouchPrimary();
-    const edges = useScrollEdges(viewportRef, {
-      enabled: scrollFade,
-      axis: orientation,
-    });
-
-    // Cues read the substrate surface from context — ScrollArea doesn't
-    // elevate, so the gradient matches whatever background it sits on.
-    const cues = scrollFade && (
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-[inherit]"
-      >
-        {orientation !== "horizontal" && (
-          <>
-            <ScrollEdgeCue mode="absolute" edge="top" visible={edges.top} size={cueSize} chevron={chevron} />
-            <ScrollEdgeCue mode="absolute" edge="bottom" visible={edges.bottom} size={cueSize} chevron={chevron} />
-          </>
-        )}
-        {orientation !== "vertical" && (
-          <>
-            <ScrollEdgeCue mode="absolute" edge="left" visible={edges.left} size={cueSize} chevron={chevron} />
-            <ScrollEdgeCue mode="absolute" edge="right" visible={edges.right} size={cueSize} chevron={chevron} />
-          </>
-        )}
-      </div>
-    );
 
     return (
       <ScrollAreaContext.Provider value={isTouch}>
@@ -107,7 +61,6 @@ const ScrollArea = forwardRef<
             {...props}
           >
             <div
-              ref={viewportRef}
               data-slot="scroll-area-viewport"
               className={cn(
                 "size-full rounded-[inherit]",
@@ -120,7 +73,6 @@ const ScrollArea = forwardRef<
             >
               {children}
             </div>
-            {cues}
           </div>
         ) : (
           <ScrollAreaPrimitive.Root
@@ -131,13 +83,11 @@ const ScrollArea = forwardRef<
             {...props}
           >
             <ScrollAreaPrimitive.Viewport
-              ref={viewportRef}
               data-slot="scroll-area-viewport"
               className={cn("size-full rounded-[inherit]", viewportClassName)}
             >
               {children}
             </ScrollAreaPrimitive.Viewport>
-            {cues}
             {orientation !== "horizontal" && <ScrollBar orientation="vertical" />}
             {orientation !== "vertical" && <ScrollBar orientation="horizontal" />}
             {orientation === "both" && <ScrollAreaPrimitive.Corner />}

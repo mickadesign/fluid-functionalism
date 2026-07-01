@@ -157,22 +157,6 @@
       ]
     },
     {
-      "name": "scroll-fade",
-      "type": "registry:lib",
-      "title": "Scroll Fade",
-      "description": "Scroll-edge primitives: useScrollEdges hook tracking overflowing edges, and ScrollEdgeCue — a surface-colour gradient fade with a chevron cue pinned to a scroll edge. Sticky (in-scroller) and absolute (overlay) mounting modes; reads the surface ladder so the gradient matches the actual background at any elevation.",
-      "registryDependencies": [
-        "surfaces",
-        "surface-context"
-      ],
-      "files": [
-        {
-          "path": "registry/default/lib/scroll-fade.tsx",
-          "type": "registry:lib"
-        }
-      ]
-    },
-    {
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
@@ -941,14 +925,13 @@
       "name": "scroll-area",
       "type": "registry:ui",
       "title": "Scroll Area",
-      "description": "Scroll container with restyled overlay scrollbars and surface-gradient scroll-edge cues. Falls back to native overflow scrolling on touch-primary devices. Built on Radix UI Scroll Area; adapted from Lina (https://lina.sameer.sh).",
+      "description": "Scroll container with a restyled overlay scrollbar that stays discoverable on hover and follows the shape system. Falls back to native overflow scrolling on touch-primary devices. Built on Radix UI Scroll Area; adapted from Lina (https://lina.sameer.sh).",
       "dependencies": [
         "@radix-ui/react-scroll-area"
       ],
       "registryDependencies": [
         "utils",
         "shape-context",
-        "scroll-fade",
         "use-touch-primary"
       ],
       "files": [
@@ -963,14 +946,13 @@
       "name": "scroll-area-base",
       "type": "registry:ui",
       "title": "Scroll Area (Base UI)",
-      "description": "Scroll container with restyled overlay scrollbars and surface-gradient scroll-edge cues. Falls back to native overflow scrolling on touch-primary devices. Base UI flavor; adapted from Lina (https://lina.sameer.sh).",
+      "description": "Scroll container with a restyled overlay scrollbar that stays discoverable on hover and follows the shape system. Falls back to native overflow scrolling on touch-primary devices. Base UI flavor; adapted from Lina (https://lina.sameer.sh).",
       "dependencies": [
         "@base-ui/react"
       ],
       "registryDependencies": [
         "utils",
         "shape-context",
-        "scroll-fade",
         "use-touch-primary"
       ],
       "files": [
@@ -999,7 +981,6 @@
         "surface-classes",
         "icon-context",
         "use-proximity-hover",
-        "scroll-fade",
         "elevated"
       ],
       "files": [

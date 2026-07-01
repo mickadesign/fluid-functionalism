@@ -19,7 +19,7 @@ export interface SystemEntry {
 
 export const systemList: SystemEntry[] = [
   { slug: "surfaces", name: "Surfaces", description: "Eight-level surface and shadow ladder for elevation in light and dark mode.", isNew: true },
-  { slug: "scrolling-list", name: "Scrolling list", description: "Scroll-edge cues and custom scrollbars for every scrolling surface — fade gradient, chevron, touch-native fallback.", isNew: true },
+  { slug: "scrollbars", name: "Scrollbars", description: "A scrollbar that stays out of the way but never disappears, over shadcn's scroll-fade baseline — restyled to the shape system, native scroll on touch.", isNew: true },
   { slug: "motion", name: "Motion", description: "Spring tokens, faster exits, and reflow-free weight animation — the motion rules shared by every component.", isNew: true },
 ];
 
