@@ -314,6 +314,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
           if (typeof ref === "function") ref(node);
           else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
         }}
+        type="button"
         data-proximity-index={index}
         id={`${idPrefix}-tab-${index}`}
         role="tab"

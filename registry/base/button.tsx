@@ -1,9 +1,12 @@
 "use client";
 
 import {
+  cloneElement,
   forwardRef,
   isValidElement,
   type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
 } from "react";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -99,6 +102,22 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    // asChild: the user's element becomes the root while the button's internal
+    // structure (bg layer, content wrapper, spinner, icons) survives as its
+    // children — the element's own children become the label. We clone the
+    // element directly instead of routing through ButtonPrimitive's `render`:
+    // Base UI would bolt button semantics (role="button", Space activation)
+    // onto e.g. a link, diverging from the Radix flavour's plain-link output.
+    const asChildElement =
+      asChild && isValidElement(children)
+        ? (children as ReactElement<{
+            children?: ReactNode;
+            className?: string;
+            style?: React.CSSProperties;
+            ref?: React.Ref<HTMLButtonElement>;
+          }>)
+        : null;
+    const label = asChildElement ? asChildElement.props.children : children;
     const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
     const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
     const shape = useShape();
@@ -106,32 +125,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ? activeBgVariants[variant ?? "primary"]
       : bgVariants[variant ?? "primary"];
 
-    // asChild parity: Base UI's `render` prop accepts a single element and
-    // clones it. When asChild is true and children is a valid element, route
-    // through render so the user's element becomes the outer tag.
-    const renderProp =
-      asChild && isValidElement(children) ? children : undefined;
-
-    return (
-      <ButtonPrimitive
-        // Base UI's `ButtonPrimitive` forwards to an HTMLButtonElement;
-        // keep the public ref type narrow so consumers see the right type.
-        ref={ref as React.Ref<HTMLButtonElement>}
-        render={renderProp}
-        className={cn(
-          buttonVariants({
-            variant,
-            size,
-            iconLeft: !isIconOnly && !!LeadingIcon,
-            iconRight: !isIconOnly && !!TrailingIcon,
-          }),
-          shape.button,
-          className
-        )}
-        disabled={disabled || loading}
-        style={style}
-        {...props}
-      >
+    const internals = (
+      <>
         <span
           aria-hidden
           className={cn(
@@ -146,7 +141,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 {LeadingIcon && !isIconOnly && (
                   <LeadingIcon size={iconSize} strokeWidth={2} />
                 )}
-                {children}
+                {label}
                 {TrailingIcon && !isIconOnly && (
                   <TrailingIcon size={iconSize} strokeWidth={2} />
                 )}
@@ -173,7 +168,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </>
           ) : isIconOnly ? (
             <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
-              {children}
+              {label}
             </span>
           ) : (
             <>
@@ -184,7 +179,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
               )}
-              <span>{children}</span>
+              <span>{label}</span>
               {TrailingIcon && (
                 <TrailingIcon
                   size={iconSize}
@@ -195,6 +190,45 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </>
           )}
         </span>
+      </>
+    );
+
+    const rootClassName = cn(
+      buttonVariants({
+        variant,
+        size,
+        iconLeft: !isIconOnly && !!LeadingIcon,
+        iconRight: !isIconOnly && !!TrailingIcon,
+      }),
+      shape.button,
+      className
+    );
+
+    if (asChildElement) {
+      const childProps = asChildElement.props;
+      return cloneElement(
+        asChildElement,
+        {
+          ...props,
+          ref,
+          className: cn(rootClassName, childProps.className),
+          style: { ...style, ...childProps.style },
+        },
+        internals
+      );
+    }
+
+    return (
+      <ButtonPrimitive
+        // Base UI's `ButtonPrimitive` forwards to an HTMLButtonElement;
+        // keep the public ref type narrow so consumers see the right type.
+        ref={ref as React.Ref<HTMLButtonElement>}
+        className={rootClassName}
+        disabled={disabled || loading}
+        style={style}
+        {...props}
+      >
+        {internals}
       </ButtonPrimitive>
     );
   }

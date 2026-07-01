@@ -26,12 +26,21 @@ const DialogOpenContext = createContext(false);
 function Dialog({
   children,
   open: controlledOpen,
+  defaultOpen,
   onOpenChange,
   ...props
 }: DialogPrimitive.DialogProps) {
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  // Internal state always tracks changes, and the consumer's onOpenChange is
+  // notified alongside it — a listener must not replace state handling, or an
+  // uncontrolled dialog with an onOpenChange prop could never open. The Root
+  // below is always controlled by `open`, so defaultOpen seeds our state
+  // instead of being forwarded.
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
   const open = controlledOpen ?? uncontrolledOpen;
-  const handleOpenChange = onOpenChange ?? setUncontrolledOpen;
+  const handleOpenChange = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
 
   return (
     <DialogOpenContext.Provider value={open}>

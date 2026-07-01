@@ -24,7 +24,7 @@ interface NavItemProps
 const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(
   ({ label, href, index, icon: Icon, isNew, isUpdated, dotColorClass, className, ...props }, ref) => {
     const internalRef = useRef<HTMLAnchorElement>(null);
-    const { registerItem, registerSlug, activeIndex, activeSlug } =
+    const { registerItem, registerSlug, activeIndex, activeSlug, activeRouteIndex } =
       useNavMenu();
 
     useEffect(() => {
@@ -40,8 +40,10 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(
     const isActiveRoute = activeSlug === href;
     const shape = useShape();
 
-    // Roving tabindex: active route gets 0, others get -1
-    const activeRouteExists = activeSlug !== null;
+    // Roving tabindex: the active-route item gets 0, others -1. When no item in
+    // this menu matches activeSlug (e.g. on an unrelated route), fall back to
+    // making the first item tabbable so the menu stays keyboard-reachable.
+    const activeRouteExists = activeRouteIndex !== null;
     const tabIdx = isActiveRoute ? 0 : activeRouteExists ? -1 : index === 0 ? 0 : -1;
 
     return (

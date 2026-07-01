@@ -22,6 +22,8 @@ interface NavMenuContextValue {
   registerSlug: (index: number, slug: string | null) => void;
   activeIndex: number | null;
   activeSlug: string | null;
+  /** Index of the item matching activeSlug, or null when no item matches. */
+  activeRouteIndex: number | null;
 }
 
 const NavMenuContext = createContext<NavMenuContextValue | null>(null);
@@ -88,7 +90,7 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
 
     return (
       <NavMenuContext.Provider
-        value={{ registerItem, registerSlug, activeIndex, activeSlug }}
+        value={{ registerItem, registerSlug, activeIndex, activeSlug, activeRouteIndex }}
       >
         <nav
           ref={(node) => {

@@ -27,6 +27,10 @@ interface RadioGroupContextValue {
   selectedIndex: number | null;
   selectedValue?: string;
   onValueChange?: (value: string) => void;
+  /** Whether any item in the group is currently selected. Drives the roving
+   *  tabindex fallback: with no selection, the first item must stay tabbable
+   *  or the whole group becomes unreachable by keyboard. */
+  hasSelection: boolean;
 }
 
 const RadioGroupContext = createContext<RadioGroupContextValue | null>(null);
@@ -69,6 +73,12 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       value !== undefined
         ? childValues.findIndex((childValue) => childValue === value)
         : selectedIndex ?? -1;
+    // Covers all three selection APIs: value, selectedIndex, per-item selected.
+    const hasSelection =
+      resolvedSelectedIndex >= 0 ||
+      Children.toArray(children)
+        .filter(isValidElement)
+        .some((child) => (child.props as { selected?: boolean }).selected === true);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
@@ -106,8 +116,11 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           setActiveIndex(null);
         }}
         onKeyDown={(e) => {
+          // Scope to row wrappers only. The hidden radio primitive also
+          // carries role="radio", so a bare [role="radio"] selector matches
+          // twice per row and arrows land on the invisible control.
           const items = Array.from(
-            containerRef.current?.querySelectorAll('[role="radio"]') ?? []
+            containerRef.current?.querySelectorAll("[data-proximity-index]") ?? []
           ) as HTMLElement[];
           const currentIdx = items.indexOf(e.target as HTMLElement);
           if (currentIdx === -1) return;
@@ -224,6 +237,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
             selectedIndex: resolvedSelectedIndex >= 0 ? resolvedSelectedIndex : null,
             selectedValue: value,
             onValueChange,
+            hasSelection,
           }}
         >
           <RadioGroupPrimitive
@@ -241,6 +255,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           registerItem,
           activeIndex,
           selectedIndex: selectedIndex ?? null,
+          hasSelection,
         }}
       >
         {content}
@@ -269,6 +284,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
       selectedIndex,
       selectedValue,
       onValueChange,
+      hasSelection,
     } = useRadioGroupContext();
 
     useEffect(() => {
@@ -303,7 +319,9 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
-        tabIndex={isSelected ? 0 : -1}
+        // Roving tabindex: selected item is the tab stop; with no selection the
+        // first item takes it so the group stays keyboard-reachable.
+        tabIndex={isSelected ? 0 : !hasSelection && index === 0 ? 0 : -1}
         role="radio"
         aria-checked={isSelected}
         aria-label={label}

@@ -103,6 +103,13 @@ function optionKey(o: AskUserOption, i: number) {
   return o.id ?? `o-${i}`;
 }
 
+// Mounted-instance registry for the document-level 1-9 shortcut. The listener
+// has to be global (digits should work without focus in the card), but only ONE
+// instance may answer a keypress: the one containing focus, or — when focus is
+// outside every instance — the most recently mounted one. Without this,
+// stacked instances (e.g. docs demos) would all answer the same digit.
+const mountedInstances: HTMLElement[] = [];
+
 const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
   function AskUserQuestions(
     {
@@ -230,6 +237,18 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     const rowCount = options.length + (allowOther ? 1 : 0);
 
     // ── Refs & proximity hover ───────────────────────────────────
+    const rootRef = useRef<HTMLDivElement>(null);
+    const hasQuestion = !!question;
+    useEffect(() => {
+      if (!hasQuestion) return;
+      const el = rootRef.current;
+      if (!el) return;
+      mountedInstances.push(el);
+      return () => {
+        const i = mountedInstances.indexOf(el);
+        if (i !== -1) mountedInstances.splice(i, 1);
+      };
+    }, [hasQuestion]);
     const rowsContainerRef = useRef<HTMLDivElement>(null);
     // The Other field is a multi-line textarea — it auto-resizes to fit
     // wrapped content and lets users press Enter for a newline.
@@ -485,6 +504,16 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
         if (!target) return;
         const tag = target.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+        // Only one mounted instance may answer this keypress (see
+        // mountedInstances): the one containing focus, or the most recently
+        // mounted one when focus sits outside every instance.
+        const root = rootRef.current;
+        if (!root) return;
+        if (!root.contains(target)) {
+          if (mountedInstances.some((el) => el !== root && el.contains(target)))
+            return;
+          if (mountedInstances[mountedInstances.length - 1] !== root) return;
+        }
         const code = e.key;
         if (code < "1" || code > "9") return;
         const idx = parseInt(code, 10) - 1;
@@ -717,7 +746,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
 
     return (
       <div
-        ref={ref}
+        ref={(node) => {
+          rootRef.current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref)
+            (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }}
         className={cn(
           // overflow-hidden crops the footer buttons to the card's rounded
           // bounds, so a button animating out (e.g. Continue on exit) is

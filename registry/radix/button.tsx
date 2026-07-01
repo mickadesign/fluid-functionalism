@@ -1,6 +1,13 @@
 "use client";
 
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
@@ -94,7 +101,17 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button";
+    // asChild: the user's element becomes the root, but the button's internal
+    // structure (bg layer, content wrapper, spinner, icons) must survive. Slot
+    // requires exactly one child, so instead of Slottable we clone the user's
+    // element with our internals as its children — the element's own children
+    // become the label inside the content wrapper.
+    const asChildElement =
+      asChild && isValidElement(children)
+        ? (children as ReactElement<{ children?: ReactNode }>)
+        : null;
+    const Comp = asChildElement ? Slot : "button";
+    const label = asChildElement ? asChildElement.props.children : children;
     const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
     const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
     const shape = useShape();
@@ -102,23 +119,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ? activeBgVariants[variant ?? "primary"]
       : bgVariants[variant ?? "primary"];
 
-    return (
-      <Comp
-        ref={ref}
-        className={cn(
-          buttonVariants({
-            variant,
-            size,
-            iconLeft: !isIconOnly && !!LeadingIcon,
-            iconRight: !isIconOnly && !!TrailingIcon,
-          }),
-          shape.button,
-          className
-        )}
-        disabled={disabled || loading}
-        style={style}
-        {...props}
-      >
+    const internals = (
+      <>
         <span
           aria-hidden
           className={cn(
@@ -133,7 +135,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 {LeadingIcon && !isIconOnly && (
                   <LeadingIcon size={iconSize} strokeWidth={2} />
                 )}
-                {children}
+                {label}
                 {TrailingIcon && !isIconOnly && (
                   <TrailingIcon size={iconSize} strokeWidth={2} />
                 )}
@@ -160,7 +162,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </>
           ) : isIconOnly ? (
             <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
-              {children}
+              {label}
             </span>
           ) : (
             <>
@@ -171,7 +173,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
               )}
-              <span>{children}</span>
+              <span>{label}</span>
               {TrailingIcon && (
                 <TrailingIcon
                   size={iconSize}
@@ -182,6 +184,29 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </>
           )}
         </span>
+      </>
+    );
+
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          buttonVariants({
+            variant,
+            size,
+            iconLeft: !isIconOnly && !!LeadingIcon,
+            iconRight: !isIconOnly && !!TrailingIcon,
+          }),
+          shape.button,
+          className
+        )}
+        disabled={disabled || loading}
+        style={style}
+        {...props}
+      >
+        {asChildElement
+          ? cloneElement(asChildElement, undefined, internals)
+          : internals}
       </Comp>
     );
   }
