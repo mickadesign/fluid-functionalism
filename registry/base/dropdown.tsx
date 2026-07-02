@@ -10,13 +10,19 @@ import {
   useContext,
   forwardRef,
   type ReactNode,
-  type ReactElement,
   type HTMLAttributes,
   type ComponentProps,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "@base-ui/react/menu";
 import type { MenuTriggerProps } from "@base-ui/react/menu";
+import {
+  DropdownContext,
+  useDropdown,
+  useDropdownMaybe,
+  type DropdownContextValue,
+  type MenuItemRenderOptions,
+} from "@/registry/default/menu-item";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
@@ -30,53 +36,16 @@ import { Elevated } from "@/lib/elevated";
 const shape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
-// Panel context — shared by the inline Dropdown and the popup DropdownContent
+// Panel context — shared by the inline Dropdown and the popup DropdownContent.
+//
+// The context object itself lives in menu-item.tsx (the file shipped by BOTH
+// dropdown flavors) so MenuItem resolves whichever flavor's provider actually
+// wraps it — including when both flavors render side by side. Re-exported
+// here so the public dropdown API is unchanged.
 // ---------------------------------------------------------------------------
 
-/** What MenuItem hands to the popup's primitive wrapper. `element` is the
- *  styled row div (visuals + proximity registration, no children); `children`
- *  is the row content (icon, label, check). The flavor wraps them in its own
- *  Item / RadioItem, so MenuItem itself stays primitive-free. */
-interface MenuItemRenderOptions {
-  /** Radio-style option (boolean `checked` on MenuItem) vs plain action item. */
-  radio: boolean;
-  /** The item's index — doubles as the radio value. */
-  value: number;
-  disabled?: boolean;
-  label: string;
-  closeOnClick: boolean;
-  element: ReactElement;
-  children: ReactNode;
-}
-
-interface DropdownContextValue {
-  registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
-  checkedIndex?: number;
-  /** True when items render inside a Menu popup (DropdownContent), where the
-   *  primitive's Item / RadioItem own roles, roving highlight, typeahead,
-   *  and activation. MenuItem switches its rendering accordingly. */
-  inMenu?: boolean;
-  /** Popup-only: wraps a MenuItem's styled div in this flavor's menu-item
-   *  primitive. Absent in the inline Dropdown panel, where MenuItem renders
-   *  its own ARIA menuitem div. */
-  renderMenuItem?: (opts: MenuItemRenderOptions) => ReactElement;
-}
-
-const DropdownContext = createContext<DropdownContextValue | null>(null);
-
-export function useDropdown() {
-  const ctx = useContext(DropdownContext);
-  if (!ctx) throw new Error("useDropdown must be used within a Dropdown");
-  return ctx;
-}
-
-/** Null-safe context read — lets the site's flavored wrapper probe both
- *  flavors' contexts without throwing. Registry consumers want the throwing
- *  `useDropdown` above. */
-export function useDropdownMaybe() {
-  return useContext(DropdownContext);
-}
+export { useDropdown, useDropdownMaybe };
+export type { DropdownContextValue, MenuItemRenderOptions };
 
 // ---------------------------------------------------------------------------
 // Dropdown (inline panel)
@@ -695,12 +664,13 @@ export {
   DropdownTrigger,
   DropdownContent,
 };
+// DropdownContextValue and MenuItemRenderOptions are already re-exported
+// above next to their import — repeating them here is a duplicate-export
+// build error.
 export type {
   DropdownProps,
   DropdownMenuProps,
   DropdownTriggerProps,
   DropdownContentProps,
-  DropdownContextValue,
-  MenuItemRenderOptions,
 };
 export default Dropdown;

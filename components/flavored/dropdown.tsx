@@ -4,7 +4,6 @@ import type { ComponentType, ReactElement } from "react";
 import * as Base from "@/registry/base/dropdown";
 import * as Radix from "@/registry/radix/dropdown";
 import { flavored } from "@/components/flavored/flavored";
-import { useBase } from "@/lib/base-context";
 
 export const Dropdown = flavored(
   Base.Dropdown,
@@ -48,18 +47,11 @@ export const DropdownContent = flavored(
   "Flavored(DropdownContent)"
 );
 
-/** Flavor-aware useDropdown. Both flavors keep their own DropdownContext, so
- *  this probes each null-safely (hooks must run unconditionally) and returns
- *  the one matching the active flavor — under which the flavored Dropdown /
- *  DropdownContent above actually rendered its provider. */
-export function useDropdown(): Base.DropdownContextValue {
-  const { base } = useBase();
-  const baseCtx = Base.useDropdownMaybe();
-  const radixCtx = Radix.useDropdownMaybe();
-  const ctx = base === "base" ? baseCtx : radixCtx;
-  if (!ctx) throw new Error("useDropdown must be used within a Dropdown");
-  return ctx;
-}
+// Both flavors provide the SAME context object (it lives in menu-item.tsx,
+// the shared file), so no flavor probing is needed — whichever flavor's
+// provider wraps the caller wins, which also keeps side-by-side renders
+// (e.g. /compare-bases) working regardless of the global flavor switch.
+export { useDropdown } from "@/registry/default/menu-item";
 
 export type {
   DropdownProps,
