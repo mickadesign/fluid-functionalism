@@ -395,7 +395,9 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                   setActiveIndex(null);
                 }}
                 className={cn(
-                  `relative flex flex-col gap-0.5 max-h-[min(300px,var(--available-height))] overflow-y-auto ${shape.container} p-1 select-none outline-none`,
+                  // min-w tracks the trigger via the Positioner's --anchor-width
+                  // var, matching the pre-migration minWidth: triggerRect.width.
+                  `relative flex flex-col gap-0.5 min-w-[var(--anchor-width)] max-h-[min(300px,var(--available-height))] overflow-y-auto ${shape.container} p-1 select-none outline-none`,
                   className
                 )}
               >
