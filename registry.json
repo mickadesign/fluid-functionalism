@@ -610,7 +610,7 @@
       "name": "mobile-drawer",
       "type": "registry:ui",
       "title": "Mobile Drawer",
-      "description": "Left-anchored navigation drawer built on Base UI Dialog — modal scroll lock, focus trap and restore, Esc/outside-click dismissal, and a spring-animated slide-in panel with surface-aware elevation.",
+      "description": "Left-anchored navigation drawer built on Base UI Dialog \u2014 modal scroll lock, focus trap and restore, Esc/outside-click dismissal, and a spring-animated slide-in panel with surface-aware elevation.",
       "dependencies": [
         "@base-ui/react",
         "framer-motion"
@@ -678,7 +678,9 @@
       "type": "registry:ui",
       "title": "Input Message",
       "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
-      "dependencies": ["framer-motion"],
+      "dependencies": [
+        "framer-motion"
+      ],
       "registryDependencies": [
         "utils",
         "springs",
@@ -703,8 +705,13 @@
       "type": "registry:ui",
       "title": "File Thumbnail",
       "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting.",
-      "dependencies": ["pdfjs-dist"],
-      "registryDependencies": ["utils", "shape-context"],
+      "dependencies": [
+        "pdfjs-dist"
+      ],
+      "registryDependencies": [
+        "utils",
+        "shape-context"
+      ],
       "files": [
         {
           "path": "registry/default/file-thumbnail.tsx",
@@ -717,8 +724,16 @@
       "type": "registry:ui",
       "title": "Chat Message",
       "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
-      "dependencies": ["framer-motion"],
-      "registryDependencies": ["utils", "springs", "shape-context", "use-touch-primary", "file-thumbnail"],
+      "dependencies": [
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "shape-context",
+        "use-touch-primary",
+        "file-thumbnail"
+      ],
       "files": [
         {
           "path": "registry/default/chat-message.tsx",
@@ -730,7 +745,32 @@
       "name": "tabs-subtle",
       "type": "registry:ui",
       "title": "Tabs Subtle",
-      "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Supports icons and keyboard navigation.",
+      "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Radix flavor.",
+      "dependencies": [
+        "@radix-ui/react-tabs",
+        "framer-motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "icon-context",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/tabs-subtle.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/tabs-subtle.tsx"
+        }
+      ]
+    },
+    {
+      "name": "tabs-subtle-base",
+      "type": "registry:ui",
+      "title": "Tabs Subtle",
+      "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
       "dependencies": [
         "@base-ui/react",
         "framer-motion",
@@ -745,8 +785,9 @@
       ],
       "files": [
         {
-          "path": "registry/default/tabs-subtle.tsx",
-          "type": "registry:ui"
+          "path": "registry/base/tabs-subtle.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/tabs-subtle.tsx"
         }
       ]
     },
@@ -996,7 +1037,7 @@
       "name": "select",
       "type": "registry:ui",
       "title": "Select",
-      "description": "Animated select menu built on Base UI Select — collision-aware positioning, typeahead, and full combobox ARIA — with proximity hover, bordered/borderless variants, optional leading icons, spring-animated popover, and animated checkmark indicator.",
+      "description": "Animated select menu built on Base UI Select \u2014 collision-aware positioning, typeahead, and full combobox ARIA \u2014 with proximity hover, bordered/borderless variants, optional leading icons, spring-animated popover, and animated checkmark indicator.",
       "dependencies": [
         "@base-ui/react",
         "framer-motion",

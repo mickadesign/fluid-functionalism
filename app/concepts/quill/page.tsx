@@ -20,7 +20,7 @@ import {
   TabsSubtle,
   TabsSubtleItem,
   TabsSubtlePanel,
-} from "@/registry/default/tabs-subtle";
+} from "@/components/flavored/tabs-subtle";
 import { Dropdown, DropdownLabel } from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import { ChatMessage } from "@/registry/default/chat-message";

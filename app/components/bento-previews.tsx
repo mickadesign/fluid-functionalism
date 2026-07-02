@@ -51,7 +51,7 @@ import { Tabs, TabsList, TabItem } from "@/registry/radix/tabs";
 import {
   TabsSubtle,
   TabsSubtleItem,
-} from "@/registry/default/tabs-subtle";
+} from "@/components/flavored/tabs-subtle";
 import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
 import {
   ThinkingSteps,

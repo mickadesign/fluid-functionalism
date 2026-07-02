@@ -14,7 +14,7 @@ import {
   TabsSubtle,
   TabsSubtleItem,
   TabsSubtlePanel,
-} from "@/registry/default/tabs-subtle";
+} from "@/components/flavored/tabs-subtle";
 import {
   ThinkingSteps,
   ThinkingStepsHeader,

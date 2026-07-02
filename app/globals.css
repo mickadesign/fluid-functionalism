@@ -377,6 +377,10 @@ html, body {
   overscroll-behavior-y: none;
   background-color: var(--background);
   font-family: var(--font-sans);
+  /* Inherited by everything (portals included) — a `subpixel-antialiased`
+     utility on a subtree is the only way to opt back out. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, p {

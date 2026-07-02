@@ -6,7 +6,7 @@ import {
   TabsSubtle,
   TabsSubtleItem,
   TabsSubtlePanel,
-} from "@/registry/default/tabs-subtle";
+} from "@/components/flavored/tabs-subtle";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";

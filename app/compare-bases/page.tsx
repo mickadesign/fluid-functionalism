@@ -99,7 +99,14 @@ import {
   DropdownContent,
 } from "@/registry/default/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
-import { TabsSubtle, TabsSubtleItem } from "@/registry/default/tabs-subtle";
+import {
+  TabsSubtle as RadixTabsSubtle,
+  TabsSubtleItem as RadixTabsSubtleItem,
+} from "@/registry/radix/tabs-subtle";
+import {
+  TabsSubtle as BaseTabsSubtle,
+  TabsSubtleItem as BaseTabsSubtleItem,
+} from "@/registry/base/tabs-subtle";
 import {
   ThinkingSteps,
   ThinkingStepsHeader,
@@ -184,7 +191,8 @@ export default function CompareBasesPage() {
   // Single-source section state
   const [fruit, setFruit] = useState("");
   const [view, setView] = useState(0);
-  const [tab, setTab] = useState(0);
+  const [tabA, setTabA] = useState(0);
+  const [tabB, setTabB] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [emailValue, setEmailValue] = useState("");
 
@@ -400,6 +408,19 @@ export default function CompareBasesPage() {
         </BaseScrollArea>
       </Row>
 
+      <Row label="Tabs Subtle">
+        <RadixTabsSubtle selectedIndex={tabA} onSelect={setTabA}>
+          <RadixTabsSubtleItem index={0} label="Overview" />
+          <RadixTabsSubtleItem index={1} label="Activity" />
+          <RadixTabsSubtleItem index={2} label="Settings" />
+        </RadixTabsSubtle>
+        <BaseTabsSubtle selectedIndex={tabB} onSelect={setTabB}>
+          <BaseTabsSubtleItem index={0} label="Overview" />
+          <BaseTabsSubtleItem index={1} label="Activity" />
+          <BaseTabsSubtleItem index={2} label="Settings" />
+        </BaseTabsSubtle>
+      </Row>
+
       {/* ── Single-source components ─────────────────────────────────── */}
       <section className="pt-24 pb-4">
         <h2
@@ -442,14 +463,6 @@ export default function CompareBasesPage() {
 
       <SingleRow label="Color Picker">
         <ColorPickerPopover defaultValue="#6B97FF" />
-      </SingleRow>
-
-      <SingleRow label="Tabs Subtle">
-        <TabsSubtle selectedIndex={tab} onSelect={setTab}>
-          <TabsSubtleItem index={0} label="Overview" />
-          <TabsSubtleItem index={1} label="Activity" />
-          <TabsSubtleItem index={2} label="Settings" />
-        </TabsSubtle>
       </SingleRow>
 
       <SingleRow label="Thinking Steps">

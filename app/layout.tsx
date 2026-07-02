@@ -44,7 +44,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      {/* Font smoothing (antialiased/grayscale) is set globally in globals.css */}
+      <body>
         {/* reducedMotion="user" makes every framer-motion component honor the
             OS "reduce motion" setting: transform / scale / position / layout
             animations are dropped, opacity and color fades are kept. One switch
