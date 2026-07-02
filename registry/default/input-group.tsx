@@ -64,7 +64,11 @@ const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
           onMouseEnter={handlers.onMouseEnter}
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
-          className={cn("flex flex-col gap-3 w-72 max-w-full", className)}
+          // `relative` makes this div the fields' offsetParent — the proximity
+          // hook measures items via offsetTop and compares against
+          // container-relative mouse coords, so the two coordinate spaces must
+          // share this origin (same as every other proximity consumer).
+          className={cn("relative flex flex-col gap-3 w-72 max-w-full", className)}
           {...props}
         >
           {children}
