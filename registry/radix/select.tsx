@@ -224,7 +224,9 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
             {/* Radix strips className from Select.Value, and `data-placeholder`
                 lives on the Trigger, so the label styling sits on a wrapper
                 span keyed off the trigger's `group` class. */}
-            <span className="min-w-0 flex-1 text-left truncate [text-box:trim-both_cap_alphabetic] group-data-[placeholder]:text-muted-foreground">
+            {/* py-1/-my-1 keeps truncate's overflow:hidden from clipping
+                ascenders/descenders outside the trimmed box. */}
+            <span className="min-w-0 flex-1 text-left truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1 group-data-[placeholder]:text-muted-foreground">
               <SelectPrimitive.Value placeholder={placeholder} />
             </span>
           </span>
@@ -584,7 +586,9 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
             ItemText) so the ItemText → trigger portal carries the plain label
             only, not a styled span. Radix's built-in ItemIndicator is not
             rendered — the animated checkmark below keys off our context. */}
-        <span className="flex-1 min-w-0 truncate [text-box:trim-both_cap_alphabetic]">
+        {/* py-1/-my-1 keeps truncate's overflow:hidden from clipping
+            ascenders/descenders outside the trimmed box. */}
+        <span className="flex-1 min-w-0 truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1">
           <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
         </span>
 

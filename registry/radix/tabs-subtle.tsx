@@ -274,9 +274,11 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
     const showLabel = !collapseLabel || isSelected;
 
     const labelContent = (
+      // Both stacked spans carry the text-box trim so the invisible bold
+      // sizer and the visible label keep identical boxes.
       <span className="inline-grid text-[13px] whitespace-nowrap">
         <span
-          className="col-start-1 row-start-1 invisible"
+          className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
           style={{ fontVariationSettings: fontWeights.semibold }}
           aria-hidden="true"
         >
@@ -284,7 +286,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         </span>
         <span
           className={cn(
-            "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+            "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
             isActive ? "text-foreground" : "text-muted-foreground"
           )}
           style={{
@@ -315,8 +317,10 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         aria-controls={idPrefix ? `${idPrefix}-panel-${index}` : undefined}
         aria-label={collapseLabel && !showLabel ? label : undefined}
         className={cn(
-          "relative z-10 flex items-center px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
-          collapseLabel ? "h-8" : "gap-2",
+          // Fixed heights (was py-2 around a 19.5px line box ≈ 35.5px) so the
+          // text-box trim on the label doesn't shrink the tab.
+          "relative z-10 flex items-center px-3 cursor-pointer bg-transparent border-none outline-none",
+          collapseLabel ? "h-8" : "h-9 gap-2",
           shape.bg,
           className
         )}

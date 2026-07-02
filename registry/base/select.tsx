@@ -220,7 +220,11 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
             )}
             <SelectPrimitive.Value
               placeholder={placeholder}
-              className="min-w-0 flex-1 text-left truncate data-[placeholder]:text-muted-foreground"
+              // py-1/-my-1: truncate's overflow:hidden clips at the padding
+              // box, and the trimmed box excludes ascenders/descenders — the
+              // padding gives glyphs room while the negative margin keeps the
+              // trimmed layout box.
+              className="min-w-0 flex-1 text-left truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1 data-[placeholder]:text-muted-foreground"
             />
           </span>
 
@@ -548,7 +552,9 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
             data-proximity-index={index}
             data-value={value}
             className={cn(
-              `relative z-10 flex items-center gap-2 ${shape.item} px-2 py-2 text-[13px] cursor-pointer outline-none select-none`,
+              // Fixed height (was py-2 around a 19.5px line box ≈ 35.5px) so
+              // the text-box trim on the item text doesn't shrink the row.
+              `relative z-10 flex h-9 items-center gap-2 ${shape.item} px-2 text-[13px] cursor-pointer outline-none select-none`,
               "transition-[color] duration-80",
               isActive || isChecked
                 ? "text-foreground"
@@ -569,7 +575,9 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         )}
 
         <SelectPrimitive.ItemText
-          render={<span className="flex-1 min-w-0 truncate" />}
+          // py-1/-my-1 keeps truncate's overflow:hidden from clipping
+          // ascenders/descenders outside the trimmed box.
+          render={<span className="flex-1 min-w-0 truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1" />}
         >
           {children}
         </SelectPrimitive.ItemText>

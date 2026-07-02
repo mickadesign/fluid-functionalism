@@ -17,7 +17,6 @@ import { useShape } from "@/lib/shape-context";
 const buttonVariants = cva(
   [
     "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer",
-    "text-box-trim-both text-box-edge-cap-alphabetic",
     "transition-colors duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
@@ -173,7 +172,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
               )}
-              <span>{label}</span>
+              {/* text-box only applies to block containers, so the trim lives
+                  on the label span (a blockified flex item), not the flex root.
+                  The button's height is fixed (h-*), so this doesn't change
+                  layout — it just centers the cap-to-baseline box optically. */}
+              <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
               {TrailingIcon && (
                 <TrailingIcon
                   size={iconSize}

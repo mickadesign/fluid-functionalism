@@ -100,7 +100,10 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
             }}
           />
         )}
-        {children}
+        {/* text-box needs a block container — the badge root is a flex
+            container, so the label gets its own span. Height is fixed (h-*),
+            so trimming only recenters the letterforms. */}
+        <span className="[text-box:trim-both_cap_alphabetic]">{children}</span>
       </span>
     );
   }

@@ -348,7 +348,9 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-1.5 cursor-pointer outline-none`,
+          // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
+          // text-box trim on the label doesn't shrink the row.
+          `relative z-10 flex h-8 items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none`,
           className
         )}
         {...props}
@@ -386,9 +388,11 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         </div>
 
         {/* Label */}
+        {/* Both stacked spans carry the text-box trim so the invisible bold
+            sizer and the visible label keep identical boxes. */}
         <span className="inline-grid text-[13px]">
           <span
-            className="col-start-1 row-start-1 invisible"
+            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -396,7 +400,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               isSelected || isActive
                 ? "text-foreground"
                 : "text-muted-foreground"

@@ -254,7 +254,9 @@ function QueuedRow({
         }
       }}
       className={cn(
-        "group/qrow flex items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5",
+        // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
+        // text-box trim on the label doesn't shrink the row.
+        "group/qrow flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5",
         "text-[13px] text-foreground/85 select-none outline-none",
         "cursor-grab active:cursor-grabbing",
         "focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
@@ -267,7 +269,9 @@ function QueuedRow({
           {item.text && <span className="tabular-nums">{fileCount}</span>}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {/* py-1/-my-1 keeps truncate's overflow:hidden from clipping
+          ascenders/descenders outside the trimmed box. */}
+      <span className="min-w-0 flex-1 truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1">{label}</span>
       <Tooltip content="Remove" side="top">
         <button
           type="button"

@@ -250,7 +250,9 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         <span
           id={labelId}
           className={cn(
-            "text-[13px] transition-[color] duration-80",
+            // text-box trim recenters the letterforms against the track; the
+            // 20px track is taller than the label, so layout doesn't change.
+            "text-[13px] [text-box:trim-both_cap_alphabetic] transition-[color] duration-80",
             checked ? "text-foreground" : "text-muted-foreground"
           )}
         >
