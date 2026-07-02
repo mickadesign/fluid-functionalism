@@ -325,8 +325,13 @@ html.transitioning *::after {
               stroke 180ms ease-in-out !important;
 }
 
+/* No explicit overflow here: scrollbar-gutter applies to the viewport when
+   set on the root, and an explicit `overflow-y: auto` would stop dialog
+   scroll locks (`body { overflow: hidden }`) from propagating to the
+   viewport — body would become a clip container instead, which breaks
+   position: sticky for the sidebar and right panel (they snap to the
+   document top the moment a dialog opens). */
 html {
-  overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
