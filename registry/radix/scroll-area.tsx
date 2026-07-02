@@ -10,6 +10,9 @@ import {
   createContext,
   forwardRef,
   useContext,
+  useEffect,
+  useRef,
+  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
 } from "react";
@@ -22,6 +25,18 @@ import { useTouchPrimary } from "@/hooks/use-touch-primary";
 // of native overflow scrolling (better physics, momentum, rubber-banding);
 // the context lets the exported ScrollBar no-op in that branch.
 const ScrollAreaContext = createContext<boolean>(false);
+
+// Whether the scrollbar should currently be shown (hovering the area or
+// actively scrolling). Owned by ScrollArea rather than Radix's type="hover"
+// machinery: Radix only reveals on hover (never on scroll, unlike the Base UI
+// flavour's data-scrolling) and stacks conditional Presence layers that fight
+// the CSS fade. Default true so a standalone ScrollBar stays visible.
+const ScrollbarVisibleContext = createContext<boolean>(true);
+
+// How long the scrollbar lingers after the last scroll event before fading
+// (matching the Base UI flavour's data-scrolling decay feel). Hover hide is
+// immediate — the fade classes add their own 160ms grace.
+const SCROLL_LINGER_MS = 600;
 
 type Orientation = "vertical" | "horizontal" | "both";
 
@@ -40,7 +55,9 @@ const ScrollArea = forwardRef<
     {
       className,
       children,
-      scrollHideDelay = 0,
+      // Swallowed: hide timing is owned by the fade classes + scroll linger
+      // below, not Radix's hover machinery (see type="always" note).
+      scrollHideDelay: _scrollHideDelay,
       viewportClassName,
       orientation = "vertical",
       ...props
@@ -48,6 +65,23 @@ const ScrollArea = forwardRef<
     ref
   ) => {
     const isTouch = useTouchPrimary();
+
+    // Hover + scroll visibility, driving the scrollbar fade below. Scroll
+    // reveals linger SCROLL_LINGER_MS after the last scroll event.
+    const [hovering, setHovering] = useState(false);
+    const [scrolling, setScrolling] = useState(false);
+    const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(
+      () => () => {
+        if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      },
+      []
+    );
+    const handleScroll = () => {
+      setScrolling(true);
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = setTimeout(() => setScrolling(false), SCROLL_LINGER_MS);
+    };
 
     return (
       <ScrollAreaContext.Provider value={isTouch}>
@@ -75,23 +109,32 @@ const ScrollArea = forwardRef<
             </div>
           </div>
         ) : (
-          <ScrollAreaPrimitive.Root
-            ref={ref}
-            data-slot="scroll-area"
-            scrollHideDelay={scrollHideDelay}
-            className={cn("relative overflow-hidden", className)}
-            {...props}
-          >
-            <ScrollAreaPrimitive.Viewport
-              data-slot="scroll-area-viewport"
-              className={cn("size-full rounded-[inherit]", viewportClassName)}
+          <ScrollbarVisibleContext.Provider value={hovering || scrolling}>
+            <ScrollAreaPrimitive.Root
+              ref={ref}
+              data-slot="scroll-area"
+              // type="always" keeps the scrollbar mounted whenever content
+              // overflows; show/hide is OUR opacity fade (see ScrollBar), not
+              // Radix's hover Presence — which never reveals on scroll and
+              // unmounts through layers that a CSS transition can't outlive.
+              type="always"
+              onPointerEnter={() => setHovering(true)}
+              onPointerLeave={() => setHovering(false)}
+              className={cn("relative overflow-hidden", className)}
+              {...props}
             >
-              {children}
-            </ScrollAreaPrimitive.Viewport>
-            {orientation !== "horizontal" && <ScrollBar orientation="vertical" />}
-            {orientation !== "vertical" && <ScrollBar orientation="horizontal" />}
-            {orientation === "both" && <ScrollAreaPrimitive.Corner />}
-          </ScrollAreaPrimitive.Root>
+              <ScrollAreaPrimitive.Viewport
+                data-slot="scroll-area-viewport"
+                onScroll={handleScroll}
+                className={cn("size-full rounded-[inherit]", viewportClassName)}
+              >
+                {children}
+              </ScrollAreaPrimitive.Viewport>
+              {orientation !== "horizontal" && <ScrollBar orientation="vertical" />}
+              {orientation !== "vertical" && <ScrollBar orientation="horizontal" />}
+              {orientation === "both" && <ScrollAreaPrimitive.Corner />}
+            </ScrollAreaPrimitive.Root>
+          </ScrollbarVisibleContext.Provider>
         )}
       </ScrollAreaContext.Provider>
     );
@@ -105,6 +148,7 @@ const ScrollBar = forwardRef<
   ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
 >(({ className, orientation = "vertical", ...props }, ref) => {
   const isTouch = useContext(ScrollAreaContext);
+  const visible = useContext(ScrollbarVisibleContext);
   const shape = useShape();
 
   if (isTouch) return null;
@@ -113,14 +157,13 @@ const ScrollBar = forwardRef<
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       ref={ref}
       orientation={orientation}
-      // Radix wraps hover-type scrollbars in Presence, which unmounts on hide
-      // and only waits for CSS *animations* — the opacity *transition* below
-      // would never play (with scrollHideDelay=0 the element unmounts
-      // instantly). forceMount keeps it in the DOM so the fade actually runs;
-      // data-state drives visibility, matching the always-mounted Base UI
-      // flavour.
-      forceMount
       data-slot="scroll-area-scrollbar"
+      // Visibility is OUR hover/scroll state (ScrollbarVisibleContext), not
+      // Radix's type="hover" machinery — which never reveals on scroll and
+      // unmounts through Presence layers a CSS transition can't outlive.
+      // data-visible drives the fade; Radix's own data-state stays "visible"
+      // under the Root's type="always" and is ignored.
+      data-visible={visible ? "" : undefined}
       // Scrollbar show/hide is plain CSS opacity matching the cue fade —
       // 160ms in, 120ms out (exits faster, per the animation guidelines);
       // spring tokens are framer-motion configs and don't apply here.
@@ -132,12 +175,11 @@ const ScrollBar = forwardRef<
         // Show immediately; on hide, wait out the 150ms thumb shrink before
         // fading so the thumb visibly narrows back first instead of the fade
         // masking it.
-        "transition-opacity duration-120 ease-out data-[state=visible]:duration-160",
-        "data-[state=visible]:opacity-100 data-[state=hidden]:opacity-0",
-        "data-[state=hidden]:delay-160 data-[state=visible]:delay-0",
+        "opacity-0 transition-opacity duration-120 ease-out delay-160",
+        "data-[visible]:opacity-100 data-[visible]:duration-160 data-[visible]:delay-0",
         // Faded out = gone: the always-mounted track must not eat clicks or
         // hovers on content along the edge.
-        "data-[state=hidden]:pointer-events-none",
+        "pointer-events-none data-[visible]:pointer-events-auto",
         orientation === "vertical" && "h-full w-2.5",
         orientation === "horizontal" && "h-2.5 w-full flex-col",
         className
