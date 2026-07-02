@@ -56,7 +56,8 @@ function useIcon(name: IconName): IconComponent {
 function useIcons(): Record<IconName, IconComponent> {
   const ctx = useContext(IconContext);
   const lib = ctx?.iconLibrary ?? "lucide";
-  return useMemo(() => iconMap[lib], [lib]);
+  // iconMap is a module-level constant, so iconMap[lib] is already stable.
+  return iconMap[lib];
 }
 
 function IconProvider({
@@ -89,8 +90,13 @@ function IconProvider({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const value = useMemo(
+    () => ({ iconLibrary, setIconLibrary }),
+    [iconLibrary, setIconLibrary]
+  );
+
   return (
-    <IconContext.Provider value={{ iconLibrary, setIconLibrary }}>
+    <IconContext.Provider value={value}>
       {children}
     </IconContext.Provider>
   );

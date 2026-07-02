@@ -5,7 +5,9 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -76,14 +78,6 @@ function useShapeContext() {
   return ctx;
 }
 
-function transitionShape(callback: () => void) {
-  const root = document.documentElement;
-  root.classList.add("transitioning");
-  void root.offsetHeight;
-  callback();
-  setTimeout(() => root.classList.remove("transitioning"), 200);
-}
-
 function ShapeProvider({
   children,
   defaultShape = "pill",
@@ -92,10 +86,29 @@ function ShapeProvider({
   defaultShape?: ShapeVariant;
 }) {
   const [shape, setShapeState] = useState<ShapeVariant>(defaultShape);
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setShape = useCallback((next: ShapeVariant) => {
-    transitionShape(() => setShapeState(next));
+  // Run a state change under the `.transitioning` guard (added + reflow-flushed
+  // first so the 180ms border-radius cross-fade applies). Clearing the previous
+  // timeout first keeps a double-press from removing the class mid-fade.
+  const transitionShape = useCallback((callback: () => void) => {
+    const root = document.documentElement;
+    root.classList.add("transitioning");
+    void root.offsetHeight;
+    callback();
+    if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+    transitionTimeoutRef.current = setTimeout(
+      () => root.classList.remove("transitioning"),
+      200
+    );
   }, []);
+
+  const setShape = useCallback(
+    (next: ShapeVariant) => {
+      transitionShape(() => setShapeState(next));
+    },
+    [transitionShape]
+  );
 
   // Global keyboard shortcut: R to cycle radius
   useEffect(() => {
@@ -114,10 +127,15 @@ function ShapeProvider({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [transitionShape]);
+
+  const value = useMemo(
+    () => ({ shape, setShape, classes: shapeMap[shape] }),
+    [shape, setShape]
+  );
 
   return (
-    <ShapeContext.Provider value={{ shape, setShape, classes: shapeMap[shape] }}>
+    <ShapeContext.Provider value={value}>
       {children}
     </ShapeContext.Provider>
   );

@@ -236,6 +236,7 @@
       "title": "useMergeSplitBlocks",
       "description": "React hook + renderer for the selected-background merge/split animation. When one row bridges or splits two contiguous selected runs, their inner edges glide together (or apart) and swap to a single block, instead of one block spring-growing over the union.",
       "registryDependencies": [
+        "springs",
         "use-proximity-hover"
       ],
       "files": [
@@ -303,7 +304,8 @@
       "title": "Ask User Questions",
       "description": "Stepped question flow with numbered options, keyboard shortcuts (1\u20139), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "@base-ui/react"
       ],
       "registryDependencies": [
         "utils",
@@ -425,8 +427,9 @@
       "name": "dropdown",
       "type": "registry:ui",
       "title": "Dropdown",
-      "description": "Dropdown menu with proximity-based hover tracking, animated selection indicator, and animated focus ring. Includes MenuItem sub-component.",
+      "description": "Dropdown menu with proximity-based hover tracking, animated selection indicator, and animated focus ring. Renders as an always-visible inline panel or as a triggered popup (DropdownMenu/DropdownTrigger/DropdownContent) built on Base UI Menu with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem sub-component.",
       "dependencies": [
+        "@base-ui/react",
         "framer-motion"
       ],
       "registryDependencies": [
@@ -436,7 +439,9 @@
         "shape-context",
         "surface-context",
         "surface-classes",
-        "use-proximity-hover"
+        "icon-context",
+        "use-proximity-hover",
+        "elevated"
       ],
       "files": [
         {
@@ -602,6 +607,27 @@
       ]
     },
     {
+      "name": "mobile-drawer",
+      "type": "registry:ui",
+      "title": "Mobile Drawer",
+      "description": "Left-anchored navigation drawer built on Base UI Dialog — modal scroll lock, focus trap and restore, Esc/outside-click dismissal, and a spring-animated slide-in panel with surface-aware elevation.",
+      "dependencies": [
+        "@base-ui/react",
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "springs",
+        "surface-context",
+        "surface-classes"
+      ],
+      "files": [
+        {
+          "path": "registry/default/mobile-drawer.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "input-copy",
       "type": "registry:ui",
       "title": "Input Copy",
@@ -630,13 +656,15 @@
       "title": "Input Group",
       "description": "Grouped input fields with proximity-based highlighting, animated label transitions, optional icons, and error states.",
       "dependencies": [
-        "lucide-react"
+        "lucide-react",
+        "@base-ui/react"
       ],
       "registryDependencies": [
         "utils",
         "font-weight",
         "shape-context",
-        "icon-context"
+        "icon-context",
+        "use-proximity-hover"
       ],
       "files": [
         {
@@ -690,7 +718,7 @@
       "title": "Chat Message",
       "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
       "dependencies": ["framer-motion"],
-      "registryDependencies": ["utils", "springs", "shape-context", "file-thumbnail"],
+      "registryDependencies": ["utils", "springs", "shape-context", "use-touch-primary", "file-thumbnail"],
       "files": [
         {
           "path": "registry/default/chat-message.tsx",
@@ -704,6 +732,7 @@
       "title": "Tabs Subtle",
       "description": "Horizontal tab navigation with proximity hover, animated pill selection indicator, and fluid font-weight transitions. Supports icons and keyboard navigation.",
       "dependencies": [
+        "@base-ui/react",
         "framer-motion",
         "lucide-react"
       ],
@@ -1043,6 +1072,7 @@
       "title": "Thinking Steps",
       "description": "Chain-of-thought reasoning display with collapsible steps, sequential animation, source badges, and image support.",
       "dependencies": [
+        "@base-ui/react",
         "framer-motion",
         "lucide-react"
       ],
@@ -1052,7 +1082,6 @@
         "font-weight",
         "shape-context",
         "icon-context",
-        "accordion",
         "badge"
       ],
       "files": [
@@ -1066,8 +1095,9 @@
       "name": "color-picker",
       "type": "registry:ui",
       "title": "Color Picker",
-      "description": "Color picker with HEX, RGB, HSL, and OKLCH formats, alpha channel, optional swatches, and a popover trigger. Built on the Slider component with native EyeDropper support.",
+      "description": "Color picker with HEX, RGB, HSL, and OKLCH formats, alpha channel, optional swatches, and a popover trigger. Built on Base UI's Popover, Menu, and NumberField primitives with native EyeDropper support.",
       "dependencies": [
+        "@base-ui/react",
         "framer-motion"
       ],
       "registryDependencies": [
@@ -1077,8 +1107,10 @@
         "shape-context",
         "surface-context",
         "surface-classes",
-        "slider",
-        "dropdown"
+        "icon-context",
+        "use-proximity-hover",
+        "elevated",
+        "slider"
       ],
       "files": [
         {

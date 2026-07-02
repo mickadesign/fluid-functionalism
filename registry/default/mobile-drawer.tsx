@@ -107,16 +107,10 @@ export function MobileDrawer({
                 style={baseStyle as React.CSSProperties | undefined}
                 initial={{ x: "-100%" }}
                 animate={{ x: open ? 0 : "-100%" }}
-                // Critically damped spring — same perceived duration as
-                // spring.moderate but bounce: 0, so the panel decelerates
-                // into x: 0 without overshooting. The previous bounce: 0.15
-                // briefly pushed the panel past its rest position, exposing
-                // the page background through the gap on the left edge.
-                transition={
-                  open
-                    ? { type: "spring", duration: 0.16, bounce: 0 }
-                    : spring.moderate.exit
-                }
+                // spring.settle: critically damped, so the panel decelerates
+                // into x: 0 without overshooting (a bounce briefly exposed the
+                // page background through the gap on the left edge).
+                transition={open ? spring.settle : spring.settle.exit}
                 // Release Base UI's deferred unmount once the exit tween has
                 // finished so the close animation fully plays.
                 onAnimationComplete={() => {

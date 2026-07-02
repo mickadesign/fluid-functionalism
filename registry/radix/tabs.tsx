@@ -200,19 +200,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
       [registerItem]
     );
 
-    // Measure on children change
+    // Measure on children change (resizes are covered by useProximityHover's
+    // own container ResizeObserver)
     useEffect(() => {
       measureItems();
     }, [measureItems, children]);
-
-    // Remeasure on resize
-    useEffect(() => {
-      const el = containerRef.current;
-      if (!el) return;
-      const ro = new ResizeObserver(() => measureItems());
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, [measureItems]);
 
     // Track mouse inside
     const handleMouseMove = useCallback(

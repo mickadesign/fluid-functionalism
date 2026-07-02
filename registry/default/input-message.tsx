@@ -343,6 +343,14 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const [dragOver, setDragOver] = useState(false);
     const [hovered, setHovered] = useState(false);
 
+    // Split out onFocus/onBlur so the rest-spread onto the textarea can't
+    // clobber the composed handlers below.
+    const {
+      onFocus: _textareaOnFocus,
+      onBlur: _textareaOnBlur,
+      ...restTextareaProps
+    } = textareaProps ?? {};
+
     const filesArr = useMemo(() => files ?? [], [files]);
     const supportsFiles = onFilesChange !== undefined;
 
@@ -364,15 +372,23 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const [historyIndex, setHistoryIndex] = useState<number | null>(null);
     const draftBeforeHistory = useRef("");
 
+    // Parsed line-height, cached per textarea element — getComputedStyle on
+    // every keystroke is needless work when the value only changes with font
+    // or zoom changes.
+    const lineHeightCache = useRef<{ el: HTMLTextAreaElement; value: number } | null>(null);
+
     useIsoLayoutEffect(() => {
       const el = textareaRef.current;
       if (!el) return;
       el.style.height = "auto";
-      const computed = getComputedStyle(el);
-      const lineHeight = parseFloat(computed.lineHeight);
-      const measuredLineHeight = Number.isNaN(lineHeight) ? 20 : lineHeight;
-      const min = measuredLineHeight * minRows;
-      const max = measuredLineHeight * maxRows;
+      let cache = lineHeightCache.current;
+      if (!cache || cache.el !== el) {
+        const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+        cache = { el, value: Number.isNaN(lineHeight) ? 20 : lineHeight };
+        lineHeightCache.current = cache;
+      }
+      const min = cache.value * minRows;
+      const max = cache.value * maxRows;
       const next = Math.min(Math.max(el.scrollHeight, min), max);
       el.style.height = `${next}px`;
       el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
@@ -844,10 +860,17 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
               onValueChange(e.target.value);
             }}
             onKeyDown={handleKeyDown}
+            // Compose the consumer's textareaProps handlers with the internal
+            // focus-visible tracking (the spread below would otherwise
+            // overwrite these).
             onFocus={(e) => {
               if (e.target.matches(":focus-visible")) setFocusVisible(true);
+              textareaProps?.onFocus?.(e);
             }}
-            onBlur={() => setFocusVisible(false)}
+            onBlur={(e) => {
+              setFocusVisible(false);
+              textareaProps?.onBlur?.(e);
+            }}
             placeholder={
               dragOver && supportsFiles
                 ? "Drop files here to add to chat"
@@ -862,7 +885,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
               "px-2 py-2"
             )}
             style={{ fontVariationSettings: fontWeights.normal }}
-            {...textareaProps}
+            {...restTextareaProps}
           />
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">{leftContent}</div>

@@ -3,6 +3,7 @@
 import {
   useRef,
   useEffect,
+  useMemo,
   createContext,
   useContext,
   forwardRef,
@@ -51,8 +52,13 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
 
+    const contextValue = useMemo(
+      () => ({ registerItem, activeIndex }),
+      [registerItem, activeIndex]
+    );
+
     return (
-      <TableContext.Provider value={{ registerItem, activeIndex }}>
+      <TableContext.Provider value={contextValue}>
         <div
           ref={containerRef}
           className="relative"

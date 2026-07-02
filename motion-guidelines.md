@@ -12,7 +12,8 @@ does the other.
 | Token | Duration | Bounce | Use for |
 |---|---|---|---|
 | `spring.fast` | 0.08s | 0 | Hover, focus rings, fades, tooltips, selection indicators |
-| `spring.moderate` | 0.16s | 0.08 | Short travel / small expansion: dropdown & tab indicators, switch thumb, accordions, drawers |
+| `spring.moderate` | 0.16s | 0.08 | Short travel / small expansion: dropdown & tab indicators, switch thumb, accordions |
+| `spring.settle` | 0.16s | 0 | Critically damped moderate — same perceived speed, no overshoot; panels/sheets that must land exactly (mobile drawer, merged selection backgrounds) |
 | `spring.slow` | 0.24s | 0.12 | Large surfaces: dialogs, side panels, stepped flows |
 
 **Rule:** the bigger the thing that moves, the slower the spring. No component
@@ -31,6 +32,7 @@ tokenised).
 |---|---|---|
 | `spring.fast` (0.08s) | `spring.fast.exit` | `{ duration: 0.06 }` |
 | `spring.moderate` (0.16s) | `spring.moderate.exit` | `{ duration: 0.12 }` |
+| `spring.settle` (0.16s) | `spring.settle.exit` | `{ duration: 0.12 }` |
 | `spring.slow` (0.24s) | `spring.slow.exit` | `{ duration: 0.16 }` |
 
 ```tsx
@@ -66,12 +68,12 @@ changes. The full pattern and rules live in
 ## Where each speed shows up
 
 The Motion page renders a high-level map of which component *leads* with which
-spring, generated from the `SPEED_USAGE` array in `app/docs/motion/page.tsx`.
+spring, generated from the `REFERENCE_TIERS` array in `app/docs/motion/page.tsx`.
 Keep this table and that array identical.
 
-| fast (0.08s) | moderate (0.16s) | slow (0.24s) |
-|---|---|---|
-| Hover & focus rings, Checkbox, Radio, Table rows, Tooltip, Input copy, Slider, Select / Color picker open | Dropdown / Select highlight, Tabs indicator, Switch thumb, Accordion, Chat & message bubbles, Mobile drawer | Dialog, Ask-user questions, Thinking steps |
+| fast (0.08s) | moderate (0.16s) | settle (0.16s, no bounce) | slow (0.24s) |
+|---|---|---|---|
+| Hover & focus rings, Checkbox, Radio, Table rows, Tooltip, Input copy, Slider, Select / Color picker open | Dropdown / Select highlight, Tabs indicator, Switch thumb, Accordion, Chat & message bubbles | Mobile drawer, Selection merge / split | Dialog, Ask-user questions, Thinking steps |
 
 Most components *also* use `fast` for their hover and focus states on top of
 their headline tier — the table lists each component once, by its headline
@@ -132,7 +134,7 @@ Do this as part of the [new-component checklist](component-documentation-guideli
 3. **Enter on `spring.<tier>`, exit on `spring.<tier>.exit`.** The `.exit` is
    already a tier faster, so the "exits are faster" rule holds by construction.
 4. **Update the Motion page:** add the component to the correct column of the
-   `SPEED_USAGE` array in `app/docs/motion/page.tsx`, and update the table above
+   `REFERENCE_TIERS` array in `app/docs/motion/page.tsx`, and update the table above
    to match.
 5. **Move with `transform` / `opacity`, not `top` / `left` / `width` /
    `height`.** That keeps it on the GPU *and* lets the root `MotionConfig`

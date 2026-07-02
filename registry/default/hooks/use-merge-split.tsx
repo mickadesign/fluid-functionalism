@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { spring } from "@/lib/springs";
 import type { ItemRect } from "@/hooks/use-proximity-hover";
 
 // Run the layout effect on the client (where it must fire before paint, so a
@@ -9,10 +10,10 @@ import type { ItemRect } from "@/hooks/use-proximity-hover";
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-// Edge spring for the selected-bg merge/split: moderate, no bounce so converging
-// edges meet exactly instead of overshooting. On a merge the inner corners trail
-// by `cornerDelay`, staying rounded until the halves meet.
-const mergeSpring = { type: "spring" as const, duration: 0.16, bounce: 0 };
+// Edge spring for the selected-bg merge/split: spring.settle (critically damped
+// moderate) so converging edges meet exactly instead of overshooting. On a merge
+// the inner corners trail by `cornerDelay`, staying rounded until the halves meet.
+const mergeSpring = spring.settle;
 const cornerDelay = 0.07;
 // A boundary resolves after its motion finishes (merge → swap to one block;
 // split → drop), driven by a duration timer rather than onAnimationComplete —
@@ -140,20 +141,30 @@ export function useMergeSplitBlocks(
         }, b.kind === "merge" ? convergeMs : splitMs)
       );
     }
-    setBoundaries((active) => [
-      ...active.filter((b) =>
-        b.kind === "merge"
-          ? cur.some(
-              (c) =>
-                c.id === b.survivorId &&
-                b.gapIndex > c.start &&
-                b.gapIndex < c.end
-            )
-          : cur.some((c) => c.id === b.survivorId && c.end === b.gapIndex - 1) &&
-            cur.some((c) => c.id === b.otherId && c.start === b.gapIndex + 1)
-      ),
-      ...found,
-    ]);
+    const stillValid = (b: Boundary) =>
+      b.kind === "merge"
+        ? cur.some(
+            (c) =>
+              c.id === b.survivorId &&
+              b.gapIndex > c.start &&
+              b.gapIndex < c.end
+          )
+        : cur.some((c) => c.id === b.survivorId && c.end === b.gapIndex - 1) &&
+          cur.some((c) => c.id === b.otherId && c.start === b.gapIndex + 1);
+    setBoundaries((active) => {
+      // Cancel the resolve timer of any boundary the latest selection
+      // invalidated — otherwise it sits in timersRef until firing as a no-op.
+      // Clearing is idempotent, so a double-invoked updater is harmless.
+      for (const b of active) {
+        if (stillValid(b)) continue;
+        const timer = timersRef.current.get(b.tid);
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timersRef.current.delete(b.tid);
+        }
+      }
+      return [...active.filter(stillValid), ...found];
+    });
   }, [runsSig]);
 
   // Clear any pending timers on unmount.
@@ -354,7 +365,7 @@ export function SelectionBackgrounds({
               borderBottomLeftRadius: b.radii[3],
               opacity,
             }}
-            exit={{ opacity: 0, transition: { duration: b.exitInstant ? 0 : 0.12 } }}
+            exit={{ opacity: 0, transition: b.exitInstant ? { duration: 0 } : mergeSpring.exit }}
             transition={
               b.instant
                 ? { duration: 0 }

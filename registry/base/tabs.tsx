@@ -193,14 +193,6 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
       measureItems();
     }, [measureItems, children]);
 
-    useEffect(() => {
-      const el = containerRef.current;
-      if (!el) return;
-      const ro = new ResizeObserver(() => measureItems());
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, [measureItems]);
-
     const handleMouseMove = useCallback(
       (e: React.MouseEvent) => {
         isMouseInside.current = true;

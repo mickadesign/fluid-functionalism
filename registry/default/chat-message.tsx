@@ -5,6 +5,7 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
+import { useTouchPrimary } from "@/hooks/use-touch-primary";
 import { FileThumbnail } from "@/registry/default/file-thumbnail";
 
 interface ChatMessageProps
@@ -38,6 +39,8 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
   ) => {
     const shape = useShape();
     const isUser = from === "user";
+    // Hover-reveal is unreachable on touch — keep the meta row visible there.
+    const isTouch = useTouchPrimary();
     // Timestamps are a user-message affordance; assistant replies show actions only.
     const showTime = isUser && time != null;
 
@@ -104,9 +107,11 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
           <div
             className={cn(
               "flex items-center gap-2 px-1 text-[12px] leading-none text-muted-foreground select-none",
-              "opacity-0 pointer-events-none transition-opacity duration-150",
-              "group-hover:opacity-100 group-hover:pointer-events-auto",
-              "group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+              !isTouch && [
+                "opacity-0 pointer-events-none transition-opacity duration-150",
+                "group-hover:opacity-100 group-hover:pointer-events-auto",
+                "group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+              ]
             )}
           >
             {showTime && <span className="tabular-nums">{time}</span>}

@@ -28,6 +28,8 @@ import { spring } from "@/lib/springs";
 
 // fast     — 0.08s, bounce 0.    Hover, fades, tooltips, focus rings.
 // moderate — 0.16s, bounce 0.08. Dropdowns, tabs, short travel.
+// settle   — 0.16s, bounce 0.    Critically damped moderate: panels that
+//                                must land exactly (drawers, merged selection).
 // slow     — 0.24s, bounce 0.12. Dialogs, drawers, large surfaces.
 
 // spring.<tier> is the enter; spring.<tier>.exit is the matching exit tween.
@@ -77,7 +79,20 @@ const REFERENCE_TIERS = [
       { label: "Switch thumb",      slug: "/docs/switch" },
       { label: "Accordion",         slug: "/docs/accordion" },
       { label: "Chat bubbles",      slug: "/docs/chat-message" },
-      { label: "Mobile drawer",     slug: null },
+    ],
+  },
+  {
+    key: "settle",
+    trackWidth: "w-2/3",
+    enterToken: "spring.settle",
+    exitToken: "spring.settle.exit",
+    enterMeta: "0.16s bounce 0",
+    exitMeta: "0.12s",
+    enterTransition: spring.settle,
+    exitTransition: spring.settle.exit,
+    components: [
+      { label: "Mobile drawer",           slug: null },
+      { label: "Selection merge / split", slug: "/docs/checkbox-group" },
     ],
   },
   {
@@ -98,16 +113,16 @@ const REFERENCE_TIERS = [
 ];
 
 // ms to wait before reversing (covers spring settle + tiny pause)
-const ENTER_SETTLE = { fast: 220, moderate: 400, slow: 560 } as const;
+const ENTER_SETTLE = { fast: 220, moderate: 400, settle: 400, slow: 560 } as const;
 // ms the exit takes (blocks re-clicks until done)
-const EXIT_SETTLE  = { fast: 150, moderate: 200, slow: 250 } as const;
+const EXIT_SETTLE  = { fast: 150, moderate: 200, settle: 200, slow: 250 } as const;
 
 function SpringReferenceSection() {
-  const [atEnds, setAtEnds] = useState([false, false, false]);
+  const [atEnds, setAtEnds] = useState([false, false, false, false]);
   const [transitions, setTransitions] = useState<Transition[]>([
-    spring.fast, spring.moderate, spring.slow,
+    spring.fast, spring.moderate, spring.settle, spring.slow,
   ]);
-  const [busy, setBusy] = useState([false, false, false]);
+  const [busy, setBusy] = useState([false, false, false, false]);
 
   const fire = (i: number) => {
     if (busy[i]) return;
@@ -413,7 +428,10 @@ export default function MotionDoc() {
           <Code>fast</Code>. Dropdowns and tabs use <Code>moderate</Code>.
           Dialogs and drawers use <Code>slow</Code>. No component invents its
           own timing, so things you've never thought about together will move
-          at the same pace.
+          at the same pace. A fourth token, <Code>settle</Code>, is{" "}
+          <Code>moderate</Code> with the bounce removed — critically damped,
+          for panels and sheets that must land exactly (the mobile drawer, the
+          merged selection backgrounds).
         </p>
         <SpringTokensDemo />
       </DocSection>

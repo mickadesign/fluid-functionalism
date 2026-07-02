@@ -3,8 +3,8 @@
 import {
   useRef,
   useState,
-  useCallback,
   useEffect,
+  useMemo,
   createContext,
   useContext,
   forwardRef,
@@ -12,13 +12,15 @@ import {
   type HTMLAttributes,
   type InputHTMLAttributes,
 } from "react";
+import { Field } from "@base-ui/react/field";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 interface InputGroupContextValue {
-  registerItem: (index: number, element: HTMLLabelElement | null) => void;
+  registerItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
 }
 
@@ -37,52 +39,31 @@ interface InputGroupProps extends HTMLAttributes<HTMLDivElement> {
 
 const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
   ({ children, className, ...props }, ref) => {
-    const itemsRef = useRef(new Map<number, HTMLLabelElement>());
-    const [activeIndex, setActiveIndex] = useState<number | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    const registerItem = useCallback(
-      (index: number, element: HTMLLabelElement | null) => {
-        if (element) {
-          itemsRef.current.set(index, element);
-        } else {
-          itemsRef.current.delete(index);
-        }
-      },
-      []
+    const { activeIndex, handlers, registerItem, measureItems } =
+      useProximityHover(containerRef);
+
+    useEffect(() => {
+      measureItems();
+    }, [measureItems, children]);
+
+    const contextValue = useMemo(
+      () => ({ registerItem, activeIndex }),
+      [registerItem, activeIndex]
     );
 
-    const handleMouseMove = useCallback((e: React.MouseEvent) => {
-      const mouseY = e.clientY;
-
-      let closestIndex: number | null = null;
-      let closestDistance = Infinity;
-
-      itemsRef.current.forEach((element, index) => {
-        const rect = element.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        const distance = Math.abs(mouseY - itemCenterY);
-
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestIndex = index;
-        }
-      });
-
-      setActiveIndex(closestIndex);
-    }, []);
-
-    const handleMouseLeave = useCallback(() => {
-      setActiveIndex(null);
-    }, []);
-
     return (
-      <InputGroupContext.Provider
-        value={{ registerItem, activeIndex }}
-      >
+      <InputGroupContext.Provider value={contextValue}>
         <div
-          ref={ref}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+          ref={(node) => {
+            (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            if (typeof ref === "function") ref(node);
+            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }}
+          onMouseEnter={handlers.onMouseEnter}
+          onMouseMove={handlers.onMouseMove}
+          onMouseLeave={handlers.onMouseLeave}
           className={cn("flex flex-col gap-3 w-72 max-w-full", className)}
           {...props}
         >
@@ -108,7 +89,7 @@ interface InputFieldProps
   className?: string;
 }
 
-const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
+const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
   (
     {
       label,
@@ -124,7 +105,8 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
     },
     ref
   ) => {
-    const internalRef = useRef<HTMLLabelElement>(null);
+    const internalRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLElement | null>(null);
     const { registerItem, activeIndex } = useInputGroup();
     const [isFocused, setIsFocused] = useState(false);
     const shape = useShape();
@@ -136,8 +118,6 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
 
     const isActive = activeIndex === index;
     const labelActive = isActive || isFocused;
-
-    const errorId = error ? `input-error-${index}` : undefined;
 
     const handleFocus = () => {
       setIsFocused(true);
@@ -169,12 +149,17 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
     }
 
     return (
-      <label
+      // Base UI Field wires the accessibility plumbing: Field.Label's htmlFor
+      // targets the control, Field.Error's generated id lands in the control's
+      // aria-describedby, and `invalid` drives aria-invalid / data-invalid.
+      <Field.Root
         ref={(node) => {
-          (internalRef as React.MutableRefObject<HTMLLabelElement | null>).current = node;
+          (internalRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
           if (typeof ref === "function") ref(node);
-          else if (ref) (ref as React.MutableRefObject<HTMLLabelElement | null>).current = node;
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
+        invalid={!!error}
+        disabled={disabled}
         className={cn(
           "flex flex-col gap-1 cursor-text",
           disabled && "opacity-50 pointer-events-none",
@@ -182,7 +167,7 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
         )}
       >
         {/* Label */}
-        <span className="inline-grid text-[13px] pl-3">
+        <Field.Label className="inline-grid text-[13px] pl-3">
           <span
             className="col-start-1 row-start-1 invisible"
             style={{ fontVariationSettings: fontWeights.semibold }}
@@ -201,10 +186,18 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
           >
             {label}
           </span>
-        </span>
+        </Field.Label>
 
         {/* Input container */}
         <div
+          onMouseDown={(e) => {
+            // The old wrapper was one big <label>, so a click anywhere (icon,
+            // padding) focused the input. Keep that, without disturbing the
+            // input's own caret placement.
+            if (e.target === inputRef.current) return;
+            e.preventDefault();
+            inputRef.current?.focus();
+          }}
           className={cn(
             `flex items-center gap-2 ${shape.input} px-3 py-2 ring-1 transition-all duration-80`,
             bgClass,
@@ -223,33 +216,32 @@ const InputField = forwardRef<HTMLLabelElement, InputFieldProps>(
               )}
             />
           )}
-          <input
+          <Field.Control
+            ref={inputRef}
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder={placeholder}
-            disabled={disabled}
-            aria-invalid={!!error || undefined}
-            aria-describedby={errorId}
             className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none font-[inherit]"
             style={{ fontVariationSettings: fontWeights.normal }}
             {...props}
           />
         </div>
 
-        {/* Error message */}
+        {/* Error message — `match` pins it visible while our controlled
+            `error` prop is standing. */}
         {error && (
-          <span
-            id={errorId}
+          <Field.Error
+            match
             className="text-[12px] text-destructive pl-3"
             style={{ fontVariationSettings: fontWeights.medium }}
           >
             {error}
-          </span>
+          </Field.Error>
         )}
-      </label>
+      </Field.Root>
     );
   }
 );
