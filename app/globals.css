@@ -9,215 +9,113 @@
   font-display: swap;
 }
 
+/* ============================================================================
+   1. DESIGN TOKENS
+   ----------------------------------------------------------------------------
+   Every color token is written ONCE, as light-dark(light, dark). Which side
+   renders is driven by `color-scheme`: the root follows the OS, and a `.light`
+   or `.dark` class (on <html> via ThemeProvider, or on any subtree for a
+   forced-theme preview) pins it.
+
+   The selector is `:root, .light, .dark` — not just `:root` — because
+   light-dark() inside a custom property resolves against the color-scheme of
+   the element the property is *declared on*, not the element that uses it.
+   Re-declaring the same block on forced-scope elements makes each scope its
+   own resolution point, so a `.dark` preview nested in a light page (see
+   /docs/surfaces) gets dark tokens.
+
+   Two exceptions can't ride light-dark() and keep a small per-theme switch in
+   section 2: the --overlay RGB triplet (consumed as rgb(var(--overlay) / α)
+   by components, so the format is a public contract) and the shadow ladder
+   (light and dark use structurally different recipes, not just different
+   colors).
+============================================================================ */
+
 :root {
+  color-scheme: light dark;
+}
+
+:root,
+.light,
+.dark {
   /* ── Surfaces (8-level ladder) ──
-     Light: 2 color steps (floor, sunken) then flat #FFFFFF; shadow does the work.
-     Dark: additive white-opacity ladder over #171717.
-     Each surface pairs 1:1 with a shadow recipe (--shadow-1 .. --shadow-8). */
-  --surface-1: #FAFAFA;
-  --surface-2: #FCFCFC;
-  --surface-3: #FFFFFF;
-  --surface-4: #FFFFFF;
-  --surface-5: #FFFFFF;
-  --surface-6: #FFFFFF;
-  --surface-7: #FFFFFF;
-  --surface-8: #FFFFFF;
+     Light: 2 color steps (floor, sunken) then flat #FFFFFF; shadow does the
+     work. Dark: additive white-opacity ladder over #171717. Each surface
+     pairs 1:1 with a shadow recipe (--shadow-1 .. --shadow-8). */
+  --surface-1: light-dark(#FAFAFA, #171717);
+  --surface-2: light-dark(#FCFCFC, #1E1E1E);
+  --surface-3: light-dark(#FFFFFF, #252525);
+  --surface-4: light-dark(#FFFFFF, #2C2C2C);
+  --surface-5: light-dark(#FFFFFF, #333333);
+  --surface-6: light-dark(#FFFFFF, #3A3A3A);
+  --surface-7: light-dark(#FFFFFF, #414141);
+  --surface-8: light-dark(#FFFFFF, #484848);
 
-  /* Shadows — additive layers, halving offsets (1/3/6/12/24/48/96 px). */
-  --shadow-color: rgb(0 0 0 / 0.06);
-  --shadow-1: 0 0 0 1px var(--shadow-color);
-  --shadow-2: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color);
-  --shadow-3: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color);
-  --shadow-4: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color);
-  --shadow-5: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color);
-  --shadow-6: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color);
-  --shadow-7: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color), 0 48px 48px -24px var(--shadow-color);
-  --shadow-8: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color), 0 48px 48px -24px var(--shadow-color), 0 96px 96px -48px var(--shadow-color);
+  /* ── Semantic tokens ── */
+  --background: var(--surface-1);
+  --foreground: light-dark(#171717, #F5F5F5);
+  --card: var(--surface-3);
+  --card-foreground: light-dark(#171717, #F5F5F5);
+  /* Light `muted` decouples from surface-2: the light surface ladder is so
+     compressed (#FAFAFA → #FCFCFC → #FFFFFF) that bg-muted would read as
+     near-white, making anything sitting on it (Tabs track, etc.) blend
+     together. A slightly more grey value gives muted real semantic presence.
+     Dark keeps the ladder value (#1E1E1E = surface-2). */
+  --muted: light-dark(#F4F4F5, #1E1E1E);
+  --muted-foreground: light-dark(#737373, #A3A3A3);
 
-  /* Focus indicator color — every component focus ring reads
-     var(--focus-ring, #6B97FF), so this is the single theming point.
-     The literal fallback keeps registry components self-contained when
-     installed into projects that don't define the variable. */
+  /* ── Interactive states ── */
+  --accent: light-dark(#E5E5E5, #525252);
+  --accent-foreground: light-dark(#171717, #F5F5F5);
+  --selected: light-dark(#D4D4D4, #525252);
+
+  /* ── Borders ──
+     --border mixes from --foreground, so it tracks the theme automatically —
+     including inside nested forced scopes, where light-dark() re-resolves
+     --foreground before the mix happens. */
+  --border: color-mix(in oklab, var(--foreground) 12%, transparent);
+  --ring: light-dark(#E5E5E5, #404040);
+  --input: light-dark(#E5E5E5, #404040);
+
+  /* ── Error / Destructive ── */
+  --destructive: light-dark(#EF4444, #F87171);
+  --destructive-light: light-dark(#FEF2F2, #450A0A);
+
+  /* ── Focus indicator ──
+     Every component focus ring reads var(--focus-ring, #6B97FF), so this is
+     the single theming point. The literal fallback keeps registry components
+     self-contained when installed into projects without the variable. */
   --focus-ring: #6B97FF;
 
-  /* Existing tokens — derived from the surface ladder */
-  --background: var(--surface-1);
-  --foreground: #171717;
-  --card: var(--surface-3);
-  --card-foreground: #171717;
-  /* `muted` decouples from surface-2 in light. The light surface ladder is
-     so compressed (#FAFAFA → #FCFCFC → #FFFFFF) that bg-muted reads as
-     near-white, which makes anything sitting on it (Tabs track, etc.)
-     blend together. A slightly more grey value gives muted real semantic
-     presence in light mode. Dark mode keeps --muted: var(--surface-2)
-     (= #1E1E1E) — see the @media (prefers-color-scheme: dark) and .dark
-     blocks below. */
-  --muted: #F4F4F5;
-  --muted-foreground: #737373;
+  /* ── Alpha checkerboard (color-picker swatches) ── */
+  --checker-a: light-dark(#bbbbbb, #1f1f1f);
+  --checker-b: light-dark(#ffffff, #2a2a2a);
 
-  /* Interactive states */
-  --accent: #E5E5E5;
-  --accent-foreground: #171717;
-  --selected: #D4D4D4;
-
-  /* Borders */
-  --border: color-mix(in oklab, var(--foreground) 12%, transparent);
-  --ring: #E5E5E5;
-  --input: #E5E5E5;
-
-  /* Error / Destructive */
-  --destructive: #EF4444;
-  --destructive-light: #FEF2F2;
-
-  /* Neutral scale (for opacity variants that can't use tokens directly) */
-  --neutral-100: #F5F5F5;
-  --neutral-200: #E5E5E5;
-  --neutral-300: #D4D4D4;
-  --neutral-400: #A3A3A3;
-  --neutral-500: #737373;
-  --neutral-600: #525252;
-  --neutral-700: #404040;
-  --neutral-800: #262626;
-  --neutral-900: #171717;
-
-  --checker-a: #bbbbbb;
-  --checker-b: #ffffff;
-
-  /* Surface-relative interactive overlays (work on any elevation).
-     --overlay is the *tint direction* — black for light surfaces, white for dark.
-     Decoupled from --foreground so a forced-theme scope (e.g. .dark inside a
-     light page) gets the correct overlay even when text color is reassigned. */
+  /* ── Surface-relative interactive overlays (work on any elevation) ──
+     --overlay is the *tint direction* triplet — black for light surfaces,
+     white for dark. Components consume it as rgb(var(--overlay) / α), so it
+     stays an RGB triplet and switches per theme in section 2. --hover and
+     --active are the pre-mixed conveniences. */
   --overlay: 0 0 0;
-  --hover: rgb(var(--overlay) / 0.04);
-  --active: rgb(var(--overlay) / 0.07);
-}
+  --hover: light-dark(rgb(0 0 0 / 0.04), rgb(255 255 255 / 0.06));
+  --active: light-dark(rgb(0 0 0 / 0.07), rgb(255 255 255 / 0.1));
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    /* Surface ladder — additive white over #171717 */
-    --surface-1: #171717;
-    --surface-2: #1E1E1E;
-    --surface-3: #252525;
-    --surface-4: #2C2C2C;
-    --surface-5: #333333;
-    --surface-6: #3A3A3A;
-    --surface-7: #414141;
-    --surface-8: #484848;
-
-    /* Dark shadow recipe — inset highlight + ring + stacked drops (per CodePen) */
-    --dm-hi-base: rgba(255,255,255,0.01);
-    --dm-hi-mid: rgba(255,255,255,0.02);
-    --dm-hi-high: rgba(255,255,255,0.04);
-    --dm-hi-peak: rgba(255,255,255,0.06);
-    --dm-ring-base: rgba(255,255,255,0.02);
-    --dm-ring-mid: rgba(255,255,255,0.04);
-    --dm-ring-high: rgba(255,255,255,0.06);
-    --dm-drop: rgba(0,0,0,0.18);
-
-    --shadow-1: inset 0 0 0 1px var(--dm-ring-base);
-    --shadow-2: inset 0 1px 0 0 var(--dm-hi-base), inset 0 0 0 1px var(--dm-ring-base), 0 1px 1px -0.5px var(--dm-drop);
-    --shadow-3: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-base), 0 0 0 1px rgba(0,0,0,0.12), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop);
-    --shadow-4: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.14), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop);
-    --shadow-5: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.16), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop);
-    --shadow-6: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.18), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop);
-    --shadow-7: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.20), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop);
-    --shadow-8: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.22), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop), 0 96px 96px -48px var(--dm-drop);
-
-    --background: var(--surface-1);
-    --foreground: #F5F5F5;
-    --card: var(--surface-3);
-    --card-foreground: #F5F5F5;
-    --muted: var(--surface-2);
-    --muted-foreground: #A3A3A3;
-
-    --accent: #525252;
-    --accent-foreground: #F5F5F5;
-    --selected: #525252;
-
-    /* --border inherits from :root (foreground-mix, theme-aware) */
-    --ring: #404040;
-    --input: #404040;
-
-    --destructive: #F87171;
-    --destructive-light: #450A0A;
-
-    --neutral-100: #F5F5F5;
-    --neutral-200: #E5E5E5;
-    --neutral-300: #D4D4D4;
-    --neutral-400: #A3A3A3;
-    --neutral-500: #737373;
-    --neutral-600: #525252;
-    --neutral-700: #404040;
-    --neutral-800: #262626;
-    --neutral-900: #171717;
-
-    --checker-a: #1f1f1f;
-    --checker-b: #2a2a2a;
-
-    --overlay: 255 255 255;
-    --hover: rgb(var(--overlay) / 0.06);
-    --active: rgb(var(--overlay) / 0.1);
-  }
-}
-
-.light {
-  --surface-1: #FAFAFA;
-  --surface-2: #FCFCFC;
-  --surface-3: #FFFFFF;
-  --surface-4: #FFFFFF;
-  --surface-5: #FFFFFF;
-  --surface-6: #FFFFFF;
-  --surface-7: #FFFFFF;
-  --surface-8: #FFFFFF;
-
+  /* ── Shadow recipes ──
+     Light: additive stacked drops, halving offsets (1/3/6/12/24/48/96 px).
+     Dark: inset highlight + inset ring + stacked drops (per CodePen).
+     Structurally different, so each ladder is written out once here and the
+     active --shadow-N is selected per theme in section 2.
+     --shadow-color is intentionally static: it is also consumed directly by
+     components (input-message edge drop) and has never varied by theme. */
   --shadow-color: rgb(0 0 0 / 0.06);
-  --shadow-1: 0 0 0 1px var(--shadow-color);
-  --shadow-2: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color);
-  --shadow-3: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color);
-  --shadow-4: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color);
-  --shadow-5: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color);
-  --shadow-6: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color);
-  --shadow-7: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color), 0 48px 48px -24px var(--shadow-color);
-  --shadow-8: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color), 0 48px 48px -24px var(--shadow-color), 0 96px 96px -48px var(--shadow-color);
-
-  --background: var(--surface-1);
-  --foreground: #171717;
-  --card: var(--surface-3);
-  --card-foreground: #171717;
-  /* Light --muted is decoupled from surface-2 — see :root for the rationale. */
-  --muted: #F4F4F5;
-  --muted-foreground: #737373;
-
-  --accent: #E5E5E5;
-  --accent-foreground: #171717;
-  --selected: #D4D4D4;
-
-  /* Re-declared so a nested `.light` (a forced-light preview on a dark page)
-     recomputes it against this --foreground rather than inheriting the root's. */
-  --border: color-mix(in oklab, var(--foreground) 12%, transparent);
-  --ring: #E5E5E5;
-  --input: #E5E5E5;
-
-  --destructive: #EF4444;
-  --destructive-light: #FEF2F2;
-
-  --checker-a: #bbbbbb;
-  --checker-b: #ffffff;
-
-  --overlay: 0 0 0;
-  --hover: rgb(var(--overlay) / 0.04);
-  --active: rgb(var(--overlay) / 0.07);
-}
-
-.dark {
-  --surface-1: #171717;
-  --surface-2: #1E1E1E;
-  --surface-3: #252525;
-  --surface-4: #2C2C2C;
-  --surface-5: #333333;
-  --surface-6: #3A3A3A;
-  --surface-7: #414141;
-  --surface-8: #484848;
+  --shadow-light-1: 0 0 0 1px var(--shadow-color);
+  --shadow-light-2: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color);
+  --shadow-light-3: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color);
+  --shadow-light-4: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color);
+  --shadow-light-5: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color);
+  --shadow-light-6: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color);
+  --shadow-light-7: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color), 0 48px 48px -24px var(--shadow-color);
+  --shadow-light-8: 0 0 0 1px var(--shadow-color), 0 1px 1px -0.5px var(--shadow-color), 0 3px 3px -1.5px var(--shadow-color), 0 6px 6px -3px var(--shadow-color), 0 12px 12px -6px var(--shadow-color), 0 24px 24px -12px var(--shadow-color), 0 48px 48px -24px var(--shadow-color), 0 96px 96px -48px var(--shadow-color);
 
   --dm-hi-base: rgba(255,255,255,0.01);
   --dm-hi-mid: rgba(255,255,255,0.02);
@@ -227,45 +125,77 @@
   --dm-ring-mid: rgba(255,255,255,0.04);
   --dm-ring-high: rgba(255,255,255,0.06);
   --dm-drop: rgba(0,0,0,0.18);
+  --shadow-dark-1: inset 0 0 0 1px var(--dm-ring-base);
+  --shadow-dark-2: inset 0 1px 0 0 var(--dm-hi-base), inset 0 0 0 1px var(--dm-ring-base), 0 1px 1px -0.5px var(--dm-drop);
+  --shadow-dark-3: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-base), 0 0 0 1px rgba(0,0,0,0.12), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop);
+  --shadow-dark-4: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.14), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop);
+  --shadow-dark-5: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.16), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop);
+  --shadow-dark-6: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.18), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop);
+  --shadow-dark-7: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.20), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop);
+  --shadow-dark-8: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.22), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop), 0 96px 96px -48px var(--dm-drop);
 
-  --shadow-1: inset 0 0 0 1px var(--dm-ring-base);
-  --shadow-2: inset 0 1px 0 0 var(--dm-hi-base), inset 0 0 0 1px var(--dm-ring-base), 0 1px 1px -0.5px var(--dm-drop);
-  --shadow-3: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-base), 0 0 0 1px rgba(0,0,0,0.12), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop);
-  --shadow-4: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.14), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop);
-  --shadow-5: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.16), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop);
-  --shadow-6: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.18), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop);
-  --shadow-7: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.20), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop);
-  --shadow-8: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.22), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop), 0 96px 96px -48px var(--dm-drop);
-
-  --background: var(--surface-1);
-  --foreground: #F5F5F5;
-  --card: var(--surface-3);
-  --card-foreground: #F5F5F5;
-  --muted: var(--surface-2);
-  --muted-foreground: #A3A3A3;
-
-  --accent: #525252;
-  --accent-foreground: #F5F5F5;
-  --selected: #525252;
-
-  /* Re-declared (not just inherited from :root) so a *nested* `.dark` — e.g. a
-     forced-dark preview sitting on a light page — recomputes it against the
-     dark --foreground above. Otherwise it keeps the root's already-substituted
-     value and the border reads as a light-theme (dark) hairline. */
-  --border: color-mix(in oklab, var(--foreground) 12%, transparent);
-  --ring: #404040;
-  --input: #404040;
-
-  --destructive: #F87171;
-  --destructive-light: #450A0A;
-
-  --checker-a: #1f1f1f;
-  --checker-b: #2a2a2a;
-
-  --overlay: 255 255 255;
-  --hover: rgb(var(--overlay) / 0.06);
-  --active: rgb(var(--overlay) / 0.1);
+  --shadow-1: var(--shadow-light-1);
+  --shadow-2: var(--shadow-light-2);
+  --shadow-3: var(--shadow-light-3);
+  --shadow-4: var(--shadow-light-4);
+  --shadow-5: var(--shadow-light-5);
+  --shadow-6: var(--shadow-light-6);
+  --shadow-7: var(--shadow-light-7);
+  --shadow-8: var(--shadow-light-8);
 }
+
+/* ============================================================================
+   2. THEME SWITCHING
+   ----------------------------------------------------------------------------
+   `color-scheme` is what flips every light-dark() token above; the classes
+   work on <html> (ThemeProvider) and on any subtree (forced-theme previews).
+   The only values that need manual switching are the --overlay triplet and
+   the shadow recipe selection — see the section-1 note.
+============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --overlay: 255 255 255;
+    --shadow-1: var(--shadow-dark-1);
+    --shadow-2: var(--shadow-dark-2);
+    --shadow-3: var(--shadow-dark-3);
+    --shadow-4: var(--shadow-dark-4);
+    --shadow-5: var(--shadow-dark-5);
+    --shadow-6: var(--shadow-dark-6);
+    --shadow-7: var(--shadow-dark-7);
+    --shadow-8: var(--shadow-dark-8);
+  }
+}
+
+.light {
+  color-scheme: light;
+  --overlay: 0 0 0;
+  --shadow-1: var(--shadow-light-1);
+  --shadow-2: var(--shadow-light-2);
+  --shadow-3: var(--shadow-light-3);
+  --shadow-4: var(--shadow-light-4);
+  --shadow-5: var(--shadow-light-5);
+  --shadow-6: var(--shadow-light-6);
+  --shadow-7: var(--shadow-light-7);
+  --shadow-8: var(--shadow-light-8);
+}
+
+.dark {
+  color-scheme: dark;
+  --overlay: 255 255 255;
+  --shadow-1: var(--shadow-dark-1);
+  --shadow-2: var(--shadow-dark-2);
+  --shadow-3: var(--shadow-dark-3);
+  --shadow-4: var(--shadow-dark-4);
+  --shadow-5: var(--shadow-dark-5);
+  --shadow-6: var(--shadow-dark-6);
+  --shadow-7: var(--shadow-dark-7);
+  --shadow-8: var(--shadow-dark-8);
+}
+
+/* ============================================================================
+   3. TAILWIND THEME MAPPING
+============================================================================ */
 
 @theme inline {
   --font-sans: "Inter", system-ui, sans-serif;
@@ -320,16 +250,9 @@
   --color-destructive-foreground: var(--destructive-foreground);
 }
 
-html.transitioning *,
-html.transitioning *::before,
-html.transitioning *::after {
-  transition: border-radius 180ms ease-in-out,
-              background-color 180ms ease-in-out,
-              color 180ms ease-in-out,
-              border-color 180ms ease-in-out,
-              fill 180ms ease-in-out,
-              stroke 180ms ease-in-out !important;
-}
+/* ============================================================================
+   4. BASE STYLES
+============================================================================ */
 
 /* No explicit overflow here: scrollbar-gutter applies to the viewport when
    set on the root, and an explicit `overflow-y: auto` would stop dialog
@@ -339,6 +262,42 @@ html.transitioning *::after {
    document top the moment a dialog opens). */
 html {
   scrollbar-gutter: stable;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  overscroll-behavior-y: none;
+  background-color: var(--background);
+  /* Explicit text color so unstyled text follows the theme (and so the UA's
+     color-scheme-driven canvastext default never shows through). */
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  /* Inherited by everything (portals included) — a `subpixel-antialiased`
+     utility on a subtree is the only way to opt back out. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Theme-toggle cross-fade: ThemeProvider adds `.transitioning` around the
+   class swap so colors tween instead of snapping. */
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: border-radius 180ms ease-in-out,
+              background-color 180ms ease-in-out,
+              color 180ms ease-in-out,
+              border-color 180ms ease-in-out,
+              fill 180ms ease-in-out,
+              stroke 180ms ease-in-out !important;
 }
 
 /* Focus fallback — natively focusable elements no component styles (scroll
@@ -367,15 +326,20 @@ html {
   }
 }
 
-/* Native scrollbar theme — matches the ScrollArea thumb language (narrow,
-   low-contrast, darkens on hover) so surfaces that fall back to native
-   scrollbars (the root page, touch-device viewports) stay consistent with
-   the custom scrollbar. Rides the same fixed surface-relative overlay ramp
-   as the ScrollArea thumb (rest 8%, hover 12%, drag 16%) — adapts to dark
-   mode through --overlay. Only on fine pointers; touch devices keep their
-   overlay momentum bars. `.scrollbar-hide` still wins (higher specificity).
-   Chromium 121+ renders scrollbar-color and ignores the ::-webkit-* block,
-   so both ramps must stay in sync. */
+/* ============================================================================
+   5. NATIVE SCROLLBAR THEME
+   ----------------------------------------------------------------------------
+   Matches the ScrollArea thumb language (narrow, low-contrast, darkens on
+   hover) so surfaces that fall back to native scrollbars (the root page,
+   touch-device viewports) stay consistent with the custom scrollbar. Rides
+   the same fixed surface-relative overlay ramp as the ScrollArea thumb
+   (rest 8%, hover 12%, drag 16%) — adapts to dark mode through --overlay.
+   Only on fine pointers; touch devices keep their overlay momentum bars.
+   `.scrollbar-hide` still wins (higher specificity). Chromium 121+ renders
+   scrollbar-color and ignores the ::-webkit-* block, so both ramps must
+   stay in sync.
+============================================================================ */
+
 @media (pointer: fine) {
   * {
     scrollbar-width: thin;
@@ -423,84 +387,6 @@ html {
   }
 }
 
-html, body {
-  margin: 0;
-  min-height: 100vh;
-  overscroll-behavior-y: none;
-  background-color: var(--background);
-  font-family: var(--font-sans);
-  /* Inherited by everything (portals included) — a `subpixel-antialiased`
-     utility on a subtree is the only way to opt back out. */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-h1, h2, h3, p {
-  text-wrap: balance;
-}
-
-.bento-card-border {
-  border-color: var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.bento-card-border:hover {
-  border-color: color-mix(in oklab, var(--foreground), transparent 80%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-
-/* Keyboard-active card (focus is inside it): a clearly stronger border than
-   hover so it reads as "this is the container receiving shortcuts". Placed
-   after :hover so it wins when a card is both hovered and focused. */
-.bento-card-border:focus-within {
-  border-color: color-mix(in oklab, var(--foreground), transparent 35%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) .bento-card-border {
-    border-color: color-mix(in oklab, var(--border), transparent 40%);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  }
-
-  :root:not(.light) .bento-card-border:hover {
-    border-color: var(--border);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  }
-
-  :root:not(.light) .bento-card-border:focus-within {
-    border-color: color-mix(in oklab, var(--foreground), transparent 30%);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-  }
-}
-
-.dark .bento-card-border {
-  border-color: color-mix(in oklab, var(--border), transparent 40%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
-.dark .bento-card-border:hover {
-  border-color: var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-
-.dark .bento-card-border:focus-within {
-  border-color: color-mix(in oklab, var(--foreground), transparent 30%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-}
-
-@media (min-width: 768px) {
-  .bento-grid {
-    grid-auto-flow: dense;
-  }
-}
-
-@media (min-width: 768px) {
-  .bento-grid {
-    grid-auto-rows: 300px;
-  }
-}
-
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -510,14 +396,11 @@ h1, h2, h3, p {
   display: none;
 }
 
-@keyframes spinner-move {
-  to { stroke-dashoffset: -100; }
-}
+/* ============================================================================
+   6. UTILITIES
+============================================================================ */
 
-@keyframes spinner-dash {
-  0%, 100% { stroke-dasharray: 15 85; }
-  50%      { stroke-dasharray: 40 60; }
-}
+/* ── shimmer-text (thinking-indicator, thinking-steps) ── */
 
 @keyframes shimmer {
   0% {
@@ -532,11 +415,11 @@ h1, h2, h3, p {
   color: transparent;
   background: linear-gradient(
     90deg,
-    #a3a3a3 0%,
-    #a3a3a3 35%,
-    #525252 50%,
-    #a3a3a3 65%,
-    #a3a3a3 100%
+    light-dark(#a3a3a3, #525252) 0%,
+    light-dark(#a3a3a3, #525252) 35%,
+    light-dark(#525252, #a3a3a3) 50%,
+    light-dark(#a3a3a3, #525252) 65%,
+    light-dark(#a3a3a3, #525252) 100%
   );
   background-size: 300% 100%;
   background-clip: text;
@@ -544,44 +427,18 @@ h1, h2, h3, p {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  .shimmer-text {
-    background: linear-gradient(
-      90deg,
-      #525252 0%,
-      #525252 35%,
-      #a3a3a3 50%,
-      #525252 65%,
-      #525252 100%
-    );
-    background-size: 300% 100%;
-    background-clip: text;
-    -webkit-background-clip: text;
-  }
+/* ── Spinner keyframes ── */
+
+@keyframes spinner-move {
+  to { stroke-dashoffset: -100; }
 }
 
-/* Shiki dual-theme: show light theme by default, dark when in dark mode */
-.shiki,
-.shiki span {
-  color: var(--shiki-light) !important;
-  background-color: transparent !important;
+@keyframes spinner-dash {
+  0%, 100% { stroke-dasharray: 15 85; }
+  50%      { stroke-dasharray: 40 60; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) .shiki,
-  :root:not(.light) .shiki span {
-    color: var(--shiki-dark) !important;
-  }
-}
-
-.dark .shiki,
-.dark .shiki span {
-  color: var(--shiki-dark) !important;
-}
-
-/* ---------------------------------------------------------------------------
-   Responsive side-panel cross-fade
-   ---------------------------------------------------------------------------
+/* ── Responsive side-panel cross-fade ──
    The left sidebar and right panel switch in/out at xl (1280px). Rather than
    snapping via `display`, these classes fade them: `display` is animated with
    `allow-discrete` so the element stays visible across the none↔shown flip,
@@ -593,6 +450,7 @@ h1, h2, h3, p {
    that width, the appear is a pure opacity fade with no layout shift (it also
    fades in once on initial wide-screen load). Browsers without
    `transition-behavior` degrade gracefully to the old instant switch. */
+
 .xl-fade-flex,
 .xl-fade-block {
   display: none;
@@ -631,15 +489,14 @@ h1, h2, h3, p {
   }
 }
 
-/* ---------------------------------------------------------------------------
-   scroll-fade — vendored equivalent of shadcn's scroll-fade utility
+/* ── scroll-fade — vendored equivalent of shadcn's scroll-fade utility ──
    (https://ui.shadcn.com/docs/utils/scroll-fade). A mask-image dissolves the
    content toward the edges that have more to scroll. CSS scroll-driven
    animations make it scroll-aware: the true start/end edge stays crisp until
    you scroll past it. Browsers without scroll-driven animations fall back to a
    static fade on both edges. Apply to a scroll container, or to a ScrollArea
-   via `viewportClassName`.
---------------------------------------------------------------------------- */
+   via `viewportClassName`. */
+
 @property --sf-start {
   syntax: "<number>";
   inherits: false;
@@ -749,4 +606,50 @@ h1, h2, h3, p {
     animation-range-start: 0, calc(100% - var(--scroll-fade-size));
     animation-range-end: var(--scroll-fade-size), 100%;
   }
+}
+
+/* ============================================================================
+   7. SITE-SPECIFIC (home page bento grid, shiki code blocks)
+============================================================================ */
+
+.bento-card-border {
+  border-color: light-dark(
+    var(--border),
+    color-mix(in oklab, var(--border), transparent 40%)
+  );
+  box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.4));
+}
+
+.bento-card-border:hover {
+  border-color: light-dark(
+    color-mix(in oklab, var(--foreground), transparent 80%),
+    var(--border)
+  );
+  box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.6));
+}
+
+/* Keyboard-active card (focus is inside it): a clearly stronger border than
+   hover so it reads as "this is the container receiving shortcuts". Placed
+   after :hover so it wins when a card is both hovered and focused. */
+.bento-card-border:focus-within {
+  border-color: light-dark(
+    color-mix(in oklab, var(--foreground), transparent 35%),
+    color-mix(in oklab, var(--foreground), transparent 30%)
+  );
+  box-shadow: 0 1px 3px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.7));
+}
+
+@media (min-width: 768px) {
+  .bento-grid {
+    grid-auto-flow: dense;
+    grid-auto-rows: 300px;
+  }
+}
+
+/* Shiki dual-theme: the light/dark colors are inlined per token by shiki;
+   light-dark() picks the active one. */
+.shiki,
+.shiki span {
+  color: light-dark(var(--shiki-light), var(--shiki-dark)) !important;
+  background-color: transparent !important;
 }
