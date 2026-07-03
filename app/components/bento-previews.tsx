@@ -1,7 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { useIcon } from "@/lib/icon-context";
+import { useIcon, useIcons } from "@/lib/icon-context";
+import {
+  ACCORDION_ITEMS,
+  BADGE_ITEMS,
+  BUTTON_ITEMS,
+  CHECKBOX_ITEMS,
+  DIALOG_COPY,
+  DROPDOWN_ITEMS,
+  INPUT_FIELDS,
+  RADIO_DEFAULT,
+  RADIO_ITEMS,
+  SELECT_DEFAULT,
+  SELECT_PLACEHOLDER,
+  SELECT_ROLES,
+  SLIDER_OPACITY,
+  SLIDER_VOLUME,
+  SWITCH_ITEMS,
+  TABLE_COLUMNS,
+  TABLE_ROWS,
+  TABS_DEFAULT,
+  TABS_ITEMS,
+  TOOLTIP_COPY,
+} from "@/app/components/demo-data";
 
 import {
   AccordionGroup,
@@ -72,36 +94,12 @@ function AccordionPreview() {
   return (
     <div className="w-full max-w-[420px]">
       <AccordionGroup type="single" defaultValue="item-1" className="w-full">
-        <AccordionItem value="item-1" index={0}>
-          <AccordionTrigger>What is Fluid Functionalism?</AccordionTrigger>
-          <AccordionContent>
-            A design philosophy where every animation serves a functional purpose — motion is information, not decoration.
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="item-2" index={1}>
-          <AccordionTrigger>How does proximity hover work?</AccordionTrigger>
-          <AccordionContent>
-            The closest item to your cursor is highlighted before you click, reducing targeting errors.
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="item-3" index={2}>
-          <AccordionTrigger>Why spring physics?</AccordionTrigger>
-          <AccordionContent>
-            Springs respond naturally to interruption — if a user reverses mid-transition, the animation adapts.
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="item-4" index={3}>
-          <AccordionTrigger>Is it compatible with shadcn/ui?</AccordionTrigger>
-          <AccordionContent>
-            Yes. Your existing theme, radius tokens, and setup apply automatically.
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="item-5" index={4}>
-          <AccordionTrigger>How do I install a component?</AccordionTrigger>
-          <AccordionContent>
-            One CLI command — dependencies and shared utilities resolve themselves.
-          </AccordionContent>
-        </AccordionItem>
+        {ACCORDION_ITEMS.map((item, i) => (
+          <AccordionItem key={item.value} value={item.value} index={i}>
+            <AccordionTrigger>{item.title}</AccordionTrigger>
+            <AccordionContent>{item.content}</AccordionContent>
+          </AccordionItem>
+        ))}
       </AccordionGroup>
     </div>
   );
@@ -110,9 +108,11 @@ function AccordionPreview() {
 function BadgePreview() {
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
-      <Badge variant="dot" color="blue">Published</Badge>
-      <Badge variant="dot" color="green">Active</Badge>
-      <Badge variant="dot" color="red">Declined</Badge>
+      {BADGE_ITEMS.map((item) => (
+        <Badge key={item.label} variant="dot" color={item.color}>
+          {item.label}
+        </Badge>
+      ))}
     </div>
   );
 }
@@ -120,25 +120,25 @@ function BadgePreview() {
 function ButtonPreview() {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button variant="primary" size="sm">Primary</Button>
-      <Button variant="secondary" size="sm">Secondary</Button>
-      <Button variant="tertiary" size="sm">Tertiary</Button>
-      <Button variant="ghost" size="sm">Ghost</Button>
+      {BUTTON_ITEMS.map((item) => (
+        <Button key={item.label} variant={item.variant} size="sm">
+          {item.label}
+        </Button>
+      ))}
     </div>
   );
 }
 
 function CheckboxPreview() {
   const [checked, setChecked] = useState<Set<number>>(new Set());
-  const items = ["Spring physics", "Proximity hover", "Font weight transitions", "Keyboard navigation", "Dark mode support"];
   return (
     <div className="w-full max-w-[220px]">
       <CheckboxGroup checkedIndices={checked}>
-        {items.map((label, i) => (
+        {CHECKBOX_ITEMS.map((item, i) => (
           <CheckboxItem
-            key={label}
+            key={item.id}
             index={i}
-            label={label}
+            label={item.label}
             checked={checked.has(i)}
             onToggle={() => {
               setChecked((prev) => {
@@ -159,20 +159,18 @@ function DialogPreview() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="secondary" size="sm">Open Dialog</Button>
+        <Button variant="secondary" size="sm">{DIALOG_COPY.trigger}</Button>
       </DialogTrigger>
       <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>Create teamspace</DialogTitle>
-          <DialogDescription>
-            Add a new teamspace to organize your projects.
-          </DialogDescription>
+          <DialogTitle>{DIALOG_COPY.title}</DialogTitle>
+          <DialogDescription>{DIALOG_COPY.description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="ghost">Cancel</Button>
+            <Button variant="ghost">{DIALOG_COPY.cancel}</Button>
           </DialogClose>
-          <Button>Create</Button>
+          <Button>{DIALOG_COPY.confirm}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -180,29 +178,16 @@ function DialogPreview() {
 }
 
 function DropdownPreview() {
-  const CircleIcon = useIcon("circle");
-  const StarIcon = useIcon("star");
-  const PlusIcon = useIcon("plus");
-  const HeartIcon = useIcon("heart");
-  const CheckIcon = useIcon("check");
-  const BrainIcon = useIcon("brain");
+  const icons = useIcons();
   const [selected, setSelected] = useState<number | null>(0);
-  const items = [
-    { icon: CircleIcon, label: "Spring animations" },
-    { icon: StarIcon, label: "Proximity hover" },
-    { icon: PlusIcon, label: "Font weight shifts" },
-    { icon: HeartIcon, label: "Accessible by default" },
-    { icon: CheckIcon, label: "Radix or Base UI" },
-    { icon: BrainIcon, label: "Functional clarity" },
-  ];
   return (
     <div className="w-full max-w-[280px]">
       <Dropdown checkedIndex={selected ?? undefined}>
-        {items.map((item, i) => (
+        {DROPDOWN_ITEMS.map((item, i) => (
           <MenuItem
-            key={item.label}
+            key={item.value}
             index={i}
-            icon={item.icon}
+            icon={icons[item.icon]}
             label={item.label}
             checked={selected === i}
             onSelect={() => setSelected(selected === i ? null : i)}
@@ -222,70 +207,52 @@ function InputCopyPreview() {
 }
 
 function InputGroupPreview() {
-  const Mail = useIcon("mail");
-  const User = useIcon("user");
-  const Globe = useIcon("globe");
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [website, setWebsite] = useState("");
+  const icons = useIcons();
+  const [values, setValues] = useState<Record<string, string>>({});
   return (
     <div className="w-full max-w-[320px]">
       <InputGroup>
-        <InputField
-          index={0}
-          label="Name"
-          placeholder="Your name"
-          icon={User}
-          value={name}
-          onChange={setName}
-        />
-        <InputField
-          index={1}
-          label="Email"
-          placeholder="you@example.com"
-          icon={Mail}
-          value={email}
-          onChange={setEmail}
-        />
-        <InputField
-          index={2}
-          label="Website"
-          placeholder="fluidfunctionalism.com"
-          icon={Globe}
-          value={website}
-          onChange={setWebsite}
-        />
+        {INPUT_FIELDS.map((field, i) => (
+          <InputField
+            key={field.key}
+            index={i}
+            label={field.label}
+            placeholder={field.placeholder}
+            icon={icons[field.icon]}
+            value={values[field.key] ?? ""}
+            onChange={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
+          />
+        ))}
       </InputGroup>
     </div>
   );
 }
 
 function RadioGroupPreview() {
-  const [value, setValue] = useState("moderate");
+  const [value, setValue] = useState<string>(RADIO_DEFAULT);
   return (
     <div className="w-full max-w-[220px]">
       <RadioGroup value={value} onValueChange={setValue}>
-        <RadioItem value="fast" index={0} label="Fast spring" />
-        <RadioItem value="moderate" index={1} label="Moderate spring" />
-        <RadioItem value="slow" index={2} label="Slow spring" />
-        <RadioItem value="comfortable" index={3} label="Comfortable" />
-        <RadioItem value="none" index={4} label="No animation" />
+        {RADIO_ITEMS.map((item, i) => (
+          <RadioItem key={item.value} value={item.value} index={i} label={item.label} />
+        ))}
       </RadioGroup>
     </div>
   );
 }
 
 function SelectPreview() {
-  const [value, setValue] = useState("Viewer");
+  const [value, setValue] = useState<string>(SELECT_DEFAULT);
   return (
     <div className="w-full max-w-[280px]">
       <Select value={value} onValueChange={setValue}>
-        <SelectTrigger placeholder="Select role..." variant="bordered" />
+        <SelectTrigger placeholder={SELECT_PLACEHOLDER} variant="bordered" />
         <SelectContent>
-          <SelectItem index={0} value="Owner">Owner</SelectItem>
-          <SelectItem index={1} value="Editor">Editor</SelectItem>
-          <SelectItem index={2} value="Viewer">Viewer</SelectItem>
-          <SelectItem index={3} value="Guest">Guest</SelectItem>
+          {SELECT_ROLES.map((role, i) => (
+            <SelectItem key={role} index={i} value={role}>
+              {role}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -293,20 +260,20 @@ function SelectPreview() {
 }
 
 function SliderPreview() {
-  const [basic, setBasic] = useState(35);
-  const [volume, setVolume] = useState(60);
+  const [basic, setBasic] = useState<number>(SLIDER_OPACITY.initial);
+  const [volume, setVolume] = useState<number>(SLIDER_VOLUME.initial);
   return (
     <div className="flex flex-col gap-8 w-full max-w-[280px]">
       <div className="flex flex-col gap-1.5 w-full">
         <div className="flex items-center justify-between text-[13px]">
-          <span className="text-muted-foreground">Opacity</span>
+          <span className="text-muted-foreground">{SLIDER_OPACITY.label}</span>
           <span className="text-muted-foreground tabular-nums">{basic}</span>
         </div>
         <Slider value={basic} onChange={(v) => setBasic(v as number)} showValue={false} />
       </div>
       <SliderComfortable
         variant="scrubber"
-        label="Volume"
+        label={SLIDER_VOLUME.label}
         value={volume}
         onChange={setVolume}
         min={0}
@@ -318,12 +285,26 @@ function SliderPreview() {
 }
 
 function SwitchPreview() {
-  const [a, setA] = useState(true);
-  const [b, setB] = useState(false);
+  const [on, setOn] = useState<Set<string>>(
+    () => new Set(SWITCH_ITEMS.filter((item) => item.initial).map((item) => item.id))
+  );
   return (
     <div className="flex flex-col gap-3">
-      <Switch label="Notifications" checked={a} onToggle={() => setA(!a)} />
-      <Switch label="Sound effects" checked={b} onToggle={() => setB(!b)} />
+      {SWITCH_ITEMS.map((item) => (
+        <Switch
+          key={item.id}
+          label={item.label}
+          checked={on.has(item.id)}
+          onToggle={() =>
+            setOn((prev) => {
+              const next = new Set(prev);
+              if (next.has(item.id)) next.delete(item.id);
+              else next.add(item.id);
+              return next;
+            })
+          }
+        />
+      ))}
     </div>
   );
 }
@@ -334,32 +315,19 @@ function TablePreview() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
+            {TABLE_COLUMNS.map((col) => (
+              <TableHead key={col}>{col}</TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow index={0}>
-            <TableCell>Alice</TableCell>
-            <TableCell>Engineer</TableCell>
-            <TableCell>Active</TableCell>
-          </TableRow>
-          <TableRow index={1}>
-            <TableCell>Bob</TableCell>
-            <TableCell>Designer</TableCell>
-            <TableCell>Away</TableCell>
-          </TableRow>
-          <TableRow index={2}>
-            <TableCell>Carol</TableCell>
-            <TableCell>PM</TableCell>
-            <TableCell>Active</TableCell>
-          </TableRow>
-          <TableRow index={3}>
-            <TableCell>Dan</TableCell>
-            <TableCell>Engineer</TableCell>
-            <TableCell>Offline</TableCell>
-          </TableRow>
+          {TABLE_ROWS.map((row, i) => (
+            <TableRow key={row[0]} index={i}>
+              {row.map((cell) => (
+                <TableCell key={cell}>{cell}</TableCell>
+              ))}
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>
@@ -367,15 +335,14 @@ function TablePreview() {
 }
 
 function TabsPreview() {
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState<string>(TABS_DEFAULT);
   return (
     <div className="w-full max-w-[360px]">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabItem value="overview" label="Overview" />
-          <TabItem value="analytics" label="Analytics" />
-          <TabItem value="settings" label="Settings" />
-          <TabItem value="logs" label="Logs" />
+          {TABS_ITEMS.map((item) => (
+            <TabItem key={item.value} value={item.value} label={item.label} />
+          ))}
         </TabsList>
       </Tabs>
     </div>
@@ -552,8 +519,8 @@ function ThinkingStepsPreview() {
 function TooltipPreview() {
   return (
     <div className="relative z-10">
-      <Tooltip content="Copy to clipboard">
-        <Button variant="secondary" size="sm">Hover me</Button>
+      <Tooltip content={TOOLTIP_COPY.content}>
+        <Button variant="secondary" size="sm">{TOOLTIP_COPY.trigger}</Button>
       </Tooltip>
     </div>
   );
