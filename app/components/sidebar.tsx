@@ -80,8 +80,9 @@ export function Sidebar({ mobile }: SidebarProps) {
       // max-xl:fixed — same trick as the right panel: while xl-fade-flex holds
       // display:flex through the fade-out (allow-discrete), fixed positioning
       // takes the sidebar out of flow at the breakpoint so the content reflows
-      // once, not again when display flips to none.
-      className="shrink-0 w-56 flex-col sticky top-0 h-screen xl-fade-flex max-xl:fixed max-xl:top-0 max-xl:left-0 max-xl:z-40 max-xl:pointer-events-none"
+      // once, not again when display flips to none. ml-2 mirrors the right
+      // panel's mr-2 inset so both sides land on the same 8px gap.
+      className="shrink-0 w-64 ml-2 flex-col sticky top-0 h-screen xl-fade-flex max-xl:fixed max-xl:top-0 max-xl:left-0 max-xl:z-40 max-xl:pointer-events-none"
     >
       <ScrollArea className="min-h-0 w-full flex-1" viewportClassName="scroll-fade">
         <div className="flex flex-col gap-4 p-4">{sections}</div>

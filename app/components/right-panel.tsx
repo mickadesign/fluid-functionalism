@@ -239,12 +239,12 @@ export function RightPanel() {
   return (
     // max-xl:fixed — during the xl-fade-block fade-out the panel keeps
     // display:block for the transition (allow-discrete), which would hold its
-    // 272px of flex space and make the content reflow a second time when
+    // 264px of flex space and make the content reflow a second time when
     // display finally flips to none. Fixed positioning below xl removes it
     // from flow at the breakpoint (single reflow) while it fades in place:
-    // top-0/right-0 + mt-4/mr-4 land on the same 16px inset as the pinned
+    // top-0/right-0 + mt-4/mr-2 land on the same 8px/16px inset as the pinned
     // sticky state.
-    <aside className="shrink-0 w-64 p-4 sticky top-4 self-start mt-4 mr-4 rounded-lg bg-muted xl-fade-block max-xl:fixed max-xl:top-0 max-xl:right-0 max-xl:z-40 max-xl:pointer-events-none">
+    <aside className="shrink-0 w-64 p-4 sticky top-4 self-start mt-4 mr-2 rounded-lg bg-muted xl-fade-block max-xl:fixed max-xl:top-0 max-xl:right-0 max-xl:z-40 max-xl:pointer-events-none">
       <SurfaceProvider value={2}>
         <div className="flex items-center justify-between pl-1 pt-2 pb-2">
           <h2
