@@ -1,57 +1,19 @@
 "use client";
 
-import type { ComponentType } from "react";
+// Docs-site icon playground data: the multi-library icon map behind the
+// "press I to cycle icon library" switcher. Only the default Lucide set
+// ships with installed components (see registry/default/lib/icon-context);
+// the four extra libraries below are docs-site dependencies only.
 
-// ── Lucide ──────────────────────────────────────────────────
+import type { ComponentType } from "react";
+import { Play, Pause } from "lucide-react";
+
 import {
-  ChevronRight,
-  ChevronDown,
-  X,
-  Copy,
-  Menu,
-  Dot,
-  Monitor,
-  Sun,
-  Moon,
-  RectangleHorizontal,
-  Circle,
-  SquareLibrary,
-  Clock,
-  Star,
-  Settings,
-  Plus,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Search,
-  Loader,
-  Users,
-  Lock,
-  Mail,
-  Bell,
-  Shield,
-  Palette,
-  Lightbulb,
-  Rocket,
-  Heart,
-  Paintbrush,
-  Brain,
-  Globe,
-  User,
-  ImageIcon,
-  Link,
-  Check,
-  RotateCcw,
-  Play,
-  Pause,
-  Pipette,
-  Home,
-  MessageCircle,
-  Inbox,
-  Pencil,
-  SkipForward,
-  CornerDownRight,
-} from "lucide-react";
+  defaultIcons,
+  type IconComponentProps,
+  type IconComponent,
+  type IconName,
+} from "@/lib/icon-context";
 
 // ── Tabler ──────────────────────────────────────────────────
 import {
@@ -251,30 +213,8 @@ import {
   CornerDownRight as UuiCornerDownRight,
 } from "@untitledui/icons";
 
-// ── Types ───────────────────────────────────────────────────
-
-export interface IconComponentProps {
-  size?: number;
-  strokeWidth?: number;
-  className?: string;
-}
-
-export type IconComponent = ComponentType<IconComponentProps>;
 
 export type IconLibrary = "lucide" | "tabler" | "phosphor" | "hugeicons" | "untitledui";
-
-export type IconName =
-  | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
-  | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
-  | "square-library" | "clock" | "star" | "settings"
-  | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "search" | "loader"
-  | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
-  | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
-  | "globe" | "user"
-  | "image" | "link" | "check" | "rotate-ccw"
-  | "play" | "pause" | "pipette"
-  | "home" | "message-circle" | "inbox"
-  | "pencil" | "skip-forward" | "corner-down-right";
 
 export const iconLibraryOrder: IconLibrary[] = ["lucide", "tabler", "phosphor", "hugeicons", "untitledui"];
 
@@ -329,56 +269,6 @@ function untitledui(Icon: ComponentType<{ width?: number; height?: number; strok
 }
 
 // ── Icon Maps ───────────────────────────────────────────────
-
-const lucideMap: Record<IconName, IconComponent> = {
-  "chevron-right": ChevronRight,
-  "chevron-down": ChevronDown,
-  "pipette": Pipette,
-  "x": X,
-  "copy": Copy,
-  "menu": Menu,
-  "dot": Dot,
-  "monitor": Monitor,
-  "sun": Sun,
-  "moon": Moon,
-  "rectangle-horizontal": RectangleHorizontal,
-  "circle": Circle,
-  "square-library": SquareLibrary,
-  "clock": Clock,
-  "star": Star,
-  "settings": Settings,
-  "plus": Plus,
-  "arrow-left": ArrowLeft,
-  "arrow-right": ArrowRight,
-  "arrow-up": ArrowUp,
-  "search": Search,
-  "loader": Loader,
-  "users": Users,
-  "lock": Lock,
-  "mail": Mail,
-  "bell": Bell,
-  "shield": Shield,
-  "palette": Palette,
-  "lightbulb": Lightbulb,
-  "rocket": Rocket,
-  "heart": Heart,
-  "paintbrush": Paintbrush,
-  "brain": Brain,
-  "globe": Globe,
-  "user": User,
-  "image": ImageIcon,
-  "link": Link,
-  "check": Check,
-  "rotate-ccw": RotateCcw,
-  "play": Play,
-  "pause": Pause,
-  "home": Home,
-  "message-circle": MessageCircle,
-  "inbox": Inbox,
-  "pencil": Pencil,
-  "skip-forward": SkipForward,
-  "corner-down-right": CornerDownRight,
-};
 
 const tablerMap: Record<IconName, IconComponent> = {
   "chevron-right": tabler(IconChevronRight),
@@ -587,7 +477,7 @@ const untitleduiMap: Record<IconName, IconComponent> = {
 // ── Unified Map ─────────────────────────────────────────────
 
 export const iconMap: Record<IconLibrary, Record<IconName, IconComponent>> = {
-  lucide: lucideMap,
+  lucide: defaultIcons,
   tabler: tablerMap,
   phosphor: phosphorMap,
   hugeicons: hugeiconsMap,

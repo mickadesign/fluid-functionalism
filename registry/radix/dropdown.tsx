@@ -39,10 +39,10 @@ const shape = shapeMap.rounded;
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
 //
-// The context object itself lives in menu-item.tsx (the file shipped by BOTH
-// dropdown flavors) so MenuItem resolves whichever flavor's provider actually
-// wraps it — including when both flavors render side by side. Re-exported
-// here so the public dropdown API is unchanged.
+// The context object itself lives in menu-item.tsx so MenuItem resolves
+// whichever dropdown provider actually wraps it, even when dropdowns built
+// on different primitives render side by side. Re-exported here so the
+// public dropdown API is unchanged.
 // ---------------------------------------------------------------------------
 
 export { useDropdown, useDropdownMaybe };
@@ -237,10 +237,10 @@ Dropdown.displayName = "Dropdown";
 // Built on Radix's DropdownMenu primitive, which owns the trigger wiring,
 // positioning (collision flipping, anchor tracking), dismissal (outside
 // press, focus-out, Escape), roving highlight, typeahead, and close-on-select.
-// The Fluid Functionalism layer keeps the proximity-hover overlays and the
+// This layer keeps the proximity-hover overlays and the
 // spring open/close animation. Radix has no actionsRef-style deferred unmount,
-// so the portal lifetime is managed with local `mounted` state (same pattern
-// as registry/radix/dialog.tsx / registry/radix/mobile-drawer.tsx).
+// so the portal lifetime is managed with local `mounted` state (the same
+// pattern the Dialog and MobileDrawer components use).
 // ---------------------------------------------------------------------------
 
 interface DropdownMenuContextValue {
@@ -291,9 +291,8 @@ function DropdownMenu({
     <DropdownMenuContext.Provider value={ctx}>
       {/* Root is always controlled by `open` (defaultOpen seeds local state
           instead of being forwarded), so DropdownContent can drive the exit
-          animation before the portal unmounts. Non-modal for parity with the
-          Base UI flavor: the page keeps scrolling and the popup tracks its
-          anchor instead of detaching. */}
+          animation before the portal unmounts. Non-modal: the page keeps
+          scrolling and the popup tracks its anchor instead of detaching. */}
       <DropdownMenuPrimitive.Root
         open={open}
         onOpenChange={handleOpenChange}
@@ -310,7 +309,7 @@ DropdownMenu.displayName = "DropdownMenu";
 // ---------------------------------------------------------------------------
 // DropdownTrigger
 //
-// Radix's DropdownMenu.Trigger behind the Base UI flavor's `render` prop, so
+// Radix's DropdownMenu.Trigger behind a Base-UI-style `render` prop, so
 // any element can be the trigger with the same public API:
 //
 //   <DropdownTrigger render={<Button variant="secondary">Open</Button>} />
@@ -324,8 +323,8 @@ interface DropdownTriggerProps
     ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>,
     "asChild"
   > {
-  /** Element to render as the trigger (same composition API as the Base UI
-   *  flavor's Menu.Trigger `render` prop). */
+  /** Element to render as the trigger (Base-UI-style `render` composition
+   *  API). */
   render?: ReactElement;
 }
 

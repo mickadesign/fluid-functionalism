@@ -106,7 +106,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // children — the element's own children become the label. We clone the
     // element directly instead of routing through ButtonPrimitive's `render`:
     // Base UI would bolt button semantics (role="button", Space activation)
-    // onto e.g. a link, diverging from the Radix flavour's plain-link output.
+    // onto e.g. a link, where plain-link output is wanted.
     const asChildElement =
       asChild && isValidElement(children)
         ? (children as ReactElement<{

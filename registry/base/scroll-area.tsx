@@ -1,8 +1,7 @@
 "use client";
 
-// Base UI flavour of the Fluid Functionalism scroll area. Same API and
-// behaviour as the Radix flavour (registry/radix/scroll-area.tsx): shape-system
-// scrollbar, native overflow fallback on touch-primary devices. Scrollbar
+// Scroll area built on Base UI — shape-system scrollbar, native overflow
+// fallback on touch-primary devices. Scrollbar
 // machinery adapted from Lina by SameerJS6 (https://lina.sameer.sh); built on
 // @base-ui/react/scroll-area, whose scrollbars stay mounted while scrollable
 // and expose hover/scroll state as data attributes instead of Radix's

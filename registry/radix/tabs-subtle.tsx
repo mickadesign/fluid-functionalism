@@ -115,7 +115,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
         value={{ registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel }}
       >
         {/* Root is merged into List via `asChild` so a single <div> is
-            emitted, matching the Base UI flavor's DOM. Radix owns
+            emitted. Radix owns
             role="tablist", roving tabindex, and Arrow/Home/End keyboard
             navigation. Radix tab values are strings, so the numeric
             selectedIndex is mapped through String()/Number().

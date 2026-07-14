@@ -13,8 +13,6 @@ import {
 
 type ShapeVariant = "pill" | "rounded";
 
-const shapeOrder: ShapeVariant[] = ["rounded", "pill"];
-
 interface ShapeClasses {
   item: string;
   bg: string;
@@ -120,25 +118,6 @@ function ShapeProvider({
       `${shapeMap[shape].bgRadius}px`
     );
   }, [shape]);
-
-  // Global keyboard shortcut: R to cycle radius
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "r" && e.key !== "R") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
-      e.preventDefault();
-      transitionShape(() => {
-        setShapeState((prev) => {
-          const idx = shapeOrder.indexOf(prev);
-          return shapeOrder[(idx + 1) % shapeOrder.length];
-        });
-      });
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [transitionShape]);
 
   const value = useMemo(
     () => ({ shape, setShape, classes: shapeMap[shape] }),

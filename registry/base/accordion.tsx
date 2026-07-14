@@ -703,10 +703,9 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
       : isHovered;
 
     const triggerContent = (
-      // Render Header as a <div> for parity with the Radix flavour (which
-      // used `<Header asChild><div>...`). Base UI's Header defaults to <h3>,
-      // which would be more semantic but breaks ancestor selectors that
-      // existed under the Radix flavour.
+      // Render Header as a <div>. Base UI's Header defaults to <h3>, which
+      // would be more semantic but breaks the ancestor selectors the styles
+      // rely on.
       <AccordionPrimitive.Header render={<div />}>
         <AccordionPrimitive.Trigger
           ref={ref as React.Ref<HTMLElement>}
@@ -810,7 +809,7 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
     // (e.g. /demo's 1.7x card) the animation overshoots to scale× the real
     // height and snaps back when the final "auto" lands — a visible height
     // reduction at the end of every open. offsetHeight and ResizeObserver
-    // are transform-immune. See the radix flavor for the identical setup.
+    // are transform-immune.
     const innerRef = useRef<HTMLDivElement | null>(null);
     const roRef = useRef<ResizeObserver | null>(null);
     const [contentHeight, setContentHeight] = useState<number | null>(null);
@@ -891,8 +890,7 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
                 className={cn("overflow-hidden", className)}
                 initial={{ height: isOpen ? "auto" : 0 }}
                 animate={{ height: isOpen ? contentHeight ?? 0 : 0 }}
-                // bounce: 0 — pure height looks better without overshoot. See
-                // comment in radix flavor.
+                // bounce: 0 — pure height looks better without overshoot.
                 transition={
                   needsSnap.current
                     ? { duration: 0 }

@@ -15,13 +15,13 @@ import {
   type ShapeVariant,
 } from "@/lib/shape-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
+import { useIcon } from "@/lib/icon-context";
 import {
-  useIcon,
   useIconLibrary,
   iconLibraryOrder,
   iconLibraryLabels,
   type IconLibrary,
-} from "@/lib/icon-context";
+} from "@/lib/docs/icon-playground";
 import { SurfaceProvider } from "@/lib/surface-context";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useBase, type Base } from "@/lib/base-context";

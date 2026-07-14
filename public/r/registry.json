@@ -172,36 +172,14 @@
       "name": "icon-context",
       "type": "registry:lib",
       "title": "Icon Context",
-      "description": "React context provider for runtime icon library switching with Lucide fallback.",
+      "description": "Named icon slots with a Lucide default set; swap any icon via IconProvider.",
       "dependencies": [
         "lucide-react"
       ],
-      "registryDependencies": [
-        "https://www.fluidfunctionalism.com/r/icon-map.json"
-      ],
+      "registryDependencies": [],
       "files": [
         {
           "path": "registry/default/lib/icon-context.tsx",
-          "type": "registry:lib"
-        }
-      ]
-    },
-    {
-      "name": "icon-map",
-      "type": "registry:lib",
-      "title": "Icon Map",
-      "description": "Canonical icon name mapping across Lucide, Tabler, Phosphor, HugeIcons, and Untitled UI.",
-      "dependencies": [
-        "lucide-react",
-        "@tabler/icons-react",
-        "@phosphor-icons/react",
-        "@hugeicons/react",
-        "@hugeicons/core-free-icons",
-        "@untitledui/icons"
-      ],
-      "files": [
-        {
-          "path": "registry/default/lib/icon-map.tsx",
           "type": "registry:lib"
         }
       ]

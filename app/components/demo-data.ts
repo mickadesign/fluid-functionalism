@@ -1,4 +1,4 @@
-import type { IconName } from "@/lib/icon-map";
+import type { IconName } from "@/lib/icon-context";
 
 /**
  * Shared demo content for the component previews.

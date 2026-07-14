@@ -2,12 +2,10 @@ export {
   IconProvider,
   useIcon,
   useIcons,
-  useIconLibrary,
-  iconLibraryOrder,
-  iconLibraryLabels,
+  defaultIcons,
 } from "@/registry/default/lib/icon-context";
 export type {
   IconComponent,
+  IconComponentProps,
   IconName,
-  IconLibrary,
 } from "@/registry/default/lib/icon-context";

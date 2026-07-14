@@ -21,21 +21,20 @@ import { shapeMap } from "@/lib/shape-context";
 const shape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
-// Dropdown context — THE single shared context for both dropdown flavors.
+// Dropdown context — the single shared context for every Dropdown build.
 //
-// It lives here (the file both flavor registry entries ship) rather than in
-// either dropdown module so that (a) MenuItem stays primitive-free and
-// self-contained for registry consumers, and (b) the two flavors can render
-// side by side (e.g. /compare-bases) — each provides this same context
-// object, so MenuItem resolves whichever provider actually wraps it instead
-// of guessing from a global flavor switch. Both dropdown flavors re-export
-// useDropdown from here, keeping their public API unchanged.
+// It lives here rather than in the dropdown module so that (a) MenuItem stays
+// primitive-free and self-contained, and (b) dropdowns built on different
+// primitives (Radix, Base UI) can render side by side — each provides this
+// same context object, so MenuItem resolves whichever provider actually
+// wraps it. The dropdown module re-exports useDropdown from here, keeping
+// its public API unchanged.
 // ---------------------------------------------------------------------------
 
 /** What MenuItem hands to the popup's primitive wrapper. `element` is the
  *  styled row div (visuals + proximity registration, no children); `children`
- *  is the row content (icon, label, check). The flavor wraps them in its own
- *  Item / RadioItem, so MenuItem itself stays primitive-free. */
+ *  is the row content (icon, label, check). The dropdown wraps them in its
+ *  own Item / RadioItem primitive, so MenuItem itself stays primitive-free. */
 export interface MenuItemRenderOptions {
   /** Radio-style option (boolean `checked` on MenuItem) vs plain action item. */
   radio: boolean;
@@ -56,7 +55,7 @@ export interface DropdownContextValue {
    *  primitive's Item / RadioItem own roles, roving highlight, typeahead,
    *  and activation. MenuItem switches its rendering accordingly. */
   inMenu?: boolean;
-  /** Popup-only: wraps a MenuItem's styled div in this flavor's menu-item
+  /** Popup-only: wraps a MenuItem's styled div in the dropdown's menu-item
    *  primitive. Absent in the inline Dropdown panel, where MenuItem renders
    *  its own ARIA menuitem div. */
   renderMenuItem?: (opts: MenuItemRenderOptions) => ReactElement;
@@ -227,8 +226,8 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
     );
 
     if (renderMenuItem) {
-      // Inside DropdownContent, the flavor's menu-item primitive (supplied by
-      // the surrounding DropdownContent through context) owns the role,
+      // Inside DropdownContent, the menu-item primitive (supplied by the
+      // surrounding DropdownContent through context) owns the role,
       // aria-checked, tabIndex, roving highlight, typeahead, and Enter/Space/
       // click activation (activation synthesizes a click, so handleActivate
       // also fires for keyboard). The styled div carries the Fluid

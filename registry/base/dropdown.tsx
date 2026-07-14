@@ -38,10 +38,10 @@ const shape = shapeMap.rounded;
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
 //
-// The context object itself lives in menu-item.tsx (the file shipped by BOTH
-// dropdown flavors) so MenuItem resolves whichever flavor's provider actually
-// wraps it — including when both flavors render side by side. Re-exported
-// here so the public dropdown API is unchanged.
+// The context object itself lives in menu-item.tsx so MenuItem resolves
+// whichever dropdown provider actually wraps it, even when dropdowns built
+// on different primitives render side by side. Re-exported here so the
+// public dropdown API is unchanged.
 // ---------------------------------------------------------------------------
 
 export { useDropdown, useDropdownMaybe };
@@ -236,7 +236,7 @@ Dropdown.displayName = "Dropdown";
 // Built on Base UI's Menu primitive, which owns the trigger wiring,
 // positioning (collision flipping, anchor tracking), dismissal (outside
 // press, focus-out, Escape), roving highlight, typeahead, and close-on-select.
-// The Fluid Functionalism layer keeps the proximity-hover overlays and the
+// This layer keeps the proximity-hover overlays and the
 // spring open/close animation (via actionsRef deferred unmount) — the same
 // verified pattern as select.tsx.
 // ---------------------------------------------------------------------------
@@ -526,9 +526,8 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                   setActiveIndex(null);
                 }}
                 className={cn(
-                  // min-w tracks the trigger via the Positioner's --anchor-width
-                  // var, mirroring the radix flavor's
-                  // min-w-[var(--radix-dropdown-menu-trigger-width)].
+                  // min-w tracks the trigger via the Positioner's
+                  // --anchor-width var.
                   `relative flex flex-col gap-0.5 w-72 max-w-full min-w-[var(--anchor-width)] max-h-[min(480px,var(--available-height))] overflow-y-auto ${shape.container} p-1 select-none outline-none`,
                   className
                 )}

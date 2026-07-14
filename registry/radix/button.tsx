@@ -214,8 +214,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         // asChild roots (e.g. an anchor) don't take the disabled attribute —
-        // Slot would spread it onto the element as invalid HTML. The base
-        // flavor never applies it in its asChild path either.
+        // Slot would spread it onto the element as invalid HTML.
         disabled={asChildElement ? undefined : disabled || loading}
         style={style}
         {...props}

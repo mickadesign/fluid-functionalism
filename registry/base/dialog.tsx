@@ -118,9 +118,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
                 // Base UI's props first (data attrs, refs, role, etc.)…
                 {...rest}
                 // …then the consumer's `<DialogContent>` props (className,
-                // event handlers, data-*, etc.) land on the visible motion.div
-                // — matching the Radix flavour, which spreads `...props` onto
-                // the Content primitive that becomes the motion.div via asChild.
+                // event handlers, data-*, etc.) land on the visible motion.div.
                 {...(props as Omit<
                   React.HTMLAttributes<HTMLDivElement>,
                   | "onDrag"

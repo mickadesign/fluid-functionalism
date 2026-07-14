@@ -1,105 +1,161 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ComponentType, type ReactNode } from "react";
 
 import {
-  iconMap,
-  iconLibraryOrder,
-  type IconLibrary,
-  type IconName,
-  type IconComponent,
-} from "@/lib/icon-map";
+  ChevronRight,
+  ChevronDown,
+  X,
+  Copy,
+  Menu,
+  Dot,
+  Monitor,
+  Sun,
+  Moon,
+  RectangleHorizontal,
+  Circle,
+  SquareLibrary,
+  Clock,
+  Star,
+  Settings,
+  Plus,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Search,
+  Loader,
+  Users,
+  Lock,
+  Mail,
+  Bell,
+  Shield,
+  Palette,
+  Lightbulb,
+  Rocket,
+  Heart,
+  Paintbrush,
+  Brain,
+  Globe,
+  User,
+  ImageIcon,
+  Link,
+  Check,
+  RotateCcw,
+  Play,
+  Pause,
+  Pipette,
+  Home,
+  MessageCircle,
+  Inbox,
+  Pencil,
+  SkipForward,
+  CornerDownRight,
+} from "lucide-react";
 
-// Re-export types for consumers
-export type { IconComponent, IconName, IconLibrary } from "@/lib/icon-map";
-export { iconLibraryOrder, iconLibraryLabels } from "@/lib/icon-map";
-
-interface IconContextValue {
-  iconLibrary: IconLibrary;
-  setIconLibrary: (lib: IconLibrary) => void;
+export interface IconComponentProps {
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
 }
 
-const IconContext = createContext<IconContextValue | null>(null);
+export type IconComponent = ComponentType<IconComponentProps>;
 
-/**
- * Returns the current icon library and setter.
- * Throws if used outside IconProvider.
- */
-function useIconLibrary() {
-  const ctx = useContext(IconContext);
-  if (!ctx) throw new Error("useIconLibrary must be used within an IconProvider");
-  return ctx;
-}
+export type IconName =
+  | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
+  | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
+  | "square-library" | "clock" | "star" | "settings"
+  | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "search" | "loader"
+  | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
+  | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
+  | "globe" | "user"
+  | "image" | "link" | "check" | "rotate-ccw"
+  | "play" | "pause" | "pipette"
+  | "home" | "message-circle" | "inbox"
+  | "pencil" | "skip-forward" | "corner-down-right";
+
+export const defaultIcons: Record<IconName, IconComponent> = {
+  "chevron-right": ChevronRight,
+  "chevron-down": ChevronDown,
+  "pipette": Pipette,
+  "x": X,
+  "copy": Copy,
+  "menu": Menu,
+  "dot": Dot,
+  "monitor": Monitor,
+  "sun": Sun,
+  "moon": Moon,
+  "rectangle-horizontal": RectangleHorizontal,
+  "circle": Circle,
+  "square-library": SquareLibrary,
+  "clock": Clock,
+  "star": Star,
+  "settings": Settings,
+  "plus": Plus,
+  "arrow-left": ArrowLeft,
+  "arrow-right": ArrowRight,
+  "arrow-up": ArrowUp,
+  "search": Search,
+  "loader": Loader,
+  "users": Users,
+  "lock": Lock,
+  "mail": Mail,
+  "bell": Bell,
+  "shield": Shield,
+  "palette": Palette,
+  "lightbulb": Lightbulb,
+  "rocket": Rocket,
+  "heart": Heart,
+  "paintbrush": Paintbrush,
+  "brain": Brain,
+  "globe": Globe,
+  "user": User,
+  "image": ImageIcon,
+  "link": Link,
+  "check": Check,
+  "rotate-ccw": RotateCcw,
+  "play": Play,
+  "pause": Pause,
+  "home": Home,
+  "message-circle": MessageCircle,
+  "inbox": Inbox,
+  "pencil": Pencil,
+  "skip-forward": SkipForward,
+  "corner-down-right": CornerDownRight,
+};
+
+const IconContext = createContext<Record<IconName, IconComponent> | null>(null);
 
 /**
  * Returns a single icon component for the given name.
- * Falls back to Lucide if no provider is present.
+ * Falls back to the default (Lucide) set if no provider is present.
  */
 function useIcon(name: IconName): IconComponent {
-  const ctx = useContext(IconContext);
-  if (!ctx) return iconMap.lucide[name];
-  return iconMap[ctx.iconLibrary][name];
+  const icons = useContext(IconContext);
+  return (icons ?? defaultIcons)[name];
 }
 
 /**
- * Returns the full icon map for the current library.
- * Falls back to Lucide if no provider is present.
+ * Returns the full icon map.
+ * Falls back to the default (Lucide) set if no provider is present.
  */
 function useIcons(): Record<IconName, IconComponent> {
-  const ctx = useContext(IconContext);
-  const lib = ctx?.iconLibrary ?? "lucide";
-  // iconMap is a module-level constant, so iconMap[lib] is already stable.
-  return iconMap[lib];
+  const icons = useContext(IconContext);
+  return icons ?? defaultIcons;
 }
 
+/**
+ * Swap some or all icons for components from another library.
+ * Names left out of `icons` keep their default (Lucide) component.
+ */
 function IconProvider({
   children,
-  defaultLibrary = "lucide",
+  icons,
 }: {
   children: ReactNode;
-  defaultLibrary?: IconLibrary;
+  icons?: Partial<Record<IconName, IconComponent>>;
 }) {
-  const [iconLibrary, setIconLibraryState] = useState<IconLibrary>(defaultLibrary);
-
-  const setIconLibrary = useCallback((next: IconLibrary) => {
-    setIconLibraryState(next);
-  }, []);
-
-  // Global keyboard shortcut: I to cycle icon library
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "i" && e.key !== "I") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
-      e.preventDefault();
-      setIconLibraryState((prev) => {
-        const idx = iconLibraryOrder.indexOf(prev);
-        return iconLibraryOrder[(idx + 1) % iconLibraryOrder.length];
-      });
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  const value = useMemo(
-    () => ({ iconLibrary, setIconLibrary }),
-    [iconLibrary, setIconLibrary]
-  );
-
-  return (
-    <IconContext.Provider value={value}>
-      {children}
-    </IconContext.Provider>
-  );
+  const value = useMemo(() => ({ ...defaultIcons, ...icons }), [icons]);
+  return <IconContext.Provider value={value}>{children}</IconContext.Provider>;
 }
 
-export { IconProvider, useIcon, useIcons, useIconLibrary };
+export { IconProvider, useIcon, useIcons };

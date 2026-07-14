@@ -28,7 +28,7 @@ import { Elevated } from "@/lib/elevated";
 // Built on Radix Select, which owns positioning (popper collision flipping),
 // dismissal (outside press, Escape), list keyboard navigation + typeahead
 // (open and closed), combobox ARIA, and the hidden native <select> for forms.
-// The Fluid Functionalism layer keeps the proximity-hover overlays, the
+// This layer keeps the proximity-hover overlays, the
 // spring open/close animation, and the animated checkmark.
 //
 // Radix-specific notes (verified against @radix-ui/react-select 2.2.6 dist):
@@ -42,19 +42,18 @@ import { Elevated } from "@/lib/elevated";
 // - Initial label: while closed, Radix renders Content's children into a
 //   detached DocumentFragment; the selected SelectItem/ItemText therefore
 //   mounts before the popup ever opens and portals its text into the Value
-//   node. No item traversal (the base flavor's collectSelectItems) is needed
-//   — SelectContent just has to render unconditionally, never gated behind a
+//   node. No item traversal is needed — SelectContent just has to render
+//   unconditionally, never gated behind a
 //   local mounted flag.
 //
 // - Exit animation: Radix Select has no Presence/forceMount, so the popup
 //   unmounts the instant its `open` flips false. The root therefore keeps two
 //   open states: `open` (immediate, drives the motion targets) and
 //   `radixOpen` (what Radix sees; released via `unmount()` once the exit
-//   tween finishes — the actionsRef pattern from the Base UI flavor).
+//   tween finishes).
 //
 // - Radix Select is modal-ish: it scroll-locks the page and disables outside
-//   pointer events while open (the Base UI flavor is non-modal and tracks its
-//   anchor instead). Accepted as flavor behavior. The Viewport's injected
+//   pointer events while open. The Viewport's injected
 //   stylesheet hides its own scrollbar, which would leave long lists with no
 //   scroll affordance at all (the scroll buttons aren't rendered either) —
 //   overridden with `![scrollbar-width:thin]` on the viewport, which also
@@ -370,8 +369,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             <SelectContentContext.Provider value={contentCtx}>
               {/* The Viewport is the scroll container and, via its inline
                   position: relative, the offsetParent the proximity overlay
-                  rects anchor to — the same double duty the Popup performed
-                  in the Base UI flavor. */}
+                  rects anchor to. */}
               <SelectPrimitive.Viewport asChild>
                 <Elevated
                   offset={2}
@@ -414,11 +412,10 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                   }}
                   className={cn(
                     // min-w tracks the trigger via Radix's popper-provided
-                    // vars, matching the base flavor's --anchor-width.
+                    // vars.
                     // ![scrollbar-width:thin] undoes Radix's injected
                     // scrollbar-hiding stylesheet (see header comment) so
-                    // long lists keep a visible scrollbar, as in the base
-                    // flavor.
+                    // long lists keep a visible scrollbar.
                     `relative flex flex-col gap-0.5 min-w-[var(--radix-select-trigger-width)] max-h-[min(300px,var(--radix-select-content-available-height))] overflow-y-auto ![scrollbar-width:thin] ${shape.container} p-1 select-none outline-none`,
                     className
                   )}
@@ -641,9 +638,8 @@ SelectItem.displayName = "SelectItem";
 // ---------------------------------------------------------------------------
 // SelectGroup + SelectLabel + SelectSeparator
 //
-// Plain presentational divs, copied from the base flavor. Radix's own
-// Select.Label throws when used outside a Select.Group, which would break
-// API parity (the base flavor allows a standalone label).
+// Plain presentational divs. Radix's own Select.Label throws when used
+// outside a Select.Group, which would forbid a standalone label.
 // ---------------------------------------------------------------------------
 
 function SelectGroup({

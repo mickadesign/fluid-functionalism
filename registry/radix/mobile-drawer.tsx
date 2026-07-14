@@ -10,8 +10,8 @@ import { surfaceClasses } from "@/lib/surface-classes";
 // Built on Radix Dialog: it provides scroll lock, focus trap, focus restore,
 // Esc + outside-click dismissal, while leaving the slide animation to
 // framer-motion. Radix has no actionsRef-style deferred unmount, so the
-// portal lifetime is managed with local `mounted` state (same pattern as
-// registry/radix/dialog.tsx): mount on open, keep the portal alive with
+// portal lifetime is managed with local `mounted` state (the same pattern
+// the Dialog component uses): mount on open, keep the portal alive with
 // `forceMount` through the exit tween, and unmount once the panel's exit
 // animation completes.
 
@@ -81,9 +81,8 @@ export function MobileDrawer({
             // explicit undefined clears the rendered attribute, which is what
             // the DescriptionWarning in @radix-ui/react-dialog checks.
             aria-describedby={undefined}
-            // Focus restore parity with the Base UI flavor's `finalFocus`:
-            // fires when the portal unmounts after the exit tween, so focus
-            // lands back on the hamburger trigger.
+            // Explicit focus restore: fires when the portal unmounts after
+            // the exit tween, so focus lands back on the hamburger trigger.
             onCloseAutoFocus={(event) => {
               if (triggerRef?.current) {
                 event.preventDefault();
@@ -107,9 +106,8 @@ export function MobileDrawer({
             >
               {/* Radix's TitleWarning checks for a rendered DialogTitle
                   element (aria-label alone does not satisfy it), so ship a
-                  visually hidden Title; aria-labelledby then resolves to it,
-                  matching the "Navigation" accessible name of the Base UI
-                  flavor. */}
+                  visually hidden Title; aria-labelledby then resolves to
+                  it, giving the drawer its "Navigation" accessible name. */}
               <DialogPrimitive.Title className="sr-only">
                 Navigation
               </DialogPrimitive.Title>

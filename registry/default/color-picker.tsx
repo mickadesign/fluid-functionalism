@@ -649,7 +649,7 @@ function AlphaSlider({
 // (anchor tracking + collision flipping — the old hand-rolled version computed
 // coordinates once on open and detached from the trigger on scroll),
 // dismissal, roving highlight, and typeahead. Menu.RadioGroup/RadioItem carry
-// the radio semantics. The Fluid Functionalism layer keeps the proximity-hover
+// the radio semantics. This layer keeps the proximity-hover
 // overlays and the spring open/close animation (actionsRef deferred unmount —
 // the same verified pattern as select.tsx / dropdown.tsx).
 // ---------------------------------------------------------------------------

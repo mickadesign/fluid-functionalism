@@ -30,7 +30,7 @@ import { Elevated } from "@/lib/elevated";
 // Built on Base UI's Select primitive, which owns positioning (collision
 // flipping, anchor tracking), dismissal (outside press, focus-out, Escape
 // nesting inside dialogs), list keyboard navigation + typeahead, combobox
-// ARIA, and the hidden form input. The Fluid Functionalism layer keeps the
+// ARIA, and the hidden form input. This layer keeps the
 // proximity-hover overlays, the spring open/close animation (via actionsRef
 // deferred unmount), and the animated checkmark.
 // ---------------------------------------------------------------------------

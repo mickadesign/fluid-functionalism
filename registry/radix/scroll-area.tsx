@@ -2,7 +2,7 @@
 
 // Adapted from Lina by SameerJS6 (https://lina.sameer.sh) — lina-radix
 // scroll-area. Changes from the original: Lina's gradient-only ScrollMask is
-// dropped, the scrollbar is restyled to the Fluid Functionalism shape system,
+// dropped, the scrollbar is restyled to the shape system,
 // and tw-animate-css visibility classes are swapped for a plain opacity
 // transition. Falls back to native overflow scrolling on touch-primary devices.
 
@@ -28,13 +28,13 @@ const ScrollAreaContext = createContext<boolean>(false);
 
 // Whether the scrollbar should currently be shown (hovering the area or
 // actively scrolling). Owned by ScrollArea rather than Radix's type="hover"
-// machinery: Radix only reveals on hover (never on scroll, unlike the Base UI
-// flavour's data-scrolling) and stacks conditional Presence layers that fight
+// machinery: Radix only reveals on hover (never on scroll) and stacks
+// conditional Presence layers that fight
 // the CSS fade. Default true so a standalone ScrollBar stays visible.
 const ScrollbarVisibleContext = createContext<boolean>(true);
 
-// How long the scrollbar lingers after the last scroll event before fading
-// (matching the Base UI flavour's data-scrolling decay feel). Hover hide is
+// How long the scrollbar lingers after the last scroll event before fading.
+// Hover hide is
 // immediate — the fade classes add their own 160ms grace.
 const SCROLL_LINGER_MS = 600;
 
