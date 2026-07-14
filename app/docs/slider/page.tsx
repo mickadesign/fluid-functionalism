@@ -30,6 +30,20 @@ const [stepped10, setStepped10] = useState(50);
 <Slider value={stepped} onChange={setStepped} step={25} showSteps />
 <Slider value={stepped10} onChange={setStepped10} step={10} showSteps />`;
 
+const nonUniformCode = `import { Slider } from "./components";
+
+const AMPERE_RATINGS = [0.1, 0.5, 0.7, 1.1, 1.3];
+const [rating, setRating] = useState(0.7);
+
+<Slider
+  value={rating}
+  onChange={setRating}
+  steps={AMPERE_RATINGS}
+  showSteps
+  label="Rating"
+  formatValue={(v) => \`\${v} A\`}
+/>`;
+
 const valueDisplayCode = `import { Slider } from "./components";
 
 <Slider value={value} onChange={setValue} valuePosition="left" label="Volume" />
@@ -139,6 +153,12 @@ const sliderProps: PropDef[] = [
     description: "Step increment. Thumb snaps to the nearest step during drag.",
   },
   {
+    name: "steps",
+    type: "number[]",
+    description:
+      "Discrete list of allowed values, e.g. [0.1, 0.5, 0.7, 1.1, 1.3]. The thumb snaps only to these values and arrow keys walk the list. min/max derive from the list's extremes and step is ignored.",
+  },
+  {
     name: "showSteps",
     type: "boolean",
     default: "false",
@@ -244,6 +264,7 @@ export default function SliderDoc() {
   const [range, setRange] = useState<[number, number]>([25, 75]);
   const [stepped, setStepped] = useState(50);
   const [stepped10, setStepped10] = useState(50);
+  const [rating, setRating] = useState(0.7);
   const [left, setLeft] = useState(40);
   const [right, setRight] = useState(60);
   const [tooltip, setTooltip] = useState(50);
@@ -296,6 +317,21 @@ export default function SliderDoc() {
               onChange={(v) => setStepped10(v as number)}
               step={10}
               showSteps
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Non-uniform Steps">
+        <ComponentPreview code={nonUniformCode}>
+          <div className="w-72">
+            <Slider
+              value={rating}
+              onChange={(v) => setRating(v as number)}
+              steps={[0.1, 0.5, 0.7, 1.1, 1.3]}
+              showSteps
+              label="Rating"
+              formatValue={(v) => `${v} A`}
             />
           </div>
         </ComponentPreview>

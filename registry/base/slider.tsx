@@ -39,6 +39,14 @@ interface SliderProps
   min?: number;
   max?: number;
   step?: number;
+  /**
+   * Discrete list of allowed values, e.g. [0.1, 0.5, 0.7, 1.1, 1.3].
+   *
+   * When set, the thumb snaps only to these values (positioned proportionally
+   * along the track) and arrow keys walk the list. `min`/`max` derive from the
+   * list's extremes and `step` is ignored.
+   */
+  steps?: number[];
   showSteps?: boolean;
   showValue?: boolean;
   valuePosition?: ValuePosition;
@@ -81,16 +89,26 @@ function valueToPixel(
   return ((v - min) / (max - min)) * usable;
 }
 
+function nearestStepIndex(v: number, steps: number[]): number {
+  let idx = 0;
+  for (let i = 1; i < steps.length; i++) {
+    if (Math.abs(steps[i] - v) < Math.abs(steps[idx] - v)) idx = i;
+  }
+  return idx;
+}
+
 function pixelToValue(
   px: number,
   min: number,
   max: number,
   step: number,
-  trackWidth: number
+  trackWidth: number,
+  stepValues: number[] | null = null
 ): number {
   const usable = trackWidth - THUMB_SIZE;
   if (usable <= 0) return min;
   const raw = (px / usable) * (max - min) + min;
+  if (stepValues) return stepValues[nearestStepIndex(raw, stepValues)];
   const snapped = Math.round((raw - min) / step) * step + min;
   return Math.max(min, Math.min(max, snapped));
 }
@@ -112,6 +130,7 @@ interface ValueDisplayProps {
   min: number;
   max: number;
   step: number;
+  stepValues: number[] | null;
   formatValue: (v: number) => string;
   label?: string;
   isRange: boolean;
@@ -127,6 +146,7 @@ function ValueDisplay({
   min,
   max,
   step,
+  stepValues,
   formatValue,
   label,
   isRange,
@@ -148,13 +168,15 @@ function ValueDisplay({
       const parsed = parseFloat(inputValue);
       if (!isNaN(parsed)) {
         const clamped = Math.max(min, Math.min(max, parsed));
-        const snapped = Math.round((clamped - min) / step) * step + min;
+        const snapped = stepValues
+          ? stepValues[nearestStepIndex(clamped, stepValues)]
+          : Math.round((clamped - min) / step) * step + min;
         onCommitEdit(index, snapped);
       } else {
         onCancelEdit();
       }
     },
-    [inputValue, min, max, step, onCommitEdit, onCancelEdit]
+    [inputValue, min, max, step, stepValues, onCommitEdit, onCancelEdit]
   );
 
   const renderValue = (index: number) => {
@@ -180,7 +202,7 @@ function ValueDisplay({
               value={inputValue}
               min={min}
               max={max}
-              step={step}
+              step={stepValues ? "any" : step}
               onChange={(e) => setInputValue(e.target.value)}
               onBlur={() => commitEdit(index)}
               onKeyDown={(e) => {
@@ -296,9 +318,10 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     {
       value,
       onChange,
-      min = 0,
-      max = 100,
+      min: minProp = 0,
+      max: maxProp = 100,
       step = 1,
+      steps,
       showSteps = false,
       showValue = true,
       valuePosition = "left",
@@ -320,6 +343,19 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     const isRange = Array.isArray(value);
     const values = toRadixValue(value);
     const shape = useShape();
+
+    // Non-uniform step mode: sorted, deduped list of allowed values. Keyed on
+    // the joined string so inline array literals don't recompute every render.
+    const stepsKey = steps ? steps.join(",") : "";
+    const stepValues = useMemo(() => {
+      if (!stepsKey) return null;
+      const parsed = Array.from(new Set(stepsKey.split(",").map(Number))).sort(
+        (a, b) => a - b
+      );
+      return parsed.length > 1 ? parsed : null;
+    }, [stepsKey]);
+    const min = stepValues ? stepValues[0] : minProp;
+    const max = stepValues ? stepValues[stepValues.length - 1] : maxProp;
 
     // --- Refs ---
     const trackRef = useRef<HTMLDivElement>(null);
@@ -401,10 +437,12 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         const rawPx = cursorX - THUMB_SIZE / 2;
         const clampedPx = Math.max(0, Math.min(usable, rawPx));
         const rawVal = usable > 0 ? (clampedPx / usable) * (max - min) + min : min;
-        const snappedVal = Math.max(
-          min,
-          Math.min(max, Math.round((rawVal - min) / step) * step + min)
-        );
+        const snappedVal = stepValues
+          ? stepValues[nearestStepIndex(rawVal, stepValues)]
+          : Math.max(
+              min,
+              Math.min(max, Math.round((rawVal - min) / step) * step + min)
+            );
         const snappedPercent = max === min ? 0 : (snappedVal - min) / (max - min);
         const snappedX = THUMB_SIZE / 2 + snappedPercent * usable;
 
@@ -422,7 +460,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         const width = Math.abs(edgeX - nearest);
         setHoverPreview({ left, width, snappedValue: snappedVal, cursorX: snappedX });
       },
-      [min, max, step, isRange, motionX0, motionX1]
+      [min, max, step, stepValues, isRange, motionX0, motionX1]
     );
 
     // --- Initial sync (before paint) ---
@@ -555,7 +593,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          layoutWidth
+          layoutWidth,
+          stepValues
         );
         const snappedPx = valueToPixel(snappedValue, min, max, layoutWidth);
 
@@ -573,13 +612,14 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          layoutWidth
+          layoutWidth,
+          stepValues
         );
         emitChange(activeDragThumb.current, finalValue);
 
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
-      [disabled, isRange, min, max, step, motionX0, motionX1, clampForRange, emitChange]
+      [disabled, isRange, min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
     );
 
     const handlePointerMove = useCallback(
@@ -607,7 +647,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          layoutWidth
+          layoutWidth,
+          stepValues
         );
         const snappedPx = valueToPixel(snappedValue, min, max, layoutWidth);
         const finalPx = clampForRange(
@@ -621,11 +662,12 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
           min,
           max,
           step,
-          layoutWidth
+          layoutWidth,
+          stepValues
         );
         emitChange(activeDragThumb.current, finalValue);
       },
-      [min, max, step, motionX0, motionX1, clampForRange, emitChange]
+      [min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
     );
 
     const handlePointerUp = useCallback(() => {
@@ -639,22 +681,27 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       const motionX =
         activeDragThumb.current === 0 ? motionX0 : motionX1;
       const currentPx = motionX.get();
-      const snapped = pixelToValue(currentPx, min, max, step, tw);
+      const snapped = pixelToValue(currentPx, min, max, step, tw, stepValues);
       const snappedPx = valueToPixel(snapped, min, max, tw);
       animate(motionX, snappedPx, spring.moderate);
-    }, [min, max, step, motionX0, motionX1]);
+    }, [min, max, step, stepValues, motionX0, motionX1]);
 
     // --- Radix keyboard handler ---
+    // In steps mode the primitive runs on indices (0..len-1, step 1) so arrow
+    // keys walk the list; map indices back to actual values on the way out.
     const handleRadixChange = useCallback(
       (newValues: number[]) => {
         if (dragging.current) return;
+        const mapped = stepValues
+          ? newValues.map((i) => stepValues[Math.round(i)])
+          : newValues;
         if (isRange) {
-          onChange(newValues as [number, number]);
+          onChange(mapped as [number, number]);
         } else {
-          onChange(newValues[0]);
+          onChange(mapped[0]);
         }
       },
-      [isRange, onChange]
+      [isRange, onChange, stepValues]
     );
 
     // --- Click-to-edit handlers ---
@@ -678,16 +725,21 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     const stepDots = useMemo(
       () =>
         showSteps
-          ? Array.from(
-              { length: Math.round((max - min) / step) + 1 },
-              (_, i) => {
-                const v = min + i * step;
-                const percent = (v - min) / (max - min);
-                return { value: v, percent };
-              }
-            )
+          ? stepValues
+            ? stepValues.map((v) => ({
+                value: v,
+                percent: max === min ? 0 : (v - min) / (max - min),
+              }))
+            : Array.from(
+                { length: Math.round((max - min) / step) + 1 },
+                (_, i) => {
+                  const v = min + i * step;
+                  const percent = (v - min) / (max - min);
+                  return { value: v, percent };
+                }
+              )
           : [],
-      [showSteps, min, max, step]
+      [showSteps, min, max, step, stepValues]
     );
 
     // --- Interaction state for tooltip ---
@@ -713,6 +765,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
         min={min}
         max={max}
         step={step}
+        stepValues={stepValues}
         formatValue={formatValue}
         label={label}
         isRange={isRange}
@@ -838,11 +891,15 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
 
           {/* Base UI Slider — invisible, provides ARIA + keyboard nav */}
           <SliderPrimitive.Root
-            value={values}
+            value={
+              stepValues
+                ? values.map((v) => nearestStepIndex(v, stepValues))
+                : values
+            }
             onValueChange={(v) => handleRadixChange(v as number[])}
-            min={min}
-            max={max}
-            step={step}
+            min={stepValues ? 0 : min}
+            max={stepValues ? stepValues.length - 1 : max}
+            step={stepValues ? 1 : step}
             disabled={disabled}
             className="absolute inset-0 opacity-0 pointer-events-none"
             style={{ height: THUMB_SIZE }}
@@ -854,6 +911,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               <SliderPrimitive.Thumb
                 index={0}
                 aria-label={thumbAriaLabel(0)}
+                getAriaValueText={
+                  stepValues ? () => formatValue(values[0]) : undefined
+                }
                 className="block outline-none"
                 style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
                 onFocus={(e) => { if ((e.currentTarget as HTMLElement).matches(":focus-visible")) setFocusedThumb(0); }}
@@ -863,6 +923,9 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
                 <SliderPrimitive.Thumb
                   index={1}
                   aria-label={thumbAriaLabel(1)}
+                  getAriaValueText={
+                    stepValues ? () => formatValue(values[1]) : undefined
+                  }
                   className="block outline-none"
                   style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
                   onFocus={(e) => { if ((e.currentTarget as HTMLElement).matches(":focus-visible")) setFocusedThumb(1); }}
