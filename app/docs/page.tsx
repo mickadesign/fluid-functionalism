@@ -124,7 +124,9 @@ export default function DocsIndex() {
             from rounded to pill, cycle through different icon libraries,
             or pick whether the install command grabs the Radix flavor or
             the Base UI one. Press T, R, or I to flip the first three
-            from the keyboard.
+            from the keyboard. The icon switcher is a preview tool that
+            lives on this site — installed components ship with Lucide
+            only, and you can swap in your own icons (see Icons below).
           </p>
         </div>
       </section>
@@ -160,6 +162,31 @@ export default function DocsIndex() {
           Dependencies and shared utilities are resolved automatically.
           Font weight animations require the Inter variable font.
         </p>
+      </div>
+
+      <hr className="border-border/60 my-8" />
+      <div className="flex flex-col gap-3 mb-4">
+        <h2
+          className="text-[16px] text-foreground leading-none"
+          style={{ fontVariationSettings: fontWeights.semibold }}
+        >
+          Icons
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          Components render their icons through named slots with Lucide
+          defaults, so lucide-react is the only icon dependency an
+          install adds. To use another icon library, wrap your app in
+          the installed IconProvider and override any slot — names you
+          leave out keep their Lucide default:
+        </p>
+        <pre className="text-[12px] leading-relaxed text-muted-foreground bg-muted/60 rounded-lg px-4 py-3 overflow-x-auto w-fit max-w-full">
+          <code>{`import { IconProvider } from "@/lib/icon-context";
+import { CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
+
+<IconProvider icons={{ "chevron-right": CaretRight, "search": MagnifyingGlass }}>
+  <App />
+</IconProvider>`}</code>
+        </pre>
       </div>
     </div>
   );

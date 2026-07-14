@@ -33,7 +33,7 @@ const basicCode = `import {
         summary="Explored 6 files"
         details={[
           "Read accordion.tsx",
-          "Read icon-map.tsx",
+          "Read icon-context.tsx",
           "Read badge.tsx",
           "Read use-proximity-hover.ts",
           "Read components.ts",
@@ -751,7 +751,7 @@ export default function ThinkingStepsDoc() {
                   summary="Explored 6 files"
                   details={[
                     "Read accordion.tsx",
-                    "Read icon-map.tsx",
+                    "Read icon-context.tsx",
                     "Read badge.tsx",
                     "Read use-proximity-hover.ts",
                     "Read components.ts",

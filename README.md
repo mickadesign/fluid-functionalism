@@ -26,6 +26,21 @@ npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json
 
 Dependencies resolve automatically. Font weight animations require the [Inter](https://fonts.google.com/specimen/Inter) variable font.
 
+## Icons
+
+Components render icons through named slots with [Lucide](https://lucide.dev) defaults — `lucide-react` is the only icon dependency an install adds. To use another icon library, wrap your app in the installed `IconProvider` and override any slot; names you leave out keep their Lucide default:
+
+```tsx
+import { IconProvider } from "@/lib/icon-context";
+import { CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
+
+<IconProvider icons={{ "chevron-right": CaretRight, "search": MagnifyingGlass }}>
+  <App />
+</IconProvider>
+```
+
+The icon-library switcher on the docs site is a preview tool only — none of that machinery ships with installed components.
+
 ## Components
 
 | Component | Description |

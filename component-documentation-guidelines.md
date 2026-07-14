@@ -47,7 +47,8 @@ Add an item to the `items` array:
 
 **Field rules:**
 - `dependencies` = external npm packages (framer-motion, @radix-ui/*, lucide-react, class-variance-authority)
-- `registryDependencies` = other items in this registry (utils, springs, font-weight, shape-context, use-proximity-hover, or other components like button)
+- `registryDependencies` = other items in this registry (utils, springs, font-weight, shape-context, icon-context, use-proximity-hover, or other components like button)
+- Components that render icons depend on `icon-context` only — never add icon packages beyond `lucide-react` as `dependencies` (consumers bring their own via IconProvider)
 - Multi-file components list all files in the `files` array
 
 ### 3. Generated Registry JSON (`public/r/<component-name>.json`)
@@ -179,6 +180,14 @@ Reference implementations: `menu-item.tsx`, `nav-item.tsx`, `tabs-subtle.tsx`, `
   - Components accepting icon props: `import type { IconComponent } from "@/lib/icon-context";`
   - Doc pages: call `useIcon("icon-name")` inside the component function for each icon needed
   - Icon prop type is `IconComponent`, not `LucideIcon`
+  - **Adding a new icon name**: add it to `IconName` + `defaultIcons` (Lucide) in
+    `registry/default/lib/icon-context.tsx`, **and** to all four maps in the docs-only
+    `lib/docs/icon-map.tsx` (Tabler, Phosphor, HugeIcons, Untitled UI) so the site's
+    library switcher keeps working
+  - **Installed vs docs-only**: only the Lucide slot system ships to consumers
+    (`icon-context`, deps = `lucide-react` alone). The multi-library map and the I/R
+    keyboard shortcuts live in `lib/docs/` and must never be imported from `registry/`
+    files — same for `document`-level key listeners in general (GitHub issue #19)
 
 ### Code Snippets
 
@@ -246,9 +255,8 @@ registry/default/
   lib/utils.ts                ← shared utilities
   lib/springs.ts              ← animation tokens
   lib/font-weight.ts          ← font weight tokens
-  lib/shape-context.tsx        ← shape provider
-  lib/icon-context.tsx         ← icon library provider
-  lib/icon-map.tsx             ← icon mapping across libraries
+  lib/shape-context.tsx        ← shape provider (no key shortcut — that's docs-only)
+  lib/icon-context.tsx         ← icon slots, Lucide defaults, IconProvider override
   hooks/use-proximity-hover.ts ← proximity hook
 
 lib/docs/
@@ -257,6 +265,9 @@ lib/docs/
   DocPage.tsx                  ← DocPage + DocSection wrappers
   components.ts                ← component list for sidebar nav
   highlight.ts                 ← Shiki syntax highlighting
+  icon-map.tsx                 ← docs-only multi-library icon map (Tabler/Phosphor/…)
+  icon-playground.tsx          ← docs-only library switcher provider + "I" shortcut
+  shape-shortcut.tsx           ← docs-only "R" radius shortcut
 
 app/docs/
   layout.tsx                   ← sidebar layout (reads componentList)
