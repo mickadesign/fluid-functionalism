@@ -49,6 +49,7 @@ The icon-library switcher on the docs site is a preview tool only — none of th
 | [AskUserQuestions](https://www.fluidfunctionalism.com/docs/ask-user-questions) | Stepped question flow with single/multi-select, inline "other" input, and multi-question navigation |
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | Compact label with solid and dot variants, Tailwind color palette |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | Variants, sizes, loading state, and icon support |
+| [Card](https://www.fluidfunctionalism.com/docs/card) | One prop-driven card — stacked, inline, or grid layouts, borderless dividers, media/logo/feature slots, and 2-D proximity hover |
 | [CheckboxGroup](https://www.fluidfunctionalism.com/docs/checkbox-group) | Merged backgrounds for contiguous selections |
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper; inline or popover |
 | [Dialog](https://www.fluidfunctionalism.com/docs/dialog) | Modal with smooth enter/exit animations and overlay |

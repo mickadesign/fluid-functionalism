@@ -18,7 +18,14 @@ export interface ItemRect {
 }
 
 interface UseProximityHoverOptions {
-  axis?: "x" | "y";
+  /**
+   * Which direction to resolve the nearest item along.
+   *   "y"  — vertical lists (default): closest by top/height
+   *   "x"  — horizontal strips: closest by left/width
+   *   "xy" — 2-D grids: closest card across both rows AND columns,
+   *          measured by Euclidean distance to each item's center
+   */
+  axis?: "x" | "y" | "xy";
 }
 
 interface UseProximityHoverReturn {
@@ -123,6 +130,66 @@ export function useProximityHover<T extends HTMLElement>(
         if (!container) return;
 
         const containerRect = container.getBoundingClientRect();
+
+        // ── 2-D grid path ──────────────────────────────────────────
+        // When items wrap into rows and columns, a single-axis nearest
+        // pick can't tell which card the cursor is closest to. Resolve
+        // by Euclidean distance to each item's center, and prefer any
+        // item the cursor is actually inside (point-in-rect).
+        if (axis === "xy") {
+          let closestIndex: number | null = null;
+          let closestDistance = Infinity;
+          let containingIndex: number | null = null;
+
+          const rects = itemRectsRef.current;
+          const scrollX = container.scrollLeft;
+          const scrollY = container.scrollTop;
+          const borderX = container.clientLeft;
+          const borderY = container.clientTop;
+          // Map layout coords into visual/viewport space, accounting for any
+          // cumulative ancestor transform: scale (see the single-axis note
+          // below). X and Y scale independently.
+          const scaleX =
+            container.offsetWidth > 0
+              ? containerRect.width / container.offsetWidth
+              : 1;
+          const scaleY =
+            container.offsetHeight > 0
+              ? containerRect.height / container.offsetHeight
+              : 1;
+
+          for (let index = 0; index < rects.length; index++) {
+            const r = rects[index];
+            if (!r) continue;
+
+            const left = containerRect.left + (borderX + r.left - scrollX) * scaleX;
+            const top = containerRect.top + (borderY + r.top - scrollY) * scaleY;
+            const width = r.width * scaleX;
+            const height = r.height * scaleY;
+
+            if (
+              mouseX >= left &&
+              mouseX <= left + width &&
+              mouseY >= top &&
+              mouseY <= top + height
+            ) {
+              containingIndex = index;
+            }
+
+            const dx = mouseX - (left + width / 2);
+            const dy = mouseY - (top + height / 2);
+            const distance = Math.hypot(dx, dy);
+
+            if (distance < closestDistance) {
+              closestDistance = distance;
+              closestIndex = index;
+            }
+          }
+
+          setActiveIndex(containingIndex ?? closestIndex);
+          return;
+        }
+
         const mousePos = axis === "x" ? mouseX : mouseY;
 
         let closestIndex: number | null = null;

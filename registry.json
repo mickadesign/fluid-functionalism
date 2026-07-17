@@ -893,6 +893,29 @@
       ]
     },
     {
+      "name": "card",
+      "type": "registry:ui",
+      "title": "Card",
+      "description": "Flexible, prop-driven card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, actions, selected state, and 2-D proximity-hover highlighting. Includes the CardGroup layout container.",
+      "dependencies": [
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "icon-context",
+        "use-proximity-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/card.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "slider",
       "type": "registry:ui",
       "title": "Slider",
