@@ -26,7 +26,7 @@ const buttonVariants = cva(
       variant: {
         primary: "text-background",
         secondary: "text-foreground",
-        tertiary: "border border-border text-foreground",
+        tertiary: "text-foreground",
         ghost: "text-muted-foreground hover:text-foreground",
       },
       size: {
@@ -72,14 +72,14 @@ interface ButtonProps
 const bgVariants: Record<string, string> = {
   primary: "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
   secondary: "bg-accent group-hover:bg-accent/80 group-active:bg-accent",
-  tertiary: "bg-transparent group-hover:bg-hover group-active:bg-active",
+  tertiary: "border border-border bg-transparent group-hover:bg-hover group-active:bg-active",
   ghost: "bg-transparent group-hover:bg-hover group-active:bg-active",
 };
 
 const activeBgVariants: Record<string, string> = {
   primary: "bg-foreground/80",
   secondary: "bg-accent",
-  tertiary: "bg-active",
+  tertiary: "border border-border bg-active",
   ghost: "bg-active",
 };
 
