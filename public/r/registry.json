@@ -896,7 +896,7 @@
       "name": "card",
       "type": "registry:ui",
       "title": "Card",
-      "description": "Flexible, prop-driven card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, actions, selected state, and 2-D proximity-hover highlighting. Includes the CardGroup layout container.",
+      "description": "shadcn's compositional card (Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter) with the Fluid Functionalism layer: transparent substrate, weight-animated title, media/logo/feature/image slots, and a CardGroup that owns stacked, inline, and grid layouts plus 2-D proximity-hover highlighting.",
       "dependencies": [
         "framer-motion"
       ],

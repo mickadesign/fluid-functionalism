@@ -23,6 +23,7 @@ import {
   type IconLibrary,
 } from "@/lib/docs/icon-playground";
 import { SurfaceProvider } from "@/lib/surface-context";
+import { RightRailTarget } from "@/lib/right-rail";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useBase, type Base } from "@/lib/base-context";
 
@@ -243,20 +244,30 @@ export function RightPanel() {
     // display finally flips to none. Fixed positioning below xl removes it
     // from flow at the breakpoint (single reflow) while it fades in place:
     // top-0/right-0 + mt-4/mr-2 land on the same 8px/16px inset as the pinned
-    // sticky state.
-    <aside className="shrink-0 w-64 p-4 sticky top-4 self-start mt-4 mr-2 rounded-lg bg-muted xl-fade-block max-xl:fixed max-xl:top-0 max-xl:right-0 max-xl:z-40 max-xl:pointer-events-none">
-      <SurfaceProvider value={2}>
-        <div className="flex items-center justify-between pl-1 pt-2 pb-2">
-          <h2
-            className="text-[16px] text-foreground leading-none"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Make them yours
-          </h2>
-          <GitHubStarButton />
-        </div>
-        <SettingsContent tooltipSide="left" />
-      </SurfaceProvider>
-    </aside>
+    // sticky state. The wrapper carries the fade/sticky so pages can stack a
+    // second panel (RightRailTarget) below the settings.
+    // xl-fade-block sets display:block at ≥xl, so the flex column lives on an
+    // inner wrapper (else it would override `flex` and drop the gap).
+    <div className="shrink-0 w-64 sticky top-4 self-start mt-4 mr-2 xl-fade-block max-xl:fixed max-xl:top-0 max-xl:right-0 max-xl:z-40 max-xl:pointer-events-none">
+      <div className="flex flex-col gap-3">
+        <aside className="p-4 rounded-lg bg-muted">
+          <SurfaceProvider value={2}>
+            <div className="flex items-center justify-between pl-1 pt-2 pb-2">
+              <h2
+                className="text-[16px] text-foreground leading-none"
+                style={{ fontVariationSettings: fontWeights.semibold }}
+              >
+                Make them yours
+              </h2>
+              <GitHubStarButton />
+            </div>
+            <SettingsContent tooltipSide="left" />
+          </SurfaceProvider>
+        </aside>
+
+        {/* Page-owned slot — e.g. the Card doc's Playground controls. */}
+        <RightRailTarget />
+      </div>
+    </div>
   );
 }
