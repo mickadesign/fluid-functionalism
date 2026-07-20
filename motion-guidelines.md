@@ -71,7 +71,7 @@ Keep this table and that array identical.
 
 | fast (0.08s) | moderate (0.16s, no bounce) | slow (0.24s) |
 |---|---|---|
-| Hover & focus rings, Checkbox, Radio, Table rows, Tooltip, Input copy, Slider, Select / Color picker open | Dropdown / Select highlight, Tabs indicator, Switch thumb, Accordion, Chat & message bubbles, Mobile drawer, Selection merge / split | Dialog, Ask-user questions, Thinking steps |
+| Hover & focus rings, Checkbox, Radio, Table rows, Card proximity, Tooltip, Input copy, Slider, Select / Color picker open | Dropdown / Select highlight, Tabs indicator, Switch thumb, Accordion, Chat & message bubbles, Mobile drawer, Selection merge / split | Dialog, Ask-user questions, Thinking steps |
 
 Most components *also* use `fast` for their hover and focus states on top of
 their headline tier — the table lists each component once, by its headline

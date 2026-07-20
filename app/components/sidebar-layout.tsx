@@ -7,6 +7,7 @@ import { useIcon } from "@/lib/icon-context";
 import { MobileDrawer } from "@/components/flavored/mobile-drawer";
 import { Button } from "@/registry/radix/button";
 import { RightPanel, SettingsContent, GitHubStarButton } from "@/app/components/right-panel";
+import { RightRailProvider } from "@/lib/right-rail";
 import { systemList, componentList } from "@/lib/docs/components";
 
 const pageOrder = [
@@ -95,9 +96,10 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* Desktop sidebar */}
-      <Sidebar />
+    <RightRailProvider>
+      <div className="flex min-h-screen">
+        {/* Desktop sidebar */}
+        <Sidebar />
 
       {/* Mobile hamburger */}
       <Button
@@ -137,9 +139,10 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         {children}
       </main>
 
-      {/* Desktop right panel */}
-      <RightPanel />
-    </div>
+        {/* Desktop right panel */}
+        <RightPanel />
+      </div>
+    </RightRailProvider>
   );
 }
 

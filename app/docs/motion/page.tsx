@@ -58,6 +58,7 @@ const REFERENCE_TIERS = [
       { label: "Radio",               slug: "/docs/radio-group" },
       { label: "Tooltip",             slug: "/docs/tooltip" },
       { label: "Table rows",          slug: "/docs/table" },
+      { label: "Card proximity",      slug: "/docs/card" },
       { label: "Input copy",          slug: "/docs/input-copy" },
       { label: "Slider",              slug: "/docs/slider" },
       { label: "Select",              slug: "/docs/select" },
