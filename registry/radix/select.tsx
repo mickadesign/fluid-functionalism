@@ -289,6 +289,17 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       undefined
     );
 
+    // Remount the selected marker on each open (via the key below) so it snaps to
+    // the checked row with initial={false}, instead of a persisted element springing
+    // across from the previous selection's row on a fast reopen. Only bumps on open,
+    // so an in-session checked-value change (e.g. a controlled value updated while
+    // open) still springs.
+    const [openGeneration, setOpenGeneration] = useState(0);
+    useEffect(() => {
+      if (!open) return;
+      setOpenGeneration((g) => g + 1);
+    }, [open]);
+
     // Release Radix's open state once the exit tween has played.
     // onAnimationComplete on the motion.div is the primary signal; this
     // timeout is a fallback for throttled/background tabs where rAF-driven
@@ -325,6 +336,19 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         cancelAnimationFrame(inner);
       };
     }, [open, measureItems, value]);
+
+    // On reopen checkedIndex lags one open behind value (picking an item closes
+    // the popup before the measure effect re-syncs it). Clearing it on close
+    // keeps the marker hidden until the new row is measured, so it never mounts
+    // at the previous row; the open-generation key then snaps it in fresh.
+    // Keyed on `open` (the visual state), not `radixOpen`: this fires as the
+    // close begins, in lockstep with the measure effect above that stops
+    // syncing checkedIndex. `radixOpen` would fire later, only after Radix's
+    // deferred unmount.
+    useEffect(() => {
+      if (open) return;
+      setCheckedIndex(undefined);
+    }, [open]);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const checkedRect = checkedIndex != null ? itemRects[checkedIndex] : null;
@@ -424,6 +448,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                   <AnimatePresence>
                     {checkedRect && (
                       <motion.div
+                        key={openGeneration}
                         className={`absolute ${shape.bg} bg-active pointer-events-none`}
                         initial={false}
                         animate={{
