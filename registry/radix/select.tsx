@@ -278,27 +278,17 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       activeIndex,
       setActiveIndex,
       itemRects,
+      isMeasured,
       sessionRef,
       handlers,
       registerItem,
-      measureItems,
+      remeasure,
     } = useProximityHover(containerRef);
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
     const [checkedIndex, setCheckedIndex] = useState<number | undefined>(
       undefined
     );
-
-    // Remount the selected marker on each open (via the key below) so it snaps to
-    // the checked row with initial={false}, instead of a persisted element springing
-    // across from the previous selection's row on a fast reopen. Only bumps on open,
-    // so an in-session checked-value change (e.g. a controlled value updated while
-    // open) still springs.
-    const [openGeneration, setOpenGeneration] = useState(0);
-    useEffect(() => {
-      if (!open) return;
-      setOpenGeneration((g) => g + 1);
-    }, [open]);
 
     // Release Radix's open state once the exit tween has played.
     // onAnimationComplete on the motion.div is the primary signal; this
@@ -311,14 +301,20 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       return () => clearTimeout(id);
     }, [open, unmount]);
 
-    // Measure items + detect the checked row once the popup has mounted.
+    // Detect the checked row once the popup has mounted. Measuring is the
+    // hook's job — it owns the one coalesced pass that item registration and
+    // container resizes both feed into, and a second pass from here is what
+    // used to land a corrected rect on an already-mounted overlay.
     useEffect(() => {
       if (!open) return;
+      // The popup keeps its items registered while it sits hidden between
+      // opens, so registration alone would never trigger a fresh pass on
+      // reopen. Ask the hook for one and let it re-report readiness.
+      remeasure();
       // Double rAF: first waits for React commit, second for layout
       let inner: number;
       const outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => {
-          measureItems();
           const container = containerRef.current;
           if (container) {
             const items = Array.from(
@@ -335,12 +331,14 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         cancelAnimationFrame(outer);
         cancelAnimationFrame(inner);
       };
-    }, [open, measureItems, value]);
+    }, [open, remeasure, value]);
 
-    // On reopen checkedIndex lags one open behind value (picking an item closes
-    // the popup before the measure effect re-syncs it). Clearing it on close
-    // keeps the marker hidden until the new row is measured, so it never mounts
-    // at the previous row; the open-generation key then snaps it in fresh.
+    // Reset every overlay index as the close begins. checkedIndex otherwise
+    // lags one open behind value (picking an item closes the popup before the
+    // effect above re-syncs it), and a leftover activeIndex is worse: the popup
+    // stays mounted through the exit tween, so on reopen the hover pill would
+    // still be sitting on the previously active row and spring from there to
+    // the row that auto-focus lands on.
     // Keyed on `open` (the visual state), not `radixOpen`: this fires as the
     // close begins, in lockstep with the measure effect above that stops
     // syncing checkedIndex. `radixOpen` would fire later, only after Radix's
@@ -348,11 +346,19 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     useEffect(() => {
       if (open) return;
       setCheckedIndex(undefined);
-    }, [open]);
+      setActiveIndex(null);
+      setFocusedIndex(null);
+    }, [open, setActiveIndex]);
 
-    const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
-    const checkedRect = checkedIndex != null ? itemRects[checkedIndex] : null;
-    const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
+    // Overlays read rects only once the hook reports the item set fully
+    // measured. Positioning one from an incomplete pass mounts it at the wrong
+    // row, and the correcting pass then springs it across the list.
+    const activeRect =
+      isMeasured && activeIndex !== null ? itemRects[activeIndex] : null;
+    const checkedRect =
+      isMeasured && checkedIndex != null ? itemRects[checkedIndex] : null;
+    const focusRect =
+      isMeasured && focusedIndex !== null ? itemRects[focusedIndex] : null;
     const isHoveringOther =
       activeIndex !== null && activeIndex !== checkedIndex;
 
@@ -444,78 +450,86 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     className
                   )}
                 >
+                  {/* The three overlays are torn down as the close begins rather
+                      than exit-animated, because an overlay still mounted when the
+                      popup reopens is one AnimatePresence re-adopts under its old
+                      key: `initial` never runs again, so it keeps the position of the
+                      row it had before and animates from there to the new one. The
+                      popup's own fade covers their disappearance. */}
                   {/* Selected background */}
-                  <AnimatePresence>
-                    {checkedRect && (
-                      <motion.div
-                        key={openGeneration}
-                        className={`absolute ${shape.bg} bg-active pointer-events-none`}
-                        initial={false}
-                        animate={{
-                          top: checkedRect.top,
-                          left: checkedRect.left,
-                          width: checkedRect.width,
-                          height: checkedRect.height,
-                          opacity: isHoveringOther ? 0.8 : 1,
-                        }}
-                        exit={{ opacity: 0, transition: spring.moderate.exit }}
-                        transition={{
-                          ...spring.moderate,
-                          opacity: { duration: 0.08 },
-                        }}
-                      />
-                    )}
-                  </AnimatePresence>
+                  {open && (
+                    <AnimatePresence>
+                      {checkedRect && (
+                        <motion.div
+                          className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                          initial={false}
+                          style={{
+                            top: checkedRect.top,
+                            left: checkedRect.left,
+                            width: checkedRect.width,
+                            height: checkedRect.height,
+                          }}
+                          animate={{ opacity: isHoveringOther ? 0.8 : 1 }}
+                          exit={{ opacity: 0, transition: spring.moderate.exit }}
+                          transition={{ opacity: { duration: 0.08 } }}
+                        />
+                      )}
+                    </AnimatePresence>
+                  )}
 
                   {/* Hover background */}
-                  <AnimatePresence>
-                    {activeRect && (
-                      <motion.div
-                        key={sessionRef.current}
-                        className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-                        initial={{
-                          opacity: 0,
-                          top: checkedRect?.top ?? activeRect.top,
-                          left: checkedRect?.left ?? activeRect.left,
-                          width: checkedRect?.width ?? activeRect.width,
-                          height: checkedRect?.height ?? activeRect.height,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          top: activeRect.top,
-                          left: activeRect.left,
-                          width: activeRect.width,
-                          height: activeRect.height,
-                        }}
-                        exit={{ opacity: 0, transition: spring.fast.exit }}
-                        transition={{
-                          ...spring.fast,
-                          opacity: { duration: 0.08 },
-                        }}
-                      />
-                    )}
-                  </AnimatePresence>
+                  {open && (
+                    <AnimatePresence>
+                      {activeRect && (
+                        <motion.div
+                          key={sessionRef.current}
+                          className={`absolute ${shape.bg} bg-hover pointer-events-none`}
+                          initial={{
+                            opacity: 0,
+                            top: activeRect.top,
+                            left: activeRect.left,
+                            width: activeRect.width,
+                            height: activeRect.height,
+                          }}
+                          animate={{
+                            opacity: 1,
+                            top: activeRect.top,
+                            left: activeRect.left,
+                            width: activeRect.width,
+                            height: activeRect.height,
+                          }}
+                          exit={{ opacity: 0, transition: spring.fast.exit }}
+                          transition={{
+                            ...spring.fast,
+                            opacity: { duration: 0.08 },
+                          }}
+                        />
+                      )}
+                    </AnimatePresence>
+                  )}
 
                   {/* Focus ring */}
-                  <AnimatePresence>
-                    {focusRect && (
-                      <motion.div
-                        className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
-                        initial={false}
-                        animate={{
-                          left: focusRect.left - 2,
-                          top: focusRect.top - 2,
-                          width: focusRect.width + 4,
-                          height: focusRect.height + 4,
-                        }}
-                        exit={{ opacity: 0, transition: spring.fast.exit }}
-                        transition={{
-                          ...spring.fast,
-                          opacity: { duration: 0.08 },
-                        }}
-                      />
-                    )}
-                  </AnimatePresence>
+                  {open && (
+                    <AnimatePresence>
+                      {focusRect && (
+                        <motion.div
+                          className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
+                          initial={false}
+                          animate={{
+                            left: focusRect.left - 2,
+                            top: focusRect.top - 2,
+                            width: focusRect.width + 4,
+                            height: focusRect.height + 4,
+                          }}
+                          exit={{ opacity: 0, transition: spring.fast.exit }}
+                          transition={{
+                            ...spring.fast,
+                            opacity: { duration: 0.08 },
+                          }}
+                        />
+                      )}
+                    </AnimatePresence>
+                  )}
 
                   {children}
                 </Elevated>
@@ -564,11 +578,17 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
       hasMounted.current = true;
     }, []);
 
-    // Register with proximity hover
+    // Register with proximity hover. Depends on the (stable) registerItem
+    // rather than the content context, which is rebuilt on every activeIndex
+    // change: keying the effect to the whole context re-ran it per mousemove,
+    // unregistering and re-registering every row and so keeping the hook's
+    // measurement permanently unsettled while the pointer moved.
+    const registerItem = contentCtx?.registerItem;
     useEffect(() => {
-      contentCtx?.registerItem(index, internalRef.current);
-      return () => contentCtx?.registerItem(index, null);
-    }, [index, contentCtx]);
+      if (!registerItem) return;
+      registerItem(index, internalRef.current);
+      return () => registerItem(index, null);
+    }, [index, registerItem]);
 
     const isActive = contentCtx?.activeIndex === index;
     const isChecked = selectCtx.value === value;

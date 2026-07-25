@@ -32,6 +32,14 @@ interface UseProximityHoverReturn {
   activeIndex: number | null;
   setActiveIndex: Dispatch<SetStateAction<number | null>>;
   itemRects: ItemRect[];
+  /**
+   * True once every registered item has been measured and no remeasure is
+   * pending, i.e. `itemRects` describes the current item set. Gate absolutely
+   * positioned overlays on it: an overlay that mounts against a rect a later
+   * pass still corrects animates from the wrong place to the right one, which
+   * reads as the highlight sliding in from another row.
+   */
+  isMeasured: boolean;
   sessionRef: RefObject<number>;
   handlers: {
     onMouseMove: (e: React.MouseEvent) => void;
@@ -39,8 +47,24 @@ interface UseProximityHoverReturn {
     onMouseLeave: () => void;
   };
   registerItem: (index: number, element: HTMLElement | null) => void;
+  /**
+   * Invalidates the published rects and runs the hook's coalesced measurement
+   * pass again, holding `isMeasured` false until it settles. Reach for it when
+   * something other than item registration invalidates layout — a popup that
+   * stays mounted between opens keeps its items registered, so nothing else
+   * would notice that its rects were taken while it was hidden.
+   */
+  remeasure: () => void;
   measureItems: () => void;
 }
+
+/**
+ * How many frames the coalesced remeasure retries while the registered items
+ * still have no layout box. A popup can be in the DOM one frame before it is
+ * laid out; retrying beats publishing zeroed rects, and the cap keeps a list
+ * that stays hidden for good from spinning frames forever.
+ */
+const measurementAttempts = 3;
 
 export function useProximityHover<T extends HTMLElement>(
   containerRef: RefObject<T | null>,
@@ -50,16 +74,37 @@ export function useProximityHover<T extends HTMLElement>(
   const itemsRef = useRef(new Map<number, HTMLElement>());
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [itemRects, setItemRects] = useState<ItemRect[]>([]);
+  const [isMeasured, setIsMeasured] = useState(false);
   const itemRectsRef = useRef<ItemRect[]>([]);
   const sessionRef = useRef(0);
   const rafIdRef = useRef<number | null>(null);
   const remeasureRafIdRef = useRef<number | null>(null);
 
-  const measureItems = useCallback(() => {
+  /**
+   * Publishes a rect for every registered item. Returns false when the
+   * measurement could not be completed (no container, or an item without a
+   * layout box) — nothing is published in that case, so the last complete
+   * measurement stands instead of being overwritten with zeroes.
+   */
+  const runMeasurement = useCallback(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) return false;
     const rects: ItemRect[] = [];
+    let everyItemHasLayout = true;
     itemsRef.current.forEach((element, index) => {
+      // An element inside a display:none / not-yet-laid-out popup has no
+      // offsetParent and reports every offset as 0. Publishing that would pin
+      // overlays to the top of the list, so treat the whole pass as
+      // incomplete. A boxless element is the only case: `position: fixed`
+      // items also have no offsetParent but do have a size.
+      const hasLayoutBox =
+        element.offsetParent !== null ||
+        element.offsetWidth > 0 ||
+        element.offsetHeight > 0;
+      if (!hasLayoutBox) {
+        everyItemHasLayout = false;
+        return;
+      }
       // Use offset* instead of getBoundingClientRect so measurements are
       // unaffected by CSS transforms (e.g. scaleY animation on the parent
       // motion.div). offsetTop/offsetLeft are layout values relative to the
@@ -72,6 +117,7 @@ export function useProximityHover<T extends HTMLElement>(
         width: element.offsetWidth,
       };
     });
+    if (!everyItemHasLayout) return false;
     // Skip the state update when nothing moved (a cheap top/left/width/height
     // compare) so redundant remeasures don't churn re-renders.
     const prev = itemRectsRef.current;
@@ -88,10 +134,47 @@ export function useProximityHover<T extends HTMLElement>(
         p.width !== r.width ||
         p.height !== r.height;
     }
-    if (!changed) return;
-    itemRectsRef.current = rects;
-    setItemRects(rects);
+    if (changed) {
+      itemRectsRef.current = rects;
+      setItemRects(rects);
+    }
+    return true;
   }, [containerRef]);
+
+  const measureItems = useCallback(() => {
+    runMeasurement();
+  }, [runMeasurement]);
+
+  /**
+   * The hook's single measurement pass: coalesces every trigger (item
+   * registration, container resize) into one remeasure on the next frame and
+   * is the only place readiness is reported, so `isMeasured` can never turn
+   * true while another pass is still queued.
+   */
+  const scheduleMeasurement = useCallback(
+    (attemptsLeft: number) => {
+      if (remeasureRafIdRef.current !== null) {
+        cancelAnimationFrame(remeasureRafIdRef.current);
+      }
+      remeasureRafIdRef.current = requestAnimationFrame(() => {
+        remeasureRafIdRef.current = null;
+        if (runMeasurement()) {
+          setIsMeasured(true);
+        } else if (attemptsLeft > 1) {
+          scheduleMeasurement(attemptsLeft - 1);
+        }
+      });
+    },
+    [runMeasurement]
+  );
+
+  const remeasure = useCallback(() => {
+    // Readiness drops first: until the pass below settles, the published rects
+    // may not describe what is on screen, and an overlay positioned from them
+    // would be corrected after mounting — which animates as a slide.
+    setIsMeasured(false);
+    scheduleMeasurement(measurementAttempts);
+  }, [scheduleMeasurement]);
 
   const registerItem = useCallback(
     (index: number, element: HTMLElement | null) => {
@@ -104,15 +187,9 @@ export function useProximityHover<T extends HTMLElement>(
       // remounts a list of rows) into a single remeasure on the next frame,
       // so consumers don't have to manually call measureItems after the
       // container's children swap.
-      if (remeasureRafIdRef.current !== null) {
-        cancelAnimationFrame(remeasureRafIdRef.current);
-      }
-      remeasureRafIdRef.current = requestAnimationFrame(() => {
-        remeasureRafIdRef.current = null;
-        measureItems();
-      });
+      remeasure();
     },
-    [measureItems]
+    [remeasure]
   );
 
   const handleMouseMove = useCallback(
@@ -251,22 +328,16 @@ export function useProximityHover<T extends HTMLElement>(
 
   // Remeasure when the container resizes — a reflow moves items even though
   // the registered set is unchanged, which would otherwise leave itemRects
-  // stale. Coalesced through the same rAF as register/unregister.
+  // stale. Coalesced through the same rAF as register/unregister. Readiness is
+  // deliberately not dropped: the item set is unchanged, so the published rects
+  // stay usable, and hiding overlays on every reflow would flicker them.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      if (remeasureRafIdRef.current !== null) {
-        cancelAnimationFrame(remeasureRafIdRef.current);
-      }
-      remeasureRafIdRef.current = requestAnimationFrame(() => {
-        remeasureRafIdRef.current = null;
-        measureItems();
-      });
-    });
+    const ro = new ResizeObserver(() => scheduleMeasurement(measurementAttempts));
     ro.observe(container);
     return () => ro.disconnect();
-  }, [containerRef, measureItems]);
+  }, [containerRef, scheduleMeasurement]);
 
   // Clean up rAF on unmount
   useEffect(() => {
@@ -284,6 +355,7 @@ export function useProximityHover<T extends HTMLElement>(
     activeIndex,
     setActiveIndex,
     itemRects,
+    isMeasured,
     sessionRef,
     handlers: {
       onMouseMove: handleMouseMove,
@@ -291,6 +363,7 @@ export function useProximityHover<T extends HTMLElement>(
       onMouseLeave: handleMouseLeave,
     },
     registerItem,
+    remeasure,
     measureItems,
   };
 }
