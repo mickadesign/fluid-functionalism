@@ -36,12 +36,6 @@ import {
 // scale and produces the corner-shadow asymmetry).
 const shape = shapeMap.rounded;
 
-// How long a radio selection holds the menu open before closing, so the
-// acknowledgment — the checkmark drawing in and the selected background
-// springing to the picked row — is visible instead of being cut off by the
-// ~60ms close fade. Escape and outside presses still close immediately.
-const selectionAckMs = 300;
-
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
 //
@@ -249,10 +243,6 @@ Dropdown.displayName = "Dropdown";
 interface DropdownMenuContextValue {
   open: boolean;
   disabled: boolean;
-  /** Schedules the close that follows a radio selection, delayed by
-   *  `selectionAckMs` so the selection transition is seen. Re-selecting
-   *  within the window restarts it; any other close cancels it. */
-  requestAckClose: () => void;
 }
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -292,33 +282,7 @@ function DropdownMenu({
     [openProp, onOpenChange]
   );
 
-  const ackTimeoutRef = useRef<number | null>(null);
-  const cancelAckClose = useCallback(() => {
-    if (ackTimeoutRef.current !== null) {
-      clearTimeout(ackTimeoutRef.current);
-      ackTimeoutRef.current = null;
-    }
-  }, []);
-  const requestAckClose = useCallback(() => {
-    cancelAckClose();
-    ackTimeoutRef.current = window.setTimeout(() => {
-      ackTimeoutRef.current = null;
-      handleOpenChange(false);
-    }, selectionAckMs);
-  }, [cancelAckClose, handleOpenChange]);
-
-  // A close from any other path (Escape, outside press, trigger toggle) makes
-  // the pending acknowledgment close redundant — drop it so it can't fire
-  // against a menu the user has already reopened.
-  useEffect(() => {
-    if (!open) cancelAckClose();
-  }, [open, cancelAckClose]);
-  useEffect(() => cancelAckClose, [cancelAckClose]);
-
-  const ctx = useMemo(
-    () => ({ open, disabled, requestAckClose }),
-    [open, disabled, requestAckClose]
-  );
+  const ctx = useMemo(() => ({ open, disabled }), [open, disabled]);
 
   return (
     <DropdownMenuContext.Provider value={ctx}>
@@ -425,7 +389,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     },
     ref
   ) => {
-    const { open, requestAckClose } = useDropdownMenuContext();
+    const { open } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -497,42 +461,24 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           asChild: true,
           disabled,
           textValue: label,
+          // Radix closes the menu on select by default; preventing the select
+          // event keeps it open — Base UI's closeOnClick={false} parity.
+          onSelect: closeOnClick
+            ? undefined
+            : (event: Event) => event.preventDefault(),
         };
         const item = cloneElement(element, {}, children);
         return radio ? (
-          <DropdownMenuPrimitive.RadioItem
-            value={String(value)}
-            {...commonProps}
-            // Radio selections acknowledge before closing: preventing Radix's
-            // close-on-select holds the menu open while the checkmark draws
-            // and the selected background springs to the picked row, then the
-            // scheduled close fires. Consumers passing closeOnClick={false}
-            // keep the menu open indefinitely, as before. Keyboard activation
-            // synthesizes a select, so it acknowledges the same way.
-            onSelect={(event: Event) => {
-              event.preventDefault();
-              if (closeOnClick) requestAckClose();
-            }}
-          >
+          <DropdownMenuPrimitive.RadioItem value={String(value)} {...commonProps}>
             {item}
           </DropdownMenuPrimitive.RadioItem>
         ) : (
-          <DropdownMenuPrimitive.Item
-            {...commonProps}
-            // Radix closes the menu on select by default; preventing the
-            // select event keeps it open — Base UI's closeOnClick={false}
-            // parity.
-            onSelect={
-              closeOnClick
-                ? undefined
-                : (event: Event) => event.preventDefault()
-            }
-          >
+          <DropdownMenuPrimitive.Item {...commonProps}>
             {item}
           </DropdownMenuPrimitive.Item>
         );
       },
-      [requestAckClose]
+      []
     );
 
     const contentCtx = useMemo(
