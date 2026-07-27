@@ -35,6 +35,12 @@ import { Elevated } from "@/lib/elevated";
 // scale and produces the corner-shadow asymmetry).
 const shape = shapeMap.rounded;
 
+// How long a radio selection holds the menu open before closing, so the
+// acknowledgment — the checkmark drawing in and the selected background
+// springing to the picked row — is visible instead of being cut off by the
+// ~60ms close fade. Escape and outside presses still close immediately.
+const selectionAckMs = 300;
+
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
 //
@@ -246,6 +252,10 @@ interface DropdownMenuActions {
 interface DropdownMenuContextValue {
   open: boolean;
   actionsRef: React.RefObject<DropdownMenuActions | null>;
+  /** Schedules the close that follows a radio selection, delayed by
+   *  `selectionAckMs` so the selection transition is seen. Re-selecting
+   *  within the window restarts it; any other close cancels it. */
+  requestAckClose: () => void;
 }
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -286,7 +296,33 @@ function DropdownMenu({
     [openProp, onOpenChange]
   );
 
-  const ctx = useMemo(() => ({ open, actionsRef }), [open]);
+  const ackTimeoutRef = useRef<number | null>(null);
+  const cancelAckClose = useCallback(() => {
+    if (ackTimeoutRef.current !== null) {
+      clearTimeout(ackTimeoutRef.current);
+      ackTimeoutRef.current = null;
+    }
+  }, []);
+  const requestAckClose = useCallback(() => {
+    cancelAckClose();
+    ackTimeoutRef.current = window.setTimeout(() => {
+      ackTimeoutRef.current = null;
+      handleOpenChange(false);
+    }, selectionAckMs);
+  }, [cancelAckClose, handleOpenChange]);
+
+  // A close from any other path (Escape, outside press, trigger toggle) makes
+  // the pending acknowledgment close redundant — drop it so it can't fire
+  // against a menu the user has already reopened.
+  useEffect(() => {
+    if (!open) cancelAckClose();
+  }, [open, cancelAckClose]);
+  useEffect(() => cancelAckClose, [cancelAckClose]);
+
+  const ctx = useMemo(
+    () => ({ open, actionsRef, requestAckClose }),
+    [open, requestAckClose]
+  );
 
   return (
     <DropdownMenuContext.Provider value={ctx}>
@@ -355,7 +391,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     },
     ref
   ) => {
-    const { open, actionsRef } = useDropdownMenuContext();
+    const { open, actionsRef, requestAckClose } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -423,7 +459,14 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
             value={value}
             disabled={disabled}
             label={label}
-            closeOnClick={closeOnClick}
+            // Radio selections acknowledge before closing: the menu is held
+            // open (closeOnClick={false}) while the checkmark draws and the
+            // selected background springs to the picked row, then the
+            // scheduled close fires. Consumers passing closeOnClick={false}
+            // keep the menu open indefinitely, as before. Keyboard activation
+            // synthesizes a click, so it acknowledges the same way.
+            closeOnClick={false}
+            onClick={closeOnClick ? () => requestAckClose() : undefined}
             render={element}
           >
             {children}
@@ -438,7 +481,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
             {children}
           </Menu.Item>
         ),
-      []
+      [requestAckClose]
     );
 
     const contentCtx = useMemo(
