@@ -802,8 +802,6 @@ function FormatDropdown({
   const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
   const checkedRect = checkedIndex !== -1 ? itemRects[checkedIndex] : null;
   const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-  const isHoveringOther = activeIndex !== null && activeIndex !== checkedIndex;
-
   const menuCtx = useMemo(
     () => ({ registerItem, activeIndex, checkedIndex }),
     [registerItem, activeIndex, checkedIndex]
@@ -914,7 +912,7 @@ function FormatDropdown({
                         left: checkedRect.left,
                         width: checkedRect.width,
                         height: checkedRect.height,
-                        opacity: isHoveringOther ? 0.8 : 1,
+                        opacity: 1,
                       }}
                       exit={{ opacity: 0, transition: spring.moderate.exit }}
                       transition={{

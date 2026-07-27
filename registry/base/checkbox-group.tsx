@@ -97,8 +97,6 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && !checkedIndices.has(activeIndex);
     const shape = useShape();
 
     // Selected backgrounds, with the merge/split boundary animation when one
@@ -168,7 +166,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           {/* Selected backgrounds (merged for contiguous checked items).
               A run is normally one block; mid merge/split it is drawn as two
               abutting halves — see useMergeSplitBlocks. */}
-          <SelectionBackgrounds blocks={blocks} dimmed={isHoveringOther} />
+          <SelectionBackgrounds blocks={blocks} />
 
           {/* Hover background */}
           <AnimatePresence>

@@ -775,12 +775,6 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       return groups;
     }, [selectedIndices]);
 
-    // True when the user is hovering a row that ISN'T part of any selected
-    // run — we dim the selected backgrounds slightly to draw attention to
-    // the hover target.
-    const isHoveringNonSelected =
-      activeIndex !== null && !selectedIndices.has(activeIndex);
-
     // Selected backgrounds, with the merge/split boundary animation when one
     // unselected row bridges or splits two selected runs. Selected backgrounds
     // use shape.bg, so corners animate around its radius.
@@ -936,10 +930,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             selected state stays readable when mousing over a row. Corners
             are driven numerically (around shape.bg's radius) so a single
             selected row matches its hover. */}
-        <SelectionBackgrounds
-          blocks={blocks}
-          dimmed={isHoveringNonSelected}
-        />
+        <SelectionBackgrounds blocks={blocks} />
 
         {/* Single morphing focus ring — fed by the container onFocus above,
             so keyboard focus on any option row draws it. */}

@@ -84,8 +84,6 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const selectedRect =
       resolvedSelectedIndex >= 0 ? itemRects[resolvedSelectedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== resolvedSelectedIndex;
     const shape = useShape();
 
     const content = (
@@ -169,7 +167,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
               left: selectedRect.left,
               width: selectedRect.width,
               height: selectedRect.height,
-              opacity: isHoveringOther ? 0.8 : 1,
+              opacity: 1,
             }}
             transition={{
               ...spring.moderate,

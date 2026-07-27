@@ -86,9 +86,6 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const checkedRect =
       checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== checkedIndex;
-
     return (
       <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
         <Elevated
@@ -160,7 +157,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                   left: checkedRect.left,
                   width: checkedRect.width,
                   height: checkedRect.height,
-                  opacity: isHoveringOther ? 0.8 : 1,
+                  opacity: 1,
                 }}
                 exit={{ opacity: 0, transition: spring.moderate.exit }}
                 transition={{
@@ -406,9 +403,6 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const checkedRect = checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== checkedIndex;
-
     // Inside the popup, Base UI's Menu.Item / Menu.RadioItem own the role,
     // aria-checked, tabIndex, roving highlight, typeahead, and Enter/Space/
     // click activation (activation synthesizes a click, so the row div's
@@ -543,7 +537,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                         left: checkedRect.left,
                         width: checkedRect.width,
                         height: checkedRect.height,
-                        opacity: isHoveringOther ? 0.8 : 1,
+                        opacity: 1,
                       }}
                       exit={{ opacity: 0, transition: spring.moderate.exit }}
                       transition={{

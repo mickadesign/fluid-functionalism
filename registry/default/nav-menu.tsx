@@ -84,8 +84,6 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
     const activeRouteRect =
       activeRouteIndex !== null ? itemRects[activeRouteIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== activeRouteIndex;
     const shape = useShape();
 
     return (
@@ -163,7 +161,7 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
                   left: activeRouteRect.left,
                   width: activeRouteRect.width,
                   height: activeRouteRect.height,
-                  opacity: isHoveringOther ? 0.8 : 1,
+                  opacity: 1,
                 }}
                 exit={{ opacity: 0, transition: spring.moderate.exit }}
                 transition={{

@@ -315,17 +315,14 @@ export function useMergeSplitBlocks(
 }
 
 // Renders the selected-background blocks produced by useMergeSplitBlocks — one
-// per run, or two abutting halves mid merge/split. `dimmed` drops the opacity to
-// 0.8 (when the user is hovering a non-selected row) to match the standalone
-// hover indicator; a block's own `opacity` override (e.g. the commit ghost)
-// always wins. Corners are driven numerically so merge/split can straighten and
+// per run, or two abutting halves mid merge/split. A block's own `opacity`
+// override (e.g. the commit ghost) applies; otherwise blocks render fully
+// opaque. Corners are driven numerically so merge/split can straighten and
 // re-round individual corners.
 export function SelectionBackgrounds({
   blocks,
-  dimmed,
 }: {
   blocks: SelBlock[];
-  dimmed: boolean;
 }) {
   return (
     <AnimatePresence>
@@ -333,7 +330,7 @@ export function SelectionBackgrounds({
         const corner = b.delayCorners
           ? { ...mergeSpring, delay: b.cornerDelay ?? cornerDelay }
           : mergeSpring;
-        const opacity = b.opacity ?? (dimmed ? 0.8 : 1);
+        const opacity = b.opacity ?? 1;
         return (
           <motion.div
             key={b.key}
