@@ -35,6 +35,12 @@ import { Elevated } from "@/lib/elevated";
 // deferred unmount), and the animated checkmark.
 // ---------------------------------------------------------------------------
 
+// How long a selection holds the popup open before closing, so the
+// acknowledgment — the checkmark drawing in and the selected background
+// springing to the picked row — is visible instead of being cut off by the
+// ~60ms close fade. Escape and outside presses still close immediately.
+const selectionAckMs = 300;
+
 interface SelectContextValue {
   value: string;
   open: boolean;
@@ -125,6 +131,36 @@ function Select({
     [value, onValueChange]
   );
 
+  const ackTimeoutRef = useRef<number | null>(null);
+  const cancelAckClose = useCallback(() => {
+    if (ackTimeoutRef.current !== null) {
+      clearTimeout(ackTimeoutRef.current);
+      ackTimeoutRef.current = null;
+    }
+  }, []);
+  useEffect(() => cancelAckClose, [cancelAckClose]);
+
+  // Picking an item acknowledges before closing: the close is deferred by
+  // selectionAckMs so the checkmark draw and the selected background's spring
+  // to the picked row are seen. Every other close reason (Escape, outside
+  // press, trigger toggle, focus-out) closes immediately and cancels any
+  // pending acknowledgment; re-picking within the window restarts it.
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean, eventDetails: { reason: string }) => {
+      if (!nextOpen && eventDetails.reason === "item-press") {
+        cancelAckClose();
+        ackTimeoutRef.current = window.setTimeout(() => {
+          ackTimeoutRef.current = null;
+          setOpen(false);
+        }, selectionAckMs);
+        return;
+      }
+      cancelAckClose();
+      setOpen(nextOpen);
+    },
+    [cancelAckClose]
+  );
+
   const ctx = useMemo(
     () => ({ value: currentValue, open, actionsRef }),
     [currentValue, open]
@@ -137,7 +173,7 @@ function Select({
         value={currentValue === "" ? null : currentValue}
         onValueChange={handleValueChange}
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
         actionsRef={actionsRef}
         items={items}
         disabled={disabled}
@@ -297,16 +333,24 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       return () => clearTimeout(id);
     }, [open, actionsRef]);
 
-    // Detect the checked row once the popup has mounted. Measuring is the
-    // hook's job — it owns the one coalesced pass that item registration and
-    // container resizes both feed into, and a second pass from here is what
-    // used to land a corrected rect on an already-mounted overlay.
+    // Fresh rects once per open. Measuring is the hook's job — it owns the
+    // one coalesced pass that item registration and container resizes both
+    // feed into, and a second pass from elsewhere is what used to land a
+    // corrected rect on an already-mounted overlay. The popup keeps its items
+    // registered while it sits hidden between opens, so registration alone
+    // would never trigger a fresh pass on reopen.
     useEffect(() => {
       if (!open) return;
-      // The popup keeps its items registered while it sits hidden between
-      // opens, so registration alone would never trigger a fresh pass on
-      // reopen. Ask the hook for one and let it re-report readiness.
       remeasure();
+    }, [open, remeasure]);
+
+    // Detect the checked row. Deliberately does NOT remeasure on a value
+    // change while open: the rows haven't moved, so the published rects stay
+    // trustworthy and only checkedIndex switches — which lets the selected
+    // marker spring from the old row to the picked one (the selection
+    // acknowledgment) instead of unmounting and snapping.
+    useEffect(() => {
+      if (!open) return;
       // Double rAF: first waits for React commit, second for layout
       let inner: number;
       const outer = requestAnimationFrame(() => {
@@ -327,7 +371,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         cancelAnimationFrame(outer);
         cancelAnimationFrame(inner);
       };
-    }, [open, remeasure, value]);
+    }, [open, value]);
 
     // Reset every overlay index as the close begins. checkedIndex otherwise
     // lags one open behind value (picking an item closes the popup before the
@@ -444,15 +488,25 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     {checkedRect && (
                       <motion.div
                         className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                        // Position lives in `animate` so an in-session value
+                        // change springs the marker to the picked row (the
+                        // selection acknowledgment). Safe against the reopen
+                        // slide: the `open &&` teardown means no marker
+                        // survives a close, and a fresh mount with
+                        // initial={false} renders snapped at these values.
                         initial={false}
-                        style={{
+                        animate={{
                           top: checkedRect.top,
                           left: checkedRect.left,
                           width: checkedRect.width,
                           height: checkedRect.height,
+                          opacity: 1,
                         }}
-                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0, transition: spring.moderate.exit }}
+                        transition={{
+                          ...spring.moderate,
+                          opacity: { duration: 0.08 },
+                        }}
                       />
                     )}
                   </AnimatePresence>

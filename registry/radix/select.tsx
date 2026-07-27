@@ -60,6 +60,12 @@ import { Elevated } from "@/lib/elevated";
 //   makes Chromium/Safari ignore the ::-webkit-scrollbar{display:none} rule.
 // ---------------------------------------------------------------------------
 
+// How long a selection holds the popup open before closing, so the
+// acknowledgment — the checkmark drawing in and the selected background
+// springing to the picked row — is visible instead of being cut off by the
+// ~60ms close fade. Escape and outside presses still close immediately.
+const selectionAckMs = 300;
+
 interface SelectContextValue {
   value: string;
   open: boolean;
@@ -116,20 +122,49 @@ function Select({
   const [radixOpen, setRadixOpen] = useState(false);
   const currentValue = value !== undefined ? value : internalValue;
 
+  const lastPickRef = useRef(0);
+  const ackTimeoutRef = useRef<number | null>(null);
+  const cancelAckClose = useCallback(() => {
+    if (ackTimeoutRef.current !== null) {
+      clearTimeout(ackTimeoutRef.current);
+      ackTimeoutRef.current = null;
+    }
+  }, []);
+  useEffect(() => cancelAckClose, [cancelAckClose]);
+
   const handleValueChange = useCallback(
     (next: string) => {
+      lastPickRef.current = performance.now();
       if (value === undefined) setInternalValue(next);
       onValueChange?.(next);
     },
     [value, onValueChange]
   );
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (nextOpen) setRadixOpen(true);
-    // Closing: radixOpen is released by SelectContent once the exit
-    // animation completes (onAnimationComplete or the timeout fallback).
-  }, []);
+  // Picking an item acknowledges before closing: the close is deferred by
+  // selectionAckMs so the checkmark draw and the selected background's spring
+  // to the picked row are seen. Radix reports no close reason, so a close
+  // arriving right after onValueChange is read as selection-driven; every
+  // other close (Escape, outside press, trigger toggle) is immediate and
+  // cancels any pending acknowledgment; re-picking restarts it.
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && performance.now() - lastPickRef.current < 100) {
+        cancelAckClose();
+        ackTimeoutRef.current = window.setTimeout(() => {
+          ackTimeoutRef.current = null;
+          setOpen(false);
+        }, selectionAckMs);
+        return;
+      }
+      cancelAckClose();
+      setOpen(nextOpen);
+      if (nextOpen) setRadixOpen(true);
+      // Closing: radixOpen is released by SelectContent once the exit
+      // animation completes (onAnimationComplete or the timeout fallback).
+    },
+    [cancelAckClose]
+  );
 
   const unmount = useCallback(() => setRadixOpen(false), []);
 
@@ -301,16 +336,24 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       return () => clearTimeout(id);
     }, [open, unmount]);
 
-    // Detect the checked row once the popup has mounted. Measuring is the
-    // hook's job — it owns the one coalesced pass that item registration and
-    // container resizes both feed into, and a second pass from here is what
-    // used to land a corrected rect on an already-mounted overlay.
+    // Fresh rects once per open. Measuring is the hook's job — it owns the
+    // one coalesced pass that item registration and container resizes both
+    // feed into, and a second pass from elsewhere is what used to land a
+    // corrected rect on an already-mounted overlay. The popup keeps its items
+    // registered while it sits hidden between opens, so registration alone
+    // would never trigger a fresh pass on reopen.
     useEffect(() => {
       if (!open) return;
-      // The popup keeps its items registered while it sits hidden between
-      // opens, so registration alone would never trigger a fresh pass on
-      // reopen. Ask the hook for one and let it re-report readiness.
       remeasure();
+    }, [open, remeasure]);
+
+    // Detect the checked row. Deliberately does NOT remeasure on a value
+    // change while open: the rows haven't moved, so the published rects stay
+    // trustworthy and only checkedIndex switches — which lets the selected
+    // marker spring from the old row to the picked one (the selection
+    // acknowledgment) instead of unmounting and snapping.
+    useEffect(() => {
+      if (!open) return;
       // Double rAF: first waits for React commit, second for layout
       let inner: number;
       const outer = requestAnimationFrame(() => {
@@ -331,7 +374,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         cancelAnimationFrame(outer);
         cancelAnimationFrame(inner);
       };
-    }, [open, remeasure, value]);
+    }, [open, value]);
 
     // Reset every overlay index as the close begins. checkedIndex otherwise
     // lags one open behind value (picking an item closes the popup before the
@@ -460,15 +503,25 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                       {checkedRect && (
                         <motion.div
                           className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                          // Position lives in `animate` so an in-session value
+                          // change springs the marker to the picked row (the
+                          // selection acknowledgment). Safe against the reopen
+                          // slide: the `open &&` teardown means no marker
+                          // survives a close, and a fresh mount with
+                          // initial={false} renders snapped at these values.
                           initial={false}
-                          style={{
+                          animate={{
                             top: checkedRect.top,
                             left: checkedRect.left,
                             width: checkedRect.width,
                             height: checkedRect.height,
+                            opacity: 1,
                           }}
-                          animate={{ opacity: 1 }}
                           exit={{ opacity: 0, transition: spring.moderate.exit }}
+                          transition={{
+                            ...spring.moderate,
+                            opacity: { duration: 0.08 },
+                          }}
                         />
                       )}
                     </AnimatePresence>
