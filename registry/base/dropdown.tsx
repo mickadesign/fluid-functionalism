@@ -627,7 +627,7 @@ const DropdownLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>
     <div
       ref={ref}
       className={cn(
-        "px-2 py-1.5 text-[11px] text-muted-foreground",
+        "px-2 py-1.5 shrink-0 text-[11px] text-muted-foreground",
         className
       )}
       {...props}
@@ -648,7 +648,7 @@ const DropdownSeparator = forwardRef<
   <div
     ref={ref}
     role="separator"
-    className={cn("my-1 -mx-1 h-px bg-border/60", className)}
+    className={cn("my-1 -mx-1 h-px shrink-0 bg-border/60", className)}
     {...props}
   />
 ));

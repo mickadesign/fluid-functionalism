@@ -139,8 +139,10 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     const itemClassName = cn(
       // Fixed height (was py-2 around a 19.5px line box ≈ 35.5px) so the
-      // text-box trim on the label doesn't shrink the row.
-      `relative z-10 flex h-9 items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none`,
+      // text-box trim on the label doesn't shrink the row. shrink-0 because
+      // menu popups are max-height flex columns — without it a long list
+      // compresses rows to fit instead of scrolling.
+      `relative z-10 flex h-9 shrink-0 items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none`,
       disabled && "opacity-50 pointer-events-none",
       className
     );

@@ -115,6 +115,13 @@ function optionKey(o: AskUserOption, i: number) {
 // stacked instances (e.g. docs demos) would all answer the same digit.
 const mountedInstances: HTMLElement[] = [];
 
+// True while a Row's mousedown handler is programmatically redirecting focus
+// to the row (see Row's onMouseDown). Chrome reports script-initiated focus as
+// :focus-visible, so without this flag every mouse click would light up the
+// keyboard focus ring. Set/cleared synchronously around the focus() call —
+// focus events dispatch synchronously, so a module-level flag is safe.
+let pointerFocusRedirect = false;
+
 const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
   function AskUserQuestions(
     {
@@ -350,6 +357,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     }, []);
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+    // Ref mirror so callbacks (markFocusRestore) can read the latest value
+    // without re-subscribing on every focus move.
+    const focusedIndexRef = useRef<number | null>(null);
+    useEffect(() => {
+      focusedIndexRef.current = focusedIndex;
+    }, [focusedIndex]);
     // Validation message for the current freeText question (null = valid).
     const [freeTextError, setFreeTextError] = useState<string | null>(null);
 
@@ -368,7 +381,17 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     // through to page-level navigation.
     const restoreFocusRef = useRef(false);
     const markFocusRestore = useCallback(() => {
-      if (rowsContainerRef.current?.contains(document.activeElement)) {
+      // Only restore when the user was keyboard-driving. A mouse click also
+      // parks focus on the clicked row (Row's onMouseDown redirect), and the
+      // browser reports that script focus as :focus-visible — so we can't ask
+      // the DOM. focusedIndexRef is the component's own modality signal: it's
+      // non-null only when the morphing ring is showing, i.e. focus genuinely
+      // came from the keyboard. Restoring after a click would keyboard-focus
+      // the next question's first row and leave the ring stuck on screen.
+      if (
+        rowsContainerRef.current?.contains(document.activeElement) &&
+        focusedIndexRef.current !== null
+      ) {
         restoreFocusRef.current = true;
       }
     }, []);
@@ -829,7 +852,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             const idx = Number(indexAttr);
             setActiveIndex(idx);
             setFocusedIndex(
-              (e.target as HTMLElement).matches(":focus-visible") ? idx : null
+              !pointerFocusRedirect &&
+                (e.target as HTMLElement).matches(":focus-visible")
+                ? idx
+                : null
             );
           }
         }}
@@ -1760,7 +1786,15 @@ function Row({
         );
         if (interactive && interactive !== e.currentTarget) return;
         e.preventDefault();
-        e.currentTarget.focus();
+        // Flag the redirect so the rows container's onFocus knows this focus
+        // came from a pointer, not the keyboard — the browser can't tell
+        // (script focus() reads as :focus-visible) and would draw the ring.
+        pointerFocusRedirect = true;
+        try {
+          e.currentTarget.focus();
+        } finally {
+          pointerFocusRedirect = false;
+        }
       }}
       onClick={onClick}
       onKeyDown={onKeyDown}

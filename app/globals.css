@@ -264,6 +264,19 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Radix popups (dropdown, select, dialog) lock scroll through
+   react-remove-scroll, which compensates for the vanished viewport scrollbar
+   with `margin-right: <scrollbar-width> !important` on <body>. The gutter
+   above already keeps that space reserved while the lock hides the scrollbar,
+   so the compensation double-counts and the whole page shifts left every time
+   a menu opens (visible since the native scrollbar theme below forces inset
+   scrollbars). The doubled attribute selector out-specifies the injected rule
+   (0-2-1 vs 0-1-1) so this wins regardless of stylesheet order. Base UI's
+   scroll lock is gutter-aware and needs no counterpart. */
+body[data-scroll-locked][data-scroll-locked] {
+  margin-right: 0 !important;
+}
+
 html, body {
   margin: 0;
   min-height: 100vh;

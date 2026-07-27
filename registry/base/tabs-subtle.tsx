@@ -154,8 +154,12 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
               }}
               className={cn(
                 // -mx-1 px-1 / -my-1 py-1 give the 2px-outset focus ring room
-                // to draw without being clipped by overflow-x-auto
-                "relative flex items-center gap-0.5 select-none overflow-x-auto max-w-full scrollbar-hide -mx-1 px-1 -my-1 py-1",
+                // to draw without being clipped by overflow-x-auto. The
+                // max-width allows for the negative margins: fit-content
+                // parents size against the margin box (8px narrower than the
+                // border box), so a plain max-w-full would clamp the list 8px
+                // too small and clip the first/last tab's ring.
+                "relative flex items-center gap-0.5 select-none overflow-x-auto max-w-[calc(100%_+_8px)] scrollbar-hide -mx-1 px-1 -my-1 py-1",
                 className
               )}
               {...props}
