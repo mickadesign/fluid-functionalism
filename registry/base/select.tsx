@@ -351,8 +351,6 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       isMeasured && checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect =
       isMeasured && focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== checkedIndex;
 
     const contentCtx = useMemo(
       () => ({ registerItem, activeIndex, checkedIndex }),
@@ -453,9 +451,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                           width: checkedRect.width,
                           height: checkedRect.height,
                         }}
-                        animate={{ opacity: isHoveringOther ? 0.8 : 1 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0, transition: spring.moderate.exit }}
-                        transition={{ opacity: { duration: 0.08 } }}
                       />
                     )}
                   </AnimatePresence>
