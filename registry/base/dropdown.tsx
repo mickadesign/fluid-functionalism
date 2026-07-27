@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  cloneElement,
   useRef,
   useState,
   useEffect,
@@ -9,6 +10,7 @@ import {
   createContext,
   useContext,
   forwardRef,
+  type MouseEvent,
   type ReactNode,
   type HTMLAttributes,
   type ComponentProps,
@@ -464,10 +466,22 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
             // selected background springs to the picked row, then the
             // scheduled close fires. Consumers passing closeOnClick={false}
             // keep the menu open indefinitely, as before. Keyboard activation
-            // synthesizes a click, so it acknowledges the same way.
+            // synthesizes a click, so it acknowledges the same way. The ack
+            // is chained onto the row div's own onClick — a prop on
+            // Menu.RadioItem would be dropped by the render composition.
             closeOnClick={false}
-            onClick={closeOnClick ? () => requestAckClose() : undefined}
-            render={element}
+            render={
+              closeOnClick
+                ? cloneElement(element, {
+                    onClick: (event: MouseEvent<HTMLDivElement>) => {
+                      (
+                        element.props as HTMLAttributes<HTMLDivElement>
+                      ).onClick?.(event);
+                      requestAckClose();
+                    },
+                  } as HTMLAttributes<HTMLDivElement>)
+                : element
+            }
           >
             {children}
           </Menu.RadioItem>
