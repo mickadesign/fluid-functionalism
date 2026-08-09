@@ -1261,8 +1261,13 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             changes. Lives outside the morphing region so it never shifts. */}
         <div
           className={cn(
-            "flex items-center px-4 sm:px-5 pt-4 sm:pt-5 pb-2 text-muted-foreground",
-            compact ? "text-[11px]" : "text-[12px]"
+            "flex items-center text-muted-foreground",
+            // The card's outer padding drops a notch at compact. px-3.5 is the
+            // floor: the option rows bleed by -mx-3, so anything tighter puts
+            // their hover background flush against the card edge.
+            compact
+              ? "px-3.5 sm:px-4 pt-3 sm:pt-4 pb-1.5 text-[11px]"
+              : "px-4 sm:px-5 pt-4 sm:pt-5 pb-2 text-[12px]"
           )}
         >
           <span>
@@ -1296,8 +1301,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             <div
               ref={contentMeasureRef}
               className={cn(
-                "px-4 sm:px-5",
-                showFooter ? "pb-1" : "pb-2.5 sm:pb-3"
+                compact ? "px-3.5 sm:px-4" : "px-4 sm:px-5",
+                showFooter
+                  ? "pb-1"
+                  : compact
+                    ? "pb-2 sm:pb-2.5"
+                    : "pb-2.5 sm:pb-3"
               )}
             >
               <div key={qId} className="flex flex-col gap-2">
@@ -1429,7 +1438,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
               transform), the footer reflows frame-by-frame and rides the morph
               in lockstep. */}
           {showFooter && (
-            <div className="px-4 sm:px-5 pt-1 pb-2">
+            <div
+              className={cn(
+                "pt-1",
+                compact ? "px-3.5 sm:px-4 pb-1.5" : "px-4 sm:px-5 pb-2"
+              )}
+            >
               <div className="flex items-center justify-between gap-2 -mx-2 sm:-mx-3">
                 {/* Each button is wrapped in a motion.div so it fades + scales
                     when it appears/disappears (e.g. Continue on multi-select).
