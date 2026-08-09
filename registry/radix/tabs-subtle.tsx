@@ -271,6 +271,23 @@ interface TabsSubtleItemProps extends HTMLAttributes<HTMLButtonElement> {
 const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
   ({ icon: Icon, label, index, className, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement | null>(null);
+    // The collapsing label animates to a MEASURED layout width, not "auto":
+    // framer resolves an "auto" target from the element's *visual*
+    // (transformed) size, so under a scaled ancestor (e.g. /demo's card) the
+    // spring overshoots to scale-x the real width and snaps when "auto"
+    // lands. offsetWidth and ResizeObserver are transform-immune — same
+    // setup as the accordions' height animation.
+    const [labelWidth, setLabelWidth] = useState<number | null>(null);
+    const labelRoRef = useRef<ResizeObserver | null>(null);
+    const measureLabel = useCallback((el: HTMLSpanElement | null) => {
+      labelRoRef.current?.disconnect();
+      labelRoRef.current = null;
+      if (!el) return;
+      const update = () => setLabelWidth(el.offsetWidth);
+      update();
+      labelRoRef.current = new ResizeObserver(update);
+      labelRoRef.current.observe(el);
+    }, []);
     const shape = useShape();
     const sizeClasses = useSize();
     const { registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel } =
@@ -289,7 +306,10 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
     const labelContent = (
       // Both stacked spans carry the text-box trim so the invisible bold
       // sizer and the visible label keep identical boxes.
-      <span className={cn("inline-grid whitespace-nowrap", sizeClasses.text)}>
+      <span
+        ref={measureLabel}
+        className={cn("inline-grid whitespace-nowrap", sizeClasses.text)}
+      >
         <span
           className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
           style={{ fontVariationSettings: fontWeights.semibold }}
@@ -360,7 +380,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
                 className="overflow-hidden"
                 initial={{ width: 0, opacity: 0, marginLeft: 0 }}
                 animate={{
-                  width: "auto",
+                  width: labelWidth ?? "auto",
                   opacity: 1,
                   // Matches the ladder's icon-to-label gap (gap-2 / gap-1.5).
                   marginLeft: sizeClasses.variant === "compact" ? 6 : 8,
