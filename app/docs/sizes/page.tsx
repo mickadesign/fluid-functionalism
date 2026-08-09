@@ -280,18 +280,18 @@ export default function SizesPage() {
       slug="sizes"
       installSlug="size-context"
     >
-      <DocSection title="The ladder">
+      <DocSection title="The principle">
         <p className="text-body text-muted-foreground leading-relaxed">
           An interface reads as one product when its controls share a sizing
           rhythm. A button next to a select next to a tab should land on the
-          same height — otherwise every screen becomes a set of one-off
-          decisions.
+          same height.
         </p>
         <p className="text-body text-muted-foreground leading-relaxed">
-          The ladder keeps that rhythm to two steps. <Code>default</Code> is
-          36px, <Code>compact</Code> is 28px — and each step scales text,
-          icons, and padding together. Compact is for dense, data-heavy
-          tools; default is the right call for everything else.
+          Each size scales text, icons, and padding together.
+        </p>
+        <p className="text-body text-muted-foreground leading-relaxed">
+          Compact is for dense, data-heavy tools; default is the right call
+          for everything else.
         </p>
         <ComponentPreview code={TOOLBAR_CODE} minHeightClass="min-h-[220px]">
           <ToolbarDemo />
@@ -327,20 +327,6 @@ export default function SizesPage() {
 
       <DocSection title="Component size prop">
         <PropsTable props={CONSUMER_PROPS} />
-        <p className="text-body text-muted-foreground leading-relaxed">
-          Button and Badge keep their old <Code>sm</Code> / <Code>md</Code> /
-          <Code>lg</Code> values as aliases (<Code>sm</Code> → compact, the
-          rest → default), so existing code keeps compiling. New code uses the
-          two canonical steps, with <Code>icon</Code> /{" "}
-          <Code>icon-compact</Code> for square buttons.
-        </p>
-        <p className="text-body text-muted-foreground leading-relaxed">
-          Three components follow the ladder in their own way: Switch scales
-          its track and thumb (34×20 → 28×16), Slider switches design — the
-          pip/scrubber layout at the default step, the dense range-capable one
-          at compact — and Dialog narrows one notch in width, padding
-          untouched.
-        </p>
       </DocSection>
     </DocPage>
   );
