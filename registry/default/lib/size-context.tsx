@@ -79,6 +79,39 @@ const sizeMap: Record<SizeVariant, SizeClasses> = {
   },
 };
 
+/** One role of the type scale: px per ladder step. */
+interface TypeScaleStep {
+  default: number;
+  compact: number;
+}
+
+/**
+ * Role-based type scale, per ladder step (px values).
+ *
+ * The default column is the system as shipped; the compact column steps each
+ * role down one notch so dense regions read as a smaller sibling of the same
+ * hierarchy, not a squeezed copy. `body`, `caption`, and `subtitle` are what
+ * the sized components already render through `SizeClasses.text` and their
+ * compact conditionals; `display`, `title`, and `overline` are the
+ * page-level roles for consumers composing their own screens.
+ */
+const typeScale = {
+  /** Page titles. */
+  display: { default: 28, compact: 24 },
+  /** Section headings, dialog titles. */
+  title: { default: 16, compact: 15 },
+  /** Card titles, chat bubbles, emphasized rows. */
+  subtitle: { default: 14, compact: 13 },
+  /** Control labels and body copy — `SizeClasses.text`. */
+  body: { default: 13, compact: 12 },
+  /** Secondary text: descriptions, meta rows, errors. */
+  caption: { default: 12, compact: 11 },
+  /** Eyebrows and group labels (uppercase or muted). */
+  overline: { default: 11, compact: 10 },
+} as const satisfies Record<string, TypeScaleStep>;
+
+type TypeScaleRole = keyof typeof typeScale;
+
 interface SizeContextValue {
   size: SizeVariant;
   setSize: (size: SizeVariant) => void;
@@ -138,5 +171,5 @@ function SizeProvider({
   return <SizeContext.Provider value={value}>{children}</SizeContext.Provider>;
 }
 
-export { SizeProvider, useSize, useSizeVariant, useSizeContext, sizeMap };
-export type { SizeVariant, SizeClasses };
+export { SizeProvider, useSize, useSizeVariant, useSizeContext, sizeMap, typeScale };
+export type { SizeVariant, SizeClasses, TypeScaleRole, TypeScaleStep };

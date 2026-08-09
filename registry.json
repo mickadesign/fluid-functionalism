@@ -172,7 +172,7 @@
       "name": "size-context",
       "type": "registry:lib",
       "title": "Size Context",
-      "description": "React context provider for the two-step size ladder (36px default, 28px compact). Controls control heights, text, icon, and padding scale across all Fluid Functionalism components.",
+      "description": "React context provider for the two-step size ladder (36px default, 28px compact). Controls control heights, text, icon, and padding scale across all Fluid Functionalism components, and exports the role-based typography scale.",
       "files": [
         {
           "path": "registry/default/lib/size-context.tsx",

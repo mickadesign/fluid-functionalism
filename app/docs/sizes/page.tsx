@@ -7,7 +7,9 @@ import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import {
   SizeProvider,
+  typeScale,
   type SizeVariant,
+  type TypeScaleRole,
 } from "@/registry/default/lib/size-context";
 import { Button } from "@/registry/radix/button";
 import {
@@ -121,6 +123,71 @@ const OVERRIDE_CODE = `// The size prop wins over the provider.
     New project                       {/* pinned to 36px */}
   </Button>
 </SizeProvider>`;
+
+// ---------------------------------------------------------------------------
+// Typography scale — live specimen rendered from the typeScale tokens
+// ---------------------------------------------------------------------------
+
+const TYPE_ROLES: Array<{
+  role: TypeScaleRole;
+  label: string;
+  usage: string;
+  weight: string;
+  sample: string;
+  uppercase?: boolean;
+  muted?: boolean;
+}> = [
+  { role: "display", label: "Display", usage: "Page titles", weight: fontWeights.bold, sample: "Fluid Functionalism" },
+  { role: "title", label: "Title", usage: "Section headings, dialog titles", weight: fontWeights.semibold, sample: "Create teamspace" },
+  { role: "subtitle", label: "Subtitle", usage: "Card titles, chat bubbles", weight: fontWeights.medium, sample: "Weekly design review" },
+  { role: "body", label: "Body", usage: "Control labels, body copy", weight: fontWeights.normal, sample: "The quick brown fox jumps over the lazy dog" },
+  { role: "caption", label: "Caption", usage: "Descriptions, meta rows, errors", weight: fontWeights.normal, sample: "Last updated 4 minutes ago", muted: true },
+  { role: "overline", label: "Overline", usage: "Eyebrows, group labels", weight: fontWeights.medium, sample: "Workspace", uppercase: true, muted: true },
+];
+
+function TypeScaleSpecimen() {
+  return (
+    <div className="flex flex-col">
+      {TYPE_ROLES.map(({ role, label, usage, weight, sample, uppercase, muted }) => (
+        <div
+          key={role}
+          className="flex flex-col gap-3 border-b border-border/50 py-4 last:border-b-0 sm:flex-row sm:items-baseline"
+        >
+          <div className="flex w-40 shrink-0 flex-col gap-0.5">
+            <span
+              className="text-[13px] text-foreground"
+              style={{ fontVariationSettings: fontWeights.medium }}
+            >
+              {label}
+              <span className="ml-2 tabular-nums text-muted-foreground">
+                {typeScale[role].default}px · {typeScale[role].compact}px
+              </span>
+            </span>
+            <span className="text-[12px] text-muted-foreground">{usage}</span>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            {(["default", "compact"] as const).map((step) => (
+              <span
+                key={step}
+                className={
+                  (muted ? "text-muted-foreground" : "text-foreground") +
+                  " truncate leading-snug" +
+                  (uppercase ? " uppercase tracking-wide" : "")
+                }
+                style={{
+                  fontSize: typeScale[role][step],
+                  fontVariationSettings: weight,
+                }}
+              >
+                {sample}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Token reference
@@ -652,6 +719,20 @@ export default function SizesPage() {
         >
           <OverrideDemo />
         </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Typography scale">
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
+          Six roles, two steps each. The default column is the system as it
+          ships today; compact drops every role one notch so a dense screen
+          keeps the same hierarchy at a smaller size. Components already
+          render <Code>subtitle</Code>, <Code>body</Code>, and
+          <Code>caption</Code> through the ladder — <Code>display</Code>,
+          <Code>title</Code>, and <Code>overline</Code> are for composing
+          your own screens, exported as <Code>typeScale</Code> from
+          <Code>size-context</Code>.
+        </p>
+        <TypeScaleSpecimen />
       </DocSection>
 
       <DocSection title="Token reference">
