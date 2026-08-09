@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Rebuild the registry and fail if the committed public/r output has
+      # drifted from the sources — public/r is what users install from.
+      - name: Registry output is up to date
+        run: |
+          npm run registry:build
+          git diff --exit-code -- public/r || {
+            echo "::error::public/r is stale — run 'npm run registry:build' and commit the result"
+            exit 1
+          }
