@@ -451,6 +451,7 @@ const disabledCode = `import { InputMessage } from "./components";
 />`;
 
 const inputMessageProps: PropDef[] = [
+  { name: "size", type: '"default" | "compact"', default: "from SizeProvider", description: "Step on the size ladder (see /docs/sizes). Wins over the surrounding SizeProvider." },
   { name: "value", type: "string", description: "Controlled textarea value." },
   { name: "onValueChange", type: "(value: string) => void", description: "Called with the new value on every textarea change." },
   { name: "onSend", type: "(value: string, files: File[]) => void", description: "Fires on Enter (without Shift) or send-button click. Receives the trimmed value and the currently-attached files. Skipped when the value is empty and no files are attached." },

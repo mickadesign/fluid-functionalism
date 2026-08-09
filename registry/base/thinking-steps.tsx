@@ -24,7 +24,7 @@ import type { IconName } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
-import { useSize } from "@/lib/size-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { Badge } from "@/registry/default/badge";
 import type { BadgeColor } from "@/registry/default/badge";
 
@@ -51,6 +51,7 @@ const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
   ({ open, children, className, ...props }, ref) => {
     const ChevronRight = useIcon("chevron-right");
     const shape = useShape();
+    const sizeClasses = useSize();
     const [isHovered, setIsHovered] = useState(false);
     const highlighted = open || isHovered;
 
@@ -74,14 +75,16 @@ const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
         <Collapsible.Trigger
           ref={ref}
           className={cn(
-            `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 cursor-pointer outline-none select-none`,
+            `relative z-10 flex items-center gap-2.5 ${shape.item} ${sizeClasses.px} ${
+              sizeClasses.variant === "compact" ? "py-1.5" : "py-2"
+            } cursor-pointer outline-none select-none`,
             "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-0",
             className
           )}
           {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
         >
           {/* Label with dual-layer text (invisible bold layer reserves width) */}
-          <span className="inline-grid text-[13px] text-left">
+          <span className={cn("inline-grid text-left", sizeClasses.text)}>
             <span
               className="col-start-1 row-start-1 invisible"
               style={{ fontVariationSettings: fontWeights.semibold }}
@@ -111,7 +114,7 @@ const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
             transition={spring.fast}
           >
             <ChevronRight
-              size={16}
+              size={sizeClasses.icon}
               strokeWidth={highlighted ? 2 : 1.5}
               className={cn(
                 "transition-[color,stroke-width] duration-80",
@@ -143,6 +146,7 @@ interface CollapsePanelProps {
  * intact (the trigger's `aria-controls` id lives on it).
  */
 function CollapsePanel({ open, children }: CollapsePanelProps) {
+  const compactStep = useSize().variant === "compact";
   // The open height is animated to a self-measured LAYOUT pixel value, not
   // `height: "auto"`: framer resolves an "auto" target by measuring the
   // element's *visual* (transformed) size, so under a scaled ancestor
@@ -223,7 +227,10 @@ function CollapsePanel({ open, children }: CollapsePanelProps) {
             >
               <div
                 ref={measureRef}
-                className="px-3 pb-3 pt-1 text-[13px] text-muted-foreground"
+                className={cn(
+                  "px-3 pb-3 pt-1 text-muted-foreground",
+                  compactStep ? "text-[12px]" : "text-[13px]"
+                )}
               >
                 {children}
               </div>
@@ -238,6 +245,9 @@ function CollapsePanel({ open, children }: CollapsePanelProps) {
 // ─── ThinkingSteps (root) ───────────────────────────────────────────────────
 
 interface ThinkingStepsProps extends HTMLAttributes<HTMLDivElement> {
+  /** Step on the size ladder. Wins over the surrounding SizeProvider and
+   *  propagates to every row inside. */
+  size?: SizeVariant;
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -245,13 +255,13 @@ interface ThinkingStepsProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
-  ({ defaultOpen = true, open, onOpenChange, children, className, ...props }, ref) => {
+  ({ size, defaultOpen = true, open, onOpenChange, children, className, ...props }, ref) => {
     // Always drive Base UI as controlled so the header/panel can read the
     // open state (chevron rotation, framer enter/exit) from context.
     const [internalOpen, setInternalOpen] = useState(defaultOpen);
     const isOpen = open ?? internalOpen;
 
-    return (
+    const root = (
       <Collapsible.Root
         ref={ref}
         open={isOpen}
@@ -267,6 +277,9 @@ const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
         </ThinkingStepsOpenContext.Provider>
       </Collapsible.Root>
     );
+
+    // A size prop pins every row inside to one ladder step.
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 ThinkingSteps.displayName = "ThinkingSteps";
@@ -344,6 +357,7 @@ function ThinkingStep({
 }: ThinkingStepProps) {
     const Icon = useIcon(icon);
     const shape = useShape();
+    const sizeClasses = useSize();
 
     if (status === "pending") return null;
 
@@ -370,7 +384,7 @@ function ThinkingStep({
               <div className="pt-0.5">
                 {showIcon ? (
                   <Icon
-                    size={14}
+                    size={sizeClasses.variant === "compact" ? 12 : 14}
                     strokeWidth={1.5}
                     className="text-muted-foreground"
                   />
@@ -390,7 +404,8 @@ function ThinkingStep({
             <div className="flex-1 flex flex-col gap-1 min-w-0">
               <span
                 className={cn(
-                  "text-[13px] leading-tight text-foreground",
+                  sizeClasses.text,
+                  "leading-tight text-foreground",
                   isActive && "shimmer-text"
                 )}
                 style={{ fontVariationSettings: fontWeights.medium }}
@@ -399,7 +414,7 @@ function ThinkingStep({
                 {isActive && "…"}
               </span>
               {description && (
-                <span className="text-[13px] text-muted-foreground leading-snug">
+                <span className={cn(sizeClasses.text, "text-muted-foreground leading-snug")}>
                   {description}
                 </span>
               )}
@@ -428,6 +443,7 @@ function ThinkingStepDetails({
   children,
   className,
 }: ThinkingStepDetailsProps) {
+  const compactStep = useSize().variant === "compact";
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -444,7 +460,10 @@ function ThinkingStepDetails({
           {details?.map((item, i) => (
             <span
               key={i}
-              className="text-[12px] text-muted-foreground leading-snug"
+              className={cn(
+                "text-muted-foreground leading-snug",
+                compactStep ? "text-[11px]" : "text-[12px]"
+              )}
             >
               {item}
             </span>

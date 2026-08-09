@@ -57,6 +57,7 @@ const disabledCode = `import { Slider } from "./components";
 const formatCode = `import { Slider } from "./components";
 
 <Slider
+  size="compact"
   value={value}
   onChange={setValue}
   formatValue={(v) => \`\${v}%\`}
@@ -327,6 +328,7 @@ export default function SliderDoc() {
         <ComponentPreview code={formatCode}>
           <div className="w-72">
             <Slider
+              size="compact"
               value={formatted}
               onChange={(v) => setFormatted(v as number)}
               formatValue={(v) => `${v}%`}
@@ -352,6 +354,7 @@ export default function SliderDoc() {
         <ComponentPreview code={comfortableBasicCode}>
           <div className="w-72">
             <Slider
+              size="default"
               label="Roundness"
               value={roundness}
               onChange={(v) => setRoundness(v as number)}
@@ -366,6 +369,7 @@ export default function SliderDoc() {
         <ComponentPreview code={comfortableScrubberCode}>
           <div className="w-72">
             <Slider
+              size="default"
               variant="scrubber"
               label="Volume"
               value={volume}
@@ -382,6 +386,7 @@ export default function SliderDoc() {
         <ComponentPreview code={comfortableFormatCode}>
           <div className="w-72">
             <Slider
+              size="default"
               label="Quality"
               value={quality}
               onChange={(v) => setQuality(v as number)}
@@ -397,6 +402,7 @@ export default function SliderDoc() {
         <ComponentPreview code={comfortableDisabledCode}>
           <div className="w-72">
             <Slider
+              size="default"
               label="Roundness"
               value={2}
               onChange={() => {}}

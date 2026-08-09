@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useIcon } from "@/lib/icon-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { SurfaceProvider } from "@/lib/surface-context";
@@ -71,6 +72,9 @@ interface QueuedMessage {
 
 interface InputMessageProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+  /** Step on the size ladder. Wins over the surrounding SizeProvider and
+   *  propagates to the composer's rows, buttons and queued messages. */
+  size?: SizeVariant;
   /** Controlled textarea value. */
   value: string;
   /** Called with the new value on every textarea change. */
@@ -220,6 +224,7 @@ function QueuedRow({
 }: QueuedRowProps) {
   const XIcon = useIcon("x");
   const ImageIcon = useIcon("image");
+  const compactStep = useSize().variant === "compact";
   const fileCount = item.files.length;
   const label =
     item.text || `${fileCount} attachment${fileCount === 1 ? "" : "s"}`;
@@ -256,8 +261,11 @@ function QueuedRow({
       className={cn(
         // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
         // text-box trim on the label doesn't shrink the row.
-        "group/qrow flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5",
-        "text-[13px] text-foreground/85 select-none outline-none",
+        "group/qrow flex items-center gap-2 rounded-lg bg-muted",
+        compactStep
+          ? "h-7 px-2 text-[12px]"
+          : "h-8 px-2.5 text-[13px]",
+        "text-foreground/85 select-none outline-none",
         "cursor-grab active:cursor-grabbing",
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
       )}
@@ -307,6 +315,7 @@ function QueuedRow({
 const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
   (
     {
+      size,
       value,
       onValueChange,
       onSend,
@@ -337,6 +346,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     ref
   ) => {
     const shape = useShape();
+    const compactStep = useSize(size).variant === "compact";
     const ArrowUpIcon = useIcon("arrow-up");
     const reduceMotion = useReducedMotion() ?? false;
     const isTouch = useIsTouch();
@@ -739,7 +749,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       [addFiles]
     );
 
-    return (
+    const composer = (
       <div
         ref={ref}
         onMouseDown={handleContainerMouseDown}
@@ -885,8 +895,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
             aria-label={textareaProps?.["aria-label"] ?? "Message"}
             className={cn(
               "w-full resize-none bg-transparent outline-none",
-              "text-[14px] leading-5 text-foreground placeholder:text-muted-foreground",
-              "px-2 py-2"
+              "text-foreground placeholder:text-muted-foreground",
+              compactStep
+                ? "text-[13px] leading-[18px] px-1.5 py-1.5"
+                : "text-[14px] leading-5 px-2 py-2"
             )}
             style={{ fontVariationSettings: fontWeights.normal }}
             {...restTextareaProps}
@@ -927,8 +939,13 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                       // better a touch larger. `size` matches the attribute to
                       // the CSS so the svg box stays centered.
                       <ArrowUpIcon
-                        size={19}
-                        className="block !h-[19px] !w-[19px]"
+                        size={compactStep ? 17 : 19}
+                        className={cn(
+                          "block",
+                          compactStep
+                            ? "!h-[17px] !w-[17px]"
+                            : "!h-[19px] !w-[19px]"
+                        )}
                       />
                     )}
                   </motion.span>
@@ -943,6 +960,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
         </SurfaceProvider>
       </div>
     );
+
+    // A size prop pins the whole composer — inner buttons, rows and queued
+    // messages included — to one ladder step (matches InputGroup).
+    return size ? <SizeProvider size={size}>{composer}</SizeProvider> : composer;
   }
 );
 

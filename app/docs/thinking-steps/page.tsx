@@ -225,6 +225,7 @@ const fullCode = `// Kitchen sink: sources, details, descriptions, images, custo
 // ─── Props Tables ───────────────────────────────────────────────────────────
 
 const rootProps: PropDef[] = [
+  { name: "size", type: '"default" | "compact"', default: "from SizeProvider", description: "Step on the size ladder (see /docs/sizes). Wins over the surrounding SizeProvider." },
   { name: "defaultOpen", type: "boolean", default: "true", description: "Whether the accordion starts expanded (uncontrolled)." },
   { name: "open", type: "boolean", description: "Controlled open state. Use with onOpenChange." },
   { name: "onOpenChange", type: "(open: boolean) => void", description: "Callback when the open state changes." },
