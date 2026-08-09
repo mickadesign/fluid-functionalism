@@ -185,7 +185,9 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
           className={cn(
             "inline-grid",
             sizeClasses.text,
-            compact ? "pl-2.5" : "pl-3"
+            // One notch tighter than the ladder's control padding — the field
+            // ring is invisible at rest, so the roomier inset reads as a gap.
+            compact ? "pl-2" : "pl-2.5"
           )}
         >
           <span
@@ -221,7 +223,9 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
           className={cn(
             // Fixed height (was py-2 around the line box) so the field sits
             // exactly on the ladder's control height.
-            `flex items-center ${sizeClasses.gap} ${shape.input} ${sizeClasses.px} ${sizeClasses.control} ring-1 transition-all duration-80`,
+            `flex items-center ${sizeClasses.gap} ${shape.input} ${
+              compact ? "px-2" : "px-2.5"
+            } ${sizeClasses.control} ring-1 transition-all duration-80`,
             bgClass,
             ringClass
           )}
@@ -262,7 +266,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
             match
             className={cn(
               "text-destructive",
-              compact ? "text-[11px] pl-2.5" : "text-[12px] pl-3"
+              compact ? "text-[11px] pl-2" : "text-[12px] pl-2.5"
             )}
             style={{ fontVariationSettings: fontWeights.medium }}
           >
