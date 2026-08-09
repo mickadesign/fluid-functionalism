@@ -28,6 +28,14 @@ import {
   TableHead,
   TableCell,
 } from "@/registry/default/table";
+import {
+  TabsSubtle,
+  TabsSubtleItem,
+  TabsSubtlePanel,
+} from "@/components/flavored/tabs-subtle";
+import { useIcon } from "@/lib/icon-context";
+import { useSize } from "@/lib/size-context";
+import { cn } from "@/registry/default/lib/utils";
 import { ListFilter, Plus, Flag } from "lucide-react";
 
 /** Inline code chip used throughout the prose. */
@@ -61,25 +69,32 @@ const LADDER_CODE = `// Every control resolves its size the same way:
 
 const TABLE_CODE = `import { SizeProvider } from "@/lib/size-context";
 
-// Table rows sit on the same ladder: 36px default, 28px compact.
-// <Table size="compact"> works too.
+// The whole view — category tabs and table rows — takes the compact
+// step from one provider. <Table size="compact"> works too.
 
 <SizeProvider size="compact">
+  <TabsSubtle selectedIndex={tab} onSelect={setTab}>
+    {categories.map((c, i) => (
+      <TabsSubtleItem key={c.label} index={i} icon={c.icon} label={c.label} />
+    ))}
+  </TabsSubtle>
+
   <Table>
     <TableHeader>
       <TableRow>
-        <TableHead>Name</TableHead>
-        <TableHead>Role</TableHead>
-        <TableHead>Status</TableHead>
+        <TableHead className="w-[50px] text-center">Saved</TableHead>
+        <TableHead className="w-[180px]">Author</TableHead>
+        <TableHead>Quote</TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
-      <TableRow index={0}>
-        <TableCell>Alice</TableCell>
-        <TableCell>Engineer</TableCell>
-        <TableCell>Active</TableCell>
-      </TableRow>
-      …
+      {quotes.map((q, i) => (
+        <TableRow key={q.id} index={i}>
+          <TableCell className="text-center">…</TableCell>
+          <TableCell>{q.author}</TableCell>
+          <TableCell>{q.text}</TableCell>
+        </TableRow>
+      ))}
     </TableBody>
   </Table>
 </SizeProvider>`;
@@ -261,17 +276,132 @@ function LadderDemo() {
 }
 
 // ---------------------------------------------------------------------------
-// Table preview — the /docs/table content with a live size toggle
+// Table preview — the /table Quotes example with a live size toggle
 // ---------------------------------------------------------------------------
 
-const PEOPLE = [
-  { name: "Alice", role: "Engineer", status: "Active" },
-  { name: "Bob", role: "Designer", status: "Away" },
-  { name: "Carol", role: "Manager", status: "Active" },
-];
+interface Quote {
+  id: string;
+  author: string;
+  text: string;
+}
+
+const QUOTES: Record<string, Quote[]> = {
+  Wisdom: [
+    { id: "w1", author: "Marcus Aurelius", text: "The happiness of your life depends upon the quality of your thoughts." },
+    { id: "w2", author: "Seneca", text: "We suffer more often in imagination than in reality." },
+    { id: "w3", author: "Epictetus", text: "It is not what happens to you, but how you react to it that matters." },
+    { id: "w4", author: "Lao Tzu", text: "A journey of a thousand miles begins with a single step." },
+    { id: "w5", author: "Confucius", text: "It does not matter how slowly you go as long as you do not stop." },
+  ],
+  Ambition: [
+    { id: "a1", author: "Steve Jobs", text: "Stay hungry, stay foolish." },
+    { id: "a2", author: "Elon Musk", text: "When something is important enough, you do it even if the odds are not in your favor." },
+    { id: "a3", author: "Naval Ravikant", text: "Seek wealth, not money or status. Wealth is having assets that earn while you sleep." },
+    { id: "a4", author: "Jeff Bezos", text: "I knew that if I failed I wouldn't regret that, but I knew the one thing I might regret is not trying." },
+    { id: "a5", author: "Peter Thiel", text: "Competition is for losers. If you want to create and capture lasting value, build a monopoly." },
+  ],
+  "Love & Life": [
+    { id: "l1", author: "Antoine de Saint-Exupéry", text: "It is only with the heart that one can see rightly; what is essential is invisible to the eye." },
+    { id: "l2", author: "Victor Hugo", text: "Life is the flower for which love is the honey." },
+    { id: "l3", author: "Maya Angelou", text: "There is no greater agony than bearing an untold story inside you." },
+    { id: "l4", author: "Khalil Gibran", text: "You talk when you cease to be at peace with your thoughts." },
+    { id: "l5", author: "Oscar Wilde", text: "To live is the rarest thing in the world. Most people exist, that is all." },
+  ],
+  Creativity: [
+    { id: "c1", author: "Dieter Rams", text: "Less, but better." },
+    { id: "c2", author: "Jony Ive", text: "Simplicity is not the absence of clutter; that's a consequence of simplicity." },
+    { id: "c3", author: "Pablo Picasso", text: "Every child is an artist. The problem is how to remain an artist once we grow up." },
+    { id: "c4", author: "Steve Jobs", text: "Design is not just what it looks like and feels like. Design is how it works." },
+    { id: "c5", author: "Paul Rand", text: "Design is the silent ambassador of your brand." },
+  ],
+  Philosophy: [
+    { id: "p1", author: "Friedrich Nietzsche", text: "He who has a why to live can bear almost any how." },
+    { id: "p2", author: "Albert Camus", text: "In the depth of winter, I finally learned that within me there lay an invincible summer." },
+    { id: "p3", author: "Simone de Beauvoir", text: "One is not born, but rather becomes, a woman." },
+    { id: "p4", author: "Jean-Paul Sartre", text: "Man is condemned to be free; because once thrown into the world, he is responsible for everything he does." },
+    { id: "p5", author: "Hannah Arendt", text: "The sad truth is that most evil is done by people who never make up their minds to be good or evil." },
+  ],
+};
+
+/** The /table page's inline row checkbox, riding the size ladder (18px → 15px). */
+function RowCheckbox({
+  checked,
+  onToggle,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label="Save quote"
+      onClick={onToggle}
+      className={cn(
+        "relative shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer",
+        "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[5px]",
+        compact ? "w-[15px] h-[15px]" : "w-[18px] h-[18px]"
+      )}
+    >
+      <div
+        className={cn(
+          "absolute inset-0 border-solid transition-all duration-80",
+          compact ? "rounded-[4px]" : "rounded-[5px]",
+          checked
+            ? "border-[1.5px] border-transparent"
+            : "border-[1.5px] border-border"
+        )}
+      />
+      {checked && (
+        <svg
+          width={compact ? 15 : 18}
+          height={compact ? 15 : 18}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="absolute inset-0 text-foreground"
+        >
+          <path d="M6 12L10 16L18 8" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 function TablePreview() {
   const [size, setSize] = useState<SizeVariant>("default");
+  const [category, setCategory] = useState(0);
+  const [saved, setSaved] = useState<Set<string>>(new Set(["w1"]));
+
+  const Lightbulb = useIcon("lightbulb");
+  const Rocket = useIcon("rocket");
+  const Heart = useIcon("heart");
+  const Paintbrush = useIcon("paintbrush");
+  const Brain = useIcon("brain");
+
+  const categories = [
+    { icon: Lightbulb, label: "Wisdom" },
+    { icon: Rocket, label: "Ambition" },
+    { icon: Heart, label: "Love & Life" },
+    { icon: Paintbrush, label: "Creativity" },
+    { icon: Brain, label: "Philosophy" },
+  ];
+
+  const rows = QUOTES[categories[category].label] ?? [];
+
+  const toggleSaved = (id: string) =>
+    setSaved((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
     <div className="flex w-full flex-col items-start gap-5">
@@ -282,25 +412,57 @@ function TablePreview() {
         </TabsList>
       </Tabs>
       <SizeProvider size={size}>
-        <div className="w-full">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {PEOPLE.map((p, i) => (
-                <TableRow key={p.name} index={i}>
-                  <TableCell>{p.name}</TableCell>
-                  <TableCell>{p.role}</TableCell>
-                  <TableCell>{p.status}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="flex w-full flex-col gap-3">
+          <TabsSubtle
+            idPrefix="sizes-quotes"
+            selectedIndex={category}
+            onSelect={setCategory}
+          >
+            {categories.map((c, i) => (
+              <TabsSubtleItem
+                key={c.label}
+                index={i}
+                icon={c.icon}
+                label={c.label}
+              />
+            ))}
+          </TabsSubtle>
+          {categories.map((c, i) => (
+            <TabsSubtlePanel
+              key={c.label}
+              index={i}
+              selectedIndex={category}
+              idPrefix="sizes-quotes"
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px] text-center">Saved</TableHead>
+                    <TableHead className="w-[180px]">Author</TableHead>
+                    <TableHead>Quote</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((q, idx) => (
+                    <TableRow key={q.id} index={idx}>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center">
+                          <RowCheckbox
+                            checked={saved.has(q.id)}
+                            onToggle={() => toggleSaved(q.id)}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {q.author}
+                      </TableCell>
+                      <TableCell>{q.text}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TabsSubtlePanel>
+          ))}
         </div>
       </SizeProvider>
     </div>
