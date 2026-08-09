@@ -125,7 +125,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       >
         <Sidebar mobile />
         <div className="mt-auto pt-4">
-          <div className="flex items-center justify-between pl-1 pt-2 pb-2">
+          <div className="flex items-center justify-between pt-2 pb-2">
             <h2
               className="text-title text-foreground leading-none"
               style={{ fontVariationSettings: "'wght' 600" }}

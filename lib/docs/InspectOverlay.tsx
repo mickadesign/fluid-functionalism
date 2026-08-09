@@ -10,6 +10,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { spring } from "@/lib/springs";
+import { useSizeVariant } from "@/lib/size-context";
 import { Tooltip } from "@/registry/radix/tooltip";
 
 // ---------------------------------------------------------------------------
@@ -144,29 +145,19 @@ export function InspectOverlay({
     return () => ro.disconnect();
   }, [frameRef, contentRef]);
 
-  const compute = useCallback(
-    (clientX: number, clientY: number) => {
+  // The element currently being measured, so a re-layout (e.g. the S size
+  // toggle) can refresh its numbers in place even if it slid out from under
+  // the frozen cursor.
+  const lastElRef = useRef<HTMLElement | null>(null);
+
+  const measureEl = useCallback(
+    (el: HTMLElement) => {
       const frame = frameRef.current;
-      const content = contentRef.current;
-      if (!frame || !content) return;
+      if (!frame) return;
       const fRect = frame.getBoundingClientRect();
       const iLeft = fRect.left + frame.clientLeft;
       const iTop = fRect.top + frame.clientTop;
-
-      // Deepest element under the cursor that belongs to the component (skip the
-      // overlay's own UI and the content wrapper itself).
-      const stack = document.elementsFromPoint(clientX, clientY);
-      const el = stack.find(
-        (e) =>
-          content.contains(e) &&
-          e !== content &&
-          !e.closest("[data-inspect-ui]")
-      ) as HTMLElement | undefined;
-
-      if (!el) {
-        setTarget(null);
-        return;
-      }
+      lastElRef.current = el;
 
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
@@ -297,12 +288,41 @@ export function InspectOverlay({
         font,
       });
     },
-    [frameRef, contentRef]
+    [frameRef]
   );
+
+  const compute = useCallback(
+    (clientX: number, clientY: number) => {
+      const content = contentRef.current;
+      if (!content) return;
+      // Deepest element under the cursor that belongs to the component (skip the
+      // overlay's own UI and the content wrapper itself).
+      const stack = document.elementsFromPoint(clientX, clientY);
+      const el = stack.find(
+        (e) =>
+          content.contains(e) &&
+          e !== content &&
+          !e.closest("[data-inspect-ui]")
+      ) as HTMLElement | undefined;
+
+      if (!el) {
+        lastElRef.current = null;
+        setTarget(null);
+        return;
+      }
+      measureEl(el);
+    },
+    [contentRef, measureEl]
+  );
+
+  // Last cursor position over the capture region, so measurements can refresh
+  // without the cursor moving (e.g. the S size toggle re-laying-out the demo).
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
 
   const onMove = useCallback(
     (e: React.MouseEvent) => {
       const { clientX, clientY } = e;
+      lastPos.current = { x: clientX, y: clientY };
       cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => compute(clientX, clientY));
     },
@@ -311,10 +331,30 @@ export function InspectOverlay({
 
   const clear = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
+    lastPos.current = null;
+    lastElRef.current = null;
     setTarget(null);
   }, []);
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+  // Re-measure in place when the size step flips: the demo re-lays-out without
+  // a mousemove, so the inspected element's numbers go stale. Prefer refreshing
+  // the element itself (it usually slides out from under the frozen cursor when
+  // the page above it reflows); fall back to whatever is under the cursor now.
+  // Double-rAF lets the new layout settle first.
+  const sizeVariant = useSizeVariant();
+  useEffect(() => {
+    if (!lastElRef.current && !lastPos.current) return;
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = lastElRef.current;
+        if (el && el.isConnected) measureEl(el);
+        else if (lastPos.current) compute(lastPos.current.x, lastPos.current.y);
+      })
+    );
+    return () => cancelAnimationFrame(id);
+  }, [sizeVariant, compute, measureEl]);
 
   const { w, h } = size;
   // The rulers overlay the content instead of reserving a gutter, so the demo

@@ -903,7 +903,18 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
             style={{ fontVariationSettings: fontWeights.normal }}
             {...restTextareaProps}
           />
-          <div className="flex items-center justify-between gap-2">
+          <div
+            className={cn(
+              "flex items-center justify-between",
+              // The footer's controls sit one notch below the composer's step:
+              // slot content is consumer-authored (usually sm/icon-sm pinned
+              // Buttons), so the compact step scales any button in the row —
+              // send button included — down to 24px via a scoped override.
+              compactStep
+                ? "gap-1.5 [&_button]:h-6 [&_button.w-7]:w-6 [&_button]:text-[11px]"
+                : "gap-2"
+            )}
+          >
             <div className="flex items-center gap-1.5 min-w-0">{leftContent}</div>
             <div className="flex items-center gap-1.5 shrink-0">
               {rightContent}
@@ -939,11 +950,11 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                       // better a touch larger. `size` matches the attribute to
                       // the CSS so the svg box stays centered.
                       <ArrowUpIcon
-                        size={compactStep ? 17 : 19}
+                        size={compactStep ? 15 : 19}
                         className={cn(
                           "block",
                           compactStep
-                            ? "!h-[17px] !w-[17px]"
+                            ? "!h-[15px] !w-[15px]"
                             : "!h-[19px] !w-[19px]"
                         )}
                       />
