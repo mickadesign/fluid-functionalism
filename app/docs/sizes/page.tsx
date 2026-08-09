@@ -570,7 +570,7 @@ const CONSUMER_PROPS: PropDef[] = [
     type: '"default" | "compact"',
     default: "from provider",
     description:
-      "Per-component override on Button, Select, Tabs, TabsSubtle, Dropdown, DropdownMenu, CheckboxGroup, RadioGroup, InputGroup, InputCopy, Table, Switch, Accordion, and AccordionGroup. Wins over the surrounding SizeProvider.",
+      "Per-component override on Button, Badge, Select, Tabs, TabsSubtle, Dropdown, DropdownMenu, CheckboxGroup, RadioGroup, InputGroup, InputCopy, Table, Switch, Slider, Accordion, AccordionGroup, AskUserQuestions, Card, ChatMessage, and ColorPicker. Wins over the surrounding SizeProvider.",
   },
 ];
 
@@ -665,7 +665,7 @@ export default function SizesPage() {
       <DocSection title="Component size prop">
         <PropsTable props={CONSUMER_PROPS} />
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Button keeps its old <Code>sm</Code> / <Code>md</Code> /
+          Button and Badge keep their old <Code>sm</Code> / <Code>md</Code> /
           <Code>lg</Code> values as aliases (<Code>sm</Code> → compact, the
           rest → default), so existing code keeps compiling. New code uses the
           two canonical steps, with <Code>icon</Code> /{" "}
@@ -673,9 +673,9 @@ export default function SizesPage() {
         </p>
         <p className="text-[13px] text-muted-foreground leading-relaxed">
           Three components follow the ladder in their own way: Switch scales
-          its track and thumb (34×20 → 28×16), Badge maps the ladder onto its
-          own scale (compact regions get <Code>sm</Code> badges, default gets
-          <Code>md</Code>), and Dialog narrows one notch in width — padding
+          its track and thumb (34×20 → 28×16), Slider switches design — the
+          pip/scrubber layout at the default step, the dense range-capable one
+          at compact — and Dialog narrows one notch in width, padding
           untouched.
         </p>
       </DocSection>

@@ -24,15 +24,6 @@ const variantsCode = `import { Button } from "./components";
 <Button variant="tertiary">Tertiary</Button>
 <Button variant="ghost">Ghost</Button>`;
 
-const sizesCode = `import { Button } from "./components";
-import { Plus } from "lucide-react";
-
-// Two steps on the shared size ladder — see /docs/sizes.
-<Button size="compact">Compact</Button>
-<Button>Default</Button>
-<Button size="icon-compact"><Plus /></Button>
-<Button size="icon"><Plus /></Button>`;
-
 const iconsCode = `import { Button } from "./components";
 import { Plus, ArrowRight, Search } from "lucide-react";
 
@@ -294,17 +285,6 @@ export default function ButtonDoc() {
             <Button variant="secondary">Secondary</Button>
             <Button variant="tertiary">Tertiary</Button>
             <Button variant="ghost">Ghost</Button>
-          </div>
-        </ComponentPreview>
-      </DocSection>
-
-      <DocSection title="Sizes">
-        <ComponentPreview code={sizesCode}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="compact">Compact</Button>
-            <Button>Default</Button>
-            <Button size="icon-compact"><Plus /></Button>
-            <Button size="icon"><Plus /></Button>
           </div>
         </ComponentPreview>
       </DocSection>

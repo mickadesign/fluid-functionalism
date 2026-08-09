@@ -41,26 +41,6 @@ const basicCode = `import {
   </DialogContent>
 </Dialog>`;
 
-const largeCode = `<Dialog>
-  <DialogTrigger asChild>
-    <Button variant="ghost">Open large dialog</Button>
-  </DialogTrigger>
-  <DialogContent size="lg">
-    <DialogHeader>
-      <DialogTitle>Confirm action</DialogTitle>
-      <DialogDescription>
-        This action cannot be undone.
-      </DialogDescription>
-    </DialogHeader>
-    <DialogFooter>
-      <DialogClose asChild>
-        <Button variant="ghost">Cancel</Button>
-      </DialogClose>
-      <Button>Confirm</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>`;
-
 const dialogContentProps: PropDef[] = [
   { name: "size", type: '"sm" | "lg"', default: '"sm"', description: "Width of the dialog. In compact regions each width narrows one notch (400 → 360, 540 → 480) — padding is unchanged (see /docs/sizes)." },
   { name: "children", type: "ReactNode", description: "Content inside the dialog." },
@@ -73,13 +53,13 @@ export default function DialogDoc() {
       slug="dialog"
       description="Modal dialog with smooth enter/exit animations and overlay."
     >
-      <DocSection title="Small Dialog">
+      <DocSection title="Basic">
         <ComponentPreview code={basicCode}>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="tertiary">Open small dialog</Button>
+              <Button variant="tertiary">Open dialog</Button>
             </DialogTrigger>
-            <DialogContent size="sm">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create teamspace</DialogTitle>
                 <DialogDescription>
@@ -91,30 +71,6 @@ export default function DialogDoc() {
                   <Button variant="ghost">Cancel</Button>
                 </DialogClose>
                 <Button>Create</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </ComponentPreview>
-      </DocSection>
-
-      <DocSection title="Large Dialog">
-        <ComponentPreview code={largeCode}>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="ghost">Open large dialog</Button>
-            </DialogTrigger>
-            <DialogContent size="lg">
-              <DialogHeader>
-                <DialogTitle>Confirm action</DialogTitle>
-                <DialogDescription>
-                  This action cannot be undone. Are you sure you want to continue?
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="ghost">Cancel</Button>
-                </DialogClose>
-                <Button>Confirm</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

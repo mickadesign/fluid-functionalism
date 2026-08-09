@@ -59,7 +59,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/flavored/select";
-import { Slider, SliderComfortable } from "@/registry/radix/slider";
+import { Slider } from "@/registry/radix/slider";
 import { Switch } from "@/registry/radix/switch";
 import {
   Table,
@@ -271,11 +271,11 @@ function SliderPreview() {
         </div>
         <Slider value={basic} onChange={(v) => setBasic(v as number)} showValue={false} />
       </div>
-      <SliderComfortable
+      <Slider
         variant="scrubber"
         label={SLIDER_VOLUME.label}
         value={volume}
-        onChange={setVolume}
+        onChange={(v) => setVolume(v as number)}
         min={0}
         max={100}
         formatValue={(v) => `${v}%`}

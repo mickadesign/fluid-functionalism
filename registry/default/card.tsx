@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useIcon, type IconComponent } from "@/lib/icon-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
@@ -264,6 +265,10 @@ interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "onClick"> {
   /** Shows a dismiss (✕) button in the corner. */
   dismissible?: boolean;
   onDismiss?: () => void;
+  /** Pins the card to one step of the size ladder (see /docs/sizes) — compact
+   *  tightens type and padding. Omitted, it follows the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
   /** Injected by CardGroup — do not set by hand. */
   index?: number;
 }
@@ -279,6 +284,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       disabled = false,
       dismissible = false,
       onDismiss,
+      size,
       index,
       className,
       children,
@@ -288,6 +294,10 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
   ) => {
     const internalRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
+    // Resolve against the explicit prop first so this card's own padding and
+    // gaps agree with the SizeProvider it renders for its children.
+    const sizeClasses = useSize(size);
+    const compact = sizeClasses.variant === "compact";
     const group = useContext(CardGroupContext);
     const XIcon = useIcon("x");
 
@@ -398,14 +408,19 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       body = (
         <>
           {image}
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 py-3.5 pr-4">
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 flex-col justify-center gap-2",
+              compact ? "py-2.5 pr-3" : "py-3.5 pr-4"
+            )}
+          >
             {rest}
           </div>
         </>
       );
     }
 
-    return (
+    const card = (
       <CardContext.Provider value={cardContext}>
         <div
           ref={(node) => {
@@ -425,10 +440,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
             inlineImage
               ? // Image on the left; the text + actions ride in a centred
                 // column beside it (see the wrapper in the body below).
-                "flex flex-row items-center gap-3"
+                cn("flex flex-row items-center", compact ? "gap-2.5" : "gap-3")
               : isInline
-                ? "flex flex-row items-center gap-3 pl-4"
-                : "flex flex-col pb-4",
+                ? cn(
+                    "flex flex-row items-center",
+                    compact ? "gap-2.5 pl-3" : "gap-3 pl-4"
+                  )
+                : cn("flex flex-col", compact ? "pb-3" : "pb-4"),
             // Standalone (no group) cards can't lean on the group highlight, so
             // they carry their own hover tint when interactive.
             !group && clickable && !disabled && "transition-colors duration-80 hover:bg-hover",
@@ -484,12 +502,16 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
                 shape.button
               )}
             >
-              <XIcon size={15} strokeWidth={1.5} />
+              <XIcon size={compact ? 13 : 15} strokeWidth={1.5} />
             </button>
           )}
         </div>
       </CardContext.Provider>
     );
+
+    // A size prop pins the card (and everything ladder-aware inside it) to one
+    // ladder step; the parts read the context.
+    return size ? <SizeProvider size={size}>{card}</SizeProvider> : card;
   }
 );
 
@@ -504,6 +526,8 @@ const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const { orientation, hasImage } = useContext(CardContext);
     const inlineImage = orientation === "inline" && hasImage;
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
     return (
       <div
         ref={ref}
@@ -513,8 +537,10 @@ const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
           inlineImage
             ? "min-w-0"
             : orientation === "inline"
-              ? "min-w-0 flex-1 py-3.5"
-              : "px-4 pt-4",
+              ? cn("min-w-0 flex-1", compact ? "py-2.5" : "py-3.5")
+              : compact
+                ? "px-3 pt-3"
+                : "px-4 pt-4",
           className
         )}
         {...props}
@@ -530,6 +556,8 @@ CardHeader.displayName = "CardHeader";
 const CardTitle = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
   ({ className, children, ...props }, ref) => {
     const { emphasized, orientation } = useContext(CardContext);
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
     // Inline rows trim the title to cap height so it centres tightly against
     // the media/actions; stacked cards keep the natural line box.
     const trim =
@@ -540,7 +568,11 @@ const CardTitle = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
       <span
         ref={ref}
         data-slot="card-title"
-        className={cn("inline-grid text-[14px] leading-snug", className)}
+        className={cn(
+          "inline-grid leading-snug",
+          compact ? "text-[13px]" : "text-[14px]",
+          className
+        )}
         {...props}
       >
         <span
@@ -577,14 +609,22 @@ CardTitle.displayName = "CardTitle";
 const CardDescription = forwardRef<
   HTMLParagraphElement,
   HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    data-slot="card-description"
-    className={cn("text-[14px] leading-normal text-muted-foreground", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
+  return (
+    <p
+      ref={ref}
+      data-slot="card-description"
+      className={cn(
+        "leading-normal text-muted-foreground",
+        compact ? "text-[13px]" : "text-[14px]",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 
 CardDescription.displayName = "CardDescription";
 
@@ -613,11 +653,16 @@ CardAction.displayName = "CardAction";
 const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const { orientation } = useContext(CardContext);
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
     return (
       <div
         ref={ref}
         data-slot="card-content"
-        className={cn(orientation === "inline" ? "" : "px-4 pt-3", className)}
+        className={cn(
+          orientation === "inline" ? "" : compact ? "px-3 pt-2.5" : "px-4 pt-3",
+          className
+        )}
         {...props}
       />
     );
@@ -634,6 +679,8 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const { orientation, hasImage } = useContext(CardContext);
     const inlineImage = orientation === "inline" && hasImage;
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
     return (
       <div
         ref={ref}
@@ -645,8 +692,8 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
               // wrapper owns the spacing).
               "flex-wrap"
             : orientation === "inline"
-              ? "shrink-0 ml-auto pr-4"
-              : "flex-wrap px-4 pt-3",
+              ? cn("shrink-0 ml-auto", compact ? "pr-3" : "pr-4")
+              : cn("flex-wrap", compact ? "px-3 pt-2.5" : "px-4 pt-3"),
           className
         )}
         {...props}
@@ -675,6 +722,8 @@ interface CardMediaProps {
 function CardMedia({ logo, logoAlt, icon: Icon, size = 22, className }: CardMediaProps) {
   const { orientation } = useContext(CardContext);
   const shape = useShape();
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
   // Stacked: sits in the header grid; add an extra 8px so the gap below the
   // icon reads 12px (header gap-1 + mb-2). Inline: leading slot — the card owns
   // the left inset, so no extra padding here.
@@ -717,7 +766,7 @@ function CardMedia({ logo, logoAlt, icon: Icon, size = 22, className }: CardMedi
           wrap
         )}
       >
-        <Icon size={18} strokeWidth={1.5} className="text-muted-foreground" />
+        <Icon size={compact ? 16 : 18} strokeWidth={1.5} className="text-muted-foreground" />
       </span>
     );
   }
@@ -792,24 +841,37 @@ interface CardFeatureProps {
 }
 
 function CardFeature({ icon: Icon, title, description }: CardFeatureProps) {
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
   return (
-    <div data-slot="card-feature" className="flex items-start gap-2.5">
+    <div
+      data-slot="card-feature"
+      className={cn("flex items-start", sizeClasses.gap)}
+    >
       {Icon && (
         <Icon
-          size={16}
+          size={sizeClasses.icon}
           strokeWidth={1.5}
           className="mt-0.5 shrink-0 text-muted-foreground"
         />
       )}
       <div className="flex flex-col gap-0.5 min-w-0">
         <span
-          className="text-[13px] text-foreground [text-box:trim-both_cap_alphabetic]"
+          className={cn(
+            "text-foreground [text-box:trim-both_cap_alphabetic]",
+            sizeClasses.text
+          )}
           style={{ fontVariationSettings: fontWeights.medium }}
         >
           {title}
         </span>
         {description && (
-          <span className="text-[12px] leading-relaxed text-muted-foreground">
+          <span
+            className={cn(
+              "leading-relaxed text-muted-foreground",
+              compact ? "text-[11px]" : "text-[12px]"
+            )}
+          >
             {description}
           </span>
         )}
@@ -855,11 +917,13 @@ function CardButton({
 }: CardButtonProps) {
   const shape = useShape();
   const ArrowRight = useIcon("arrow-right");
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
   const position = iconPosition ?? (external ? "end" : "start");
 
   const glyph = Icon ? (
     <Icon
-      size={14}
+      size={compact ? 12 : 14}
       strokeWidth={1.5}
       className="shrink-0 transition-[stroke-width] duration-80 group-hover/action:stroke-[2]"
     />
@@ -882,7 +946,8 @@ function CardButton({
   );
 
   const classes = cn(
-    "group/action relative z-30 inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-[12px] cursor-pointer outline-none",
+    "group/action relative z-30 inline-flex items-center justify-center gap-1.5 h-7 px-2.5 cursor-pointer outline-none",
+    compact ? "text-[11px]" : "text-[12px]",
     "transition-colors duration-80",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
     "disabled:opacity-50 disabled:pointer-events-none",

@@ -307,7 +307,8 @@
         "icon-context",
         "use-proximity-hover",
         "use-merge-split",
-        "button"
+        "button",
+        "size-context"
       ],
       "files": [
         {
@@ -795,7 +796,8 @@
         "springs",
         "shape-context",
         "use-touch-primary",
-        "file-thumbnail"
+        "file-thumbnail",
+        "size-context"
       ],
       "files": [
         {
@@ -938,7 +940,8 @@
         "font-weight",
         "shape-context",
         "icon-context",
-        "use-proximity-hover"
+        "use-proximity-hover",
+        "size-context"
       ],
       "files": [
         {
@@ -960,7 +963,8 @@
         "utils",
         "springs",
         "font-weight",
-        "shape-context"
+        "shape-context",
+        "size-context"
       ],
       "files": [
         {
@@ -983,7 +987,8 @@
         "utils",
         "springs",
         "font-weight",
-        "shape-context"
+        "shape-context",
+        "size-context"
       ],
       "files": [
         {
@@ -1339,7 +1344,8 @@
         "icon-context",
         "use-proximity-hover",
         "elevated",
-        "slider"
+        "slider",
+        "size-context"
       ],
       "files": [
         {
