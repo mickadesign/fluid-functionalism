@@ -48,8 +48,9 @@ const badgeProps: PropDef[] = [
   {
     name: "size",
     type: '"sm" | "md" | "lg"',
-    default: '"md"',
-    description: "Size of the badge.",
+    default: "from SizeProvider",
+    description:
+      "Size of the badge. Omitted, it follows the size ladder: md in default regions, sm in compact ones (see /docs/sizes).",
   },
   {
     name: "color",

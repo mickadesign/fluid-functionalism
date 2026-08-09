@@ -62,7 +62,7 @@ const largeCode = `<Dialog>
 </Dialog>`;
 
 const dialogContentProps: PropDef[] = [
-  { name: "size", type: '"sm" | "lg"', default: '"sm"', description: "Width of the dialog." },
+  { name: "size", type: '"sm" | "lg"', default: '"sm"', description: "Width of the dialog. In compact regions each width narrows one notch (400 → 360, 540 → 480) — padding is unchanged (see /docs/sizes)." },
   { name: "children", type: "ReactNode", description: "Content inside the dialog." },
 ];
 

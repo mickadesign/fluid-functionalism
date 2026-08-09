@@ -116,11 +116,19 @@ function SizeProvider({
   defaultSize?: SizeVariant;
 }) {
   const [internalSize, setInternalSize] = useState<SizeVariant>(defaultSize);
+  const isControlled = size !== undefined;
   const resolved = size ?? internalSize;
 
-  const setSize = useCallback((next: SizeVariant) => {
-    setInternalSize(next);
-  }, []);
+  // Controlled providers ignore setSize entirely — a background write to the
+  // shadowed internal state would pop back out if the size prop were later
+  // removed.
+  const setSize = useCallback(
+    (next: SizeVariant) => {
+      if (isControlled) return;
+      setInternalSize(next);
+    },
+    [isControlled]
+  );
 
   const value = useMemo(
     () => ({ size: resolved, setSize, classes: sizeMap[resolved] }),

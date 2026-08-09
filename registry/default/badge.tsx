@@ -4,6 +4,7 @@ import { forwardRef, type HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
+import { useSizeVariant } from "@/lib/size-context";
 
 const badgeColors = {
   gray: "#a3a3a3",
@@ -59,7 +60,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     {
       className,
       variant = "solid",
-      size = "md",
+      size: sizeProp,
       color = "gray",
       children,
       style,
@@ -68,6 +69,10 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     ref
   ) => {
     const shape = useShape();
+    // Badge keeps its own three-step scale, but rides the ladder when the
+    // size prop is omitted: a compact region gets sm badges, default gets md.
+    const contextSize = useSizeVariant();
+    const size = sizeProp ?? (contextSize === "compact" ? "sm" : "md");
     const colorValue = badgeColors[color];
     const isSolid = variant === "solid";
     const dotSize = size === "sm" ? 6 : size === "lg" ? 8 : 7;

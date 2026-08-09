@@ -570,7 +570,7 @@ const CONSUMER_PROPS: PropDef[] = [
     type: '"default" | "compact"',
     default: "from provider",
     description:
-      "Per-component override on Button, Select, Tabs, TabsSubtle, Dropdown, DropdownMenu, CheckboxGroup, RadioGroup, InputGroup, InputCopy, and Table. Wins over the surrounding SizeProvider.",
+      "Per-component override on Button, Select, Tabs, TabsSubtle, Dropdown, DropdownMenu, CheckboxGroup, RadioGroup, InputGroup, InputCopy, Table, Switch, Accordion, and AccordionGroup. Wins over the surrounding SizeProvider.",
   },
 ];
 
@@ -670,6 +670,13 @@ export default function SizesPage() {
           rest → default), so existing code keeps compiling. New code uses the
           two canonical steps, with <Code>icon</Code> /{" "}
           <Code>icon-compact</Code> for square buttons.
+        </p>
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
+          Three components follow the ladder in their own way: Switch scales
+          its track and thumb (34×20 → 28×16), Badge maps the ladder onto its
+          own scale (compact regions get <Code>sm</Code> badges, default gets
+          <Code>md</Code>), and Dialog narrows one notch in width — padding
+          untouched.
         </p>
       </DocSection>
     </DocPage>

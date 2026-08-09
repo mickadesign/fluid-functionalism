@@ -13,6 +13,7 @@ import { motion, useMotionValue, animate, type Transition } from "framer-motion"
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
+import { useSize, type SizeVariant } from "@/lib/size-context";
 
 interface SwitchProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
@@ -20,24 +21,44 @@ interface SwitchProps extends HTMLAttributes<HTMLDivElement> {
   onToggle: () => void;
   disabled?: boolean;
   thumbTransition?: Transition;
+  /** Pins the switch to one step of the size ladder (see /docs/sizes).
+   *  Omitted, it follows the surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
-const TRACK_WIDTH = 34;
-const TRACK_HEIGHT = 20;
-const THUMB_SIZE = 16;
+// Track/thumb geometry per ladder step. The hover pill-extend and press
+// squash scale down with the thumb so the compact switch keeps the same feel.
+const METRICS = {
+  default: {
+    trackWidth: 34,
+    trackHeight: 20,
+    thumbSize: 16,
+    pillExtend: 2,
+    pressExtend: 4,
+    pressShrink: 4,
+  },
+  compact: {
+    trackWidth: 28,
+    trackHeight: 16,
+    thumbSize: 12,
+    pillExtend: 2,
+    pressExtend: 3,
+    pressShrink: 3,
+  },
+} as const;
+
 const THUMB_OFFSET = 2;
-const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - THUMB_OFFSET * 2;
-const PILL_EXTEND = 2;
-const PRESS_EXTEND = 4;
-const PRESS_SHRINK = 4;
 const DRAG_DEAD_ZONE = 2;
 
 const Switch = forwardRef<HTMLDivElement, SwitchProps>(
-  ({ label, checked, onToggle, disabled = false, thumbTransition, className, ...props }, ref) => {
+  ({ label, checked, onToggle, disabled = false, thumbTransition, size, className, ...props }, ref) => {
     const labelId = useId();
     const hasMounted = useRef(false);
     const [hovered, setHovered] = useState(false);
     const [pressed, setPressed] = useState(false);
+    const sizeClasses = useSize(size);
+    const m = METRICS[sizeClasses.variant];
+    const thumbTravel = m.trackWidth - m.thumbSize - THUMB_OFFSET * 2;
 
     const dragging = useRef(false);
     const didDrag = useRef(false);
@@ -47,7 +68,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
     } | null>(null);
 
     const motionX = useMotionValue(
-      checked ? THUMB_OFFSET + THUMB_TRAVEL : THUMB_OFFSET
+      checked ? THUMB_OFFSET + thumbTravel : THUMB_OFFSET
     );
 
     useEffect(() => {
@@ -55,15 +76,15 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
     }, []);
 
     const thumbWidth = pressed
-      ? THUMB_SIZE + PRESS_EXTEND
+      ? m.thumbSize + m.pressExtend
       : hovered
-        ? THUMB_SIZE + PILL_EXTEND
-        : THUMB_SIZE;
-    const thumbHeight = pressed ? THUMB_SIZE - PRESS_SHRINK : THUMB_SIZE;
-    const thumbY = pressed ? THUMB_OFFSET + PRESS_SHRINK / 2 : THUMB_OFFSET;
-    const extraWidth = thumbWidth - THUMB_SIZE;
+        ? m.thumbSize + m.pillExtend
+        : m.thumbSize;
+    const thumbHeight = pressed ? m.thumbSize - m.pressShrink : m.thumbSize;
+    const thumbY = pressed ? THUMB_OFFSET + m.pressShrink / 2 : THUMB_OFFSET;
+    const extraWidth = thumbWidth - m.thumbSize;
     const thumbX = checked
-      ? THUMB_OFFSET + THUMB_TRAVEL - extraWidth
+      ? THUMB_OFFSET + thumbTravel - extraWidth
       : THUMB_OFFSET;
 
     useEffect(() => {
@@ -102,12 +123,12 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         }
 
         const dragMin = THUMB_OFFSET;
-        const pressedThumbWidth = THUMB_SIZE + PRESS_EXTEND;
-        const dragMax = TRACK_WIDTH - THUMB_OFFSET - pressedThumbWidth;
+        const pressedThumbWidth = m.thumbSize + m.pressExtend;
+        const dragMax = m.trackWidth - THUMB_OFFSET - pressedThumbWidth;
         const rawX = pointerStart.current.originX + delta;
         motionX.set(Math.max(dragMin, Math.min(dragMax, rawX)));
       },
-      [motionX]
+      [motionX, m]
     );
 
     const handlePointerUp = useCallback(
@@ -121,8 +142,8 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
 
           const currentX = motionX.get();
           const dragMin = THUMB_OFFSET;
-          const pressedThumbWidth = THUMB_SIZE + PRESS_EXTEND;
-          const dragMax = TRACK_WIDTH - THUMB_OFFSET - pressedThumbWidth;
+          const pressedThumbWidth = m.thumbSize + m.pressExtend;
+          const dragMax = m.trackWidth - THUMB_OFFSET - pressedThumbWidth;
           const midpoint = (dragMin + dragMax) / 2;
 
           const shouldBeOn = currentX > midpoint;
@@ -131,7 +152,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
             onToggle();
           } else {
             const snapTarget = checked
-              ? THUMB_OFFSET + THUMB_TRAVEL
+              ? THUMB_OFFSET + thumbTravel
               : THUMB_OFFSET;
             animate(motionX, snapTarget, thumbTransition ?? spring.moderate);
           }
@@ -143,7 +164,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
 
         pointerStart.current = null;
       },
-      [checked, onToggle, motionX, thumbTransition]
+      [checked, onToggle, motionX, thumbTransition, m, thumbTravel]
     );
 
     const handlePointerCancel = useCallback(
@@ -154,21 +175,24 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         if (dragging.current) {
           dragging.current = false;
           const snapTarget = checked
-            ? THUMB_OFFSET + THUMB_TRAVEL
+            ? THUMB_OFFSET + thumbTravel
             : THUMB_OFFSET;
           animate(motionX, snapTarget, thumbTransition ?? spring.moderate);
         }
 
         pointerStart.current = null;
       },
-      [checked, motionX, thumbTransition]
+      [checked, motionX, thumbTransition, thumbTravel]
     );
 
     return (
       <div
         ref={ref}
         className={cn(
-          "relative z-10 flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none touch-none",
+          "relative z-10 flex items-center cursor-pointer select-none touch-none",
+          sizeClasses.gap,
+          sizeClasses.px,
+          sizeClasses.variant === "compact" ? "py-1" : "py-2",
           disabled && "opacity-50 pointer-events-none",
           className
         )}
@@ -203,8 +227,8 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
             "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
           style={{
-            width: TRACK_WIDTH,
-            height: TRACK_HEIGHT,
+            width: m.trackWidth,
+            height: m.trackHeight,
             backgroundColor: checked
               ? hovered ? "#5C89F2" : "#6B97FF"
               : hovered
@@ -251,8 +275,9 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
           id={labelId}
           className={cn(
             // text-box trim recenters the letterforms against the track; the
-            // 20px track is taller than the label, so layout doesn't change.
-            "text-[13px] [text-box:trim-both_cap_alphabetic] transition-[color] duration-80",
+            // track is taller than the label, so layout doesn't change.
+            "[text-box:trim-both_cap_alphabetic] transition-[color] duration-80",
+            sizeClasses.text,
             checked ? "text-foreground" : "text-muted-foreground"
           )}
         >

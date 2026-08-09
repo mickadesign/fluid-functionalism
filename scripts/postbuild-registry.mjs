@@ -40,6 +40,7 @@ const CUSTOM_ITEMS = new Set([
   // libs / hooks (primitive-agnostic, single source under @fluid)
   "font-weight",
   "shape-context",
+  "size-context",
   "surface-context",
   "surface-classes",
   "icon-context",
