@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
-import { useSize } from "@/lib/size-context";
+import { useSize, useSizeVariant } from "@/lib/size-context";
 import { SurfaceProvider, useSurface } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
@@ -201,26 +201,41 @@ function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 const DialogTitle = forwardRef<
   HTMLHeadingElement,
   HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn("text-[16px] text-foreground leading-tight", className)}
-    style={{ fontVariationSettings: "'wght' 700" }}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  // The title role of the type scale — see /docs/sizes.
+  const compact = useSizeVariant() === "compact";
+  return (
+    <DialogPrimitive.Title
+      ref={ref}
+      className={cn(
+        compact ? "text-[15px]" : "text-[16px]",
+        "text-foreground leading-tight",
+        className
+      )}
+      style={{ fontVariationSettings: "'wght' 700" }}
+      {...props}
+    />
+  );
+});
 DialogTitle.displayName = "DialogTitle";
 
 const DialogDescription = forwardRef<
   HTMLParagraphElement,
   HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
-    ref={ref}
-    className={cn("text-[13px] text-muted-foreground", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const compact = useSizeVariant() === "compact";
+  return (
+    <DialogPrimitive.Description
+      ref={ref}
+      className={cn(
+        compact ? "text-[12px]" : "text-[13px]",
+        "text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 DialogDescription.displayName = "DialogDescription";
 
 export {

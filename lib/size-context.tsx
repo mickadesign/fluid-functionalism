@@ -3,6 +3,7 @@ export {
   useSize,
   useSizeVariant,
   useSizeContext,
+  useTypeScale,
   sizeMap,
   typeScale,
 } from "@/registry/default/lib/size-context";

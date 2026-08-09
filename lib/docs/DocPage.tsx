@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ReactNode } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
+import { useSizeVariant } from "@/lib/size-context";
 import { InputCopy } from "@/registry/default/input-copy";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
@@ -45,6 +46,9 @@ export function DocPage({
 }: DocPageProps) {
   const ArrowRight = useIcon("arrow-right");
   const { base } = useBase();
+  // Page chrome follows the type scale: display for the h1, body for the
+  // description (see /docs/sizes).
+  const compact = useSizeVariant() === "compact";
 
   const currentIndex = slug ? docOrder.findIndex((c) => c.slug === slug) : -1;
   const prev = currentIndex > 0
@@ -59,12 +63,20 @@ export function DocPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1
-            className="text-[22px] sm:text-[28px] text-foreground leading-none mb-2"
+            className={`${
+              compact ? "text-[20px] sm:text-[24px]" : "text-[22px] sm:text-[28px]"
+            } text-foreground leading-none mb-2`}
             style={{ fontVariationSettings: fontWeights.bold }}
           >
             {title}
           </h1>
-          <p className="text-[13px] text-muted-foreground">{description}</p>
+          <p
+            className={`${
+              compact ? "text-[12px]" : "text-[13px]"
+            } text-muted-foreground`}
+          >
+            {description}
+          </p>
         </div>
         {slug && (
           <div className="flex items-center gap-1 shrink-0">
@@ -143,10 +155,14 @@ interface DocSectionProps {
 }
 
 export function DocSection({ title, children }: DocSectionProps) {
+  // Section headings are the title role of the type scale (see /docs/sizes).
+  const compact = useSizeVariant() === "compact";
   return (
     <div className="flex flex-col gap-3">
       <h2
-        className="text-[16px] text-foreground leading-none"
+        className={`${
+          compact ? "text-[15px]" : "text-[16px]"
+        } text-foreground leading-none`}
         style={{ fontVariationSettings: fontWeights.semibold }}
       >
         {title}

@@ -104,13 +104,27 @@ const typeScale = {
   subtitle: { default: 14, compact: 13 },
   /** Control labels and body copy — `SizeClasses.text`. */
   body: { default: 13, compact: 12 },
-  /** Secondary text: descriptions, meta rows, errors. */
+  /** Secondary text: descriptions, meta rows, errors, eyebrows and group
+   *  labels (the former overline role — an uppercase or muted caption). */
   caption: { default: 12, compact: 11 },
-  /** Eyebrows and group labels (uppercase or muted). */
-  overline: { default: 11, compact: 10 },
 } as const satisfies Record<string, TypeScaleStep>;
 
 type TypeScaleRole = keyof typeof typeScale;
+
+/** The type scale resolved for the active ladder step (px per role):
+ *  explicit override > surrounding SizeProvider > "default". */
+function useTypeScale(
+  override?: SizeVariant | null
+): Record<TypeScaleRole, number> {
+  const variant = useSizeVariant(override);
+  return {
+    display: typeScale.display[variant],
+    title: typeScale.title[variant],
+    subtitle: typeScale.subtitle[variant],
+    body: typeScale.body[variant],
+    caption: typeScale.caption[variant],
+  };
+}
 
 interface SizeContextValue {
   size: SizeVariant;
@@ -171,5 +185,13 @@ function SizeProvider({
   return <SizeContext.Provider value={value}>{children}</SizeContext.Provider>;
 }
 
-export { SizeProvider, useSize, useSizeVariant, useSizeContext, sizeMap, typeScale };
+export {
+  SizeProvider,
+  useSize,
+  useSizeVariant,
+  useSizeContext,
+  useTypeScale,
+  sizeMap,
+  typeScale,
+};
 export type { SizeVariant, SizeClasses, TypeScaleRole, TypeScaleStep };

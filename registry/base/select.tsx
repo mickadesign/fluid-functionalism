@@ -774,16 +774,21 @@ function SelectGroup({
 SelectGroup.displayName = "SelectGroup";
 
 const SelectLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "px-2 py-1.5 shrink-0 text-[11px] text-muted-foreground",
-        className
-      )}
-      {...props}
-    />
-  )
+  ({ className, ...props }, ref) => {
+    // Group labels are the caption role of the type scale — see /docs/sizes.
+    const compact = useSize().variant === "compact";
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "px-2 py-1.5 shrink-0 text-muted-foreground",
+          compact ? "text-[11px]" : "text-[12px]",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
 );
 
 SelectLabel.displayName = "SelectLabel";

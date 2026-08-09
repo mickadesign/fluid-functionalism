@@ -811,21 +811,26 @@ function CardImage({ src, alt, className }: CardImageProps) {
 CardImage.displayName = "CardImage";
 
 // ── CardEyebrow ──────────────────────────────────────────
-// Small uppercase label above the title (e.g. "New Model").
+// Small uppercase label above the title (e.g. "New Model"). Typographically
+// it's the caption role of the type scale in uppercase — see /docs/sizes.
 
 const CardEyebrow = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
-  ({ className, ...props }, ref) => (
-    <span
-      ref={ref}
-      data-slot="card-eyebrow"
-      className={cn(
-        "text-[11px] uppercase tracking-wide text-muted-foreground",
-        className
-      )}
-      style={{ fontVariationSettings: fontWeights.semibold }}
-      {...props}
-    />
-  )
+  ({ className, ...props }, ref) => {
+    const compact = useSize().variant === "compact";
+    return (
+      <span
+        ref={ref}
+        data-slot="card-eyebrow"
+        className={cn(
+          compact ? "text-[11px]" : "text-[12px]",
+          "uppercase tracking-wide text-muted-foreground",
+          className
+        )}
+        style={{ fontVariationSettings: fontWeights.semibold }}
+        {...props}
+      />
+    );
+  }
 );
 
 CardEyebrow.displayName = "CardEyebrow";

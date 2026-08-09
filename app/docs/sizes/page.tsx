@@ -134,57 +134,71 @@ const TYPE_ROLES: Array<{
   usage: string;
   weight: string;
   sample: string;
-  uppercase?: boolean;
   muted?: boolean;
 }> = [
   { role: "display", label: "Display", usage: "Page titles", weight: fontWeights.bold, sample: "Fluid Functionalism" },
   { role: "title", label: "Title", usage: "Section headings, dialog titles", weight: fontWeights.semibold, sample: "Create teamspace" },
   { role: "subtitle", label: "Subtitle", usage: "Card titles, chat bubbles", weight: fontWeights.medium, sample: "Weekly design review" },
   { role: "body", label: "Body", usage: "Control labels, body copy", weight: fontWeights.normal, sample: "The quick brown fox jumps over the lazy dog" },
-  { role: "caption", label: "Caption", usage: "Descriptions, meta rows, errors", weight: fontWeights.normal, sample: "Last updated 4 minutes ago", muted: true },
-  { role: "overline", label: "Overline", usage: "Eyebrows, group labels", weight: fontWeights.medium, sample: "Workspace", uppercase: true, muted: true },
+  { role: "caption", label: "Caption", usage: "Descriptions, meta rows, eyebrows, group labels", weight: fontWeights.normal, sample: "Last updated 4 minutes ago", muted: true },
 ];
 
-function TypeScaleSpecimen() {
+function TypeScaleTable({ step }: { step: SizeVariant }) {
   return (
-    <div className="flex flex-col">
-      {TYPE_ROLES.map(({ role, label, usage, weight, sample, uppercase, muted }) => (
-        <div
-          key={role}
-          className="flex flex-col gap-3 border-b border-border/50 py-4 last:border-b-0 sm:flex-row sm:items-baseline"
-        >
-          <div className="flex w-40 shrink-0 flex-col gap-0.5">
-            <span
-              className="text-[13px] text-foreground"
-              style={{ fontVariationSettings: fontWeights.medium }}
-            >
-              {label}
-              <span className="ml-2 tabular-nums text-muted-foreground">
-                {typeScale[role].default}px · {typeScale[role].compact}px
-              </span>
-            </span>
-            <span className="text-[12px] text-muted-foreground">{usage}</span>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            {(["default", "compact"] as const).map((step) => (
-              <span
-                key={step}
-                className={
-                  (muted ? "text-muted-foreground" : "text-foreground") +
-                  " truncate leading-snug" +
-                  (uppercase ? " uppercase tracking-wide" : "")
-                }
-                style={{
-                  fontSize: typeScale[role][step],
-                  fontVariationSettings: weight,
-                }}
-              >
-                {sample}
-              </span>
+    <div className="flex flex-col gap-2">
+      <span
+        className="text-[13px] text-foreground"
+        style={{ fontVariationSettings: fontWeights.semibold }}
+      >
+        {step === "default" ? "Default" : "Compact"}
+      </span>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[480px] border-collapse text-[13px]">
+          <thead>
+            <tr className="border-b border-border">
+              {["Role", "Size", "Sample", "Used for"].map((h) => (
+                <th
+                  key={h}
+                  className="px-3 py-2 text-left text-foreground"
+                  style={{ fontVariationSettings: fontWeights.semibold }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {TYPE_ROLES.map(({ role, label, usage, weight, sample, muted }) => (
+              <tr key={role} className="border-b border-border/50">
+                <td className="px-3 py-2.5">
+                  <code className="rounded bg-muted px-1 py-0.5 text-[12px]">
+                    {role}
+                  </code>
+                </td>
+                <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
+                  {typeScale[role][step]}px
+                </td>
+                <td className="px-3 py-2.5">
+                  <span
+                    className={cn(
+                      muted ? "text-muted-foreground" : "text-foreground",
+                      "block truncate leading-snug max-w-[360px]"
+                    )}
+                    style={{
+                      fontSize: typeScale[role][step],
+                      fontVariationSettings: weight,
+                    }}
+                  >
+                    {sample}
+                  </span>
+                  <span className="sr-only">{label}</span>
+                </td>
+                <td className="px-3 py-2.5 text-muted-foreground">{usage}</td>
+              </tr>
             ))}
-          </div>
-        </div>
-      ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -676,6 +690,19 @@ export default function SizesPage() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Typography scale">
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
+          Five roles, one table per step. The default scale is the system as
+          it ships today; compact drops every role one notch so a dense
+          screen keeps the same hierarchy at a smaller size. The scale is
+          exported as <Code>typeScale</Code> from <Code>size-context</Code>,
+          and the site-level Size control applies it live — flip it and the
+          page chrome, dialogs, and labels move with the controls.
+        </p>
+        <TypeScaleTable step="default" />
+        <TypeScaleTable step="compact" />
+      </DocSection>
+
       <DocSection title="Preview">
         <p className="text-[13px] text-muted-foreground leading-relaxed">
           Real content is the honest test. Toggle the table below — or flip
@@ -719,20 +746,6 @@ export default function SizesPage() {
         >
           <OverrideDemo />
         </ComponentPreview>
-      </DocSection>
-
-      <DocSection title="Typography scale">
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Six roles, two steps each. The default column is the system as it
-          ships today; compact drops every role one notch so a dense screen
-          keeps the same hierarchy at a smaller size. Components already
-          render <Code>subtitle</Code>, <Code>body</Code>, and
-          <Code>caption</Code> through the ladder — <Code>display</Code>,
-          <Code>title</Code>, and <Code>overline</Code> are for composing
-          your own screens, exported as <Code>typeScale</Code> from
-          <Code>size-context</Code>.
-        </p>
-        <TypeScaleSpecimen />
       </DocSection>
 
       <DocSection title="Token reference">

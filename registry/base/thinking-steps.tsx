@@ -24,6 +24,7 @@ import type { IconName } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useSize } from "@/lib/size-context";
 import { Badge } from "@/registry/default/badge";
 import type { BadgeColor } from "@/registry/default/badge";
 
@@ -516,6 +517,8 @@ interface ThinkingStepImageProps {
 
 function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: ThinkingStepImageProps) {
   const shape = useShape();
+  // The caption role of the type scale — see /docs/sizes.
+  const compact = useSize().variant === "compact";
   return (
     <motion.div
       className={cn("mt-1.5", className)}
@@ -535,7 +538,12 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
         )}
       />
       {caption && (
-        <span className="text-[11px] text-muted-foreground mt-1 block">
+        <span
+          className={cn(
+            compact ? "text-[11px]" : "text-[12px]",
+            "text-muted-foreground mt-1 block"
+          )}
+        >
           {caption}
         </span>
       )}

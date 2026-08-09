@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { shapeMap } from "@/lib/shape-context";
-import { SizeProvider, type SizeVariant } from "@/lib/size-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
   DropdownContext,
@@ -680,16 +680,21 @@ DropdownContent.displayName = "DropdownContent";
 // ---------------------------------------------------------------------------
 
 const DropdownLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, ...props }, ref) => {
+    // Group labels are the caption role of the type scale — see /docs/sizes.
+    const compact = useSize().variant === "compact";
+    return (
     <div
       ref={ref}
       className={cn(
-        "px-2 py-1.5 shrink-0 text-[11px] text-muted-foreground",
+        "px-2 py-1.5 shrink-0 text-muted-foreground",
+        compact ? "text-[11px]" : "text-[12px]",
         className
       )}
       {...props}
     />
-  )
+    );
+  }
 );
 
 DropdownLabel.displayName = "DropdownLabel";
