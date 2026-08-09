@@ -1266,8 +1266,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             // floor: the option rows bleed by -mx-3, so anything tighter puts
             // their hover background flush against the card edge.
             compact
-              ? "px-3.5 sm:px-4 pt-3 sm:pt-4 pb-1.5 text-[11px]"
-              : "px-4 sm:px-5 pt-4 sm:pt-5 pb-2 text-[12px]"
+              ? "px-3.5 sm:px-4 pt-2.5 sm:pt-3 pb-1.5 text-[11px]"
+              : "px-4 sm:px-5 pt-3.5 sm:pt-4 pb-2 text-[12px]"
           )}
         >
           <span>
