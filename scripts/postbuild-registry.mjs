@@ -26,17 +26,19 @@
 
 import { mkdir, readdir, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { DUAL_FLAVOR_SLUGS } from "../lib/dual-flavor-slugs.mjs";
 
 const REGISTRY_DIR = new URL("../public/r", import.meta.url).pathname;
-const BASE_URL = "https://www.fluidfunctionalism.com/r";
+export const BASE_URL = "https://www.fluidfunctionalism.com/r";
 
 // Single source of truth lives in lib/dual-flavor-slugs.mjs.
 const DUAL_FLAVOR_ITEMS = new Set(DUAL_FLAVOR_SLUGS);
 
 // All custom items (not on the default shadcn registry). Used to decide whether
-// a `registryDependencies` entry needs URL rewriting.
-const CUSTOM_ITEMS = new Set([
+// a `registryDependencies` entry needs URL rewriting. Every entry must exist as
+// an item in registry.json (enforced by tests/registry-consistency.test.mjs).
+export const CUSTOM_ITEMS = new Set([
   // libs / hooks (primitive-agnostic, single source under @fluid)
   "font-weight",
   "shape-context",
@@ -44,13 +46,11 @@ const CUSTOM_ITEMS = new Set([
   "surface-context",
   "surface-classes",
   "icon-context",
-  "icon-map",
   "springs",
   "use-proximity-hover",
   "use-merge-split",
   "use-touch-primary",
   "elevated",
-  "scroll-fade",
   // themes (cssVars-only items, e.g. the elevation surface ladder)
   "surfaces",
   // primitive-touching components (have both Radix and Base flavours)
@@ -63,7 +63,6 @@ const CUSTOM_ITEMS = new Set([
   "file-thumbnail",
   "input-copy",
   "input-group",
-  "menu-item",
   "select",
   "table",
   "tabs-subtle",
@@ -77,7 +76,7 @@ const CUSTOM_ITEMS = new Set([
  *  - For primitive-agnostic deps: always bare `r/<dep>.json`.
  *  - "utils" stays plain (resolves from default shadcn registry).
  */
-function depUrl(dep, flavor /* 'flat' | 'radix' | 'base' */) {
+export function depUrl(dep, flavor /* 'flat' | 'radix' | 'base' */) {
   if (!CUSTOM_ITEMS.has(dep)) return dep; // e.g. "utils"
   if (DUAL_FLAVOR_ITEMS.has(dep)) {
     if (flavor === "base") return `${BASE_URL}/base/${dep}.json`;
@@ -94,7 +93,7 @@ function rewriteDeps(item, flavor) {
 }
 
 /** Pick the right flavour to use when rewriting an individual item. */
-function flavorForItem(item) {
+export function flavorForItem(item) {
   return typeof item.name === "string" && item.name.endsWith("-base") ? "base" : "flat";
 }
 
@@ -106,16 +105,16 @@ async function writeJson(path, data) {
   await writeFile(path, JSON.stringify(data, null, 2) + "\n");
 }
 
-async function run() {
-  const radixDir = join(REGISTRY_DIR, "radix");
-  const baseDir = join(REGISTRY_DIR, "base");
+export async function processRegistry(registryDir = REGISTRY_DIR) {
+  const radixDir = join(registryDir, "radix");
+  const baseDir = join(registryDir, "base");
   await mkdir(radixDir, { recursive: true });
   await mkdir(baseDir, { recursive: true });
 
-  const files = await readdir(REGISTRY_DIR);
+  const files = await readdir(registryDir);
 
   for (const file of files.filter((f) => f.endsWith(".json"))) {
-    const filePath = join(REGISTRY_DIR, file);
+    const filePath = join(registryDir, file);
     const data = await readJson(filePath);
     const isBaseFile = file.endsWith("-base.json");
     const baseName = file.replace(/-base\.json$/, ".json").replace(/\.json$/, "");
@@ -140,14 +139,20 @@ async function run() {
       await rm(filePath);
       console.log(`  ✓ base/${baseName}.json`);
     } else {
+      // For dual-flavour items, clone before the flat rewrite: depUrl only
+      // rewrites plain names, so a copy taken after the rewrite would keep the
+      // flat URLs instead of getting radix/* ones.
+      const radixCopy = DUAL_FLAVOR_ITEMS.has(baseName)
+        ? JSON.parse(JSON.stringify(data))
+        : null;
+
       // Flat file: rewrite deps as "flat" (back-compat URLs).
       rewriteDeps(data, "flat");
       await writeJson(filePath, data);
       console.log(`  ✓ ${file}`);
 
-      // For dual-flavour items, also emit radix/<name>.json with radix URLs.
-      if (DUAL_FLAVOR_ITEMS.has(baseName)) {
-        const radixCopy = JSON.parse(JSON.stringify(data));
+      // Also emit radix/<name>.json with radix URLs.
+      if (radixCopy) {
         rewriteDeps(radixCopy, "radix");
         await writeJson(join(radixDir, `${baseName}.json`), radixCopy);
         console.log(`  ✓ radix/${baseName}.json`);
@@ -156,7 +161,11 @@ async function run() {
   }
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Run only when invoked directly (`node scripts/postbuild-registry.mjs`), so
+// tests can import the functions above without triggering a build pass.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  processRegistry().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
