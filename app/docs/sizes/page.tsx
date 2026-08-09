@@ -20,7 +20,14 @@ import { Tabs, TabsList, TabItem } from "@/registry/radix/tabs";
 import { CheckboxGroup, CheckboxItem } from "@/registry/radix/checkbox-group";
 import { RadioGroup, RadioItem } from "@/registry/radix/radio-group";
 import { InputGroup, InputField } from "@/registry/default/input-group";
-import { Switch } from "@/registry/radix/switch";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/registry/default/table";
 import { ListFilter, Plus, Flag } from "lucide-react";
 
 /** Inline code chip used throughout the prose. */
@@ -49,48 +56,59 @@ const LADDER_CODE = `// Every control resolves its size the same way:
 <CheckboxItem … />                        {/* h-9 rows */}
 
 <SizeProvider size="compact">
-  {/* the same tree, one step down the ladder — 28px */}
+  {/* the same tree, one step down — 28px */}
+</SizeProvider>`;
+
+const TABLE_CODE = `import { SizeProvider } from "@/lib/size-context";
+
+// Table rows sit on the same ladder: 36px default, 28px compact.
+// <Table size="compact"> works too.
+
+<SizeProvider size="compact">
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Name</TableHead>
+        <TableHead>Role</TableHead>
+        <TableHead>Status</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      <TableRow index={0}>
+        <TableCell>Alice</TableCell>
+        <TableCell>Engineer</TableCell>
+        <TableCell>Active</TableCell>
+      </TableRow>
+      …
+    </TableBody>
+  </Table>
 </SizeProvider>`;
 
 const REGION_CODE = `import { SizeProvider } from "@/lib/size-context";
 
-// Dense surfaces — filter bars, toolbars, table headers — opt a whole
-// region into the compact step. Every control inside follows; no
-// per-component wiring.
+// One wrapper makes a whole region compact — filter bars, toolbars,
+// table headers. Every control inside follows, popups included.
 
 <SizeProvider size="compact">
   <div className="flex items-center gap-2">
-    <Tabs value={view} onValueChange={setView}>
-      <TabsList>
-        <TabItem value="all" label="All" />
-        <TabItem value="active" label="Active" />
-        <TabItem value="archived" label="Archived" />
-      </TabsList>
-    </Tabs>
-    <Select value={sort} onValueChange={setSort}>
-      <SelectTrigger placeholder="Sort by" />
-      <SelectContent>…</SelectContent>
-    </Select>
+    <Tabs value={view} onValueChange={setView}>…</Tabs>
+    <Select value={sort} onValueChange={setSort}>…</Select>
     <Button variant="tertiary" leadingIcon={ListFilter}>Filter</Button>
     <Button leadingIcon={Plus}>New</Button>
   </div>
 </SizeProvider>`;
 
-const OVERRIDE_CODE = `// The size prop wins over the provider — pin one control while the
-// region supplies the rest.
+const OVERRIDE_CODE = `// The size prop wins over the provider.
 
 <SizeProvider size="compact">
   <Select …>…</Select>                {/* compact, from the provider */}
   <Button size="default" leadingIcon={Plus}>
     New project                       {/* pinned to 36px */}
   </Button>
-</SizeProvider>
-
-// Works the other way too — a compact control in a default region:
-<Button size="compact">Clear all</Button>`;
+</SizeProvider>`;
 
 // ---------------------------------------------------------------------------
-// Token reference — the full ladder, both steps side by side
+// Token reference
 // ---------------------------------------------------------------------------
 
 const TOKEN_ROWS: Array<{
@@ -100,7 +118,7 @@ const TOKEN_ROWS: Array<{
   compact: string;
 }> = [
   { token: "control", applies: "Buttons, inputs, select triggers, subtle tabs", def: "h-9 · 36px", compact: "h-7 · 28px" },
-  { token: "item", applies: "Menu, select, checkbox and radio rows", def: "h-9 · 36px", compact: "h-7 · 28px" },
+  { token: "item", applies: "Menu, select, checkbox, radio and table rows", def: "h-9 · 36px", compact: "h-7 · 28px" },
   { token: "segmentItem + segmentPad", applies: "Segmented tabs inside their padded list", def: "28px + 4px = 36px", compact: "24px + 2px = 28px" },
   { token: "text", applies: "Labels inside controls", def: "13px", compact: "12px" },
   { token: "icon", applies: "Leading/trailing icons", def: "16px", compact: "14px" },
@@ -243,7 +261,54 @@ function LadderDemo() {
 }
 
 // ---------------------------------------------------------------------------
-// Compact region demo — a filter bar with a live density toggle
+// Table preview — the /docs/table content with a live size toggle
+// ---------------------------------------------------------------------------
+
+const PEOPLE = [
+  { name: "Alice", role: "Engineer", status: "Active" },
+  { name: "Bob", role: "Designer", status: "Away" },
+  { name: "Carol", role: "Manager", status: "Active" },
+];
+
+function TablePreview() {
+  const [size, setSize] = useState<SizeVariant>("default");
+
+  return (
+    <div className="flex w-full flex-col items-start gap-5">
+      <Tabs value={size} onValueChange={(v) => setSize(v as SizeVariant)}>
+        <TabsList>
+          <TabItem value="default" label="Default" />
+          <TabItem value="compact" label="Compact" />
+        </TabsList>
+      </Tabs>
+      <SizeProvider size={size}>
+        <div className="w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {PEOPLE.map((p, i) => (
+                <TableRow key={p.name} index={i}>
+                  <TableCell>{p.name}</TableCell>
+                  <TableCell>{p.role}</TableCell>
+                  <TableCell>{p.status}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </SizeProvider>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Compact region demo — a filter bar
 // ---------------------------------------------------------------------------
 
 const SORT_OPTIONS = [
@@ -253,43 +318,35 @@ const SORT_OPTIONS = [
 ];
 
 function FilterBarDemo() {
-  const [compact, setCompact] = useState(true);
   const [view, setView] = useState("all");
   const [sort, setSort] = useState("updated");
 
   return (
-    <div className="flex w-full flex-col items-start gap-5">
-      <Switch
-        label="Compact region"
-        checked={compact}
-        onToggle={() => setCompact((v) => !v)}
-      />
-      <SizeProvider size={compact ? "compact" : "default"}>
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <Tabs value={view} onValueChange={setView}>
-            <TabsList>
-              <TabItem value="all" label="All" />
-              <TabItem value="active" label="Active" />
-              <TabItem value="archived" label="Archived" />
-            </TabsList>
-          </Tabs>
-          <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger placeholder="Sort by" />
-            <SelectContent>
-              {SORT_OPTIONS.map((o, i) => (
-                <SelectItem key={o.value} value={o.value} index={i}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="tertiary" leadingIcon={ListFilter}>
-            Filter
-          </Button>
-          <Button leadingIcon={Plus}>New</Button>
-        </div>
-      </SizeProvider>
-    </div>
+    <SizeProvider size="compact">
+      <div className="flex w-full flex-wrap items-center gap-2">
+        <Tabs value={view} onValueChange={setView}>
+          <TabsList>
+            <TabItem value="all" label="All" />
+            <TabItem value="active" label="Active" />
+            <TabItem value="archived" label="Archived" />
+          </TabsList>
+        </Tabs>
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger placeholder="Sort by" />
+          <SelectContent>
+            {SORT_OPTIONS.map((o, i) => (
+              <SelectItem key={o.value} value={o.value} index={i}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="tertiary" leadingIcon={ListFilter}>
+          Filter
+        </Button>
+        <Button leadingIcon={Plus}>New</Button>
+      </div>
+    </SizeProvider>
   );
 }
 
@@ -334,14 +391,14 @@ const PROVIDER_PROPS: PropDef[] = [
     name: "size",
     type: '"default" | "compact"',
     description:
-      "Controlled variant — pins every control in the subtree to one step of the ladder.",
+      "Controlled variant — pins every control in the subtree to one step.",
   },
   {
     name: "defaultSize",
     type: '"default" | "compact"',
     default: '"default"',
     description:
-      "Uncontrolled initial variant, switchable later through useSizeContext().setSize.",
+      "Uncontrolled initial variant, switchable via useSizeContext().setSize.",
   },
 ];
 
@@ -351,7 +408,7 @@ const CONSUMER_PROPS: PropDef[] = [
     type: '"default" | "compact"',
     default: "from provider",
     description:
-      "Per-component override on Button, Select, Tabs, TabsSubtle, Dropdown, DropdownMenu, CheckboxGroup, RadioGroup, InputGroup, and InputCopy. Wins over the surrounding SizeProvider.",
+      "Per-component override on Button, Select, Tabs, TabsSubtle, Dropdown, DropdownMenu, CheckboxGroup, RadioGroup, InputGroup, InputCopy, and Table. Wins over the surrounding SizeProvider.",
   },
 ];
 
@@ -363,28 +420,23 @@ export default function SizesPage() {
   return (
     <DocPage
       title="Sizes"
-      description="A two-step size ladder — a 36px default and a 28px compact — shared by every control."
+      description="Two control heights, one system: a 36px default and a 28px compact."
       slug="sizes"
       installSlug="size-context"
     >
       <DocSection title="The ladder">
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Every interactive control sits on one of two heights.
-          <Code>default</Code> is 36px: enough room for the system&apos;s 13px
-          label with comfortable breathing space, and a workable pointer
-          target. <Code>compact</Code> is 28px, one deliberate step down for
-          dense surfaces — filter bars, toolbars, table headers, sidebars —
-          where controls support the content rather than being it. There is
-          nothing in between: two steps keep any mix of controls on a shared
-          rhythm, and a whole region switches steps at once.
+          Every control sits on one of two heights. <Code>default</Code> is
+          36px — room for the 13px label, easy to hit. <Code>compact</Code> is
+          28px. It&apos;s not just a shorter box: text drops to 12px, icons to
+          14px, checks to 13px, and paddings tighten with them. Nothing in
+          between, so any mix of controls stays on the same rhythm.
         </p>
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          A step is more than a height. Text drops 13px → 12px, icons 16px →
-          14px, check controls 15px → 13px, and paddings tighten in
-          proportion, so a compact control reads as a smaller sibling — not a
-          cropped one. Composite controls stay on the ladder too: a segmented
-          tab is 28px inside a 4px-padded list, so the whole control lands on
-          exactly 36px next to a button or select.
+          Which step fits depends on the product. Compact is made for
+          data-heavy, productivity tools people work in all day — dashboards,
+          admin panels, anything where density earns its keep. Default is the
+          right call for everything else.
         </p>
         <ComponentPreview
           title="Both steps, every control"
@@ -395,21 +447,31 @@ export default function SizesPage() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Token reference">
-        <TokenTable />
+      <DocSection title="Preview">
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
+          Real content is the honest test. Toggle the table below — or flip
+          the whole site with the Size control in the right panel (press
+          <Code>S</Code>).
+        </p>
+        <ComponentPreview
+          title="Table"
+          code={TABLE_CODE}
+          minHeightClass="min-h-[240px]"
+        >
+          <TablePreview />
+        </ComponentPreview>
       </DocSection>
 
       <DocSection title="Compact regions">
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Density is a property of a region, not of a control. Wrap the region
-          in a<Code>SizeProvider</Code> and everything inside — including
-          portalled popups, which inherit React context — takes the compact
-          step together. Components never need individual wiring.
+          Density is a region decision, not a per-control one. Wrap the region
+          in a<Code>SizeProvider</Code> and everything inside follows — popups
+          included, since React context crosses portals.
         </p>
         <ComponentPreview
           title="Filter bar"
           code={REGION_CODE}
-          minHeightClass="min-h-[180px]"
+          minHeightClass="min-h-[160px]"
         >
           <FilterBarDemo />
         </ComponentPreview>
@@ -417,11 +479,9 @@ export default function SizesPage() {
 
       <DocSection title="Overriding per component">
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Each sized component also takes a <Code>size</Code> prop that wins
-          over the provider: pin a primary action to the default step inside a
-          compact toolbar, or drop a single control to compact in a default
-          region. Compound components (Select, Tabs, Dropdown, the groups)
-          accept it on their root and pass it to every part, popup included.
+          The <Code>size</Code> prop wins over the provider. Pin a primary
+          action to default inside a compact toolbar, or drop a single control
+          to compact in a default region.
         </p>
         <ComponentPreview
           title="Pinned default in a compact region"
@@ -432,6 +492,10 @@ export default function SizesPage() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Token reference">
+        <TokenTable />
+      </DocSection>
+
       <DocSection title="SizeProvider props">
         <PropsTable props={PROVIDER_PROPS} />
       </DocSection>
@@ -439,12 +503,11 @@ export default function SizesPage() {
       <DocSection title="Component size prop">
         <PropsTable props={CONSUMER_PROPS} />
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Button keeps its earlier <Code>sm</Code> / <Code>md</Code> /
-          <Code>lg</Code> values as aliases — <Code>sm</Code> resolves to
-          compact, <Code>md</Code> and <Code>lg</Code> to default — so
-          existing call sites keep compiling while new code uses the two
-          canonical steps (<Code>icon</Code> / <Code>icon-compact</Code> for
-          square buttons).
+          Button keeps its old <Code>sm</Code> / <Code>md</Code> /
+          <Code>lg</Code> values as aliases (<Code>sm</Code> → compact, the
+          rest → default), so existing code keeps compiling. New code uses the
+          two canonical steps, with <Code>icon</Code> /{" "}
+          <Code>icon-compact</Code> for square buttons.
         </p>
       </DocSection>
     </DocPage>

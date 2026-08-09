@@ -4,9 +4,11 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ShapeProvider } from "@/registry/default/lib/shape-context";
+import { SizeProvider } from "@/registry/default/lib/size-context";
 import { ThemeProvider } from "@/registry/default/lib/theme-context";
 import { IconPlaygroundProvider } from "@/lib/docs/icon-playground";
 import { ShapeShortcut } from "@/lib/docs/shape-shortcut";
+import { SizeShortcut } from "@/lib/docs/size-shortcut";
 import { BaseProvider } from "@/lib/base-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
 
@@ -54,15 +56,18 @@ export default function RootLayout({
         <MotionConfig reducedMotion="user">
           <ShapeProvider defaultShape="rounded">
             <ShapeShortcut />
-            <ThemeProvider>
-              <IconPlaygroundProvider defaultLibrary="untitledui">
-                <BaseProvider>
-                  <SidebarLayout>{children}</SidebarLayout>
-                  <Analytics />
-                  <SpeedInsights />
-                </BaseProvider>
-              </IconPlaygroundProvider>
-            </ThemeProvider>
+            <SizeProvider>
+              <SizeShortcut />
+              <ThemeProvider>
+                <IconPlaygroundProvider defaultLibrary="untitledui">
+                  <BaseProvider>
+                    <SidebarLayout>{children}</SidebarLayout>
+                    <Analytics />
+                    <SpeedInsights />
+                  </BaseProvider>
+                </IconPlaygroundProvider>
+              </ThemeProvider>
+            </SizeProvider>
           </ShapeProvider>
         </MotionConfig>
       </body>

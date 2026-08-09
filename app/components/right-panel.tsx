@@ -14,6 +14,7 @@ import {
   useShapeContext,
   type ShapeVariant,
 } from "@/lib/shape-context";
+import { useSizeContext, type SizeVariant } from "@/lib/size-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useIcon } from "@/lib/icon-context";
 import {
@@ -99,6 +100,7 @@ export function GitHubStarButton() {
 export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left" | "right" | "top" | "bottom" }) {
   const { theme, setTheme } = useThemeContext();
   const { shape, setShape } = useShapeContext();
+  const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
 
@@ -120,6 +122,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
   const shapeOptions = [
     { label: "Rounded", value: "rounded" as ShapeVariant, icon: RectHorizIcon },
     { label: "Pill", value: "pill" as ShapeVariant, icon: CircleIcon },
+  ];
+
+  const sizeOptions = [
+    { label: "Default", value: "default" as SizeVariant },
+    { label: "Compact", value: "compact" as SizeVariant },
   ];
 
   const iconOptions = iconLibraryOrder.map((lib) => ({
@@ -168,6 +175,24 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
               <SelectContent>
                 {shapeOptions.map((o, i) => (
                   <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Tooltip>
+        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">S</kbd>&ensp; to toggle</span>} side={tooltipSide}>
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-muted-foreground">Size</span>
+            <Select value={size} onValueChange={(v) => setSize(v as SizeVariant)}>
+              <SelectTrigger
+                variant="borderless"
+                className="min-w-0 w-auto h-7 px-2 text-[13px]"
+              />
+              <SelectContent>
+                {sizeOptions.map((o, i) => (
+                  <SelectItem key={o.value} value={o.value} index={i}>
                     {o.label}
                   </SelectItem>
                 ))}
