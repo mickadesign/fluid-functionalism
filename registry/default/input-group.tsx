@@ -91,6 +91,9 @@ InputGroup.displayName = "InputGroup";
 interface InputFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "index"> {
   label: string;
+  /** Keep the label for assistive tech but don't render it — for inline
+   *  fields (a toolbar search) where the placeholder carries the meaning. */
+  labelHidden?: boolean;
   placeholder?: string;
   icon?: IconComponent;
   index: number;
@@ -105,6 +108,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
   (
     {
       label,
+      labelHidden,
       placeholder,
       icon: Icon,
       index,
@@ -180,14 +184,15 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
           className
         )}
       >
-        {/* Label */}
+        {/* Label — sr-only when hidden so the field keeps its accessible
+            name and the htmlFor wiring. */}
         <Field.Label
           className={cn(
-            "inline-grid",
+            labelHidden ? "sr-only" : "inline-grid",
             sizeClasses.text,
             // One notch tighter than the ladder's control padding — the field
             // ring is invisible at rest, so the roomier inset reads as a gap.
-            compact ? "pl-2" : "pl-2.5"
+            !labelHidden && (compact ? "pl-2" : "pl-2.5")
           )}
         >
           <span

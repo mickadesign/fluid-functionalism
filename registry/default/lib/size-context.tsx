@@ -37,6 +37,10 @@ interface SizeClasses {
   itemPx: string;
   /** Gap between an icon / control glyph and its label. */
   gap: string;
+  /** Gap between neighbouring controls in a row (toolbars, filter bars,
+   *  button clusters). Density is spacing as much as control height, so the
+   *  compact step halves it. */
+  rowGap: string;
   /** Icon size in px for leading/trailing icons inside controls. */
   icon: number;
   /** Checkbox square / radio circle edge in px. */
@@ -57,6 +61,7 @@ const sizeMap: Record<SizeVariant, SizeClasses> = {
     px: "px-3",
     itemPx: "px-2",
     gap: "gap-2",
+    rowGap: "gap-2",
     icon: 16,
     check: 15,
   },
@@ -74,6 +79,7 @@ const sizeMap: Record<SizeVariant, SizeClasses> = {
     px: "px-2.5",
     itemPx: "px-1.5",
     gap: "gap-1.5",
+    rowGap: "gap-1",
     icon: 14,
     check: 13,
   },

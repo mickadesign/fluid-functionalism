@@ -7,6 +7,7 @@ import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import {
   SizeProvider,
+  sizeMap,
   typeScale,
   type SizeVariant,
   type TypeScaleRole,
@@ -19,8 +20,9 @@ import {
   SelectItem,
 } from "@/components/flavored/select";
 import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { InputGroup, InputField } from "@/registry/default/input-group";
 import { cn } from "@/registry/default/lib/utils";
-import { ListFilter, Plus, SquareKanban, Table2 } from "lucide-react";
+import { ListFilter, Plus, Search, SquareKanban, Table2 } from "lucide-react";
 
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
@@ -127,6 +129,7 @@ const TOKEN_ROWS: Array<{
   { token: "check", applies: "Checkbox square, radio circle", def: "15px", compact: "13px" },
   { token: "px / itemPx", applies: "Control / row horizontal padding", def: "12px / 8px", compact: "10px / 6px" },
   { token: "gap", applies: "Icon-to-label gap", def: "8px", compact: "6px" },
+  { token: "rowGap", applies: "Gap between controls in a row (toolbars, filter bars)", def: "8px", compact: "4px" },
 ];
 
 function TokenTable() {
@@ -170,17 +173,26 @@ function TokenTable() {
 // ---------------------------------------------------------------------------
 
 const TOOLBAR_CODE = `// The same toolbar line at each step. One SizeProvider pins the
-// row; every control inside follows.
+// row; every control inside follows. activeLabel collapses inactive
+// tabs to their icon, saving room for the search field.
+
+const { rowGap } = useSize(); // control-to-control gap: 8px default, 4px compact
 
 <SizeProvider size="compact">
-  <div className="flex items-center gap-2">
-    <TabsSubtle selectedIndex={view} onSelect={setView}>
+  <div className={cn("flex items-center", rowGap)}>
+    <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
       <TabsSubtleItem index={0} icon={Table2} label="Table" />
-      <TabsSubtleItem index={1} icon={SquareKanban} label="Board view" />
+      <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
     </TabsSubtle>
-    <div className="ml-auto flex items-center gap-2">
+    <div className={cn("ml-auto flex items-center", rowGap)}>
+      <InputGroup className="w-28">
+        <InputField index={0} label="Search" labelHidden icon={Search}
+          placeholder="Search…" value={query} onChange={setQuery} />
+      </InputGroup>
       <Select value={sort} onValueChange={setSort}>…</Select>
-      <Button variant="tertiary" leadingIcon={ListFilter}>Filter</Button>
+      <Button variant="tertiary" size="icon-compact" aria-label="Filter">
+        <ListFilter />
+      </Button>
       <Button leadingIcon={Plus}>New</Button>
     </div>
   </div>
@@ -192,9 +204,33 @@ const SORT_OPTIONS = [
   { value: "name", label: "Name" },
 ];
 
+/** Toolbar search — the real InputGroup field, label hidden for inline use.
+ *  Hover, focus and sizing all come from the component. */
+function SearchField({ variant }: { variant: SizeVariant }) {
+  const [query, setQuery] = useState("");
+
+  return (
+    <InputGroup className={variant === "compact" ? "w-28" : "w-32"}>
+      <InputField
+        index={0}
+        label="Search"
+        labelHidden
+        icon={Search}
+        placeholder="Search…"
+        value={query}
+        onChange={setQuery}
+      />
+    </InputGroup>
+  );
+}
+
 function ToolbarRow({ variant }: { variant: SizeVariant }) {
   const [view, setView] = useState(0);
   const [sort, setSort] = useState("updated");
+  const compactStep = variant === "compact";
+  // Control-to-control spacing comes from the ladder: rowGap is 8px at the
+  // default step and 4px at compact — density is spacing as much as height.
+  const gap = sizeMap[variant].rowGap;
 
   return (
     <SizeProvider size={variant}>
@@ -202,12 +238,13 @@ function ToolbarRow({ variant }: { variant: SizeVariant }) {
         <span className="text-caption text-muted-foreground select-none">
           {variant === "default" ? "Default · 36px" : "Compact · 28px"}
         </span>
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <TabsSubtle selectedIndex={view} onSelect={setView}>
+        <div className={cn("flex w-full flex-wrap items-center", gap)}>
+          <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
             <TabsSubtleItem index={0} icon={Table2} label="Table" />
-            <TabsSubtleItem index={1} icon={SquareKanban} label="Board view" />
+            <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
           </TabsSubtle>
-          <div className="ml-auto flex items-center gap-2">
+          <div className={cn("ml-auto flex items-center", gap)}>
+            <SearchField variant={variant} />
             <Select value={sort} onValueChange={setSort}>
               <SelectTrigger placeholder="Sort by" />
               <SelectContent>
@@ -218,8 +255,12 @@ function ToolbarRow({ variant }: { variant: SizeVariant }) {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="tertiary" leadingIcon={ListFilter}>
-              Filter
+            <Button
+              variant="tertiary"
+              size={compactStep ? "icon-compact" : "icon"}
+              aria-label="Filter"
+            >
+              <ListFilter />
             </Button>
             <Button leadingIcon={Plus}>New</Button>
           </div>
