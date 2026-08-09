@@ -18,13 +18,13 @@ import {
 } from "@/app/components/demo-data";
 
 function ButtonPreview() {
-  // Default ladder step is h-9 like shadcn's size="sm"; the text-[14px]
+  // Default ladder step is h-9 like shadcn's size="sm"; the text-subtitle
   // override keeps the label on shadcn's text-sm so the side-by-side stays a
   // pixel match (the ladder's own label size is 13px).
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       {BUTTON_ITEMS.map((item) => (
-        <Button key={item.label} variant={item.variant} className="text-[14px]">
+        <Button key={item.label} variant={item.variant} className="text-subtitle">
           {item.label}
         </Button>
       ))}

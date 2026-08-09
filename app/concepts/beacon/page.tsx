@@ -137,7 +137,7 @@ function IssueTable({ rows }: { rows: Issue[] }) {
                 {STATUS[issue.status].label}
               </Badge>
             </TableCell>
-            <TableCell className="font-mono text-[12px] text-muted-foreground">
+            <TableCell className="font-mono text-caption text-muted-foreground">
               {issue.key}
             </TableCell>
             <TableCell className="text-foreground">{issue.title}</TableCell>
@@ -174,7 +174,7 @@ function Board({ rows }: { rows: Issue[] }) {
               <Badge variant="dot" size="sm" color={STATUS[col.key].color}>
                 {col.label}
               </Badge>
-              <span className="text-[12px] text-muted-foreground tabular-nums">
+              <span className="text-caption text-muted-foreground tabular-nums">
                 {items.length}
               </span>
             </div>
@@ -183,7 +183,7 @@ function Board({ rows }: { rows: Issue[] }) {
                 key={issue.key}
                 className={cn("flex flex-col gap-2 rounded-xl p-3", surfaceClasses(2, 2))}
               >
-                <span className="text-[13px] text-foreground">{issue.title}</span>
+                <span className="text-body text-foreground">{issue.title}</span>
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[11px] text-muted-foreground">
                     {issue.key}
@@ -288,7 +288,7 @@ function TriagePanel({
         <div className="flex items-center gap-2">
           <Sparkle size={16} className="text-foreground" />
           <span
-            className="text-[14px] text-foreground"
+            className="text-subtitle text-foreground"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             AI triage
@@ -337,7 +337,7 @@ function TriagePanel({
       )}
 
       {state === "done" && (
-        <div className="flex items-center gap-2 text-[13px] text-foreground">
+        <div className="flex items-center gap-2 text-body text-foreground">
           <Check size={16} className="text-emerald-500" />
           Applied 3 changes · re-ranked the Active view.
         </div>

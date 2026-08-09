@@ -160,7 +160,7 @@ function ReleaseRows() {
       {RELEASES.map((release) => (
         <div
           key={release}
-          className="px-3 py-2 text-[13px] text-foreground whitespace-nowrap"
+          className="px-3 py-2 text-body text-foreground whitespace-nowrap"
         >
           {release}
         </div>
@@ -171,7 +171,7 @@ function ReleaseRows() {
 
 function PanelLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[12px] text-muted-foreground text-center">
+    <span className="text-caption text-muted-foreground text-center">
       {children}
     </span>
   );
@@ -227,7 +227,7 @@ function HorizontalDemo() {
           {MONTHS.map((month) => (
             <div
               key={month}
-              className={`flex items-center justify-center h-20 w-28 shrink-0 border border-border text-[13px] text-foreground ${shape.bg}`}
+              className={`flex items-center justify-center h-20 w-28 shrink-0 border border-border text-body text-foreground ${shape.bg}`}
             >
               {month}
             </div>
@@ -307,7 +307,7 @@ function H3({ children }: { children: React.ReactNode }) {
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[13px] text-muted-foreground leading-relaxed">
+    <p className="text-body text-muted-foreground leading-relaxed">
       {children}
     </p>
   );
@@ -328,7 +328,7 @@ export default function ScrollbarsDoc() {
       }
     >
       <DocSection title="The problem">
-        <div className="flex flex-col gap-3 text-[13px] text-muted-foreground leading-relaxed">
+        <div className="flex flex-col gap-3 text-body text-muted-foreground leading-relaxed">
           <p>
             macOS hides the scrollbar until you start scrolling, so a clipped
             list gives no sign it has more below. And the moment it does appear,
@@ -343,7 +343,7 @@ export default function ScrollbarsDoc() {
         <P>
           The thumb rests narrow and low-contrast, then widens and darkens on
           hover so it stays quiet until you reach for it. Press{" "}
-          <kbd className="px-1 py-0.5 rounded bg-muted text-[12px] font-mono">
+          <kbd className="px-1 py-0.5 rounded bg-muted text-caption font-mono">
             R
           </kbd>{" "}
           to see the radius follow the shape system. On touch-primary devices
@@ -377,17 +377,17 @@ export default function ScrollbarsDoc() {
             scroll-fade
           </a>
           , vendored as a CSS utility in{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
+          <code className="px-1 py-0.5 rounded bg-muted text-caption">
             globals.css
           </code>
           . A mask dissolves the content toward the edges that have more to
           scroll, and a scroll-driven animation keeps the true start and end
           crisp. Drop{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
+          <code className="px-1 py-0.5 rounded bg-muted text-caption">
             scroll-fade
           </code>{" "}
           (or{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
+          <code className="px-1 py-0.5 rounded bg-muted text-caption">
             scroll-fade-x
           </code>
           ) on the viewport and it rides under the scrollbar — no JavaScript.
@@ -403,7 +403,7 @@ export default function ScrollbarsDoc() {
         <H3>Double overflow</H3>
         <P>
           A table taller and wider than its box.{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-[12px]">
+          <code className="px-1 py-0.5 rounded bg-muted text-caption">
             orientation=&quot;both&quot;
           </code>{" "}
           adds both scrollbars and the corner.

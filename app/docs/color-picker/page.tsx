@@ -132,7 +132,7 @@ export default function ColorPickerDoc() {
         <ComponentPreview code={controlledCode}>
           <div className="flex flex-col gap-3 items-start">
             <ColorPicker value={color} onValueChange={(v) => setColor(v)} />
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               Current: <span className="font-mono">{color}</span>
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function ColorPickerDoc() {
             <button
               type="button"
               onClick={() => setRemovableColor("#6B97FF")}
-              className="text-[13px] text-muted-foreground hover:text-foreground border border-dashed border-border px-3 h-9 rounded-lg cursor-pointer"
+              className="text-body text-muted-foreground hover:text-foreground border border-dashed border-border px-3 h-9 rounded-lg cursor-pointer"
             >
               + Add fill
             </button>
@@ -162,9 +162,9 @@ export default function ColorPickerDoc() {
       </DocSection>
 
       <DocSection title="Eyedropper Support">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           The eyedropper uses the native{" "}
-          <code className="font-mono text-[12px]">window.EyeDropper</code> API
+          <code className="font-mono text-caption">window.EyeDropper</code> API
           (Chromium-based browsers). It is automatically hidden in browsers
           that do not support it.
         </p>

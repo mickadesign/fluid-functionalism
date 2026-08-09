@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { Button } from "@/registry/radix/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
@@ -109,7 +110,7 @@ function PlayText({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Button label"
-      className="h-7 w-[124px] rounded-md bg-transparent px-2 text-right text-[13px] text-foreground transition-colors duration-80 hover:bg-hover focus:bg-hover outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
+      className="h-7 w-[124px] rounded-md bg-transparent px-2 text-right text-body text-foreground transition-colors duration-80 hover:bg-hover focus:bg-hover outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
     />
   );
 }
@@ -121,7 +122,11 @@ function ButtonPlayground() {
   const ArrowRight = useIcon("arrow-right");
 
   const [variant, setVariant] = useState<PlayVariant>("primary");
-  const [size, setSize] = useState<PlaySize>("default");
+  // The Size control follows the site-wide step (right panel / S) until the
+  // user picks a value here — then the explicit choice pins it.
+  const globalSize = useSizeVariant();
+  const [sizeOverride, setSizeOverride] = useState<PlaySize | null>(null);
+  const size = sizeOverride ?? globalSize;
   const [iconOnly, setIconOnly] = useState(false);
   const [leading, setLeading] = useState(false);
   const [trailing, setTrailing] = useState(false);
@@ -150,7 +155,7 @@ function ButtonPlayground() {
     const pick = <T,>(arr: readonly T[]) =>
       arr[Math.floor(Math.random() * arr.length)];
     setVariant(pick(["primary", "secondary", "tertiary", "ghost"] as const));
-    setSize(pick(["compact", "default"] as const));
+    setSizeOverride(pick(["compact", "default"] as const));
     setIconOnly(Math.random() > 0.85);
     setLeading(Math.random() > 0.5);
     setTrailing(Math.random() > 0.75);
@@ -179,7 +184,7 @@ function ButtonPlayground() {
         <PlayField label="Size">
           <PlaySelect
             value={size}
-            onChange={(v) => setSize(v as PlaySize)}
+            onChange={(v) => setSizeOverride(v as PlaySize)}
             options={[
               { value: "compact", label: "Compact" },
               { value: "default", label: "Default" },

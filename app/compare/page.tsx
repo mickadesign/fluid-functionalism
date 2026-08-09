@@ -144,12 +144,12 @@ function ComparePageInner() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
             <h1
-              className="text-[22px] sm:text-[28px] text-foreground leading-none"
+              className="text-display text-foreground leading-none"
               style={{ fontVariationSettings: fontWeights.bold }}
             >
               Shadcn VS Fluid Functionalism
             </h1>
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-subtitle text-muted-foreground">
               Hover the difference, side by side
             </p>
             <div className="flex items-center gap-2 mt-2">

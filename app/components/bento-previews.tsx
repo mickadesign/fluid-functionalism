@@ -265,7 +265,7 @@ function SliderPreview() {
   return (
     <div className="flex flex-col gap-8 w-full max-w-[280px]">
       <div className="flex flex-col gap-1.5 w-full">
-        <div className="flex items-center justify-between text-[13px]">
+        <div className="flex items-center justify-between text-body">
           <span className="text-muted-foreground">{SLIDER_OPACITY.label}</span>
           <span className="text-muted-foreground tabular-nums">{basic}</span>
         </div>

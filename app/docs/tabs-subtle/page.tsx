@@ -165,7 +165,7 @@ export default function TabsSubtleDoc() {
                 selectedIndex={basicSelected}
                 idPrefix="basic-demo"
               >
-                <p className="text-[13px] text-muted-foreground px-3">
+                <p className="text-body text-muted-foreground px-3">
                   {label} content goes here.
                 </p>
               </TabsSubtlePanel>
@@ -198,7 +198,7 @@ export default function TabsSubtleDoc() {
                 selectedIndex={iconsSelected}
                 idPrefix="icons-demo"
               >
-                <p className="text-[13px] text-muted-foreground px-3">
+                <p className="text-body text-muted-foreground px-3">
                   {tab.label} content goes here.
                 </p>
               </TabsSubtlePanel>
@@ -232,7 +232,7 @@ export default function TabsSubtleDoc() {
                 selectedIndex={activeLabelSelected}
                 idPrefix="active-label-demo"
               >
-                <p className="text-[13px] text-muted-foreground px-3">
+                <p className="text-body text-muted-foreground px-3">
                   {tab.label} content goes here.
                 </p>
               </TabsSubtlePanel>

@@ -269,7 +269,7 @@ function StaticRoleItem({
       <div className="flex flex-col gap-0.5 min-w-0 flex-1">
         <span
           className={cn(
-            "text-[13px] transition-colors duration-80",
+            "text-body transition-colors duration-80",
             checked
               ? "text-foreground"
               : "text-muted-foreground group-hover:text-foreground"
@@ -282,7 +282,7 @@ function StaticRoleItem({
         >
           {label}
         </span>
-        <span className="text-[12px] text-muted-foreground leading-snug">
+        <span className="text-caption text-muted-foreground leading-snug">
           {description}
         </span>
       </div>
@@ -458,7 +458,7 @@ function ProblemAnnotations() {
           }}
         >
           <span
-            className="text-[12px] leading-tight"
+            className="text-caption leading-tight"
             style={{
               color: a.color,
               fontVariationSettings: fontWeights.semibold,
@@ -511,7 +511,7 @@ function ProblemDemo() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className="shrink-0 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-[12px]"
+                    className="shrink-0 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-caption"
                     style={{ fontVariationSettings: fontWeights.semibold }}
                   >
                     M
@@ -534,7 +534,7 @@ function ProblemDemo() {
 
               <label className="flex flex-col gap-2">
                 <span
-                  className="text-[13px] text-foreground"
+                  className="text-body text-foreground"
                   style={{ fontVariationSettings: fontWeights.medium }}
                 >
                   Email
@@ -543,13 +543,13 @@ function ProblemDemo() {
                   readOnly
                   rows={2}
                   placeholder="email@gmail.com, email2@gmail.com..."
-                  className="text-[13px] text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border rounded-xl px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer"
+                  className="text-body text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border rounded-xl px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer"
                 />
               </label>
 
               <div className="flex flex-col gap-2">
                 <span
-                  className="text-[13px] text-foreground"
+                  className="text-body text-foreground"
                   style={{ fontVariationSettings: fontWeights.medium }}
                 >
                   Select role
@@ -557,7 +557,7 @@ function ProblemDemo() {
                 <button
                   type="button"
                   aria-expanded
-                  className="flex items-center justify-between gap-2 h-10 px-3 rounded-xl bg-active text-[13px] text-foreground border border-border cursor-pointer transition-colors duration-80"
+                  className="flex items-center justify-between gap-2 h-10 px-3 rounded-xl bg-active text-body text-foreground border border-border cursor-pointer transition-colors duration-80"
                 >
                   <span>Member</span>
                   <ChevronDown
@@ -600,7 +600,7 @@ function ProblemDemo() {
               <div className="flex justify-end items-center gap-2 pt-2">
                 <button
                   type="button"
-                  className="h-9 px-4 rounded-full bg-transparent hover:bg-hover text-[13px] text-foreground cursor-pointer transition-colors duration-80"
+                  className="h-9 px-4 rounded-full bg-transparent hover:bg-hover text-body text-foreground cursor-pointer transition-colors duration-80"
                   style={{ fontVariationSettings: fontWeights.medium }}
                 >
                   Cancel
@@ -608,7 +608,7 @@ function ProblemDemo() {
                 <button
                   type="button"
                   disabled
-                  className="h-9 px-4 rounded-full bg-foreground text-background text-[13px] cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
+                  className="h-9 px-4 rounded-full bg-foreground text-background text-body cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
                   style={{ fontVariationSettings: fontWeights.semibold }}
                 >
                   Send invites
@@ -684,7 +684,7 @@ function SubstrateDemo() {
                 style={{ backgroundColor: `var(--surface-${substrate})` }}
               >
                 <span
-                  className="text-[12px] text-foreground"
+                  className="text-caption text-foreground"
                   style={{ fontVariationSettings: fontWeights.semibold }}
                 >
                   {label}
@@ -737,16 +737,16 @@ function ElevatedDemo() {
             surfaceClasses(1)
           )}
         >
-          <span className="text-[12px] text-muted-foreground">Page</span>
+          <span className="text-caption text-muted-foreground">Page</span>
           <Elevated offset={2} className="rounded-2xl p-5 flex flex-col gap-3">
-            <span className="text-[12px] text-muted-foreground">Card</span>
+            <span className="text-caption text-muted-foreground">Card</span>
             <Elevated
               offset={2}
               className="rounded-2xl p-5 flex flex-col gap-3"
             >
-              <span className="text-[12px] text-muted-foreground">Popover</span>
+              <span className="text-caption text-muted-foreground">Popover</span>
               <Elevated offset={2} className="rounded-2xl p-5">
-                <span className="text-[12px] text-muted-foreground">Menu</span>
+                <span className="text-caption text-muted-foreground">Menu</span>
               </Elevated>
             </Elevated>
           </Elevated>
@@ -771,7 +771,7 @@ function buildStack(low: number, high: number): ReactNode {
   const boxClass =
     "relative rounded-2xl p-6 flex items-center justify-center [&:hover>span]:opacity-100 [&:has([data-surface]:hover)>span]:opacity-0";
   const labelClass =
-    "absolute top-2 left-2.5 text-[12px] text-muted-foreground opacity-0 transition-opacity duration-150";
+    "absolute top-2 left-2.5 text-caption text-muted-foreground opacity-0 transition-opacity duration-150";
 
   let node: ReactNode = null;
   for (let lvl = high; lvl >= low + 1; lvl--) {
@@ -905,7 +905,7 @@ function RoleItem({
       <div className="flex flex-col gap-0.5 min-w-0 flex-1">
         <span
           className={cn(
-            "text-[13px] transition-colors duration-80",
+            "text-body transition-colors duration-80",
             highlighted ? "text-foreground" : "text-muted-foreground"
           )}
           style={{
@@ -916,7 +916,7 @@ function RoleItem({
         >
           {label}
         </span>
-        <span className="text-[12px] text-muted-foreground leading-snug">
+        <span className="text-caption text-muted-foreground leading-snug">
           {description}
         </span>
       </div>
@@ -1102,7 +1102,7 @@ function SolutionAnnotations({
           style={{ left: c.left, top: c.top, width: c.labelW }}
         >
           <span
-            className="text-[12px] leading-tight"
+            className="text-caption leading-tight"
             style={{
               color,
               fontVariationSettings: fontWeights.semibold,
@@ -1156,7 +1156,7 @@ function InviteDialogDemo() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div
-                  className="shrink-0 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-[12px]"
+                  className="shrink-0 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-caption"
                   style={{ fontVariationSettings: fontWeights.semibold }}
                 >
                   M
@@ -1179,7 +1179,7 @@ function InviteDialogDemo() {
 
             <label className="flex flex-col gap-2">
               <span
-                className="text-[13px] text-foreground"
+                className="text-body text-foreground"
                 style={{ fontVariationSettings: fontWeights.medium }}
               >
                 Email
@@ -1188,13 +1188,13 @@ function InviteDialogDemo() {
                 readOnly
                 rows={2}
                 placeholder="email@gmail.com, email2@gmail.com..."
-                className="text-[13px] text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border rounded-xl px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer"
+                className="text-body text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border rounded-xl px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer"
               />
             </label>
 
             <div className="flex flex-col gap-2">
               <span
-                className="text-[13px] text-foreground"
+                className="text-body text-foreground"
                 style={{ fontVariationSettings: fontWeights.medium }}
               >
                 Select role
@@ -1202,7 +1202,7 @@ function InviteDialogDemo() {
               <button
                 type="button"
                 aria-expanded
-                className="flex items-center justify-between gap-2 h-10 px-3 rounded-xl bg-active text-[13px] text-foreground border border-border cursor-pointer transition-colors duration-80"
+                className="flex items-center justify-between gap-2 h-10 px-3 rounded-xl bg-active text-body text-foreground border border-border cursor-pointer transition-colors duration-80"
               >
                 <span>Member</span>
                 <ChevronDown
@@ -1241,7 +1241,7 @@ function InviteDialogDemo() {
             <div className="flex justify-end items-center gap-2 pt-2">
               <button
                 type="button"
-                className="h-9 px-4 rounded-full bg-transparent hover:bg-hover text-[13px] text-foreground cursor-pointer transition-colors duration-80"
+                className="h-9 px-4 rounded-full bg-transparent hover:bg-hover text-body text-foreground cursor-pointer transition-colors duration-80"
                 style={{ fontVariationSettings: fontWeights.medium }}
               >
                 Cancel
@@ -1249,7 +1249,7 @@ function InviteDialogDemo() {
               <button
                 type="button"
                 disabled
-                className="h-9 px-4 rounded-full bg-foreground text-background text-[13px] cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
+                className="h-9 px-4 rounded-full bg-foreground text-background text-body cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
                 style={{ fontVariationSettings: fontWeights.semibold }}
               >
                 Send invites
@@ -1320,7 +1320,7 @@ export default function SurfacesDoc() {
       }
     >
       <DocSection title="The problem">
-        <div className="flex flex-col gap-3 text-[13px] text-muted-foreground leading-relaxed">
+        <div className="flex flex-col gap-3 text-body text-muted-foreground leading-relaxed">
           <p>
             In light mode, we use shadow behind white surfaces to signify
             elevation. In dark mode, we use progressively lighter backgrounds
@@ -1336,7 +1336,7 @@ export default function SurfacesDoc() {
       </DocSection>
 
       <DocSection title="The solution">
-        <div className="flex flex-col gap-3 text-[13px] text-muted-foreground leading-relaxed">
+        <div className="flex flex-col gap-3 text-body text-muted-foreground leading-relaxed">
           <p>Three pieces: tokens, substrate context, and the primitive.</p>
         </div>
 
@@ -1346,7 +1346,7 @@ export default function SurfacesDoc() {
         >
           Tokens
         </h3>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-body text-muted-foreground leading-relaxed">
           Eight bg/shadow pairs. Light mode flattens to white after step 2
           (shadow alone carries elevation). Dark mode keeps adding white-opacity
           plus a layered shadow recipe.
@@ -1359,7 +1359,7 @@ export default function SurfacesDoc() {
         >
           Substrate
         </h3>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-body text-muted-foreground leading-relaxed">
           Each container knows its own level and tells whatever opens inside.
           A popover on the page and the same popover inside a dialog both
           end up at the right depth, without anything passed between them.
@@ -1372,7 +1372,7 @@ export default function SurfacesDoc() {
         >
           Elevated
         </h3>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-body text-muted-foreground leading-relaxed">
           Wrap a panel and the background settles at the level it belongs to.
           The shadow doesn&apos;t change, so a popover still reads as a popover
           three layers down.
@@ -1385,7 +1385,7 @@ export default function SurfacesDoc() {
         >
           Move through levels
         </h3>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-body text-muted-foreground leading-relaxed">
           Drag both knobs to choose which slice of the ladder to nest. Each
           layer lifts a single step off the one it sits in — whether you span
           two levels or all eight.
@@ -1400,7 +1400,7 @@ export default function SurfacesDoc() {
         >
           Invite dialog
         </h3>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-body text-muted-foreground leading-relaxed">
           Dialog at surface 5, role picker at surface 7 — no props passed
           between them.
         </p>
@@ -1412,7 +1412,7 @@ export default function SurfacesDoc() {
         >
           Color picker
         </h3>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-body text-muted-foreground leading-relaxed">
           The format dropdown sits one level above the picker panel.
         </p>
         <ColorPickerDemo />

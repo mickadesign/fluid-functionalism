@@ -13,7 +13,7 @@ import { cn } from "@/registry/default/lib/utils";
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
   return (
-    <code className="mx-1 rounded bg-muted px-1 py-0.5 text-[12px]">
+    <code className="mx-1 rounded bg-muted px-1 py-0.5 text-caption">
       {children}
     </code>
   );
@@ -142,15 +142,15 @@ function SpringReferenceSection() {
         >
           <div className="flex flex-col gap-0.5">
             <span
-              className="text-[13px] text-foreground"
+              className="text-body text-foreground"
               style={{ fontVariationSettings: fontWeights.semibold }}
             >
               {key}
             </span>
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-caption text-muted-foreground">
               → <code className="font-mono">{enterToken}</code> {enterMeta}
             </span>
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-caption text-muted-foreground">
               ← <code className="font-mono">{exitToken}</code> {exitMeta}
             </span>
           </div>
@@ -180,12 +180,12 @@ function SpringReferenceSection() {
                 <Link
                   key={label}
                   href={slug}
-                  className="text-[13px] text-muted-foreground/50 transition-colors hover:text-foreground"
+                  className="text-body text-muted-foreground/50 transition-colors hover:text-foreground"
                 >
                   {label}
                 </Link>
               ) : (
-                <span key={label} className="text-[13px] text-muted-foreground/30">
+                <span key={label} className="text-body text-muted-foreground/30">
                   {label}
                 </span>
               )
@@ -233,7 +233,7 @@ function SpringTokensDemo() {
       <div className="flex w-full max-w-md flex-col gap-5">
         {SPRING_TIERS.map(({ key, token, meta, usage }) => (
           <div key={key} className="flex flex-col gap-1.5">
-            <div className="flex items-baseline gap-2 text-[13px]">
+            <div className="flex items-baseline gap-2 text-body">
               <span
                 className="text-foreground"
                 style={{ fontVariationSettings: fontWeights.semibold }}
@@ -243,7 +243,7 @@ function SpringTokensDemo() {
               <span className="font-mono text-[11px] text-muted-foreground/70">
                 {meta}
               </span>
-              <span className="ml-auto hidden text-[12px] text-muted-foreground sm:inline">
+              <span className="ml-auto hidden text-caption text-muted-foreground sm:inline">
                 {usage}
               </span>
             </div>
@@ -263,7 +263,7 @@ function SpringTokensDemo() {
             </button>
           </div>
         ))}
-        <p className="text-center text-[12px] text-muted-foreground/70">
+        <p className="text-center text-caption text-muted-foreground/70">
           Click a track (or replay) to fire all three springs.
         </p>
       </div>
@@ -351,7 +351,7 @@ function ModalExitDemo() {
   const [openSame, setOpenSame] = useState(false);
   const [openFaster, setOpenFaster] = useState(false);
   const labelClass =
-    "flex items-center justify-center gap-2 text-[12px] text-muted-foreground";
+    "flex items-center justify-center gap-2 text-caption text-muted-foreground";
   return (
     <ComponentPreview code={MODAL_CODE} minHeightClass="min-h-[320px]">
       <div className="flex w-full max-w-2xl flex-col items-center gap-4">
@@ -388,7 +388,7 @@ function ModalExitDemo() {
             </span>
           </div>
         </div>
-        <p className="text-center text-[12px] text-muted-foreground/70">
+        <p className="text-center text-caption text-muted-foreground/70">
           Toggle one, then the other — both open on{" "}
           <span className="font-mono">spring.slow</span>; only the close differs.
         </p>
@@ -411,7 +411,7 @@ export default function MotionDoc() {
       description="Three spring speeds, and exits always move a little faster than entrances. Pick a speed, wire it in — every component follows the same pattern."
     >
       <DocSection title="Three speeds">
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-body leading-relaxed text-muted-foreground">
           All animations come from one of three springs in{" "}
           <Code>lib/springs</Code>. Hover states and small toggles use{" "}
           <Code>fast</Code>. Dropdowns and tabs use <Code>moderate</Code>.
@@ -426,7 +426,7 @@ export default function MotionDoc() {
       </DocSection>
 
       <DocSection title="Slow in, faster out">
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-body leading-relaxed text-muted-foreground">
           Both modals open on <Code>spring.slow</Code>. The only difference is
           the close: the left exits on the same <Code>spring.slow</Code>, the
           right on <Code>spring.slow.exit</Code> — one tier faster. Toggle the
@@ -437,7 +437,7 @@ export default function MotionDoc() {
       </DocSection>
 
       <DocSection title="All tokens">
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-body leading-relaxed text-muted-foreground">
           Click a track to see it. The ball enters right on the spring, then
           returns left on the exit tween. Everything lives in{" "}
           <Code>lib/springs</Code> — duration values belong there, not
@@ -451,7 +451,7 @@ export default function MotionDoc() {
         >
           Reduced motion
         </h3>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-body leading-relaxed text-muted-foreground">
           All springs respect the OS setting. Wrap the app tree in{" "}
           <Code>{`<MotionConfig reducedMotion="user">`}</Code> and when the
           user turns on reduced motion, the position changes drop out and only

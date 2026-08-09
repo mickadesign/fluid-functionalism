@@ -71,7 +71,7 @@ export default function SliderPage() {
         >
           Audio Mixer
         </h1>
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-subtitle text-muted-foreground">
           Slider variants styled as a music production control surface.
         </p>
       </div>

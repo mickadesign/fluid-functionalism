@@ -413,7 +413,7 @@ export default function SliderDoc() {
       {/* ------------------------------------------------------------------ */}
 
       <DocSection title="API Reference">
-        <p className="text-[13px] text-muted-foreground mb-3">
+        <p className="text-body text-muted-foreground mb-3">
           One component: the default step renders the pip/scrubber design, the
           compact step the dense one. Compact-only props (an array value,
           steps, showSteps, showValue, valuePosition, track styling) always

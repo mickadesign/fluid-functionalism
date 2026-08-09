@@ -97,7 +97,7 @@ export function ComponentPreview({
       >
         {title && (
           <span
-            className="px-4 py-2.5 text-[13px] text-foreground mr-auto"
+            className="px-4 py-2.5 text-body text-foreground mr-auto"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             {title}
@@ -162,7 +162,7 @@ export function ComponentPreview({
           </div>
         ) : (
           <div
-            className={`overflow-auto text-[13px] [&_pre]:m-0 [&_pre]:p-4 ${minHeightClass.replace("min-h-", "[&_pre]:min-h-")} [&_.shiki]:!bg-transparent`}
+            className={`overflow-auto text-body [&_pre]:m-0 [&_pre]:p-4 ${minHeightClass.replace("min-h-", "[&_pre]:min-h-")} [&_.shiki]:!bg-transparent`}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}

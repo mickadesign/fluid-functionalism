@@ -7,6 +7,7 @@ import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useSize } from "@/lib/size-context";
 
 interface NavItemProps
   extends Omit<HTMLAttributes<HTMLAnchorElement>, "href"> {
@@ -39,6 +40,7 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(
     const isActive = activeIndex === index;
     const isActiveRoute = activeSlug === href;
     const shape = useShape();
+    const sizeClasses = useSize();
 
     // Roving tabindex: the active-route item gets 0, others -1. When no item in
     // this menu matches activeSlug (e.g. on an unrelated route), fall back to
@@ -65,14 +67,16 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(
         className={cn(
           // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
           // text-box trim on the label doesn't shrink the row.
-          `relative z-10 flex h-8 items-center ${shape.item} px-3 cursor-pointer outline-none`,
+          `relative z-10 flex ${
+            sizeClasses.variant === "compact" ? "h-7" : "h-8"
+          } items-center ${shape.item} px-3 cursor-pointer outline-none`,
           className
         )}
         {...props}
       >
         {Icon && (
           <Icon
-            size={16}
+            size={sizeClasses.icon}
             strokeWidth={isActiveRoute || isActive ? 2 : 1.5}
             className={cn(
               "shrink-0 mr-2 transition-[color,stroke-width] duration-80",
@@ -82,7 +86,7 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(
         )}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className="inline-grid flex-1 text-[13px]">
+        <span className={cn("inline-grid flex-1", sizeClasses.text)}>
           <span
             className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}

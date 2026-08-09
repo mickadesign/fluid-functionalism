@@ -651,7 +651,7 @@ export function QueuedChatDemo({
                       // With attachments, use 8px side padding to match the ~8px
                       // above/below the 28px thumbnail in the 44px card (square
                       // inset); otherwise the roomier 14px for text-only cards.
-                      className={`group/qm absolute bottom-0 left-10 right-10 flex select-none items-center gap-2 bg-[color-mix(in_oklab,var(--accent),var(--background)_68%)] ${item.files.length > 0 ? "pl-2" : "pl-3.5"} pr-1.5 text-[14px] text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
+                      className={`group/qm absolute bottom-0 left-10 right-10 flex select-none items-center gap-2 bg-[color-mix(in_oklab,var(--accent),var(--background)_68%)] ${item.files.length > 0 ? "pl-2" : "pl-3.5"} pr-1.5 text-subtitle text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
                     >
                       {item.files.length > 0 && (
                         <div className="pointer-events-none flex shrink-0 items-center gap-1">

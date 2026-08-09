@@ -203,7 +203,7 @@ export default function DropdownDoc() {
       </DocSection>
 
       <DocSection title="Triggered menu">
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-subtitle text-muted-foreground">
           The inline panels above are always visible and render as a plain
           group. For a real popup menu — trigger button, positioning,
           dismissal, typeahead, and close-on-select, built on Base UI&apos;s

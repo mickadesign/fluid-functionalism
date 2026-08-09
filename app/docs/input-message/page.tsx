@@ -398,7 +398,7 @@ useEffect(() => () => timers.current.forEach(clearTimeout), []);
             transition={{ type: "spring", duration: 0.16 }}
             style={{ height: CARD_H, transformOrigin: "bottom center", zIndex: 100 - i }}
             onDoubleClick={() => { setValue(item.text); setQueue((q) => q.filter((x) => x.id !== item.id)); }}
-            className="absolute bottom-0 left-7 right-7 flex items-center gap-2 rounded-[20px] bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] px-3.5 text-[14px] text-muted-foreground shadow-surface-3"
+            className="absolute bottom-0 left-7 right-7 flex items-center gap-2 rounded-[20px] bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] px-3.5 text-subtitle text-muted-foreground shadow-surface-3"
           >
             {/* Attachments: small thumbnails (1 or many; +N past 3). */}
             {item.files.length > 0 && (

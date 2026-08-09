@@ -110,22 +110,22 @@ export default function TabsDoc() {
                 <TabItem value="settings" label="Settings" />
               </TabsList>
               <TabPanel value="library">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Library content.
                 </p>
               </TabPanel>
               <TabPanel value="recents">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Recents content.
                 </p>
               </TabPanel>
               <TabPanel value="favorites">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Favorites content.
                 </p>
               </TabPanel>
               <TabPanel value="settings">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Settings content.
                 </p>
               </TabPanel>
@@ -145,22 +145,22 @@ export default function TabsDoc() {
                 <TabItem value="settings" icon={Settings} label="Settings" />
               </TabsList>
               <TabPanel value="library">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Library content.
                 </p>
               </TabPanel>
               <TabPanel value="recents">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Recents content.
                 </p>
               </TabPanel>
               <TabPanel value="favorites">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Favorites content.
                 </p>
               </TabPanel>
               <TabPanel value="settings">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Settings content.
                 </p>
               </TabPanel>
@@ -179,22 +179,22 @@ export default function TabsDoc() {
                 <TabItem value="favorites" label="Favorites" />
               </TabsList>
               <TabPanel value="library">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Library content.
                 </p>
               </TabPanel>
               <TabPanel value="recents">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Recents content.
                 </p>
               </TabPanel>
               <TabPanel value="favorites">
-                <p className="text-[13px] text-muted-foreground pt-3">
+                <p className="text-body text-muted-foreground pt-3">
                   Favorites content.
                 </p>
               </TabPanel>
             </Tabs>
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Active: <span className="text-foreground">{controlled}</span>
             </p>
           </div>

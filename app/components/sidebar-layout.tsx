@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/app/components/sidebar";
 import { useIcon } from "@/lib/icon-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { MobileDrawer } from "@/components/flavored/mobile-drawer";
 import { Button } from "@/registry/radix/button";
 import { RightPanel, SettingsContent, GitHubStarButton } from "@/app/components/right-panel";
@@ -23,6 +24,9 @@ interface SidebarLayoutProps {
 
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const MenuIcon = useIcon("menu");
+  // Square icon buttons follow the site-wide size step (see /docs/sizes).
+  const iconSize =
+    useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
@@ -105,7 +109,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
       <Button
         ref={menuButtonRef}
         variant="ghost"
-        size="icon"
+        size={iconSize}
         className="xl:hidden fixed top-4 left-4 z-50"
         onClick={() => setDrawerOpen(true)}
         aria-label="Open navigation"
@@ -123,7 +127,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
         <div className="mt-auto pt-4">
           <div className="flex items-center justify-between pl-1 pt-2 pb-2">
             <h2
-              className="text-[16px] text-foreground leading-none"
+              className="text-title text-foreground leading-none"
               style={{ fontVariationSettings: "'wght' 600" }}
             >
               Make them yours
