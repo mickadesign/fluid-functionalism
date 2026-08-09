@@ -20,6 +20,7 @@ import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 
 interface RadioGroupContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
@@ -46,10 +47,14 @@ interface RadioGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect
   selectedIndex?: number;
   value?: string;
   onValueChange?: (value: string) => void;
+  /** Pins the group's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, it follows the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ children, selectedIndex, value, onValueChange, className, ...props }, ref) => {
+  ({ children, selectedIndex, value, onValueChange, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const childValues = Children.toArray(children)
       .filter(isValidElement)
@@ -236,8 +241,12 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
     // parent RadioGroup context; without it, Base UI crashes on context reads.
     // The wrapper just doesn't forward changes when the consumer doesn't ask
     // to be notified.
+    // A size prop pins every row in the group to one ladder step.
+    const withSize = (node: ReactNode) =>
+      size ? <SizeProvider size={size}>{node}</SizeProvider> : node;
+
     if (value !== undefined) {
-      return (
+      return withSize(
         <RadioGroupContext.Provider
           value={{
             registerItem,
@@ -257,7 +266,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       );
     }
 
-    return (
+    return withSize(
       <RadioGroupContext.Provider
         value={{
           registerItem,
@@ -307,6 +316,8 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
     const isActive = activeIndex === index;
     const skipAnimation = !hasMounted.current;
     const shape = useShape();
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
     const isSelected =
       value !== undefined && selectedValue !== undefined
         ? selectedValue === value
@@ -357,13 +368,18 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         className={cn(
           // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
           // text-box trim on the label doesn't shrink the row.
-          `relative z-10 flex h-8 items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none`,
+          `relative z-10 flex ${sizeClasses.item} items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} cursor-pointer outline-none`,
           className
         )}
         {...props}
       >
         {/* Radio circle */}
-        <div className="relative w-[15px] h-[15px] shrink-0">
+        <div
+          className={cn(
+            "relative shrink-0",
+            compact ? "w-[13px] h-[13px]" : "w-[15px] h-[15px]"
+          )}
+        >
           {/* Border */}
           <div
             className={cn(
@@ -388,7 +404,12 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
                 exit={{ opacity: 0, scale: 0.3, transition: { duration: 0.04 } }}
                 transition={spring.fast}
               >
-                <div className="w-[8px] h-[8px] rounded-full bg-foreground" />
+                <div
+                  className={cn(
+                    "rounded-full bg-foreground",
+                    compact ? "w-[7px] h-[7px]" : "w-[8px] h-[8px]"
+                  )}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -397,7 +418,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         {/* Label */}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className="inline-grid text-[13px]">
+        <span className={cn("inline-grid", sizeClasses.text)}>
           <span
             className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}

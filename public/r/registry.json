@@ -169,6 +169,18 @@
       ]
     },
     {
+      "name": "size-context",
+      "type": "registry:lib",
+      "title": "Size Context",
+      "description": "React context provider for the two-step size ladder (36px default, 28px compact). Controls control heights, text, icon, and padding scale across all Fluid Functionalism components.",
+      "files": [
+        {
+          "path": "registry/default/lib/size-context.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "icon-context",
       "type": "registry:lib",
       "title": "Icon Context",
@@ -336,7 +348,8 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/icon-context.json"
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "size-context"
       ],
       "files": [
         {
@@ -419,7 +432,8 @@
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/elevated.json"
+        "https://www.fluidfunctionalism.com/r/elevated.json",
+        "size-context"
       ],
       "files": [
         {
@@ -482,7 +496,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/use-merge-split.json"
+        "https://www.fluidfunctionalism.com/r/use-merge-split.json",
+        "size-context"
       ],
       "files": [
         {
@@ -531,7 +546,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "size-context"
       ],
       "files": [
         {
@@ -677,7 +693,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/icon-context.json"
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "size-context"
       ],
       "files": [
         {
@@ -700,7 +717,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "size-context"
       ],
       "files": [
         {
@@ -792,7 +810,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "size-context"
       ],
       "files": [
         {
@@ -977,7 +996,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "size-context"
       ],
       "files": [
         {
@@ -1111,7 +1131,8 @@
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/elevated.json"
+        "https://www.fluidfunctionalism.com/r/elevated.json",
+        "size-context"
       ],
       "files": [
         {

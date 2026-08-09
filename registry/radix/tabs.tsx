@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useSurface } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
@@ -66,6 +67,10 @@ interface TabsProps
   selectedIndex?: number;
   /** Called with the new index when the active tab changes. */
   onSelect?: (index: number) => void;
+  /** Pins the segmented control to one step of the size ladder (default 36px
+   *  outer, compact 28px — see /docs/sizes). Omitted, it follows the
+   *  surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
 const Tabs = forwardRef<HTMLDivElement, TabsProps>(
@@ -76,6 +81,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       selectedIndex,
       onSelect,
       defaultValue,
+      size,
       children,
       ...props
     },
@@ -120,7 +126,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       [onValueChange, onSelect, valueOrder, value, selectedIndex]
     );
 
-    return (
+    const root = (
       <TabsValueOrderContext.Provider
         value={{
           valueOrder,
@@ -147,6 +153,9 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
         </TabsPrimitive.Root>
       </TabsValueOrderContext.Provider>
     );
+
+    // A size prop pins the whole compound (list + items) to one ladder step.
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 
@@ -161,6 +170,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
+    const sizeClasses = useSize();
     const substrate = useSurface();
     // Active pill lifts 3 levels above substrate (1 above the muted track + 2 for pop).
     // On the page (substrate 1) this lands on surface 4 — matches the original design.
@@ -289,7 +299,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
             setHoveredIndex(null);
           }}
           className={cn(
-            "relative inline-flex items-center gap-0.5 p-1 select-none bg-muted",
+            // segmentPad + segmentItem add up to the ladder's control height
+            // (36px default, 28px compact) so the segmented control's outer
+            // box lines up with buttons, selects, and inputs beside it.
+            "relative inline-flex items-center gap-0.5 select-none bg-muted",
+            sizeClasses.segmentPad,
             shape.container,
             className
           )}
@@ -413,6 +427,7 @@ interface TabItemProps
 const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
   ({ value, icon: Icon, label, _index = 0, className, onClick, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement>(null);
+    const sizeClasses = useSize();
     const { registerTab, hoveredIndex, selectedValue, setOptimisticIdx } = useTabsList();
 
     useEffect(() => {
@@ -446,14 +461,16 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
         className={cn(
           // Fixed height (not py) so the text-box trim below doesn't shrink
           // the tab — browsers without text-box support render identically.
-          "relative z-10 flex h-8 items-center gap-2 px-3 cursor-pointer bg-transparent border-none outline-none",
+          "relative z-10 flex items-center px-3 cursor-pointer bg-transparent border-none outline-none",
+          sizeClasses.segmentItem,
+          sizeClasses.gap,
           className
         )}
         {...props}
       >
         {Icon && (
           <Icon
-            size={16}
+            size={sizeClasses.icon}
             strokeWidth={isActive ? 2 : 1.5}
             className={cn(
               "transition-[color,stroke-width] duration-80",
@@ -463,7 +480,7 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
         )}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className="inline-grid text-[13px] whitespace-nowrap">
+        <span className={cn("inline-grid whitespace-nowrap", sizeClasses.text)}>
           <span
             className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}

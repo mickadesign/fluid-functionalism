@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useSize, type SizeVariant } from "@/lib/size-context";
 import { spring } from "@/lib/springs";
 import { Tooltip } from "@/registry/radix/tooltip";
 
@@ -25,10 +26,14 @@ interface InputCopyProps extends Omit<HTMLAttributes<HTMLDivElement>, "children"
   variant?: InputCopyVariant;
   /** Position of the copy action relative to the value. */
   align?: InputCopyAlign;
+  /** Pins the field to one step of the size ladder (default 36px, compact
+   *  28px — see /docs/sizes). Omitted, it follows the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
-  ({ value, label, onCopy, disabled, variant = "icon", align = "right", className, ...props }, ref) => {
+  ({ value, label, onCopy, disabled, variant = "icon", align = "right", size, className, ...props }, ref) => {
     const CopyIcon = useIcon("copy");
     // "copied" and "error" both occupy the same animation slot on the button
     const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -39,6 +44,10 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
     const tooltipVisibleRef = useRef(false);
     const tooltipWasVisibleRef = useRef(false);
     const shape = useShape();
+    const sizeClasses = useSize(size);
+    // The row's height comes from the padded children, so the paddings step
+    // down with the ladder (py-2 → 36px total, py-1 → 28px).
+    const rowPy = sizeClasses.variant === "compact" ? "py-1" : "py-2";
 
     // Associate the visible label with the button: the button's accessible
     // name reads "Copy <label>" (its own state label + the field label).
@@ -185,7 +194,9 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
     const actionElement = variant === "button" ? (
       <span
         className={cn(
-          "shrink-0 flex items-center gap-1.5 px-1.5 py-2 text-[13px] transition-colors duration-80",
+          "shrink-0 flex items-center gap-1.5 px-1.5 transition-colors duration-80",
+          rowPy,
+          sizeClasses.text,
           "text-muted-foreground group-hover:text-foreground",
         )}
         style={{ fontVariationSettings: fontWeights.normal }}
@@ -284,7 +295,8 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
     ) : (
       <span
         className={cn(
-          "shrink-0 px-1.5 py-2 transition-colors duration-80",
+          "shrink-0 px-1.5 transition-colors duration-80",
+          rowPy,
           "text-muted-foreground group-hover:text-foreground",
         )}
       >
@@ -295,7 +307,9 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
     const valueElement = (
       <span
         className={cn(
-          "flex-1 min-w-0 text-left text-[13px] text-foreground font-mono py-2 select-none truncate",
+          "flex-1 min-w-0 text-left text-foreground font-mono select-none truncate",
+          sizeClasses.text,
+          rowPy,
           align === "left" ? "pl-1" : "pl-0"
         )}
         style={{ fontVariationSettings: fontWeights.normal }}
@@ -354,7 +368,11 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
         {label && (
           <span
             id={labelId}
-            className={cn("text-[13px] text-muted-foreground", align === "left" ? "pl-1" : "pl-0")}
+            className={cn(
+              "text-muted-foreground",
+              sizeClasses.text,
+              align === "left" ? "pl-1" : "pl-0"
+            )}
             style={{ fontVariationSettings: fontWeights.normal }}
           >
             {label}

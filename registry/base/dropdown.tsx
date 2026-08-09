@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { shapeMap } from "@/lib/shape-context";
+import { SizeProvider, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 
 // Dropdown opts out of the global pill/rounded shape context — popover surfaces
@@ -61,10 +62,14 @@ export type { DropdownContextValue, MenuItemRenderOptions };
 interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   checkedIndex?: number;
+  /** Pins the panel's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
-  ({ children, checkedIndex, className, ...props }, ref) => {
+  ({ children, checkedIndex, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const {
       activeIndex,
@@ -86,7 +91,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const checkedRect =
       checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    return (
+    const panel = (
       <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
         <Elevated
           offset={2}
@@ -222,6 +227,9 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
         </Elevated>
       </DropdownContext.Provider>
     );
+
+    // A size prop pins every row in the panel to one ladder step.
+    return size ? <SizeProvider size={size}>{panel}</SizeProvider> : panel;
   }
 );
 
@@ -265,6 +273,10 @@ interface DropdownMenuProps {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
+  /** Pins trigger-side content and the portalled popup rows to one step of
+   *  the size ladder (default 36px, compact 28px — see /docs/sizes).
+   *  Omitted, they follow the surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
 function DropdownMenu({
@@ -273,6 +285,7 @@ function DropdownMenu({
   defaultOpen = false,
   onOpenChange,
   disabled = false,
+  size,
 }: DropdownMenuProps) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = openProp !== undefined ? openProp : internalOpen;
@@ -288,7 +301,9 @@ function DropdownMenu({
 
   const ctx = useMemo(() => ({ open, actionsRef }), [open]);
 
-  return (
+  // A size prop pins the whole compound (trigger content + portalled popup —
+  // React context crosses portals) to one ladder step.
+  const root = (
     <DropdownMenuContext.Provider value={ctx}>
       <Menu.Root
         open={open}
@@ -303,6 +318,8 @@ function DropdownMenu({
       </Menu.Root>
     </DropdownMenuContext.Provider>
   );
+
+  return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
 }
 
 DropdownMenu.displayName = "DropdownMenu";

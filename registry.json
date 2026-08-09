@@ -169,6 +169,18 @@
       ]
     },
     {
+      "name": "size-context",
+      "type": "registry:lib",
+      "title": "Size Context",
+      "description": "React context provider for the two-step size ladder (36px default, 28px compact). Controls control heights, text, icon, and padding scale across all Fluid Functionalism components.",
+      "files": [
+        {
+          "path": "registry/default/lib/size-context.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "icon-context",
       "type": "registry:lib",
       "title": "Icon Context",
@@ -280,7 +292,7 @@
       "name": "ask-user-questions",
       "type": "registry:ui",
       "title": "Ask User Questions",
-      "description": "Stepped question flow with numbered options, keyboard shortcuts (1\u20139), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
+      "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
       "dependencies": [
         "framer-motion",
         "@base-ui/react"
@@ -336,7 +348,8 @@
         "utils",
         "font-weight",
         "shape-context",
-        "icon-context"
+        "icon-context",
+        "size-context"
       ],
       "files": [
         {
@@ -419,7 +432,8 @@
         "surface-classes",
         "icon-context",
         "use-proximity-hover",
-        "elevated"
+        "elevated",
+        "size-context"
       ],
       "files": [
         {
@@ -482,7 +496,8 @@
         "font-weight",
         "shape-context",
         "use-proximity-hover",
-        "use-merge-split"
+        "use-merge-split",
+        "size-context"
       ],
       "files": [
         {
@@ -531,7 +546,8 @@
         "springs",
         "font-weight",
         "shape-context",
-        "use-proximity-hover"
+        "use-proximity-hover",
+        "size-context"
       ],
       "files": [
         {
@@ -677,7 +693,8 @@
         "springs",
         "font-weight",
         "shape-context",
-        "icon-context"
+        "icon-context",
+        "size-context"
       ],
       "files": [
         {
@@ -700,7 +717,8 @@
         "font-weight",
         "shape-context",
         "icon-context",
-        "use-proximity-hover"
+        "use-proximity-hover",
+        "size-context"
       ],
       "files": [
         {
@@ -792,7 +810,8 @@
         "springs",
         "font-weight",
         "icon-context",
-        "use-proximity-hover"
+        "use-proximity-hover",
+        "size-context"
       ],
       "files": [
         {
@@ -977,7 +996,8 @@
         "font-weight",
         "shape-context",
         "icon-context",
-        "use-proximity-hover"
+        "use-proximity-hover",
+        "size-context"
       ],
       "files": [
         {
@@ -1111,7 +1131,8 @@
         "surface-classes",
         "icon-context",
         "use-proximity-hover",
-        "elevated"
+        "elevated",
+        "size-context"
       ],
       "files": [
         {

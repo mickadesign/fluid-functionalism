@@ -17,6 +17,7 @@ import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 interface InputGroupContextValue {
@@ -35,10 +36,14 @@ function useInputGroup() {
 
 interface InputGroupProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
+  /** Pins the group's fields to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
-  ({ children, className, ...props }, ref) => {
+  ({ children, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const { activeIndex, handlers, registerItem, measureItems } =
@@ -53,7 +58,7 @@ const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
       [registerItem, activeIndex]
     );
 
-    return (
+    const group = (
       <InputGroupContext.Provider value={contextValue}>
         <div
           ref={(node) => {
@@ -75,6 +80,9 @@ const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
         </div>
       </InputGroupContext.Provider>
     );
+
+    // A size prop pins every field in the group to one ladder step.
+    return size ? <SizeProvider size={size}>{group}</SizeProvider> : group;
   }
 );
 
@@ -114,6 +122,8 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
     const { registerItem, activeIndex } = useInputGroup();
     const [isFocused, setIsFocused] = useState(false);
     const shape = useShape();
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
 
     useEffect(() => {
       registerItem(index, internalRef.current);
@@ -171,7 +181,13 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
         )}
       >
         {/* Label */}
-        <Field.Label className="inline-grid text-[13px] pl-3">
+        <Field.Label
+          className={cn(
+            "inline-grid",
+            sizeClasses.text,
+            compact ? "pl-2.5" : "pl-3"
+          )}
+        >
           <span
             className="col-start-1 row-start-1 invisible"
             style={{ fontVariationSettings: fontWeights.semibold }}
@@ -203,14 +219,16 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
             inputRef.current?.focus();
           }}
           className={cn(
-            `flex items-center gap-2 ${shape.input} px-3 py-2 ring-1 transition-all duration-80`,
+            // Fixed height (was py-2 around the line box) so the field sits
+            // exactly on the ladder's control height.
+            `flex items-center ${sizeClasses.gap} ${shape.input} ${sizeClasses.px} ${sizeClasses.control} ring-1 transition-all duration-80`,
             bgClass,
             ringClass
           )}
         >
           {Icon && (
             <Icon
-              size={16}
+              size={sizeClasses.icon}
               strokeWidth={labelActive ? 2 : 1.5}
               className={cn(
                 "shrink-0 transition-[color,stroke-width] duration-80",
@@ -228,7 +246,10 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder={placeholder}
-            className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none font-[inherit]"
+            className={cn(
+              "w-full bg-transparent text-foreground placeholder:text-muted-foreground outline-none font-[inherit]",
+              sizeClasses.text
+            )}
             style={{ fontVariationSettings: fontWeights.normal }}
             {...props}
           />
@@ -239,7 +260,10 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
         {error && (
           <Field.Error
             match
-            className="text-[12px] text-destructive pl-3"
+            className={cn(
+              "text-destructive",
+              compact ? "text-[11px] pl-2.5" : "text-[12px] pl-3"
+            )}
             style={{ fontVariationSettings: fontWeights.medium }}
           >
             {error}

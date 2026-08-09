@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { shapeMap } from "@/lib/shape-context";
+import { useSize } from "@/lib/size-context";
 
 // MenuItem is only used inside Dropdown, which opts out of the global pill
 // shape — see dropdown.tsx for the rationale.
@@ -123,6 +124,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     const isActive = activeIndex === index;
     const skipAnimation = !hasMounted.current;
+    const sizeClasses = useSize();
 
     const mergeRef = (node: HTMLDivElement | null) => {
       (internalRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -142,7 +144,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       // text-box trim on the label doesn't shrink the row. shrink-0 because
       // menu popups are max-height flex columns — without it a long list
       // compresses rows to fit instead of scrolling.
-      `relative z-10 flex h-9 shrink-0 items-center gap-2 ${shape.item} px-2 cursor-pointer outline-none`,
+      `relative z-10 flex ${sizeClasses.item} shrink-0 items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} cursor-pointer outline-none`,
       disabled && "opacity-50 pointer-events-none",
       className
     );
@@ -152,10 +154,10 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         {Icon && (
           <span className="inline-grid">
             <span className="col-start-1 row-start-1 invisible">
-              <Icon size={16} strokeWidth={2} />
+              <Icon size={sizeClasses.icon} strokeWidth={2} />
             </span>
             <Icon
-              size={16}
+              size={sizeClasses.icon}
               strokeWidth={isActive || checked ? 2 : 1.5}
               className={cn(
                 "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
@@ -168,7 +170,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         )}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className="inline-grid flex-1 text-[13px]">
+        <span className={cn("inline-grid flex-1", sizeClasses.text)}>
           <span
             className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
@@ -196,8 +198,8 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           {checked && (
             <motion.svg
               key="check"
-              width={16}
-              height={16}
+              width={sizeClasses.icon}
+              height={sizeClasses.icon}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

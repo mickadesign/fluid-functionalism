@@ -13,6 +13,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
+import { useSizeVariant } from "@/lib/size-context";
 
 const buttonVariants = cva(
   [
@@ -29,35 +30,57 @@ const buttonVariants = cva(
         tertiary: "text-foreground",
         ghost: "text-muted-foreground hover:text-foreground",
       },
+      // The two-step size ladder shared by every control — see /docs/sizes.
+      // default = 36px control height, compact = 28px for dense surfaces.
       size: {
-        sm: "h-7 px-3 text-[12px] gap-1",
-        md: "h-8 px-4 text-[13px] gap-1.5",
-        lg: "h-9 px-5 text-[14px] gap-1.5",
-        "icon-sm": "h-8 w-8 p-0 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        default: "h-9 px-4 text-[13px] gap-1.5",
+        compact: "h-7 px-3 text-[12px] gap-1",
         icon: "h-9 w-9 p-0 [&_svg]:h-4 [&_svg]:w-4",
-        "icon-lg": "h-10 w-10 p-0 [&_svg]:h-5 [&_svg]:w-5",
+        "icon-compact": "h-7 w-7 p-0 [&_svg]:h-3.5 [&_svg]:w-3.5",
       },
       iconLeft: { true: "" },
       iconRight: { true: "" },
     },
     compoundVariants: [
-      { size: "sm", iconLeft: true, className: "pl-[6px]" },
-      { size: "md", iconLeft: true, className: "pl-[10px]" },
-      { size: "lg", iconLeft: true, className: "pl-[14px]" },
-      { size: "sm", iconRight: true, className: "pr-[6px]" },
-      { size: "md", iconRight: true, className: "pr-[10px]" },
-      { size: "lg", iconRight: true, className: "pr-[14px]" },
+      { size: "compact", iconLeft: true, className: "pl-[6px]" },
+      { size: "default", iconLeft: true, className: "pl-[10px]" },
+      { size: "compact", iconRight: true, className: "pr-[6px]" },
+      { size: "default", iconRight: true, className: "pr-[10px]" },
     ],
     defaultVariants: {
       variant: "primary",
-      size: "md",
+      size: "default",
     },
   }
 );
 
+type ButtonSizeCanonical = "default" | "compact" | "icon" | "icon-compact";
+
+/** Public size values: the canonical two-size scale plus the pre-sizes-system
+ *  aliases, kept so existing call sites keep compiling. Aliases resolve onto
+ *  the canonical ladder (sm → compact; md/lg → default). */
+type ButtonSize =
+  | ButtonSizeCanonical
+  | "sm"
+  | "md"
+  | "lg"
+  | "icon-sm"
+  | "icon-lg";
+
+const legacySizeAliases: Partial<Record<ButtonSize, ButtonSizeCanonical>> = {
+  sm: "compact",
+  md: "default",
+  lg: "default",
+  "icon-sm": "icon-compact",
+  "icon-lg": "icon",
+};
+
 interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+    Omit<VariantProps<typeof buttonVariants>, "size"> {
+  /** Omitted, the button follows the surrounding SizeProvider (default 36px,
+   *  compact 28px). Legacy sm/md/lg values still resolve. */
+  size?: ButtonSize;
   /** When true, the given single React-element child becomes the rendered element (slot-style). */
   asChild?: boolean;
   loading?: boolean;
@@ -117,18 +140,21 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           }>)
         : null;
     const label = asChildElement ? asChildElement.props.children : children;
-    const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
-    const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
-    // Spinner box tracks the button height (sm is h-7, lg/icon are h-9, …) so
-    // the loading glyph stays proportionate across sizes.
-    const spinnerSizeClass =
-      size === "sm"
-        ? "h-7 w-7"
-        : size === "lg" || size === "icon"
-          ? "h-9 w-9"
-          : size === "icon-lg"
-            ? "h-10 w-10"
-            : "h-8 w-8";
+    // Resolve the size: explicit prop (legacy aliases mapped onto the
+    // canonical ladder) > surrounding SizeProvider > default.
+    const contextSize = useSizeVariant();
+    const resolvedSize: ButtonSizeCanonical = size
+      ? legacySizeAliases[size] ?? (size as ButtonSizeCanonical)
+      : contextSize === "compact"
+        ? "compact"
+        : "default";
+    const isIconOnly = resolvedSize === "icon" || resolvedSize === "icon-compact";
+    const isCompact =
+      resolvedSize === "compact" || resolvedSize === "icon-compact";
+    const iconSize = isCompact ? 14 : 16;
+    // Spinner box tracks the button height so the loading glyph stays
+    // proportionate across sizes.
+    const spinnerSizeClass = isCompact ? "h-7 w-7" : "h-9 w-9";
     const shape = useShape();
     const bgClass = active
       ? activeBgVariants[variant ?? "primary"]
@@ -209,7 +235,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const rootClassName = cn(
       buttonVariants({
         variant,
-        size,
+        size: resolvedSize,
         iconLeft: !isIconOnly && !!LeadingIcon,
         iconRight: !isIconOnly && !!TrailingIcon,
       }),
@@ -250,4 +276,4 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button";
 
 export { Button, buttonVariants };
-export type { ButtonProps };
+export type { ButtonProps, ButtonSize };
