@@ -385,10 +385,13 @@ function CompactRegionDemo() {
           borderBottomRightRadius: "inherit",
         }}
       >
-        <div className="relative flex items-center justify-center min-h-[260px] bg-background px-8 py-12">
-    <div className="relative w-fit sm:pr-64">
+        <div className="relative flex items-start justify-center min-h-[260px] bg-background px-8 py-12">
+    {/* Fixed column width + top alignment keep the wrapper's origin stable
+        across steps, so the absolutely-positioned callout doesn't move when
+        the region re-renders at the other size. */}
+    <div className="relative sm:pr-64">
       <SizeProvider size={step}>
-        <div className="flex flex-col items-start gap-2">
+        <div className="flex flex-col items-start gap-2 sm:w-[272px]">
           <div className={cn("flex items-center", sizeMap[step].gap)}>
             <Button variant="tertiary" active trailingIcon={ChevronDown}>
               {SORT_OPTIONS[sort].label}
