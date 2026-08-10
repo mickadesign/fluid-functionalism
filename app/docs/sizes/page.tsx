@@ -355,38 +355,49 @@ function ToolbarDemo() {
 // Compact region demo — one provider pins the bar AND the menu it opens
 // ---------------------------------------------------------------------------
 
-const REGION_CODE = `import { SizeProvider } from "@/lib/size-context";
-
-// One wrapper pins the whole region — the buttons AND the menu their
-// trigger opens. React context crosses portals, so the menu's rows
-// come back compact too.
-
-<SizeProvider size="compact">
-  <div className={cn("flex items-center", gap)}>
-    <Button variant="tertiary" trailingIcon={ChevronDown}>
-      Last updated
-    </Button>
-    <Button variant="tertiary" size="icon-compact" aria-label="Filter">
-      <ListFilter />
-    </Button>
-    <Button leadingIcon={Plus}>New</Button>
-  </div>
-</SizeProvider>`;
-
 function CompactRegionDemo() {
+  const [step, setStep] = useState<SizeVariant>("compact");
   const [sort, setSort] = useState(0);
+  const shape = useShape();
 
   return (
-    // Extra right padding reserves room for the annotation; the arrow and
-    // label are absolutely positioned against this wrapper.
+    // Same stripped frame as the token inspector below: the header holds a
+    // Default/Compact toggle instead of the Preview/Code + Inspect chrome.
+    <div
+      className={`relative flex flex-col w-full border border-border/60 ${shape.container}`}
+    >
+      <div
+        className="relative flex items-center px-3 py-3 min-h-[52px] border-b border-border/60 bg-background"
+        style={{ borderTopLeftRadius: "inherit", borderTopRightRadius: "inherit" }}
+      >
+        <TabsSubtle
+          selectedIndex={step === "default" ? 0 : 1}
+          onSelect={(i) => setStep(i === 0 ? "default" : "compact")}
+        >
+          <TabsSubtleItem index={0} label="Default" />
+          <TabsSubtleItem index={1} label="Compact" />
+        </TabsSubtle>
+      </div>
+      <div
+        className="overflow-hidden"
+        style={{
+          borderBottomLeftRadius: "inherit",
+          borderBottomRightRadius: "inherit",
+        }}
+      >
+        <div className="relative flex items-center justify-center min-h-[260px] bg-background px-8 py-12">
     <div className="relative w-fit sm:pr-64">
-      <SizeProvider size="compact">
+      <SizeProvider size={step}>
         <div className="flex flex-col items-start gap-2">
-          <div className="flex items-center gap-1">
+          <div className={cn("flex items-center", sizeMap[step].gap)}>
             <Button variant="tertiary" active trailingIcon={ChevronDown}>
               {SORT_OPTIONS[sort].label}
             </Button>
-            <Button variant="tertiary" size="icon-compact" aria-label="Filter">
+            <Button
+              variant="tertiary"
+              size={step === "compact" ? "icon-compact" : "icon"}
+              aria-label="Filter"
+            >
               <ListFilter />
             </Button>
             <Button leadingIcon={Plus}>New</Button>
@@ -466,6 +477,9 @@ function CompactRegionDemo() {
         <br />
         the region&apos;s step
       </span>
+    </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -694,9 +708,7 @@ export default function SizesPage() {
           in a<Code>SizeProvider</Code> and everything inside follows — menus
           included, since React context crosses portals.
         </p>
-        <ComponentPreview code={REGION_CODE} minHeightClass="min-h-[260px]">
-          <CompactRegionDemo />
-        </ComponentPreview>
+        <CompactRegionDemo />
       </DocSection>
 
       <DocSection title="Token reference">
