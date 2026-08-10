@@ -149,6 +149,22 @@ export function InspectOverlay({
   // toggle) can refresh its numbers in place even if it slid out from under
   // the frozen cursor.
   const lastElRef = useRef<HTMLElement | null>(null);
+  // Re-measure when the inspected element itself resizes — a demo-local step
+  // toggle re-lays-out the content without any site-level signal, and the
+  // cursor may be parked (keyboard-driven toggle) with no mousemove coming.
+  const measureElRef = useRef<(el: HTMLElement) => void>(() => {});
+  const targetRoRef = useRef<ResizeObserver | null>(null);
+  const getTargetRo = useCallback(() => {
+    if (targetRoRef.current === null && typeof ResizeObserver !== "undefined") {
+      targetRoRef.current = new ResizeObserver(() =>
+        requestAnimationFrame(() => {
+          const el = lastElRef.current;
+          if (el && el.isConnected) measureElRef.current(el);
+        })
+      );
+    }
+    return targetRoRef.current;
+  }, []);
 
   const measureEl = useCallback(
     (el: HTMLElement) => {
@@ -157,6 +173,10 @@ export function InspectOverlay({
       const fRect = frame.getBoundingClientRect();
       const iLeft = fRect.left + frame.clientLeft;
       const iTop = fRect.top + frame.clientTop;
+      if (lastElRef.current !== el) {
+        targetRoRef.current?.disconnect();
+        getTargetRo()?.observe(el);
+      }
       lastElRef.current = el;
 
       const r = el.getBoundingClientRect();
@@ -329,14 +349,25 @@ export function InspectOverlay({
     [compute]
   );
 
+  // Keep the observer callback pointed at the latest measureEl.
+  measureElRef.current = measureEl;
+
   const clear = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     lastPos.current = null;
     lastElRef.current = null;
+    targetRoRef.current?.disconnect();
     setTarget(null);
   }, []);
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current);
+      targetRoRef.current?.disconnect();
+      targetRoRef.current = null;
+    },
+    []
+  );
 
   // Re-measure in place when the size step flips: the demo re-lays-out without
   // a mousemove, so the inspected element's numbers go stale. Prefer refreshing

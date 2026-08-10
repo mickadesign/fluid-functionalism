@@ -14,14 +14,13 @@ type SizeVariant = "default" | "compact";
 interface SizeClasses {
   /** The variant these classes belong to — handy for conditionals. */
   variant: SizeVariant;
-  /** Bounded control height: buttons, inputs, select triggers, subtle tabs. */
+  /** Bounded control height — buttons, inputs, select triggers, subtle tabs —
+   *  AND list/menu rows (select options, dropdown, checkbox and radio rows).
+   *  One token by design: a popup row lines up with the trigger that opened
+   *  it because they share this height. */
   control: string;
   /** `control` as a number, for consumers that need raw pixels. */
   controlHeight: number;
-  /** Row height for list and menu items: select options, dropdown rows,
-   *  checkbox and radio rows. Same scale as `control` so a popup row lines up
-   *  with the trigger that opened it. */
-  item: string;
   /** Tab trigger height inside a padded segmented list. Sized so
    *  `segmentPad` + `segmentItem` adds back up to the control height —
    *  the segmented control's outer box stays on the same ladder. */
@@ -35,16 +34,14 @@ interface SizeClasses {
   /** Horizontal padding of list/menu rows, which sit inside a padded popup
    *  or group and need less inset than a bounded control. */
   itemPx: string;
-  /** Gap between an icon / control glyph and its label. */
-  gap: string;
-  /** Gap between neighbouring controls in a row (toolbars, filter bars,
-   *  button clusters). Density is spacing as much as control height, so the
+  /** Gap between an icon / control glyph and its label, and between
+   *  neighbouring controls in a row (toolbars, filter bars, button
+   *  clusters). Density is spacing as much as control height, so the
    *  compact step halves it. */
-  rowGap: string;
-  /** Icon size in px for leading/trailing icons inside controls. */
+  gap: string;
+  /** Glyph size in px: leading/trailing icons inside controls, and the
+   *  checkbox square / radio circle. */
   icon: number;
-  /** Checkbox square / radio circle edge in px. */
-  check: number;
 }
 
 const sizeMap: Record<SizeVariant, SizeClasses> = {
@@ -54,16 +51,13 @@ const sizeMap: Record<SizeVariant, SizeClasses> = {
     variant: "default",
     control: "h-9",
     controlHeight: 36,
-    item: "h-9",
     segmentItem: "h-7",
     segmentPad: "p-1",
     text: "text-[13px]",
     px: "px-3",
     itemPx: "px-2",
     gap: "gap-2",
-    rowGap: "gap-2",
     icon: 16,
-    check: 15,
   },
   // 28px — the compact height for dense surfaces: filter bars, toolbars,
   // table headers, sidebars. One step down in text (12px) and icon (14px)
@@ -72,16 +66,13 @@ const sizeMap: Record<SizeVariant, SizeClasses> = {
     variant: "compact",
     control: "h-7",
     controlHeight: 28,
-    item: "h-7",
     segmentItem: "h-6",
     segmentPad: "p-0.5",
     text: "text-[12px]",
     px: "px-2.5",
     itemPx: "px-1.5",
-    gap: "gap-1.5",
-    rowGap: "gap-1",
+    gap: "gap-1",
     icon: 14,
-    check: 13,
   },
 };
 

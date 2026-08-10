@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
+import { InspectOverlay } from "@/lib/docs/InspectOverlay";
+import { useShape } from "@/registry/default/lib/shape-context";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@/components/flavored/select";
 import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
 import { InputGroup, InputField } from "@/registry/default/input-group";
+import { CheckboxGroup, CheckboxItem } from "@/registry/radix/checkbox-group";
 import { cn } from "@/registry/default/lib/utils";
 import { ListFilter, Plus, Search, SquareKanban, Table2 } from "lucide-react";
 
@@ -121,15 +124,12 @@ const TOKEN_ROWS: Array<{
   def: string;
   compact: string;
 }> = [
-  { token: "control", applies: "Buttons, inputs, select triggers, subtle tabs", def: "h-9 · 36px", compact: "h-7 · 28px" },
-  { token: "item", applies: "Menu, select, checkbox, radio and table rows", def: "h-9 · 36px", compact: "h-7 · 28px" },
+  { token: "control", applies: "Controls and rows — shared so popup rows line up with their trigger", def: "h-9 · 36px", compact: "h-7 · 28px" },
   { token: "segmentItem + segmentPad", applies: "Segmented tabs inside their padded list", def: "28px + 4px = 36px", compact: "24px + 2px = 28px" },
   { token: "text", applies: "Labels inside controls", def: "13px", compact: "12px" },
-  { token: "icon", applies: "Leading/trailing icons", def: "16px", compact: "14px" },
-  { token: "check", applies: "Checkbox square, radio circle", def: "15px", compact: "13px" },
+  { token: "icon", applies: "Leading/trailing icons, checkbox square, radio circle", def: "16px", compact: "14px" },
   { token: "px / itemPx", applies: "Control / row horizontal padding", def: "12px / 8px", compact: "10px / 6px" },
-  { token: "gap", applies: "Icon-to-label gap", def: "8px", compact: "6px" },
-  { token: "rowGap", applies: "Gap between controls in a row (toolbars, filter bars)", def: "8px", compact: "4px" },
+  { token: "gap", applies: "Icon-to-label and control-to-control gap", def: "8px", compact: "4px" },
 ];
 
 function TokenTable() {
@@ -158,8 +158,12 @@ function TokenTable() {
                 </code>
               </td>
               <td className="px-3 py-2 text-muted-foreground">{row.applies}</td>
-              <td className="px-3 py-2 text-foreground">{row.def}</td>
-              <td className="px-3 py-2 text-foreground">{row.compact}</td>
+              <td className="px-3 py-2 text-foreground whitespace-nowrap">
+                {row.def}
+              </td>
+              <td className="px-3 py-2 text-foreground whitespace-nowrap">
+                {row.compact}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -176,15 +180,15 @@ const TOOLBAR_CODE = `// The same toolbar line at each step. One SizeProvider pi
 // row; every control inside follows. activeLabel collapses inactive
 // tabs to their icon, saving room for the search field.
 
-const { rowGap } = useSize(); // control-to-control gap: 8px default, 4px compact
+const { gap } = useSize(); // icon-to-label and control-to-control gap: 8px / 4px
 
 <SizeProvider size="compact">
-  <div className={cn("flex items-center", rowGap)}>
+  <div className={cn("flex items-center", gap)}>
     <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
       <TabsSubtleItem index={0} icon={Table2} label="Table" />
       <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
     </TabsSubtle>
-    <div className={cn("ml-auto flex items-center", rowGap)}>
+    <div className={cn("ml-auto flex items-center", gap)}>
       <InputGroup className="w-28">
         <InputField index={0} label="Search" labelHidden icon={Search}
           placeholder="Search…" value={query} onChange={setQuery} />
@@ -228,9 +232,9 @@ function ToolbarRow({ variant }: { variant: SizeVariant }) {
   const [view, setView] = useState(0);
   const [sort, setSort] = useState("updated");
   const compactStep = variant === "compact";
-  // Control-to-control spacing comes from the ladder: rowGap is 8px at the
+  // Control-to-control spacing comes from the ladder: gap is 8px at the
   // default step and 4px at compact — density is spacing as much as height.
-  const gap = sizeMap[variant].rowGap;
+  const gap = sizeMap[variant].gap;
 
   return (
     <SizeProvider size={variant}>
@@ -275,6 +279,94 @@ function ToolbarDemo() {
     <div className="flex w-full flex-col gap-8">
       <ToolbarRow variant="default" />
       <ToolbarRow variant="compact" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Token inspector — the reference table, measured live
+// ---------------------------------------------------------------------------
+
+function TokenInspectorDemo() {
+  const [step, setStep] = useState<SizeVariant>("default");
+  const [sort, setSort] = useState("updated");
+  const [checked, setChecked] = useState<Set<number>>(new Set([0]));
+  const shape = useShape();
+  const frameRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  return (
+    // A stripped-down preview frame: no Preview/Code tabs, no Inspect
+    // switch — the overlay is permanently on and the header holds the step
+    // toggle instead. The header keeps z-40 so it sits above the overlay
+    // (z-30) and stays clickable while the content is frozen.
+    <div
+      ref={frameRef}
+      className={`relative flex flex-col w-full border border-border/60 ${shape.container}`}
+    >
+      <div
+        className="relative z-40 flex items-center px-3 py-3 min-h-[52px] border-b border-border/60 bg-background"
+        style={{ borderTopLeftRadius: "inherit", borderTopRightRadius: "inherit" }}
+      >
+        <TabsSubtle
+          selectedIndex={step === "default" ? 0 : 1}
+          onSelect={(i) => setStep(i === 0 ? "default" : "compact")}
+        >
+          <TabsSubtleItem index={0} label="Default" />
+          <TabsSubtleItem index={1} label="Compact" />
+        </TabsSubtle>
+      </div>
+      <div
+        className="overflow-hidden"
+        style={{
+          borderBottomLeftRadius: "inherit",
+          borderBottomRightRadius: "inherit",
+        }}
+      >
+        <div
+          ref={contentRef}
+          className="relative flex items-center justify-center min-h-[200px] bg-background px-8 py-12"
+        >
+          <SizeProvider size={step}>
+            <div className="flex flex-col items-start gap-4">
+              <div
+                className={cn("flex flex-wrap items-center", sizeMap[step].gap)}
+              >
+                <Button leadingIcon={Plus}>New project</Button>
+                <Select value={sort} onValueChange={setSort}>
+                  <SelectTrigger placeholder="Sort by" />
+                  <SelectContent>
+                    {SORT_OPTIONS.map((o, i) => (
+                      <SelectItem key={o.value} value={o.value} index={i}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <CheckboxGroup checkedIndices={checked} className="w-44">
+                {["Design", "Engineering"].map((label, i) => (
+                  <CheckboxItem
+                    key={label}
+                    index={i}
+                    label={label}
+                    checked={checked.has(i)}
+                    onToggle={() =>
+                      setChecked((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(i)) next.delete(i);
+                        else next.add(i);
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </CheckboxGroup>
+            </div>
+          </SizeProvider>
+        </div>
+      </div>
+      <InspectOverlay frameRef={frameRef} contentRef={contentRef} />
     </div>
   );
 }
@@ -359,6 +451,12 @@ export default function SizesPage() {
       </DocSection>
 
       <DocSection title="Token reference">
+        <p className="text-body text-muted-foreground leading-relaxed">
+          The table, measured live: hover a control below and every number in
+          the readout is a token from this table. Flip the step and the
+          element re-measures under your cursor.
+        </p>
+        <TokenInspectorDemo />
         <TokenTable />
       </DocSection>
 

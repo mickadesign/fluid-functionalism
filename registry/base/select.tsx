@@ -680,7 +680,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
               // the text-box trim on the item text doesn't shrink the row.
               // shrink-0: the popup is a max-height flex column, so without it
               // a long list compresses rows to fit instead of scrolling.
-              `relative z-10 flex ${sizeClasses.item} shrink-0 items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} ${sizeClasses.text} cursor-pointer outline-none select-none`,
+              `relative z-10 flex ${sizeClasses.control} shrink-0 items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.itemPx} ${sizeClasses.text} cursor-pointer outline-none select-none`,
               "transition-[color] duration-80",
               isActive || isChecked
                 ? "text-foreground"

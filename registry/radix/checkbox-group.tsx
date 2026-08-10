@@ -299,7 +299,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         className={cn(
           // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
           // text-box trim on the label doesn't shrink the row.
-          `relative z-10 flex ${sizeClasses.item} items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} cursor-pointer outline-none`,
+          `relative z-10 flex ${sizeClasses.control} items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} cursor-pointer outline-none`,
           className
         )}
         {...props}
@@ -312,7 +312,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           aria-hidden
           className={cn(
             "relative shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer",
-            compact ? "w-[13px] h-[13px]" : "w-[15px] h-[15px]"
+            compact ? "w-[14px] h-[14px]" : "w-[16px] h-[16px]"
           )}
           onClick={(e) => e.stopPropagation()}
         >
