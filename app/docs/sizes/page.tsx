@@ -317,7 +317,7 @@ export default function SizesPage() {
   return (
     <DocPage
       title="Sizes"
-      description="Two sizes: a 36px default and a 28px compact."
+      description="Two component sizes: a 36px default and a 28px compact."
       slug="sizes"
       installSlug="size-context"
     >
