@@ -89,8 +89,8 @@ interface TypeScaleStep {
  * role down one notch so dense regions read as a smaller sibling of the same
  * hierarchy, not a squeezed copy. `body`, `caption`, and `subtitle` are what
  * the sized components already render through `SizeClasses.text` and their
- * compact conditionals; `display`, `title`, and `overline` are the
- * page-level roles for consumers composing their own screens.
+ * compact conditionals; `display` and `title` are the page-level roles
+ * for consumers composing their own screens.
  */
 const typeScale = {
   /** Page titles. */

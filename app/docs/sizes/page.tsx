@@ -496,7 +496,9 @@ function CompactRegionDemo() {
  *  the token table, not generic CSS. */
 function tokenReadout(raw: InspectRaw, step: SizeVariant) {
   const t = sizeMap[step];
-  const eq = (a: number, b: number) => Math.abs(a - b) < 0.6;
+  // ±1px so fractional browser zoom doesn't knock measurements off their
+  // token match.
+  const eq = (a: number, b: number) => Math.abs(a - b) < 1;
   const px = step === "default" ? 12 : 10;
   const itemPx = step === "default" ? 8 : 6;
   const gap = step === "default" ? 8 : 4;
