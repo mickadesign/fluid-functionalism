@@ -1309,6 +1309,7 @@ export default function SurfacesDoc() {
       title="Surfaces"
       slug="surfaces"
       installSlug="elevated"
+      installNote="Installs the Elevated primitive plus the surface-context and surface-classes libs — the elevation ladder as code."
       description={
         <>
           Eight surface levels that nest. Components read their substrate from

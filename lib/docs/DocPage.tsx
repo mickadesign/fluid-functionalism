@@ -33,6 +33,10 @@ interface DocPageProps {
   installSlug?: string;
   /** Set to false to skip the auto-injected Installation block (when the page provides its own). */
   showInstall?: boolean;
+  /** Replaces the flavor note under the install command with a short
+   *  description of what the command actually adds — for system pages,
+   *  where "which primitive flavor" is the wrong question. */
+  installNote?: string;
   children: ReactNode;
 }
 
@@ -42,6 +46,7 @@ export function DocPage({
   slug,
   installSlug,
   showInstall = true,
+  installNote,
   children,
 }: DocPageProps) {
   const ArrowRight = useIcon("arrow-right");
@@ -115,7 +120,9 @@ export function DocPage({
           <InputCopy
             value={`npx shadcn@latest add ${installUrl(installSlug ?? slug, base)}`}
           />
-          {DUAL_FLAVOR_SLUGS.has(installSlug ?? slug) ? (
+          {installNote ? (
+            <p className="text-caption text-muted-foreground">{installNote}</p>
+          ) : DUAL_FLAVOR_SLUGS.has(installSlug ?? slug) ? (
             <p className="text-caption text-muted-foreground">
               {base === "base"
                 ? "Installs the Base UI flavor. Switch in the right panel."

@@ -6,6 +6,7 @@ import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { InspectOverlay } from "@/lib/docs/InspectOverlay";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { ScrollArea } from "@/registry/base/scroll-area";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import {
   SizeProvider,
@@ -24,13 +25,15 @@ import {
 import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
 import { InputGroup, InputField } from "@/registry/default/input-group";
 import { CheckboxGroup, CheckboxItem } from "@/registry/radix/checkbox-group";
+import { Dropdown } from "@/components/flavored/dropdown";
+import { MenuItem } from "@/registry/default/menu-item";
 import { cn } from "@/registry/default/lib/utils";
-import { ListFilter, Plus, Search, SquareKanban, Table2 } from "lucide-react";
+import { ChevronDown, ListFilter, Plus, Search, SquareKanban, Table2 } from "lucide-react";
 
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
   return (
-    <code className="mx-1 rounded bg-muted px-1 py-0.5 text-caption">
+    <code className="mx-1 rounded bg-[light-dark(#EBEBED,#2C2C2C)] px-1 py-0.5 text-caption text-foreground">
       {children}
     </code>
   );
@@ -64,16 +67,18 @@ function TypeScaleTable({ step }: { step: SizeVariant }) {
       >
         {step === "default" ? "Default" : "Compact"}
       </span>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] border-collapse text-body">
-          <thead>
-            <tr className="border-b border-border">
-              {["Role", "Size", "Sample"].map((h) => (
-                <th
-                  key={h}
-                  className="px-3 py-2 text-left text-foreground"
-                  style={{ fontVariationSettings: fontWeights.semibold }}
-                >
+      <ScrollArea
+        orientation="horizontal"
+        viewportClassName="scroll-fade-x"
+        className="w-full"
+      >
+        <table className="w-full min-w-[480px] border-collapse text-body [&_th:first-child]:pl-0 [&_td:first-child]:pl-0">
+          {/* Column labels stay for screen readers only — the samples are
+              self-describing and the header row just added chrome. */}
+          <thead className="sr-only">
+            <tr>
+              {["Size", "Sample", "Role"].map((h) => (
+                <th key={h} className="text-left">
                   {h}
                 </th>
               ))}
@@ -82,11 +87,6 @@ function TypeScaleTable({ step }: { step: SizeVariant }) {
           <tbody>
             {TYPE_ROLES.map(({ role, tag, label, weight, sample, muted }) => (
               <tr key={role} className="border-b border-border/50">
-                <td className="px-3 py-2.5">
-                  <code className="rounded bg-muted px-1 py-0.5 text-caption">
-                    {tag}
-                  </code>
-                </td>
                 <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
                   {typeScale[role][step]}px
                 </td>
@@ -105,11 +105,16 @@ function TypeScaleTable({ step }: { step: SizeVariant }) {
                   </span>
                   <span className="sr-only">{label}</span>
                 </td>
+                <td className="px-3 py-2.5">
+                  <code className="rounded bg-[light-dark(#EBEBED,#2C2C2C)] px-1 py-0.5 text-caption text-foreground">
+                    {tag}
+                  </code>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -124,7 +129,7 @@ const TOKEN_ROWS: Array<{
   def: string;
   compact: string;
 }> = [
-  { token: "control", applies: "Controls and rows — shared so popup rows line up with their trigger", def: "h-9 · 36px", compact: "h-7 · 28px" },
+  { token: "control", applies: "Controls and rows — shared so menu rows line up with their trigger", def: "h-9 · 36px", compact: "h-7 · 28px" },
   { token: "segmentItem + segmentPad", applies: "Segmented tabs inside their padded list", def: "28px + 4px = 36px", compact: "24px + 2px = 28px" },
   { token: "text", applies: "Labels inside controls", def: "13px", compact: "12px" },
   { token: "icon", applies: "Leading/trailing icons, checkbox square, radio circle", def: "16px", compact: "14px" },
@@ -134,8 +139,12 @@ const TOKEN_ROWS: Array<{
 
 function TokenTable() {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-body border-collapse">
+    <ScrollArea
+      orientation="horizontal"
+      viewportClassName="scroll-fade-x"
+      className="w-full"
+    >
+      <table className="w-full min-w-[560px] text-body border-collapse [&_th:first-child]:pl-0 [&_td:first-child]:pl-0">
         <thead>
           <tr className="border-b border-border">
             {["Token", "Applies to", "Default", "Compact"].map((h) => (
@@ -153,7 +162,7 @@ function TokenTable() {
           {TOKEN_ROWS.map((row) => (
             <tr key={row.token} className="border-b border-border/50">
               <td className="px-3 py-2">
-                <code className="rounded bg-muted px-1 py-0.5 text-caption">
+                <code className="rounded bg-[light-dark(#EBEBED,#2C2C2C)] px-1 py-0.5 text-caption text-foreground">
                   {row.token}
                 </code>
               </td>
@@ -168,7 +177,7 @@ function TokenTable() {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -210,11 +219,11 @@ const SORT_OPTIONS = [
 
 /** Toolbar search — the real InputGroup field, label hidden for inline use.
  *  Hover, focus and sizing all come from the component. */
-function SearchField({ variant }: { variant: SizeVariant }) {
+function SearchField() {
   const [query, setQuery] = useState("");
 
   return (
-    <InputGroup className={variant === "compact" ? "w-28" : "w-32"}>
+    <InputGroup className="w-24">
       <InputField
         index={0}
         label="Search"
@@ -225,6 +234,55 @@ function SearchField({ variant }: { variant: SizeVariant }) {
         onChange={setQuery}
       />
     </InputGroup>
+  );
+}
+
+/** Spec-sheet height guides for a toolbar row: a blue line along the row's
+ *  top and bottom edges, and a double-headed arrow with the height on the
+ *  right. Desktop-only decoration — on phones it would collide with the
+ *  wrapped controls. */
+function HeightGuides({ height }: { height: number }) {
+  const line = { backgroundColor: "#6B97FF", opacity: 0.5 };
+  return (
+    <div aria-hidden className="pointer-events-none hidden sm:block">
+      <div className="absolute inset-x-0 top-0 h-px" style={line} />
+      <div className="absolute inset-x-0 bottom-0 h-px" style={line} />
+      <div className="absolute right-0 inset-y-0 flex items-center gap-1">
+        <svg
+          width={8}
+          height={height}
+          viewBox={`0 0 8 ${height}`}
+          fill="none"
+        >
+          <path
+            d={`M4,1.5 V${height - 1.5}`}
+            stroke="#6B97FF"
+            strokeWidth={1.25}
+            strokeLinecap="round"
+          />
+          <path
+            d={`M1.5,5 L4,1.5 L6.5,5`}
+            stroke="#6B97FF"
+            strokeWidth={1.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d={`M1.5,${height - 5} L4,${height - 1.5} L6.5,${height - 5}`}
+            stroke="#6B97FF"
+            strokeWidth={1.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span
+          className="text-caption tabular-nums"
+          style={{ color: "#6B97FF", fontVariationSettings: fontWeights.semibold }}
+        >
+          {height}px
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -242,32 +300,42 @@ function ToolbarRow({ variant }: { variant: SizeVariant }) {
         <span className="text-caption text-muted-foreground select-none">
           {variant === "default" ? "Default · 36px" : "Compact · 28px"}
         </span>
-        <div className={cn("flex w-full flex-wrap items-center", gap)}>
-          <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
-            <TabsSubtleItem index={0} icon={Table2} label="Table" />
-            <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
-          </TabsSubtle>
-          <div className={cn("ml-auto flex items-center", gap)}>
-            <SearchField variant={variant} />
-            <Select value={sort} onValueChange={setSort}>
-              <SelectTrigger placeholder="Sort by" />
-              <SelectContent>
-                {SORT_OPTIONS.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="tertiary"
-              size={compactStep ? "icon-compact" : "icon"}
-              aria-label="Filter"
-            >
-              <ListFilter />
-            </Button>
-            <Button leadingIcon={Plus}>New</Button>
+        <div className="relative w-full">
+          <div
+            className={cn("flex w-full flex-wrap items-center sm:pr-[44px]", gap)}
+          >
+            <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
+              <TabsSubtleItem index={0} icon={Table2} label="Table" />
+              <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
+            </TabsSubtle>
+            <div className={cn("ml-auto flex items-center", gap)}>
+              {/* Mobile shows the trimmed toolbar — tabs, filter, primary
+                  action; search and sort return at sm. display:contents keeps
+                  the row's gap running through the wrapper at sm+. */}
+              <div className="hidden sm:contents">
+                <SearchField />
+                <Select value={sort} onValueChange={setSort}>
+                  <SelectTrigger placeholder="Sort by" className="min-w-36 w-36" />
+                  <SelectContent>
+                    {SORT_OPTIONS.map((o, i) => (
+                      <SelectItem key={o.value} value={o.value} index={i}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                variant="tertiary"
+                size={compactStep ? "icon-compact" : "icon"}
+                aria-label="Filter"
+              >
+                <ListFilter />
+              </Button>
+              <Button leadingIcon={Plus}>New</Button>
+            </div>
           </div>
+          <HeightGuides height={compactStep ? 28 : 36} />
         </div>
       </div>
     </SizeProvider>
@@ -279,6 +347,125 @@ function ToolbarDemo() {
     <div className="flex w-full flex-col gap-8">
       <ToolbarRow variant="default" />
       <ToolbarRow variant="compact" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Compact region demo — one provider pins the bar AND the menu it opens
+// ---------------------------------------------------------------------------
+
+const REGION_CODE = `import { SizeProvider } from "@/lib/size-context";
+
+// One wrapper pins the whole region — the buttons AND the menu their
+// trigger opens. React context crosses portals, so the menu's rows
+// come back compact too.
+
+<SizeProvider size="compact">
+  <div className={cn("flex items-center", gap)}>
+    <Button variant="tertiary" trailingIcon={ChevronDown}>
+      Last updated
+    </Button>
+    <Button variant="tertiary" size="icon-compact" aria-label="Filter">
+      <ListFilter />
+    </Button>
+    <Button leadingIcon={Plus}>New</Button>
+  </div>
+</SizeProvider>`;
+
+function CompactRegionDemo() {
+  const [sort, setSort] = useState(0);
+
+  return (
+    // Extra right padding reserves room for the annotation; the arrow and
+    // label are absolutely positioned against this wrapper.
+    <div className="relative w-fit sm:pr-64">
+      <SizeProvider size="compact">
+        <div className="flex flex-col items-start gap-2">
+          <div className="flex items-center gap-1">
+            <Button variant="tertiary" active trailingIcon={ChevronDown}>
+              {SORT_OPTIONS[sort].label}
+            </Button>
+            <Button variant="tertiary" size="icon-compact" aria-label="Filter">
+              <ListFilter />
+            </Button>
+            <Button leadingIcon={Plus}>New</Button>
+          </div>
+          {/* The trigger's menu, frozen open (the inline Dropdown panel —
+              same trick as the surfaces page) so the inherited step is
+              visible without fighting a real portal in the docs. */}
+          {/* inert: the frozen-open menu is an illustration — it should
+              neither take clicks/focus nor be announced. */}
+          <div inert className="select-none">
+            <Dropdown checkedIndex={sort} className="!w-48">
+              {SORT_OPTIONS.map((o, i) => (
+                <MenuItem
+                  key={o.value}
+                  index={i}
+                  label={o.label}
+                  checked={sort === i}
+                  onSelect={() => setSort(i)}
+                />
+              ))}
+            </Dropdown>
+          </div>
+        </div>
+      </SizeProvider>
+
+      {/* Blue callout — same annotation language as the surfaces page. The
+          label's top-left corner sits at the arrow's tail. Annotation is
+          desktop-only; on phones it would collide with the panel. */}
+      <svg
+        className="absolute pointer-events-none hidden sm:block"
+        style={{ left: 200, top: 8 }}
+        width={130}
+        height={100}
+        viewBox="0 0 130 100"
+        fill="none"
+        aria-hidden
+      >
+        <defs>
+          <marker
+            id="ff-sizes-annotation-arrow"
+            viewBox="0 0 12 12"
+            markerWidth="12"
+            markerHeight="12"
+            refX="8.5"
+            refY="6"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <path
+              d="M3,2.5 L8.5,6 L3,9.5"
+              fill="none"
+              stroke="context-stroke"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </marker>
+        </defs>
+        <path
+          d="M112,20 Q70,26 22,66"
+          stroke="#6B97FF"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          markerEnd="url(#ff-sizes-annotation-arrow)"
+        />
+      </svg>
+      <span
+        className="absolute text-caption leading-snug select-none hidden sm:block"
+        style={{
+          left: 318,
+          top: 18,
+          color: "#6B97FF",
+          fontVariationSettings: fontWeights.semibold,
+        }}
+      >
+        The menu inherits
+        <br />
+        the region&apos;s step
+      </span>
     </div>
   );
 }
@@ -409,9 +596,15 @@ export default function SizesPage() {
   return (
     <DocPage
       title="Sizes"
-      description="Two component sizes: a 36px default and a 28px compact."
+      description={
+        <>
+          Two component sizes: a 36px default and a 28px compact. Press
+          <Code>S</Code> to toggle on the website.
+        </>
+      }
       slug="sizes"
       installSlug="size-context"
+      installNote="Installs the size-context lib: SizeProvider, the useSize and useTypeScale hooks, and the token maps behind both steps."
     >
       <DocSection title="The principle">
         <p className="text-body text-muted-foreground leading-relaxed">
@@ -436,7 +629,7 @@ export default function SizesPage() {
           Type follows the ladder. Compact drops each role one notch, so a
           dense screen keeps the same hierarchy at a smaller size.
         </p>
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-10 pt-3">
           <TypeScaleTable step="default" />
           <TypeScaleTable step="compact" />
         </div>
@@ -445,9 +638,12 @@ export default function SizesPage() {
       <DocSection title="Compact regions">
         <p className="text-body text-muted-foreground leading-relaxed">
           Density is a region decision, not a per-control one. Wrap the region
-          in a<Code>SizeProvider</Code> and everything inside follows — popups
+          in a<Code>SizeProvider</Code> and everything inside follows — menus
           included, since React context crosses portals.
         </p>
+        <ComponentPreview code={REGION_CODE} minHeightClass="min-h-[260px]">
+          <CompactRegionDemo />
+        </ComponentPreview>
       </DocSection>
 
       <DocSection title="Token reference">

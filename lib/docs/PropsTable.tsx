@@ -25,7 +25,7 @@ export function PropsTable({ props }: PropsTableProps) {
       viewportClassName="scroll-fade-x"
       className="w-full"
     >
-      <table className="w-full min-w-[520px] text-body border-collapse">
+      <table className="w-full min-w-[520px] text-body border-collapse [&_th:first-child]:pl-0 [&_td:first-child]:pl-0">
         <thead>
           <tr className="border-b border-border">
             <th

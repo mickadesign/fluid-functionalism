@@ -13,7 +13,7 @@ import { cn } from "@/registry/default/lib/utils";
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
   return (
-    <code className="mx-1 rounded bg-muted px-1 py-0.5 text-caption">
+    <code className="mx-1 rounded bg-[light-dark(#EBEBED,#2C2C2C)] px-1 py-0.5 text-caption text-foreground">
       {children}
     </code>
   );
@@ -408,6 +408,7 @@ export default function MotionDoc() {
       title="Motion"
       slug="motion"
       installSlug="springs"
+      installNote="Installs the springs lib — the fast / moderate / slow spring presets every component animates with."
       description="Three spring speeds, and exits always move a little faster than entrances. Pick a speed, wire it in — every component follows the same pattern."
     >
       <DocSection title="Three speeds">

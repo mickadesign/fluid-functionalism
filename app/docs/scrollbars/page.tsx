@@ -319,6 +319,7 @@ export default function ScrollbarsDoc() {
       title="Scrollbars"
       slug="scrollbars"
       installSlug="scroll-area"
+      installNote="Installs the ScrollArea component with the shape-system scrollbar and the scroll-fade edge treatment."
       description={
         <>
           A scrollbar that stays out of the way but never disappears, over
@@ -377,17 +378,17 @@ export default function ScrollbarsDoc() {
             scroll-fade
           </a>
           , vendored as a CSS utility in{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-caption">
+          <code className="px-1 py-0.5 rounded bg-[light-dark(#EBEBED,#2C2C2C)] text-caption text-foreground">
             globals.css
           </code>
           . A mask dissolves the content toward the edges that have more to
           scroll, and a scroll-driven animation keeps the true start and end
           crisp. Drop{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-caption">
+          <code className="px-1 py-0.5 rounded bg-[light-dark(#EBEBED,#2C2C2C)] text-caption text-foreground">
             scroll-fade
           </code>{" "}
           (or{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-caption">
+          <code className="px-1 py-0.5 rounded bg-[light-dark(#EBEBED,#2C2C2C)] text-caption text-foreground">
             scroll-fade-x
           </code>
           ) on the viewport and it rides under the scrollbar — no JavaScript.
@@ -403,7 +404,7 @@ export default function ScrollbarsDoc() {
         <H3>Double overflow</H3>
         <P>
           A table taller and wider than its box.{" "}
-          <code className="px-1 py-0.5 rounded bg-muted text-caption">
+          <code className="px-1 py-0.5 rounded bg-[light-dark(#EBEBED,#2C2C2C)] text-caption text-foreground">
             orientation=&quot;both&quot;
           </code>{" "}
           adds both scrollbars and the corner.
