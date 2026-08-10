@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { InspectOverlay } from "@/lib/docs/InspectOverlay";
+import { InspectOverlay, type InspectRaw } from "@/lib/docs/InspectOverlay";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { ScrollArea } from "@/registry/base/scroll-area";
@@ -474,6 +474,31 @@ function CompactRegionDemo() {
 // Token inspector — the reference table, measured live
 // ---------------------------------------------------------------------------
 
+/** Maps an inspected element's raw measurements to the ladder tokens they
+ *  came from, resolved for the active step — the inspector's tooltip shows
+ *  the token table, not generic CSS. */
+function tokenReadout(raw: InspectRaw, step: SizeVariant) {
+  const t = sizeMap[step];
+  const eq = (a: number, b: number) => Math.abs(a - b) < 0.6;
+  const px = step === "default" ? 12 : 10;
+  const itemPx = step === "default" ? 8 : 6;
+  const gap = step === "default" ? 8 : 4;
+  const text = typeScale.body[step];
+
+  const rows: Array<[string, string]> = [];
+  if (eq(raw.height, t.controlHeight))
+    rows.push(["control", `${t.controlHeight}px`]);
+  if (eq(raw.width, t.icon) && eq(raw.height, t.icon))
+    rows.push(["icon", `${t.icon}px`]);
+  if (raw.fontSize !== null && eq(raw.fontSize, text))
+    rows.push(["text", `${text}px`]);
+  if (eq(raw.pl, px) || eq(raw.pr, px)) rows.push(["px", `${px}px`]);
+  else if (eq(raw.pl, itemPx) || eq(raw.pr, itemPx))
+    rows.push(["itemPx", `${itemPx}px`]);
+  if (eq(raw.gap, gap)) rows.push(["gap", `${gap}px`]);
+  return rows;
+}
+
 function TokenInspectorDemo() {
   const [step, setStep] = useState<SizeVariant>("default");
   const [sort, setSort] = useState("updated");
@@ -553,7 +578,35 @@ function TokenInspectorDemo() {
           </SizeProvider>
         </div>
       </div>
-      <InspectOverlay frameRef={frameRef} contentRef={contentRef} />
+      <InspectOverlay
+        frameRef={frameRef}
+        contentRef={contentRef}
+        renderTooltip={(raw) => {
+          const rows = tokenReadout(raw, step);
+          return (
+            <div className="font-mono text-[11px] leading-[1.55] normal-case tracking-normal">
+              {rows.length > 0 ? (
+                rows.map(([token, value]) => (
+                  <div key={token}>
+                    <span
+                      className="font-semibold"
+                      style={{ color: "#6B97FF" }}
+                    >
+                      {token}
+                    </span>{" "}
+                    {value}
+                  </div>
+                ))
+              ) : (
+                <div>
+                  outside the ladder · {Math.round(raw.width)} ×{" "}
+                  {Math.round(raw.height)}
+                </div>
+              )}
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

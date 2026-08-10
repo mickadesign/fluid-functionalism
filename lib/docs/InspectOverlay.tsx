@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { motion } from "framer-motion";
@@ -45,6 +46,20 @@ interface Strip {
   label: string;
 }
 
+/** Raw, unformatted measurements of the inspected element — for consumers
+ *  that render their own tooltip (e.g. the token readout on /docs/sizes). */
+export interface InspectRaw {
+  width: number;
+  height: number;
+  pt: number;
+  pr: number;
+  pb: number;
+  pl: number;
+  gap: number;
+  /** Set only when the element directly wraps text. */
+  fontSize: number | null;
+}
+
 interface Target {
   left: number;
   top: number;
@@ -68,6 +83,7 @@ interface Target {
     tracking: string; // letter-spacing
     color: string; // resolved text color as hex
   } | null;
+  raw: InspectRaw;
 }
 
 interface Box {
@@ -97,9 +113,13 @@ function boxShorthand(t: number, r: number, b: number, l: number): string {
 export function InspectOverlay({
   frameRef,
   contentRef,
+  renderTooltip,
 }: {
   frameRef: RefObject<HTMLElement | null>;
   contentRef: RefObject<HTMLElement | null>;
+  /** Replaces the default tag/box/font tooltip with custom content built
+   *  from the raw measurements — e.g. the token readout on /docs/sizes. */
+  renderTooltip?: (raw: InspectRaw) => ReactNode;
 }) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [capture, setCapture] = useState<Box | null>(null);
@@ -287,11 +307,23 @@ export function InspectOverlay({
         };
       }
 
+      const rawFontSize = wrapsText ? parseFloat(cs.fontSize) : null;
+
       setTarget({
         left,
         top,
         width,
         height,
+        raw: {
+          width,
+          height,
+          pt,
+          pr,
+          pb,
+          pl,
+          gap: gapVal,
+          fontSize: rawFontSize,
+        },
         content: {
           left: left + pl,
           top: top + pt,
@@ -315,15 +347,17 @@ export function InspectOverlay({
     (clientX: number, clientY: number) => {
       const content = contentRef.current;
       if (!content) return;
-      // Deepest element under the cursor that belongs to the component (skip the
-      // overlay's own UI and the content wrapper itself).
+      // Deepest element under the cursor that belongs to the component (skip
+      // the overlay's own UI and the content wrapper itself). Degenerate boxes
+      // — the invisible text-box-trim sizer spans report ~0 height — measure
+      // as noise, so fall through to the next element in the stack.
       const stack = document.elementsFromPoint(clientX, clientY);
-      const el = stack.find(
-        (e) =>
-          content.contains(e) &&
-          e !== content &&
-          !e.closest("[data-inspect-ui]")
-      ) as HTMLElement | undefined;
+      const el = stack.find((e) => {
+        if (!content.contains(e) || e === content) return false;
+        if (e.closest("[data-inspect-ui]")) return false;
+        const r = e.getBoundingClientRect();
+        return r.width >= 1 && r.height >= 1;
+      }) as HTMLElement | undefined;
 
       if (!el) {
         lastElRef.current = null;
@@ -553,6 +587,9 @@ export function InspectOverlay({
           side="top"
           sideOffset={8}
           content={
+            renderTooltip ? (
+              renderTooltip(target.raw)
+            ) : (
             <div className="font-mono text-[11px] leading-[1.55] normal-case tracking-normal">
               <div className="font-semibold" style={{ color: BLUE }}>
                 {target.anchor}
@@ -574,6 +611,7 @@ export function InspectOverlay({
                 </>
               )}
             </div>
+            )
           }
           className="!px-3.5 !py-4 max-w-[240px]"
         >
