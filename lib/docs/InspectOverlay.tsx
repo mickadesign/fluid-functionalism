@@ -6,10 +6,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { motion } from "framer-motion";
 import { spring } from "@/lib/springs";
+import { useSizeVariant } from "@/lib/size-context";
 import { Tooltip } from "@/registry/radix/tooltip";
 
 // ---------------------------------------------------------------------------
@@ -44,6 +46,20 @@ interface Strip {
   label: string;
 }
 
+/** Raw, unformatted measurements of the inspected element — for consumers
+ *  that render their own tooltip (e.g. the token readout on /docs/sizes). */
+export interface InspectRaw {
+  width: number;
+  height: number;
+  pt: number;
+  pr: number;
+  pb: number;
+  pl: number;
+  gap: number;
+  /** Set only when the element directly wraps text. */
+  fontSize: number | null;
+}
+
 interface Target {
   left: number;
   top: number;
@@ -67,6 +83,7 @@ interface Target {
     tracking: string; // letter-spacing
     color: string; // resolved text color as hex
   } | null;
+  raw: InspectRaw;
 }
 
 interface Box {
@@ -96,9 +113,13 @@ function boxShorthand(t: number, r: number, b: number, l: number): string {
 export function InspectOverlay({
   frameRef,
   contentRef,
+  renderTooltip,
 }: {
   frameRef: RefObject<HTMLElement | null>;
   contentRef: RefObject<HTMLElement | null>;
+  /** Replaces the default tag/box/font tooltip with custom content built
+   *  from the raw measurements — e.g. the token readout on /docs/sizes. */
+  renderTooltip?: (raw: InspectRaw) => ReactNode;
 }) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [capture, setCapture] = useState<Box | null>(null);
@@ -144,29 +165,39 @@ export function InspectOverlay({
     return () => ro.disconnect();
   }, [frameRef, contentRef]);
 
-  const compute = useCallback(
-    (clientX: number, clientY: number) => {
+  // The element currently being measured, so a re-layout (e.g. the S size
+  // toggle) can refresh its numbers in place even if it slid out from under
+  // the frozen cursor.
+  const lastElRef = useRef<HTMLElement | null>(null);
+  // Re-measure when the inspected element itself resizes — a demo-local step
+  // toggle re-lays-out the content without any site-level signal, and the
+  // cursor may be parked (keyboard-driven toggle) with no mousemove coming.
+  const measureElRef = useRef<(el: HTMLElement) => void>(() => {});
+  const targetRoRef = useRef<ResizeObserver | null>(null);
+  const getTargetRo = useCallback(() => {
+    if (targetRoRef.current === null && typeof ResizeObserver !== "undefined") {
+      targetRoRef.current = new ResizeObserver(() =>
+        requestAnimationFrame(() => {
+          const el = lastElRef.current;
+          if (el && el.isConnected) measureElRef.current(el);
+        })
+      );
+    }
+    return targetRoRef.current;
+  }, []);
+
+  const measureEl = useCallback(
+    (el: HTMLElement) => {
       const frame = frameRef.current;
-      const content = contentRef.current;
-      if (!frame || !content) return;
+      if (!frame) return;
       const fRect = frame.getBoundingClientRect();
       const iLeft = fRect.left + frame.clientLeft;
       const iTop = fRect.top + frame.clientTop;
-
-      // Deepest element under the cursor that belongs to the component (skip the
-      // overlay's own UI and the content wrapper itself).
-      const stack = document.elementsFromPoint(clientX, clientY);
-      const el = stack.find(
-        (e) =>
-          content.contains(e) &&
-          e !== content &&
-          !e.closest("[data-inspect-ui]")
-      ) as HTMLElement | undefined;
-
-      if (!el) {
-        setTarget(null);
-        return;
+      if (lastElRef.current !== el) {
+        targetRoRef.current?.disconnect();
+        getTargetRo()?.observe(el);
       }
+      lastElRef.current = el;
 
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
@@ -276,11 +307,23 @@ export function InspectOverlay({
         };
       }
 
+      const rawFontSize = wrapsText ? parseFloat(cs.fontSize) : null;
+
       setTarget({
         left,
         top,
         width,
         height,
+        raw: {
+          width,
+          height,
+          pt,
+          pr,
+          pb,
+          pl,
+          gap: gapVal,
+          fontSize: rawFontSize,
+        },
         content: {
           left: left + pl,
           top: top + pt,
@@ -297,24 +340,86 @@ export function InspectOverlay({
         font,
       });
     },
-    [frameRef, contentRef]
+    [frameRef]
   );
+
+  const compute = useCallback(
+    (clientX: number, clientY: number) => {
+      const content = contentRef.current;
+      if (!content) return;
+      // Deepest element under the cursor that belongs to the component (skip
+      // the overlay's own UI and the content wrapper itself). Degenerate boxes
+      // — the invisible text-box-trim sizer spans report ~0 height — measure
+      // as noise, so fall through to the next element in the stack.
+      const stack = document.elementsFromPoint(clientX, clientY);
+      const el = stack.find((e) => {
+        if (!content.contains(e) || e === content) return false;
+        if (e.closest("[data-inspect-ui]")) return false;
+        const r = e.getBoundingClientRect();
+        return r.width >= 1 && r.height >= 1;
+      }) as HTMLElement | undefined;
+
+      if (!el) {
+        lastElRef.current = null;
+        setTarget(null);
+        return;
+      }
+      measureEl(el);
+    },
+    [contentRef, measureEl]
+  );
+
+  // Last cursor position over the capture region, so measurements can refresh
+  // without the cursor moving (e.g. the S size toggle re-laying-out the demo).
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
 
   const onMove = useCallback(
     (e: React.MouseEvent) => {
       const { clientX, clientY } = e;
+      lastPos.current = { x: clientX, y: clientY };
       cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => compute(clientX, clientY));
     },
     [compute]
   );
 
+  // Keep the observer callback pointed at the latest measureEl.
+  measureElRef.current = measureEl;
+
   const clear = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
+    lastPos.current = null;
+    lastElRef.current = null;
+    targetRoRef.current?.disconnect();
     setTarget(null);
   }, []);
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current);
+      targetRoRef.current?.disconnect();
+      targetRoRef.current = null;
+    },
+    []
+  );
+
+  // Re-measure in place when the size step flips: the demo re-lays-out without
+  // a mousemove, so the inspected element's numbers go stale. Prefer refreshing
+  // the element itself (it usually slides out from under the frozen cursor when
+  // the page above it reflows); fall back to whatever is under the cursor now.
+  // Double-rAF lets the new layout settle first.
+  const sizeVariant = useSizeVariant();
+  useEffect(() => {
+    if (!lastElRef.current && !lastPos.current) return;
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = lastElRef.current;
+        if (el && el.isConnected) measureEl(el);
+        else if (lastPos.current) compute(lastPos.current.x, lastPos.current.y);
+      })
+    );
+    return () => cancelAnimationFrame(id);
+  }, [sizeVariant, compute, measureEl]);
 
   const { w, h } = size;
   // The rulers overlay the content instead of reserving a gutter, so the demo
@@ -482,6 +587,9 @@ export function InspectOverlay({
           side="top"
           sideOffset={8}
           content={
+            renderTooltip ? (
+              renderTooltip(target.raw)
+            ) : (
             <div className="font-mono text-[11px] leading-[1.55] normal-case tracking-normal">
               <div className="font-semibold" style={{ color: BLUE }}>
                 {target.anchor}
@@ -503,6 +611,7 @@ export function InspectOverlay({
                 </>
               )}
             </div>
+            )
           }
           className="!px-3.5 !py-4 max-w-[240px]"
         >

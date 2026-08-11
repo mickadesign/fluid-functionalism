@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/default/lib/utils.ts",
-      "content": "import { clsx, type ClassValue } from \"clsx\";\nimport { twMerge } from \"tailwind-merge\";\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs));\n}\n",
+      "content": "import { clsx, type ClassValue } from \"clsx\";\nimport { extendTailwindMerge } from \"tailwind-merge\";\n\n// The type-scale role utilities (see /docs/sizes) are font sizes, but\n// tailwind-merge can't know that for custom classes — by default anything\n// text-<word> it doesn't recognize is treated as a text *color*, so\n// cn(\"text-body\", \"text-muted-foreground\") would silently drop the size.\nconst twMerge = extendTailwindMerge({\n  extend: {\n    classGroups: {\n      \"font-size\": [\n        \"text-display\",\n        \"text-title\",\n        \"text-subtitle\",\n        \"text-body\",\n        \"text-caption\",\n      ],\n    },\n  },\n});\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs));\n}\n",
       "type": "registry:lib"
     }
   ],

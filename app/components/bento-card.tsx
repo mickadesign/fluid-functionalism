@@ -47,7 +47,7 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout
     >
       <span
         className={cn(
-          "text-[13px] text-muted-foreground transition-colors duration-80",
+          "text-body text-muted-foreground transition-colors duration-80",
           slug && "group-hover/link:text-foreground"
         )}
         style={{ fontVariationSettings: fontWeights.medium }}

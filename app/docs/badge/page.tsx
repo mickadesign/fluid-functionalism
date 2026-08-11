@@ -21,12 +21,6 @@ const dotCode = `import { Badge } from "./components";
 <Badge variant="dot" color="blue">History</Badge>
 <Badge variant="dot" color="rose">Poetry</Badge>`;
 
-const sizesCode = `import { Badge } from "./components";
-
-<Badge size="sm" color="blue">Small</Badge>
-<Badge size="md" color="blue">Medium</Badge>
-<Badge size="lg" color="blue">Large</Badge>`;
-
 const allColors = Object.keys(badgeColors) as BadgeColor[];
 
 const colorsCode = `import { Badge } from "./components";
@@ -47,9 +41,10 @@ const badgeProps: PropDef[] = [
   },
   {
     name: "size",
-    type: '"sm" | "md" | "lg"',
-    default: '"md"',
-    description: "Size of the badge.",
+    type: '"default" | "compact"',
+    default: "from SizeProvider",
+    description:
+      "Step on the size ladder (see /docs/sizes). Legacy sm/md/lg values resolve as aliases.",
   },
   {
     name: "color",
@@ -87,16 +82,6 @@ export default function BadgeDoc() {
             <Badge variant="dot" color="green">Philosophy</Badge>
             <Badge variant="dot" color="blue">History</Badge>
             <Badge variant="dot" color="rose">Poetry</Badge>
-          </div>
-        </ComponentPreview>
-      </DocSection>
-
-      <DocSection title="Sizes">
-        <ComponentPreview code={sizesCode}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge size="sm" color="blue">Small</Badge>
-            <Badge size="md" color="blue">Medium</Badge>
-            <Badge size="lg" color="blue">Large</Badge>
           </div>
         </ComponentPreview>
       </DocSection>

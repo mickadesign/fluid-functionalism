@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { shapeMap } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
   DropdownContext,
@@ -62,10 +63,14 @@ export type { DropdownContextValue, MenuItemRenderOptions };
 interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   checkedIndex?: number;
+  /** Pins the panel's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
-  ({ children, checkedIndex, className, ...props }, ref) => {
+  ({ children, checkedIndex, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const {
       activeIndex,
@@ -87,7 +92,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const checkedRect =
       checkedIndex != null ? itemRects[checkedIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    return (
+    const panel = (
       <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
         <Elevated
           offset={2}
@@ -223,6 +228,9 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
         </Elevated>
       </DropdownContext.Provider>
     );
+
+    // A size prop pins every row in the panel to one ladder step.
+    return size ? <SizeProvider size={size}>{panel}</SizeProvider> : panel;
   }
 );
 
@@ -262,6 +270,10 @@ interface DropdownMenuProps {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
+  /** Pins trigger-side content and the portalled popup rows to one step of
+   *  the size ladder (default 36px, compact 28px — see /docs/sizes).
+   *  Omitted, they follow the surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
 function DropdownMenu({
@@ -270,6 +282,7 @@ function DropdownMenu({
   defaultOpen = false,
   onOpenChange,
   disabled = false,
+  size,
 }: DropdownMenuProps) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = openProp !== undefined ? openProp : internalOpen;
@@ -284,7 +297,9 @@ function DropdownMenu({
 
   const ctx = useMemo(() => ({ open, disabled }), [open, disabled]);
 
-  return (
+  // A size prop pins the whole compound (trigger content + portalled popup —
+  // React context crosses portals) to one ladder step.
+  const root = (
     <DropdownMenuContext.Provider value={ctx}>
       {/* Root is always controlled by `open` (defaultOpen seeds local state
           instead of being forwarded), so DropdownContent can drive the exit
@@ -299,6 +314,8 @@ function DropdownMenu({
       </DropdownMenuPrimitive.Root>
     </DropdownMenuContext.Provider>
   );
+
+  return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
 }
 
 DropdownMenu.displayName = "DropdownMenu";
@@ -663,16 +680,21 @@ DropdownContent.displayName = "DropdownContent";
 // ---------------------------------------------------------------------------
 
 const DropdownLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, ...props }, ref) => {
+    // Group labels are the caption role of the type scale — see /docs/sizes.
+    const compact = useSize().variant === "compact";
+    return (
     <div
       ref={ref}
       className={cn(
-        "px-2 py-1.5 shrink-0 text-[11px] text-muted-foreground",
+        "px-2 py-1.5 shrink-0 text-muted-foreground",
+        compact ? "text-[11px]" : "text-[12px]",
         className
       )}
       {...props}
     />
-  )
+    );
+  }
 );
 
 DropdownLabel.displayName = "DropdownLabel";

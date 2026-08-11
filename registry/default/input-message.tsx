@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useIcon } from "@/lib/icon-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { SurfaceProvider } from "@/lib/surface-context";
@@ -73,6 +74,9 @@ interface QueuedMessage {
 
 interface InputMessageProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+  /** Step on the size ladder. Wins over the surrounding SizeProvider and
+   *  propagates to the composer's rows, buttons and queued messages. */
+  size?: SizeVariant;
   /** Controlled textarea value. */
   value: string;
   /** Called with the new value on every textarea change. */
@@ -231,6 +235,7 @@ function QueuedRow({
 }: QueuedRowProps) {
   const XIcon = useIcon("x");
   const ImageIcon = useIcon("image");
+  const compactStep = useSize().variant === "compact";
   const fileCount = item.files.length;
   const label =
     item.text || `${fileCount} attachment${fileCount === 1 ? "" : "s"}`;
@@ -267,8 +272,11 @@ function QueuedRow({
       className={cn(
         // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
         // text-box trim on the label doesn't shrink the row.
-        "group/qrow flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5",
-        "text-[13px] text-foreground/85 select-none outline-none",
+        "group/qrow flex items-center gap-2 rounded-lg bg-muted",
+        compactStep
+          ? "h-7 px-2 text-[12px]"
+          : "h-8 px-2.5 text-[13px]",
+        "text-foreground/85 select-none outline-none",
         "cursor-grab active:cursor-grabbing",
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
       )}
@@ -342,6 +350,7 @@ function SuggestionRow({
 }: SuggestionRowProps) {
   const EnterIcon = useIcon("corner-down-left");
   const ArrowDownIcon = useIcon("arrow-down");
+  const compactStep = useSize().variant === "compact";
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -357,8 +366,10 @@ function SuggestionRow({
       aria-selected={active}
       onClick={onSelect}
       className={cn(
-        "relative flex h-8 cursor-pointer items-center gap-2 px-2.5",
-        "text-[13px] text-muted-foreground transition-colors duration-80",
+        "relative flex cursor-pointer items-center gap-2",
+        // Matches QueuedRow's step ladder.
+        compactStep ? "h-7 px-2 text-[12px]" : "h-8 px-2.5 text-[13px]",
+        "text-muted-foreground transition-colors duration-80",
         active && "text-foreground"
       )}
       style={{ fontVariationSettings: fontWeights.normal }}
@@ -394,6 +405,7 @@ function SuggestionRow({
 const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
   (
     {
+      size,
       value,
       onValueChange,
       onSend,
@@ -426,6 +438,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     ref
   ) => {
     const shape = useShape();
+    const compactStep = useSize(size).variant === "compact";
     const ArrowUpIcon = useIcon("arrow-up");
     const reduceMotion = useReducedMotion() ?? false;
     const isTouch = useIsTouch();
@@ -971,7 +984,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       [addFiles]
     );
 
-    return (
+    const composer = (
       <div
         ref={ref}
         onMouseDown={handleContainerMouseDown}
@@ -1133,8 +1146,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
               }
               className={cn(
                 "w-full resize-none bg-transparent outline-none",
-                "text-[14px] leading-5 text-foreground placeholder:text-muted-foreground",
-                "px-2 py-2"
+                "text-foreground placeholder:text-muted-foreground",
+                compactStep
+                  ? "text-[13px] leading-[18px] px-1.5 py-1.5"
+                  : "text-[14px] leading-5 px-2 py-2"
               )}
               style={{ fontVariationSettings: fontWeights.normal }}
               {...restTextareaProps}
@@ -1146,11 +1161,23 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
             {showGhost && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 overflow-hidden px-2 py-2 text-[14px] leading-5 text-muted-foreground"
+                className={cn(
+                  "pointer-events-none absolute inset-0 overflow-hidden text-muted-foreground",
+                  // Mirror the textarea's step typography exactly so the ghost
+                  // sits where typed text will.
+                  compactStep
+                    ? "text-[13px] leading-[18px] px-1.5 py-1.5"
+                    : "text-[14px] leading-5 px-2 py-2"
+                )}
                 style={{ fontVariationSettings: fontWeights.normal }}
               >
                 <span>{placeholderSuggestion}</span>{" "}
-                <kbd className="mx-0.5 inline-flex h-[18px] -translate-y-px items-center rounded-[5px] border border-border bg-background px-1 align-middle font-sans text-[11px] text-muted-foreground">
+                <kbd
+                  className={cn(
+                    "mx-0.5 inline-flex -translate-y-px items-center rounded-[5px] border border-border bg-background px-1 align-middle font-sans text-muted-foreground",
+                    compactStep ? "h-4 text-[10px]" : "h-[18px] text-[11px]"
+                  )}
+                >
                   Tab
                 </kbd>
               </div>
@@ -1162,7 +1189,18 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
               </span>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2">
+          <div
+            className={cn(
+              "flex items-center justify-between",
+              // The footer's controls sit one notch below the composer's step:
+              // slot content is consumer-authored (usually sm/icon-sm pinned
+              // Buttons), so the compact step scales any button in the row —
+              // send button included — down to 24px via a scoped override.
+              compactStep
+                ? "gap-1.5 [&_button]:h-6 [&_button.w-7]:w-6 [&_button]:text-[11px]"
+                : "gap-2"
+            )}
+          >
             <div className="flex items-center gap-1.5 min-w-0">{leftContent}</div>
             <div className="flex items-center gap-1.5 shrink-0">
               {rightContent}
@@ -1198,8 +1236,13 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                       // better a touch larger. `size` matches the attribute to
                       // the CSS so the svg box stays centered.
                       <ArrowUpIcon
-                        size={19}
-                        className="block !h-[19px] !w-[19px]"
+                        size={compactStep ? 15 : 19}
+                        className={cn(
+                          "block",
+                          compactStep
+                            ? "!h-[15px] !w-[15px]"
+                            : "!h-[19px] !w-[19px]"
+                        )}
                       />
                     )}
                   </motion.span>
@@ -1299,6 +1342,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
         </SurfaceProvider>
       </div>
     );
+
+    // A size prop pins the whole composer — inner buttons, rows and queued
+    // messages included — to one ladder step (matches InputGroup).
+    return size ? <SizeProvider size={size}>{composer}</SizeProvider> : composer;
   }
 );
 

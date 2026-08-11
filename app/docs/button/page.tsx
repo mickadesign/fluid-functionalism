@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { Button } from "@/registry/radix/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
@@ -24,16 +25,6 @@ const variantsCode = `import { Button } from "./components";
 <Button variant="tertiary">Tertiary</Button>
 <Button variant="ghost">Ghost</Button>`;
 
-const sizesCode = `import { Button } from "./components";
-import { Plus } from "lucide-react";
-
-<Button size="sm">Small</Button>
-<Button size="md">Medium</Button>
-<Button size="lg">Large</Button>
-<Button size="icon-sm"><Plus /></Button>
-<Button size="icon"><Plus /></Button>
-<Button size="icon-lg"><Plus /></Button>`;
-
 const iconsCode = `import { Button } from "./components";
 import { Plus, ArrowRight, Search } from "lucide-react";
 
@@ -52,7 +43,7 @@ import { Loader } from "lucide-react";
 
 const buttonProps: PropDef[] = [
   { name: "variant", type: '"primary" | "secondary" | "tertiary" | "ghost"', default: '"primary"', description: "Visual style of the button." },
-  { name: "size", type: '"sm" | "md" | "lg" | "icon-sm" | "icon" | "icon-lg"', default: '"md"', description: "Size of the button." },
+  { name: "size", type: '"default" | "compact" | "icon" | "icon-compact"', default: "from SizeProvider", description: "Step on the size ladder (36px default, 28px compact — see /docs/sizes). Legacy sm/md/lg values resolve as aliases." },
   { name: "loading", type: "boolean", default: "false", description: "Shows a spinner and disables the button." },
   { name: "active", type: "boolean", default: "false", description: "Forces the pressed/held visual — e.g. while a dropdown or popover the button opened is showing." },
   { name: "leadingIcon", type: "IconComponent", description: "Icon displayed before the label." },
@@ -67,13 +58,12 @@ const buttonProps: PropDef[] = [
 // kept in sync in the Code tab.
 
 type PlayVariant = "primary" | "secondary" | "tertiary" | "ghost";
-type PlaySize = "sm" | "md" | "lg";
+type PlaySize = "compact" | "default";
 
 // "Icon only" swaps the text sizes for their square counterparts.
-const ICON_ONLY_SIZE: Record<PlaySize, "icon-sm" | "icon" | "icon-lg"> = {
-  sm: "icon-sm",
-  md: "icon",
-  lg: "icon-lg",
+const ICON_ONLY_SIZE: Record<PlaySize, "icon-compact" | "icon"> = {
+  compact: "icon-compact",
+  default: "icon",
 };
 
 function buildButtonCode(o: {
@@ -90,7 +80,7 @@ function buildButtonCode(o: {
   const size = o.iconOnly ? ICON_ONLY_SIZE[o.size] : o.size;
   const props: string[] = [];
   if (o.variant !== "primary") props.push(`variant="${o.variant}"`);
-  if (size !== "md") props.push(`size="${size}"`);
+  if (size !== "default") props.push(`size="${size}"`);
   if (!o.iconOnly && o.leading) props.push("leadingIcon={Plus}");
   if (!o.iconOnly && o.trailing) props.push("trailingIcon={ArrowRight}");
   if (o.loading) props.push("loading");
@@ -120,7 +110,7 @@ function PlayText({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Button label"
-      className="h-7 w-[124px] rounded-md bg-transparent px-2 text-right text-[13px] text-foreground transition-colors duration-80 hover:bg-hover focus:bg-hover outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
+      className="h-7 w-[124px] rounded-md bg-transparent px-2 text-right text-body text-foreground transition-colors duration-80 hover:bg-hover focus:bg-hover outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
     />
   );
 }
@@ -132,7 +122,11 @@ function ButtonPlayground() {
   const ArrowRight = useIcon("arrow-right");
 
   const [variant, setVariant] = useState<PlayVariant>("primary");
-  const [size, setSize] = useState<PlaySize>("md");
+  // The Size control follows the site-wide step (right panel / S) until the
+  // user picks a value here — then the explicit choice pins it.
+  const globalSize = useSizeVariant();
+  const [sizeOverride, setSizeOverride] = useState<PlaySize | null>(null);
+  const size = sizeOverride ?? globalSize;
   const [iconOnly, setIconOnly] = useState(false);
   const [leading, setLeading] = useState(false);
   const [trailing, setTrailing] = useState(false);
@@ -161,7 +155,7 @@ function ButtonPlayground() {
     const pick = <T,>(arr: readonly T[]) =>
       arr[Math.floor(Math.random() * arr.length)];
     setVariant(pick(["primary", "secondary", "tertiary", "ghost"] as const));
-    setSize(pick(["sm", "md", "lg"] as const));
+    setSizeOverride(pick(["compact", "default"] as const));
     setIconOnly(Math.random() > 0.85);
     setLeading(Math.random() > 0.5);
     setTrailing(Math.random() > 0.75);
@@ -190,11 +184,10 @@ function ButtonPlayground() {
         <PlayField label="Size">
           <PlaySelect
             value={size}
-            onChange={(v) => setSize(v as PlaySize)}
+            onChange={(v) => setSizeOverride(v as PlaySize)}
             options={[
-              { value: "sm", label: "Small" },
-              { value: "md", label: "Medium" },
-              { value: "lg", label: "Large" },
+              { value: "compact", label: "Compact" },
+              { value: "default", label: "Default" },
             ]}
           />
         </PlayField>
@@ -297,19 +290,6 @@ export default function ButtonDoc() {
             <Button variant="secondary">Secondary</Button>
             <Button variant="tertiary">Tertiary</Button>
             <Button variant="ghost">Ghost</Button>
-          </div>
-        </ComponentPreview>
-      </DocSection>
-
-      <DocSection title="Sizes">
-        <ComponentPreview code={sizesCode}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm">Small</Button>
-            <Button size="md">Medium</Button>
-            <Button size="lg">Large</Button>
-            <Button size="icon-sm"><Plus /></Button>
-            <Button size="icon"><Plus /></Button>
-            <Button size="icon-lg"><Plus /></Button>
           </div>
         </ComponentPreview>
       </DocSection>

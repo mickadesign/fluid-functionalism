@@ -152,7 +152,7 @@ function PrimitiveToggle() {
             key={o.value}
             onClick={() => setBase(o.value)}
             className={cn(
-              "relative px-5 py-2 text-[13px] rounded-full outline-none transition-colors duration-150",
+              "relative px-5 py-2 text-body rounded-full outline-none transition-colors duration-150",
               "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               selected ? "text-background" : "text-muted-foreground hover:text-foreground"
             )}
@@ -301,12 +301,12 @@ export default function CompareBasesPage() {
 
       <Row label="Tooltip">
         <RadixTooltip content="A helpful tooltip" side="top">
-          <button className="px-4 py-2 bg-foreground text-background text-[13px] rounded-lg">
+          <button className="px-4 py-2 bg-foreground text-background text-body rounded-lg">
             Hover me
           </button>
         </RadixTooltip>
         <BaseTooltip content="A helpful tooltip" side="top">
-          <button className="px-4 py-2 bg-foreground text-background text-[13px] rounded-lg">
+          <button className="px-4 py-2 bg-foreground text-background text-body rounded-lg">
             Hover me
           </button>
         </BaseTooltip>
@@ -569,7 +569,7 @@ function ScrollAreaRows() {
   return (
     <div className="flex flex-col p-2">
       {Array.from({ length: 20 }, (_, i) => (
-        <div key={i} className="px-3 py-2 text-[13px] whitespace-nowrap">
+        <div key={i} className="px-3 py-2 text-body whitespace-nowrap">
           v1.{19 - i}.0 — maintenance release
         </div>
       ))}

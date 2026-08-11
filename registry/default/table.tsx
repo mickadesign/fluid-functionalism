@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 // ── Context ──────────────────────────────────────────────
@@ -31,11 +32,16 @@ const TableContext = createContext<TableContextValue | null>(null);
 
 interface TableProps extends HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
+  /** Pins the table's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, it follows the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, className, ...props }, ref) => {
+  ({ children, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const sizeClasses = useSize(size);
 
     const {
       activeIndex,
@@ -57,7 +63,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       [registerItem, activeIndex]
     );
 
-    return (
+    const table = (
       <TableContext.Provider value={contextValue}>
         <div
           ref={containerRef}
@@ -97,7 +103,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
           <table
             ref={ref}
-            className={cn("w-full text-[13px] border-collapse", className)}
+            className={cn("w-full border-collapse", sizeClasses.text, className)}
             {...props}
           >
             {children}
@@ -105,6 +111,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         </div>
       </TableContext.Provider>
     );
+
+    // A size prop pins every cell to one ladder step (cells read the context).
+    return size ? <SizeProvider size={size}>{table}</SizeProvider> : table;
   }
 );
 
@@ -189,16 +198,21 @@ TableRow.displayName = "TableRow";
 const TableHead = forwardRef<
   HTMLTableCellElement,
   ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <th
-    ref={ref}
-    className={cn(
-      "px-3 py-2 text-left text-foreground",
-      className
-    )}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const sizeClasses = useSize();
+  return (
+    <th
+      ref={ref}
+      className={cn(
+        "text-left text-foreground",
+        // py + line box lands the row on the ladder (36px / 28px).
+        sizeClasses.variant === "compact" ? "px-2.5 py-[5px]" : "px-3 py-2",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 
 TableHead.displayName = "TableHead";
 
@@ -207,16 +221,20 @@ TableHead.displayName = "TableHead";
 const TableCell = forwardRef<
   HTMLTableCellElement,
   TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <td
-    ref={ref}
-    className={cn(
-      "px-3 py-2 text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
-      className
-    )}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const sizeClasses = useSize();
+  return (
+    <td
+      ref={ref}
+      className={cn(
+        "text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
+        sizeClasses.variant === "compact" ? "px-2.5 py-[5px]" : "px-3 py-2",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 
 TableCell.displayName = "TableCell";
 

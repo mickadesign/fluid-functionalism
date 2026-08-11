@@ -169,6 +169,18 @@
       ]
     },
     {
+      "name": "size-context",
+      "type": "registry:lib",
+      "title": "Size Context",
+      "description": "React context provider for the two-step size ladder (36px default, 28px compact). Controls control heights, text, icon, and padding scale across all Fluid Functionalism components, and exports the role-based typography scale.",
+      "files": [
+        {
+          "path": "registry/default/lib/size-context.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "icon-context",
       "type": "registry:lib",
       "title": "Icon Context",
@@ -240,7 +252,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -266,7 +279,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -293,7 +307,8 @@
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
         "https://www.fluidfunctionalism.com/r/use-merge-split.json",
-        "https://www.fluidfunctionalism.com/r/button.json"
+        "https://www.fluidfunctionalism.com/r/button.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -312,7 +327,8 @@
       ],
       "registryDependencies": [
         "utils",
-        "https://www.fluidfunctionalism.com/r/shape-context.json"
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -336,7 +352,8 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/icon-context.json"
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -376,7 +393,8 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/icon-context.json"
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -419,7 +437,8 @@
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/elevated.json"
+        "https://www.fluidfunctionalism.com/r/elevated.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -452,7 +471,8 @@
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/elevated.json"
+        "https://www.fluidfunctionalism.com/r/elevated.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -482,7 +502,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/use-merge-split.json"
+        "https://www.fluidfunctionalism.com/r/use-merge-split.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -507,7 +528,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/use-merge-split.json"
+        "https://www.fluidfunctionalism.com/r/use-merge-split.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -531,7 +553,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -555,7 +578,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -582,7 +606,8 @@
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/button.json"
+        "https://www.fluidfunctionalism.com/r/button.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -609,7 +634,8 @@
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/base/button.json"
+        "https://www.fluidfunctionalism.com/r/base/button.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -677,7 +703,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
-        "https://www.fluidfunctionalism.com/r/icon-context.json"
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -700,7 +727,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -722,6 +750,7 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
@@ -769,7 +798,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/use-touch-primary.json",
-        "https://www.fluidfunctionalism.com/r/file-thumbnail.json"
+        "https://www.fluidfunctionalism.com/r/file-thumbnail.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -793,7 +823,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -818,7 +849,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -840,7 +872,8 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
-        "https://www.fluidfunctionalism.com/r/font-weight.json"
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -862,7 +895,8 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
-        "https://www.fluidfunctionalism.com/r/font-weight.json"
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -884,7 +918,8 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -907,7 +942,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -929,7 +965,8 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
-        "https://www.fluidfunctionalism.com/r/shape-context.json"
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -952,7 +989,8 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
-        "https://www.fluidfunctionalism.com/r/shape-context.json"
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -978,7 +1016,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -1004,7 +1043,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json"
+        "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -1024,7 +1064,8 @@
       ],
       "registryDependencies": [
         "utils",
-        "https://www.fluidfunctionalism.com/r/font-weight.json"
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -1112,7 +1153,8 @@
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/elevated.json"
+        "https://www.fluidfunctionalism.com/r/elevated.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -1141,7 +1183,8 @@
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
-        "https://www.fluidfunctionalism.com/r/elevated.json"
+        "https://www.fluidfunctionalism.com/r/elevated.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {
@@ -1212,6 +1255,7 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/badge.json"
       ],
@@ -1256,6 +1300,7 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/badge.json"
       ],
@@ -1304,7 +1349,8 @@
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
         "https://www.fluidfunctionalism.com/r/elevated.json",
-        "https://www.fluidfunctionalism.com/r/slider.json"
+        "https://www.fluidfunctionalism.com/r/slider.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
       ],
       "files": [
         {

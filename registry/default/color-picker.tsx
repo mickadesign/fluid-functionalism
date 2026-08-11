@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape, shapeMap } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { useIcon } from "@/lib/icon-context";
@@ -85,6 +86,10 @@ interface ColorPickerProps
   formatOpen?: boolean;
   /** Initial open state for the format dropdown (uncontrolled). */
   defaultFormatOpen?: boolean;
+  /** Pins trigger and popover to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 interface ColorPickerPopoverProps extends ColorPickerProps {
@@ -689,6 +694,8 @@ function FormatItem({
   const ref = useRef<HTMLDivElement>(null);
   const menuCtx = useContext(FormatMenuContext);
   const shape = useShape();
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
 
   useEffect(() => {
     menuCtx?.registerItem(index, ref.current);
@@ -707,7 +714,9 @@ function FormatItem({
           ref={ref}
           data-proximity-index={index}
           className={cn(
-            `relative z-10 flex items-center px-3 py-2 text-[13px] cursor-pointer outline-none`,
+            "relative z-10 flex items-center cursor-pointer outline-none",
+            compact ? "px-2.5 py-1.5" : "px-3 py-2",
+            sizeClasses.text,
             shape.item
           )}
         />
@@ -755,6 +764,7 @@ function FormatDropdown({
   const open = isControlled ? openProp : internalOpen;
   const actionsRef = useRef<{ unmount: () => void; close: () => void } | null>(null);
   const shape = useShape();
+  const sizeClasses = useSize();
   const portalContainer = useContext(ColorPickerPortalContainerContext);
   const containerRef = useRef<HTMLDivElement>(null);
   const ChevronDownIcon = useIcon("chevron-down");
@@ -820,7 +830,11 @@ function FormatDropdown({
     >
       <Menu.Trigger
         className={cn(
-          "flex items-center justify-between gap-2 h-9 px-3 text-[13px] bg-transparent hover:bg-hover hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+          "flex items-center justify-between bg-transparent hover:bg-hover hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+          sizeClasses.gap,
+          sizeClasses.control,
+          sizeClasses.px,
+          sizeClasses.text,
           open ? "bg-active text-foreground" : "text-muted-foreground active:bg-active",
           shape.input
         )}
@@ -1056,6 +1070,8 @@ const TextColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
     const [draft, setDraft] = useState(value);
     const interactingRef = useRef(false);
     const shape = useShape();
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
 
     useEffect(() => {
       if (!interactingRef.current) setDraft(value);
@@ -1089,14 +1105,20 @@ const TextColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
     return (
       <div
         className={cn(
-          "flex items-center h-9 px-2 bg-transparent hover:bg-hover active:bg-active transition-colors duration-80 focus-within:ring-1 focus-within:ring-[color:var(--focus-ring,#6B97FF)] select-none",
+          "flex items-center px-2 bg-transparent hover:bg-hover active:bg-active transition-colors duration-80 focus-within:ring-1 focus-within:ring-[color:var(--focus-ring,#6B97FF)] select-none",
+          sizeClasses.control,
           shape.input,
           className
         )}
         style={{ width }}
       >
         {prefix && (
-          <span className="text-[12px] text-muted-foreground mr-1 select-none">
+          <span
+            className={cn(
+              "text-muted-foreground mr-1 select-none",
+              compact ? "text-[11px]" : "text-[12px]"
+            )}
+          >
             {prefix}
           </span>
         )}
@@ -1136,7 +1158,8 @@ const TextColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
           inputMode={inputMode}
           aria-label={ariaLabel}
           className={cn(
-            "flex-1 min-w-0 bg-transparent text-foreground text-[13px] outline-none tabular-nums",
+            "flex-1 min-w-0 bg-transparent text-foreground outline-none tabular-nums",
+            sizeClasses.text,
             align === "center" && "text-center",
             align === "right" && "text-right",
             inputClassName
@@ -1173,6 +1196,8 @@ const ScrubColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
     ref
   ) => {
     const shape = useShape();
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
     const inputRef = useRef<HTMLInputElement | null>(null);
     const [editing, setEditing] = useState(false);
     // Set on pointerdown inside the scrub area (capture phase, before Base UI
@@ -1264,7 +1289,8 @@ const ScrubColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
         largeStep={nudgeShiftStep ?? 10}
         format={format}
         className={cn(
-          "flex items-center h-9 bg-transparent hover:bg-hover active:bg-active transition-colors duration-80 focus-within:ring-1 focus-within:ring-[color:var(--focus-ring,#6B97FF)] select-none",
+          "flex items-center bg-transparent hover:bg-hover active:bg-active transition-colors duration-80 focus-within:ring-1 focus-within:ring-[color:var(--focus-ring,#6B97FF)] select-none",
+          sizeClasses.control,
           shape.input,
           className
         )}
@@ -1304,7 +1330,12 @@ const ScrubColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
             </svg>
           </NumberField.ScrubAreaCursor>
           {prefix && (
-            <span className="text-[12px] text-muted-foreground mr-1 select-none">
+            <span
+              className={cn(
+                "text-muted-foreground mr-1 select-none",
+                compact ? "text-[11px]" : "text-[12px]"
+              )}
+            >
               {prefix}
             </span>
           )}
@@ -1349,7 +1380,8 @@ const ScrubColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
               }
             }}
             className={cn(
-              "flex-1 min-w-0 bg-transparent text-foreground text-[13px] outline-none tabular-nums",
+              "flex-1 min-w-0 bg-transparent text-foreground outline-none tabular-nums",
+              sizeClasses.text,
               align === "center" && "text-center",
               align === "right" && "text-right",
               !editing && "pointer-events-none",
@@ -1387,6 +1419,7 @@ interface EyeDropperGlobal {
 function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
   const [supported, setSupported] = useState(false);
   const shape = useShape();
+  const sizeClasses = useSize();
   const PipetteIcon = useIcon("pipette");
 
   useEffect(() => {
@@ -1412,11 +1445,13 @@ function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
       onClick={handleClick}
       aria-label="Pick color from screen"
       className={cn(
-        "flex items-center justify-center h-9 px-3 text-muted-foreground bg-transparent hover:bg-hover hover:text-foreground active:bg-active transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+        "flex items-center justify-center text-muted-foreground bg-transparent hover:bg-hover hover:text-foreground active:bg-active transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+        sizeClasses.control,
+        sizeClasses.px,
         shape.input
       )}
     >
-      <PipetteIcon size={16} strokeWidth={1.5} />
+      <PipetteIcon size={sizeClasses.icon} strokeWidth={1.5} />
     </button>
   );
 }
@@ -1569,6 +1604,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
       hideEyedropper,
       formatOpen,
       defaultFormatOpen,
+      size,
       className,
       ...props
     },
@@ -1701,7 +1737,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
     // etc.) elevate above it instead of colliding at the same surface.
     const pickerLevel = Math.max(substrate, 3);
 
-    return (
+    // A size prop pins the whole panel — format dropdown, inputs, eyedropper
+    // (React context crosses portals) — to one step of the ladder.
+    const root = (
       <SurfaceProvider value={pickerLevel}>
       <div
         ref={ref}
@@ -1811,6 +1849,8 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
       </div>
       </SurfaceProvider>
     );
+
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 
@@ -1952,6 +1992,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
       open: openProp,
       defaultOpen = false,
       onOpenChange,
+      size,
       ...pickerProps
     },
     ref
@@ -1962,6 +2003,12 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
     const actionsRef = useRef<{ unmount: () => void; close: () => void } | null>(null);
     const [panelEl, setPanelEl] = useState<HTMLDivElement | null>(null);
     const shape = useShape();
+    // Resolved with the override directly: this component's own hooks run
+    // outside the SizeProvider it renders, so the trigger can't read the pin
+    // from context. The portalled panel inherits it from the provider below
+    // (React context crosses portals).
+    const sizeClasses = useSize(size);
+    const compact = sizeClasses.variant === "compact";
     const substrate = useSurface();
     const level = Math.min(substrate + 2, 8);
 
@@ -2005,7 +2052,9 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
       ? rgbToHexStr(parsed.r, parsed.g, parsed.b, 1).replace(/^#/, "").toUpperCase()
       : currentValue;
 
-    return (
+    // A size prop pins the whole compound (trigger + portalled panel — React
+    // context crosses portals) to one step of the ladder.
+    const root = (
       <Popover.Root
         open={open}
         onOpenChange={handleOpenChange}
@@ -2017,25 +2066,28 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
         <div ref={ref} className="inline-flex">
           <Popover.Trigger
             className={cn(
-              "flex items-center gap-2 h-9 px-2 border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+              "flex items-center border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+              sizeClasses.gap,
+              sizeClasses.control,
+              compact ? "px-1.5" : "px-2",
               shape.input,
               triggerClassName
             )}
             style={{ fontVariationSettings: fontWeights.medium }}
           >
             {triggerLabel && triggerLabelPosition === "left" && (
-              <span className="text-[13px] text-muted-foreground px-1 select-none">
+              <span className={cn("text-muted-foreground px-1 select-none", sizeClasses.text)}>
                 {triggerLabel}
               </span>
             )}
-            <ColorTile color={swatchColor} size={20} />
+            <ColorTile color={swatchColor} size={compact ? 16 : 20} />
             {triggerShowValue && (
-              <span className="text-[13px] text-foreground tabular-nums">
+              <span className={cn("text-foreground tabular-nums", sizeClasses.text)}>
                 {valueLabel}
               </span>
             )}
             {triggerLabel && triggerLabelPosition === "right" && (
-              <span className="text-[13px] text-muted-foreground px-1 select-none">
+              <span className={cn("text-muted-foreground px-1 select-none", sizeClasses.text)}>
                 {triggerLabel}
               </span>
             )}
@@ -2108,6 +2160,8 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
         </div>
       </Popover.Root>
     );
+
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 

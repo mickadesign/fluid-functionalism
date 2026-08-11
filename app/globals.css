@@ -300,6 +300,57 @@ p {
   text-wrap: pretty;
 }
 
+/* ── Type-scale roles ─────────────────────────────────────────────────────
+   Site-chrome font sizes ride these variables instead of fixed px so the
+   whole site follows the size ladder. The docs-only SizeAttribute component
+   (lib/docs/size-attribute.tsx) mirrors the active step onto
+   <html data-size>; values must stay in sync with `typeScale` in
+   registry/default/lib/size-context.tsx. `display` keeps its responsive
+   pair (mobile / ≥sm) from the old text-[22px] sm:text-[28px] titles. */
+:root {
+  --fs-display: 22px;
+  --fs-title: 16px;
+  --fs-subtitle: 14px;
+  --fs-body: 13px;
+  --fs-caption: 12px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --fs-display: 28px;
+  }
+}
+
+html[data-size="compact"] {
+  --fs-display: 20px;
+  --fs-title: 15px;
+  --fs-subtitle: 13px;
+  --fs-body: 12px;
+  --fs-caption: 11px;
+}
+
+@media (min-width: 640px) {
+  html[data-size="compact"] {
+    --fs-display: 24px;
+  }
+}
+
+@utility text-display {
+  font-size: var(--fs-display, 28px);
+}
+@utility text-title {
+  font-size: var(--fs-title, 16px);
+}
+@utility text-subtitle {
+  font-size: var(--fs-subtitle, 14px);
+}
+@utility text-body {
+  font-size: var(--fs-body, 13px);
+}
+@utility text-caption {
+  font-size: var(--fs-caption, 12px);
+}
+
 /* Theme-toggle cross-fade: ThemeProvider adds `.transitioning` around the
    class swap so colors tween instead of snapping. */
 html.transitioning *,

@@ -1,20 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Slider, SliderComfortable } from "@/registry/radix/slider";
+import { Slider } from "@/registry/radix/slider";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 
 // ---------------------------------------------------------------------------
-// Code snippets — Slider (compact)
+// Code snippets — compact step
 // ---------------------------------------------------------------------------
 
 const basicCode = `import { Slider } from "./components";
 
 const [value, setValue] = useState(25);
 
-<Slider value={value} onChange={setValue} />`;
+<Slider size="compact" value={value} onChange={setValue} />`;
 
 const rangeCode = `import { Slider } from "./components";
 
@@ -52,11 +52,12 @@ const valueDisplayCode = `import { Slider } from "./components";
 
 const disabledCode = `import { Slider } from "./components";
 
-<Slider value={50} onChange={() => {}} disabled />`;
+<Slider size="compact" value={50} onChange={() => {}} disabled />`;
 
 const formatCode = `import { Slider } from "./components";
 
 <Slider
+  size="compact"
   value={value}
   onChange={setValue}
   formatValue={(v) => \`\${v}%\`}
@@ -65,51 +66,51 @@ const formatCode = `import { Slider } from "./components";
 
 
 // ---------------------------------------------------------------------------
-// Code snippets — SliderComfortable
+// Code snippets — default step
 // ---------------------------------------------------------------------------
 
-const comfortableBasicCode = `import { SliderComfortable } from "./components";
+const comfortableBasicCode = `import { Slider } from "./components";
 
 const [roundness, setRoundness] = useState(2);
 
-<SliderComfortable
+<Slider
   label="Roundness"
   value={roundness}
-  onChange={setRoundness}
+  onChange={(v) => setRoundness(v as number)}
   min={0}
   max={4}
 />`;
 
-const comfortableScrubberCode = `import { SliderComfortable } from "./components";
+const comfortableScrubberCode = `import { Slider } from "./components";
 
 const [volume, setVolume] = useState(50);
 
-<SliderComfortable
+<Slider
   variant="scrubber"
   label="Volume"
   value={volume}
-  onChange={setVolume}
+  onChange={(v) => setVolume(v as number)}
   min={0}
   max={100}
   formatValue={(v) => \`\${v}%\`}
 />`;
 
-const comfortableFormatCode = `import { SliderComfortable } from "./components";
+const comfortableFormatCode = `import { Slider } from "./components";
 
 const qualityLabels = ["Off", "Low", "Medium", "High", "Ultra"];
 
-<SliderComfortable
+<Slider
   label="Quality"
   value={quality}
-  onChange={setQuality}
+  onChange={(v) => setQuality(v as number)}
   min={0}
   max={4}
   formatValue={(v) => qualityLabels[v]}
 />`;
 
-const comfortableDisabledCode = `import { SliderComfortable } from "./components";
+const comfortableDisabledCode = `import { Slider } from "./components";
 
-<SliderComfortable
+<Slider
   label="Roundness"
   value={2}
   onChange={() => {}}
@@ -123,6 +124,20 @@ const comfortableDisabledCode = `import { SliderComfortable } from "./components
 // ---------------------------------------------------------------------------
 
 const sliderProps: PropDef[] = [
+  {
+    name: "size",
+    type: '"default" | "compact"',
+    default: "from SizeProvider",
+    description:
+      "Step on the size ladder (see /docs/sizes). Default renders the pip/scrubber design; compact renders the dense design.",
+  },
+  {
+    name: "variant",
+    type: '"pips" | "scrubber"',
+    default: '"pips"',
+    description:
+      'Default-step layout. "pips" shows discrete dot indicators; "scrubber" drags anywhere in the row for a continuous value. Ignored when the compact design renders.',
+  },
   {
     name: "value",
     type: "number | [number, number]",
@@ -197,62 +212,6 @@ const sliderProps: PropDef[] = [
   },
 ];
 
-const comfortableProps: PropDef[] = [
-  {
-    name: "value",
-    type: "number",
-    description: "Current selected value.",
-  },
-  {
-    name: "onChange",
-    type: "(value: number) => void",
-    description: "Called when the value changes via click, drag, or keyboard.",
-  },
-  {
-    name: "min",
-    type: "number",
-    default: "0",
-    description: "Minimum value.",
-  },
-  {
-    name: "max",
-    type: "number",
-    default: "100",
-    description: "Maximum value.",
-  },
-  {
-    name: "variant",
-    type: '"pips" | "scrubber"',
-    default: '"pips"',
-    description:
-      'Visual mode. "pips" shows discrete dot indicators. "scrubber" shows no dots — drag anywhere in the row to set a continuous value.',
-  },
-  {
-    name: "step",
-    type: "number",
-    default: "1",
-    description: "Step increment for snapping. In pips mode, also determines the number of dots rendered.",
-  },
-  {
-    name: "label",
-    type: "string",
-    description:
-      "Label shown on the left side. Transitions from muted to foreground on hover.",
-  },
-  {
-    name: "formatValue",
-    type: "(v: number) => string",
-    default: "String",
-    description: "Custom formatter for the value shown on the right.",
-  },
-  {
-    name: "disabled",
-    type: "boolean",
-    default: "false",
-    description: "Disables all interaction.",
-  },
-];
-
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -278,7 +237,7 @@ export default function SliderDoc() {
     <DocPage
       title="Slider"
       slug="slider"
-      description="Two variants: compact (spring-snapped thumb with track fill and range mode) and comfortable (pip-based discrete selector for settings panels)."
+      description="One slider, two ladder steps: the default step's pip/scrubber design, and the compact step's dense design with track fill, range mode, and value display."
     >
       {/* ------------------------------------------------------------------ */}
       {/* Compact                                                              */}
@@ -287,7 +246,11 @@ export default function SliderDoc() {
       <DocSection title="Compact">
         <ComponentPreview code={basicCode}>
           <div className="w-72">
-            <Slider value={basic} onChange={(v) => setBasic(v as number)} />
+            <Slider
+              size="compact"
+              value={basic}
+              onChange={(v) => setBasic(v as number)}
+            />
           </div>
         </ComponentPreview>
       </DocSection>
@@ -365,6 +328,7 @@ export default function SliderDoc() {
         <ComponentPreview code={formatCode}>
           <div className="w-72">
             <Slider
+              size="compact"
               value={formatted}
               onChange={(v) => setFormatted(v as number)}
               formatValue={(v) => `${v}%`}
@@ -377,7 +341,7 @@ export default function SliderDoc() {
       <DocSection title="Disabled">
         <ComponentPreview code={disabledCode}>
           <div className="w-72">
-            <Slider value={50} onChange={() => {}} disabled />
+            <Slider size="compact" value={50} onChange={() => {}} disabled />
           </div>
         </ComponentPreview>
       </DocSection>
@@ -386,13 +350,14 @@ export default function SliderDoc() {
       {/* Comfortable                                                          */}
       {/* ------------------------------------------------------------------ */}
 
-      <DocSection title="Comfortable">
+      <DocSection title="Default">
         <ComponentPreview code={comfortableBasicCode}>
           <div className="w-72">
-            <SliderComfortable
+            <Slider
+              size="default"
               label="Roundness"
               value={roundness}
-              onChange={setRoundness}
+              onChange={(v) => setRoundness(v as number)}
               min={0}
               max={4}
             />
@@ -400,14 +365,15 @@ export default function SliderDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Comfortable — Scrubber">
+      <DocSection title="Default — Scrubber">
         <ComponentPreview code={comfortableScrubberCode}>
           <div className="w-72">
-            <SliderComfortable
+            <Slider
+              size="default"
               variant="scrubber"
               label="Volume"
               value={volume}
-              onChange={setVolume}
+              onChange={(v) => setVolume(v as number)}
               min={0}
               max={100}
               formatValue={(v) => `${v}%`}
@@ -416,13 +382,14 @@ export default function SliderDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Comfortable — Format">
+      <DocSection title="Default — Format">
         <ComponentPreview code={comfortableFormatCode}>
           <div className="w-72">
-            <SliderComfortable
+            <Slider
+              size="default"
               label="Quality"
               value={quality}
-              onChange={setQuality}
+              onChange={(v) => setQuality(v as number)}
               min={0}
               max={4}
               formatValue={(v) => qualityLabels[v]}
@@ -431,10 +398,11 @@ export default function SliderDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Comfortable — Disabled">
+      <DocSection title="Default — Disabled">
         <ComponentPreview code={comfortableDisabledCode}>
           <div className="w-72">
-            <SliderComfortable
+            <Slider
+              size="default"
               label="Roundness"
               value={2}
               onChange={() => {}}
@@ -451,10 +419,13 @@ export default function SliderDoc() {
       {/* ------------------------------------------------------------------ */}
 
       <DocSection title="API Reference">
-        <p className="text-[13px] text-muted-foreground mb-3">Slider</p>
+        <p className="text-body text-muted-foreground mb-3">
+          One component: the default step renders the pip/scrubber design, the
+          compact step the dense one. Compact-only props (an array value,
+          steps, showSteps, showValue, valuePosition, track styling) always
+          render the compact design so no capability is lost.
+        </p>
         <PropsTable props={sliderProps} />
-        <p className="text-[13px] text-muted-foreground mt-8 mb-3">SliderComfortable</p>
-        <PropsTable props={comfortableProps} />
       </DocSection>
     </DocPage>
   );

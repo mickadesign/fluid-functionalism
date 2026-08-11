@@ -14,6 +14,7 @@ import {
   useShapeContext,
   type ShapeVariant,
 } from "@/lib/shape-context";
+import { useSizeContext, type SizeVariant } from "@/lib/size-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useIcon } from "@/lib/icon-context";
 import {
@@ -99,6 +100,7 @@ export function GitHubStarButton() {
 export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left" | "right" | "top" | "bottom" }) {
   const { theme, setTheme } = useThemeContext();
   const { shape, setShape } = useShapeContext();
+  const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
 
@@ -122,6 +124,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
     { label: "Pill", value: "pill" as ShapeVariant, icon: CircleIcon },
   ];
 
+  const sizeOptions = [
+    { label: "Default", value: "default" as SizeVariant },
+    { label: "Compact", value: "compact" as SizeVariant },
+  ];
+
   const iconOptions = iconLibraryOrder.map((lib) => ({
     label: iconLibraryLabels[lib],
     value: lib,
@@ -139,11 +146,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
       <div className="flex flex-col gap-1.5 py-3">
         <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">T</kbd>&ensp; to cycle</span>} side={tooltipSide}>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-muted-foreground">Theme</span>
+            <span className="text-body text-muted-foreground">Theme</span>
             <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
               <SelectTrigger
                 variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-[13px]"
+                className="min-w-0 w-auto h-7 px-2 text-body"
                 icon={themeOptions.find((o) => o.value === theme)?.icon}
               />
               <SelectContent>
@@ -158,11 +165,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
         </Tooltip>
         <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">R</kbd>&ensp; to toggle</span>} side={tooltipSide}>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-muted-foreground">Radius</span>
+            <span className="text-body text-muted-foreground">Radius</span>
             <Select value={shape} onValueChange={(v) => setShape(v as ShapeVariant)}>
               <SelectTrigger
                 variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-[13px]"
+                className="min-w-0 w-auto h-7 px-2 text-body"
                 icon={shapeOptions.find((o) => o.value === shape)?.icon}
               />
               <SelectContent>
@@ -175,13 +182,31 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
             </Select>
           </div>
         </Tooltip>
+        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">S</kbd>&ensp; to toggle</span>} side={tooltipSide}>
+          <div className="flex items-center justify-between">
+            <span className="text-body text-muted-foreground">Size</span>
+            <Select value={size} onValueChange={(v) => setSize(v as SizeVariant)}>
+              <SelectTrigger
+                variant="borderless"
+                className="min-w-0 w-auto h-7 px-2 text-body"
+              />
+              <SelectContent>
+                {sizeOptions.map((o, i) => (
+                  <SelectItem key={o.value} value={o.value} index={i}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Tooltip>
         <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">I</kbd>&ensp; to cycle</span>} side={tooltipSide}>
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-muted-foreground">Icons</span>
+            <span className="text-body text-muted-foreground">Icons</span>
             <Select value={iconLibrary} onValueChange={(v) => setIconLibrary(v as IconLibrary)}>
               <SelectTrigger
                 variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-[13px]"
+                className="min-w-0 w-auto h-7 px-2 text-body"
               />
               <SelectContent>
                 {iconOptions.map((o, i) => (
@@ -194,11 +219,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
           </div>
         </Tooltip>
         <div className="flex items-center justify-between">
-          <span className="text-[13px] text-muted-foreground">Primitive</span>
+          <span className="text-body text-muted-foreground">Primitive</span>
           <Select value={base} onValueChange={(v) => setBase(v as Base)}>
             <SelectTrigger
               variant="borderless"
-              className="min-w-0 w-auto h-7 px-2 text-[13px]"
+              className="min-w-0 w-auto h-7 px-2 text-body"
             />
             <SelectContent>
               {baseOptions.map((o, i) => (
@@ -218,7 +243,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
           alt=""
           className="w-5 h-5 rounded-full object-cover shrink-0"
         />
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Created by{" "}
           <a
             href="https://x.com/micka_design"
@@ -252,9 +277,9 @@ export function RightPanel() {
       <div className="flex flex-col gap-3">
         <aside className="p-4 rounded-lg bg-muted">
           <SurfaceProvider value={2}>
-            <div className="flex items-center justify-between pl-1 pt-2 pb-2">
+            <div className="flex items-center justify-between pt-2 pb-2">
               <h2
-                className="text-[16px] text-foreground leading-none"
+                className="text-title text-foreground leading-none"
                 style={{ fontVariationSettings: fontWeights.semibold }}
               >
                 Make them yours

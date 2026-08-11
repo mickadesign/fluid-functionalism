@@ -4,6 +4,7 @@ import { forwardRef, useState, useEffect, type HTMLAttributes } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
+import { useSize, type SizeVariant } from "@/lib/size-context";
 
 const circleA =
   "M 12 8 C 14.21 8 16 9.79 16 12 C 16 14.21 14.21 16 12 16 C 9.79 16 8 14.21 8 12 C 8 9.79 9.79 8 12 8 Z";
@@ -20,10 +21,13 @@ interface ThinkingIndicatorProps extends HTMLAttributes<HTMLDivElement> {
   /** Show the morphing circle⇄infinity glyph before the label. Set to `false`
    *  for a text-only indicator (e.g. inline before a streamed reply). */
   showIcon?: boolean;
+  /** Step on the size ladder. Wins over the surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
 const ThinkingIndicator = forwardRef<HTMLDivElement, ThinkingIndicatorProps>(
-  ({ className, showIcon = true, ...props }, ref) => {
+  ({ className, showIcon = true, size, ...props }, ref) => {
+  const compactStep = useSize(size).variant === "compact";
   const [index, setIndex] = useState(0);
   // Reduced motion drops the infinite glyph morph and the word cycling — a
   // static glyph and label carry the same meaning without the movement.
@@ -51,8 +55,8 @@ const ThinkingIndicator = forwardRef<HTMLDivElement, ThinkingIndicatorProps>(
       {showIcon && (
         <motion.svg
           aria-hidden
-          width={20}
-          height={20}
+          width={compactStep ? 18 : 20}
+          height={compactStep ? 18 : 20}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -82,7 +86,10 @@ const ThinkingIndicator = forwardRef<HTMLDivElement, ThinkingIndicatorProps>(
       )}
       <span
         aria-hidden="true"
-        className="inline-grid text-[13px] overflow-hidden"
+        className={cn(
+          "inline-grid overflow-hidden",
+          compactStep ? "text-[12px]" : "text-[13px]"
+        )}
         style={{ fontVariationSettings: fontWeights.medium }}
       >
         <span className="col-start-1 row-start-1 invisible shimmer-text">

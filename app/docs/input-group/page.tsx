@@ -63,6 +63,7 @@ const groupProps: PropDef[] = [
 
 const fieldProps: PropDef[] = [
   { name: "label", type: "string", description: "Label text above the input." },
+  { name: "labelHidden", type: "boolean", default: "false", description: "Keep the label for assistive tech but don't render it — for inline fields (a toolbar search) where the placeholder carries the meaning." },
   { name: "index", type: "number", description: "Position index within the group." },
   { name: "value", type: "string", description: "Controlled input value." },
   { name: "onChange", type: "(value: string) => void", description: "Called when the input value changes." },

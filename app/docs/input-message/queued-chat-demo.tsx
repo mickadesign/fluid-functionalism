@@ -15,11 +15,14 @@ import { MenuItem } from "@/registry/default/menu-item";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
 import { useShape } from "@/registry/default/lib/shape-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { spring } from "@/registry/default/lib/springs";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 
 // Sonner-style queued stack tuning (see the doc section for the rationale).
+// Card height per ladder step — the compact step drops the card with it.
 const CARD_H = 44;
+const CARD_H_COMPACT = 38;
 const STACK_PEEK = 12;
 const STACK_SCALE = 0.05;
 const STACK_GAP = 8;
@@ -64,6 +67,8 @@ export function QueuedChatDemo({
   placeholderSuggestion?: string;
 }) {
   const shape = useShape();
+  const compactStep = useSizeVariant() === "compact";
+  const cardH = compactStep ? CARD_H_COMPACT : CARD_H;
   const ResetIcon = useIcon("rotate-ccw");
   const PlayIcon = useIcon("play");
   const PauseIcon = useIcon("pause");
@@ -308,9 +313,9 @@ export function QueuedChatDemo({
   // ── Stack geometry.
   const stackCount = queue.length;
   const collapsedStackH =
-    CARD_H + Math.min(Math.max(stackCount - 1, 0), STACK_MAX_PEEK) * STACK_PEEK;
+    cardH + Math.min(Math.max(stackCount - 1, 0), STACK_MAX_PEEK) * STACK_PEEK;
   const expandedStackH =
-    stackCount * CARD_H + Math.max(stackCount - 1, 0) * STACK_GAP;
+    stackCount * cardH + Math.max(stackCount - 1, 0) * STACK_GAP;
   // Collapsed, only the front card + STACK_MAX_PEEK peeks are visible; anything
   // deeper is hidden. Surface that overflow as a "+N" on the gutter arrow.
   const hiddenCount = Math.max(0, stackCount - (STACK_MAX_PEEK + 1));
@@ -351,7 +356,7 @@ export function QueuedChatDemo({
     pointerDownId !== null ||
     draggingId !== null ||
     tapExpanded;
-  const slotY = (i: number) => -i * (CARD_H + STACK_GAP);
+  const slotY = (i: number) => -i * (cardH + STACK_GAP);
 
   // ── Enqueue feedback: once the collapsed stack hits its peek cap, a new
   // message lands out of sight with no visible change. Recoil the whole stack
@@ -389,7 +394,7 @@ export function QueuedChatDemo({
       setQueue((q) => {
         const slot = Math.max(
           0,
-          Math.min(q.length - 1, Math.floor(fromBottom / (CARD_H + STACK_GAP)))
+          Math.min(q.length - 1, Math.floor(fromBottom / (cardH + STACK_GAP)))
         );
         const cur = q.findIndex((x) => x.id === pointerDownId);
         if (cur === -1 || cur === slot) return q;
@@ -399,9 +404,9 @@ export function QueuedChatDemo({
         next.splice(slot, 0, moved);
         return next;
       });
-      const minY = -(queueLenRef.current - 1) * (CARD_H + STACK_GAP);
+      const minY = -(queueLenRef.current - 1) * (cardH + STACK_GAP);
       setDragY(
-        Math.max(minY, Math.min(0, e.clientY - rect.bottom + CARD_H / 2))
+        Math.max(minY, Math.min(0, e.clientY - rect.bottom + cardH / 2))
       );
     };
     const onUp = () => {
@@ -416,7 +421,7 @@ export function QueuedChatDemo({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [pointerDownId]);
+  }, [pointerDownId, cardH]);
 
   // ── Composer chrome for the rich (hero) variant: attach dropdown + model
   // picker, with click-outside to close.
@@ -548,7 +553,7 @@ export function QueuedChatDemo({
                     }}
                     aria-label="Collapse queued messages"
                     className={`absolute bottom-0 left-0 flex items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] ${shape.button}`}
-                    style={{ height: CARD_H, width: 40 }}
+                    style={{ height: cardH, width: 40 }}
                   >
                     <ChevronDownIcon size={18} strokeWidth={2} />
                   </button>
@@ -560,7 +565,7 @@ export function QueuedChatDemo({
                 >
                   <div
                     className="absolute bottom-0 left-0 flex items-center justify-end gap-1 pr-1 text-muted-foreground"
-                    style={{ height: CARD_H, width: 40 }}
+                    style={{ height: cardH, width: 40 }}
                   >
                     {/* Total queued count, to the LEFT of the arrow — surfaced once
                         the stack overflows its visible peeks, and kept visible on
@@ -640,7 +645,7 @@ export function QueuedChatDemo({
                       }}
                       transition={isDragging ? { duration: 0 } : spring.moderate}
                       style={{
-                        height: CARD_H,
+                        height: cardH,
                         transformOrigin: "bottom center",
                         zIndex: isDragging ? 200 : 100 - i,
                         cursor: stackExpanded ? "grab" : "default",
@@ -654,7 +659,11 @@ export function QueuedChatDemo({
                       // With attachments, use 8px side padding to match the ~8px
                       // above/below the 28px thumbnail in the 44px card (square
                       // inset); otherwise the roomier 14px for text-only cards.
-                      className={`group/qm absolute bottom-0 left-10 right-10 flex select-none items-center gap-2 bg-[color-mix(in_oklab,var(--accent),var(--background)_68%)] ${item.files.length > 0 ? "pl-2" : "pl-3.5"} pr-1.5 text-[14px] text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
+                      className={`group/qm absolute bottom-0 left-10 right-10 flex select-none items-center bg-[color-mix(in_oklab,var(--accent),var(--background)_68%)] ${
+                        compactStep
+                          ? `gap-1.5 ${item.files.length > 0 ? "pl-1.5" : "pl-3"} pr-1`
+                          : `gap-2 ${item.files.length > 0 ? "pl-2" : "pl-3.5"} pr-1.5`
+                      } text-subtitle text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
                     >
                       {item.files.length > 0 && (
                         <div className="pointer-events-none flex shrink-0 items-center gap-1">
@@ -662,12 +671,12 @@ export function QueuedChatDemo({
                             <FileThumbnail
                               key={`${f.name}-${f.size}-${fi}`}
                               file={f}
-                              size={28}
+                              size={compactStep ? 24 : 28}
                               className="rounded-md"
                             />
                           ))}
                           {item.files.length > 3 && (
-                            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80">
+                            <span className={`flex ${compactStep ? "h-6 w-6" : "h-7 w-7"} items-center justify-center rounded-md bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80`}>
                               +{item.files.length - 3}
                             </span>
                           )}

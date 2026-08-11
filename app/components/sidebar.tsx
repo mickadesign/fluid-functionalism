@@ -24,7 +24,7 @@ export function Sidebar({ mobile }: SidebarProps) {
 
       {/* System section */}
       <div>
-        <span className="text-[13px] text-muted-foreground/50 pl-1 pb-1.5 flex items-center gap-2">
+        <span className="text-body text-muted-foreground/50 pl-1 pb-1.5 flex items-center gap-2">
           System
           <span className="text-[11px]">{systemList.length}</span>
         </span>
@@ -44,7 +44,7 @@ export function Sidebar({ mobile }: SidebarProps) {
 
       {/* Components section */}
       <div>
-        <span className="text-[13px] text-muted-foreground/50 pl-1 pb-1.5 flex items-center gap-2">
+        <span className="text-body text-muted-foreground/50 pl-1 pb-1.5 flex items-center gap-2">
           Components
           <span className="text-[11px]">{componentList.length}</span>
         </span>

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 interface TabsSubtleContextValue {
@@ -43,10 +44,14 @@ interface TabsSubtleProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect
   idPrefix?: string;
   /** When true, only the selected tab shows its text label. Requires icons on tabs. */
   activeLabel?: boolean;
+  /** Pins the tabs to one step of the size ladder (default 36px, compact
+   *  28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
-  ({ children, selectedIndex, onSelect, idPrefix, activeLabel = false, className, ...props }, ref) => {
+  ({ children, selectedIndex, onSelect, idPrefix, activeLabel = false, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
@@ -110,7 +115,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
     const isHoveringSelected = hoveredIndex === selectedIndex;
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
-    return (
+    const root = (
       <TabsSubtleContext.Provider
         value={{ registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel }}
       >
@@ -249,6 +254,9 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
         </TabsPrimitive.Root>
       </TabsSubtleContext.Provider>
     );
+
+    // A size prop pins every tab to one ladder step.
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 
@@ -263,7 +271,25 @@ interface TabsSubtleItemProps extends HTMLAttributes<HTMLButtonElement> {
 const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
   ({ icon: Icon, label, index, className, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement | null>(null);
+    // The collapsing label animates to a MEASURED layout width, not "auto":
+    // framer resolves an "auto" target from the element's *visual*
+    // (transformed) size, so under a scaled ancestor (e.g. /demo's card) the
+    // spring overshoots to scale-x the real width and snaps when "auto"
+    // lands. offsetWidth and ResizeObserver are transform-immune — same
+    // setup as the accordions' height animation.
+    const [labelWidth, setLabelWidth] = useState<number | null>(null);
+    const labelRoRef = useRef<ResizeObserver | null>(null);
+    const measureLabel = useCallback((el: HTMLSpanElement | null) => {
+      labelRoRef.current?.disconnect();
+      labelRoRef.current = null;
+      if (!el) return;
+      const update = () => setLabelWidth(el.offsetWidth);
+      update();
+      labelRoRef.current = new ResizeObserver(update);
+      labelRoRef.current.observe(el);
+    }, []);
     const shape = useShape();
+    const sizeClasses = useSize();
     const { registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel } =
       useTabsSubtle();
 
@@ -280,7 +306,10 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
     const labelContent = (
       // Both stacked spans carry the text-box trim so the invisible bold
       // sizer and the visible label keep identical boxes.
-      <span className="inline-grid text-[13px] whitespace-nowrap">
+      <span
+        ref={measureLabel}
+        className={cn("inline-grid whitespace-nowrap", sizeClasses.text)}
+      >
         <span
           className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
           style={{ fontVariationSettings: fontWeights.semibold }}
@@ -322,9 +351,12 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         aria-label={collapseLabel && !showLabel ? label : undefined}
         className={cn(
           // Fixed heights (was py-2 around a 19.5px line box ≈ 35.5px) so the
-          // text-box trim on the label doesn't shrink the tab.
-          "relative z-10 flex items-center px-3 cursor-pointer bg-transparent border-none outline-none",
-          collapseLabel ? "h-8" : "h-9 gap-2",
+          // text-box trim on the label doesn't shrink the tab. Standalone
+          // pills sit directly on the ladder's control height.
+          "relative z-10 flex items-center cursor-pointer bg-transparent border-none outline-none",
+          sizeClasses.control,
+          sizeClasses.px,
+          !collapseLabel && sizeClasses.gap,
           shape.bg,
           className
         )}
@@ -332,7 +364,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
       >
         {Icon && (
           <Icon
-            size={16}
+            size={sizeClasses.icon}
             strokeWidth={isActive ? 2 : 1.5}
             className={cn(
               "shrink-0 transition-[color,stroke-width] duration-80",
@@ -347,7 +379,12 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
                 key="label"
                 className="overflow-hidden"
                 initial={{ width: 0, opacity: 0, marginLeft: 0 }}
-                animate={{ width: "auto", opacity: 1, marginLeft: 8 }}
+                animate={{
+                  width: labelWidth ?? "auto",
+                  opacity: 1,
+                  // Matches the ladder's icon-to-label gap (gap-2 / gap-1.5).
+                  marginLeft: sizeClasses.variant === "compact" ? 6 : 8,
+                }}
                 exit={{ width: 0, opacity: 0, marginLeft: 0 }}
                 transition={{
                   ...spring.fast,

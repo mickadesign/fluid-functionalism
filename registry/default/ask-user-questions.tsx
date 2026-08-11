@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useIcon } from "@/lib/icon-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useMergeSplitBlocks, SelectionBackgrounds } from "@/hooks/use-merge-split";
@@ -98,6 +99,10 @@ export interface AskUserQuestionsProps
   onComplete?: (answers: Record<string, AskUserAnswer>) => void;
   onSkip?: (questionId: string, currentIndex: number) => void;
   skipLabel?: string;
+  /** Pins the flow to one step of the size ladder (default 36px, compact
+   *  28px — see /docs/sizes). Omitted, it follows the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 function questionKey(q: AskUserQuestion, i: number) {
@@ -135,11 +140,18 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       onComplete,
       onSkip,
       skipLabel = "Skip",
+      size,
       className,
       ...rest
     },
     ref
   ) {
+    // Resolve locally with the prop override — this component both consumes
+    // the ladder (its own rows and chrome) and re-provides it to nested
+    // ladder-aware children (Button etc.) via the SizeProvider wrap below.
+    const sizeClasses = useSize(size);
+    const compact = sizeClasses.variant === "compact";
+
     // ── Controlled / uncontrolled state ──────────────────────────
     const [internalIndex, setInternalIndex] = useState(defaultCurrentIndex);
     const isIndexControlled = controlledIndex !== undefined;
@@ -1091,7 +1103,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                     </span>
                   </span>
                   {opt.description && (
-                    <span className="text-[12px] text-muted-foreground leading-snug">
+                    <span
+                      className={cn(
+                        compact ? "text-[11px]" : "text-[12px]",
+                        "text-muted-foreground leading-snug"
+                      )}
+                    >
                       {opt.description}
                     </span>
                   )}
@@ -1160,9 +1177,9 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             }
             arrowIcon={
               <ArrowRight
-                size={14}
+                size={compact ? 12 : 14}
                 strokeWidth={2}
-                className="h-3.5 w-3.5"
+                className={compact ? "h-3 w-3" : "h-3.5 w-3.5"}
               />
             }
             onArrowClick={
@@ -1207,7 +1224,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   // input it replaces — no border, no padding, no
                   // resize handle, no scrollbars (height is JS-driven,
                   // see the auto-resize effect above).
-                  "col-start-1 row-start-1 block w-full bg-transparent border-0 p-0 m-0 outline-none resize-none overflow-hidden text-[13px] leading-snug text-foreground placeholder:text-muted-foreground"
+                  "col-start-1 row-start-1 block w-full bg-transparent border-0 p-0 m-0 outline-none resize-none overflow-hidden leading-snug text-foreground placeholder:text-muted-foreground",
+                  sizeClasses.text
                 )}
                 style={{ fontVariationSettings: fontWeights.medium }}
               />
@@ -1217,7 +1235,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       </div>
     );
 
-    return (
+    const root = (
       <div
         ref={(node) => {
           rootRef.current = node;
@@ -1241,7 +1259,17 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       >
         {/* Header — static top, fixed across questions; only the number
             changes. Lives outside the morphing region so it never shifts. */}
-        <div className="flex items-center px-4 sm:px-5 pt-4 sm:pt-5 pb-2 text-[12px] text-muted-foreground">
+        <div
+          className={cn(
+            "flex items-center text-muted-foreground",
+            // The card's outer padding drops a notch at compact. px-3.5 is the
+            // floor: the option rows bleed by -mx-3, so anything tighter puts
+            // their hover background flush against the card edge.
+            compact
+              ? "px-3.5 sm:px-4 pt-2.5 sm:pt-3 pb-1.5 text-[11px]"
+              : "px-4 sm:px-5 pt-3.5 sm:pt-4 pb-2 text-[12px]"
+          )}
+        >
           <span>
             Question {safeIndex + 1} of {total}
           </span>
@@ -1273,8 +1301,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
             <div
               ref={contentMeasureRef}
               className={cn(
-                "px-4 sm:px-5",
-                showFooter ? "pb-1" : "pb-2.5 sm:pb-3"
+                compact ? "px-3.5 sm:px-4" : "px-4 sm:px-5",
+                showFooter
+                  ? "pb-1"
+                  : compact
+                    ? "pb-2 sm:pb-2.5"
+                    : "pb-2.5 sm:pb-3"
               )}
             >
               <div key={qId} className="flex flex-col gap-2">
@@ -1302,16 +1334,23 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                 <div
                   onClick={() => otherInputRef.current?.focus()}
                   className={cn(
-                    // -mx-3 + px-3 mirrors the option rows / "Something else"
-                    // field: the box bleeds 12px each side (so its fill spans the
-                    // same width as the hover/selected backgrounds) while the
-                    // text starts at the content edge, aligned with the option
+                    // Negative margin + the px token mirrors the option rows /
+                    // "Something else" field: the box bleeds each side by the
+                    // same amount the rows pad (so its fill spans the same
+                    // width as the hover/selected backgrounds) while the text
+                    // starts at the content edge, aligned with the option
                     // titles and the question heading.
-                    "relative mt-1 -mx-3 px-3 py-2.5 cursor-text transition-colors",
+                    "relative mt-1 cursor-text transition-colors",
+                    compact ? "-mx-2.5 py-2" : "-mx-3 py-2.5",
+                    sizeClasses.px,
                     // Resting height: a few lines for multi-line, one row for
                     // single-line. The textarea still auto-resizes above this
                     // floor as content wraps.
-                    isFreeTextMultiline ? "min-h-[76px]" : "min-h-10",
+                    isFreeTextMultiline
+                      ? "min-h-[76px]"
+                      : compact
+                      ? "min-h-8"
+                      : "min-h-10",
                     shape.bg,
                     // Mirror the "Something else" field instead of a blue focus
                     // ring. Empty + at rest: no border, fully quiet. Hover
@@ -1355,7 +1394,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                             handleOtherSubmit();
                           }
                         }}
-                        className="block w-full bg-transparent border-0 p-0 m-0 outline-none resize-none overflow-hidden text-[13px] leading-snug text-foreground placeholder:text-muted-foreground"
+                        className={cn(
+                          "block w-full bg-transparent border-0 p-0 m-0 outline-none resize-none overflow-hidden leading-snug text-foreground placeholder:text-muted-foreground",
+                          sizeClasses.text
+                        )}
                         style={{ fontVariationSettings: fontWeights.medium }}
                       />
                     }
@@ -1396,7 +1438,12 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
               transform), the footer reflows frame-by-frame and rides the morph
               in lockstep. */}
           {showFooter && (
-            <div className="px-4 sm:px-5 pt-1 pb-2">
+            <div
+              className={cn(
+                "pt-1",
+                compact ? "px-3.5 sm:px-4 pb-1.5" : "px-4 sm:px-5 pb-2"
+              )}
+            >
               <div className="flex items-center justify-between gap-2 -mx-2 sm:-mx-3">
                 {/* Each button is wrapped in a motion.div so it fades + scales
                     when it appears/disappears (e.g. Continue on multi-select).
@@ -1551,6 +1598,10 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
         </Field.Root>
       </div>
     );
+
+    // A size prop pins the whole flow (rows, chips, footer) to one ladder
+    // step; otherwise it follows the surrounding SizeProvider.
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 
@@ -1653,6 +1704,8 @@ function Row({
   ...aria
 }: RowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
+  const sizeClasses = useSize();
+  const compact = sizeClasses.variant === "compact";
 
   useEffect(() => {
     registerItem(index, rowRef.current);
@@ -1714,7 +1767,8 @@ function Row({
   const chipSlot = (
     <span
       className={cn(
-        "shrink-0 w-7 h-7 relative inline-flex items-center justify-center",
+        "shrink-0 relative inline-flex items-center justify-center",
+        compact ? "w-6 h-6" : "w-7 h-7",
         topAlign &&
           (bodyLayout === "stacked" ? "-mt-[1px]" : "-mt-[5px]")
       )}
@@ -1722,7 +1776,8 @@ function Row({
       <span
         aria-hidden
         className={cn(
-          "absolute inline-flex items-center justify-center w-5 h-5 text-[11px] transition-[opacity,font-variation-settings] duration-80",
+          "absolute inline-flex items-center justify-center text-[11px] transition-[opacity,font-variation-settings] duration-80",
+          compact ? "w-[18px] h-[18px]" : "w-5 h-5",
           isMulti && shape.bg,
           isMulti
             ? chipFilled
@@ -1811,7 +1866,13 @@ function Row({
         // items-center keeps a 1-line row visually centred — that's why
         // the Other row defers topAlign until its textarea actually wraps.
         topAlign ? "items-start" : "items-center",
-        bodyLayout === "stacked" ? "min-h-14 py-2" : "min-h-10 py-1.5",
+        bodyLayout === "stacked"
+          ? compact
+            ? "min-h-12 py-1.5"
+            : "min-h-14 py-2"
+          : compact
+            ? "min-h-8 py-1"
+            : "min-h-10 py-1.5",
         // Mirror the horizontal padding based on chip side so the row
         // reads visually balanced in both orientations. For chip-on-left
         // + multi-select there's no right slot, so widen the right padding
@@ -1833,7 +1894,8 @@ function Row({
       {/* Body — fills row */}
       <span
         className={cn(
-          "min-w-0 flex-1 text-[13px] leading-snug",
+          "min-w-0 flex-1 leading-snug",
+          sizeClasses.text,
           bodyLayout === "stacked"
             ? "flex flex-col gap-0.5"
             : "inline-flex items-center gap-0"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Slider, SliderComfortable } from "@/registry/radix/slider";
+import { Slider } from "@/registry/radix/slider";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 
 // ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ export default function SliderPage() {
         >
           Audio Mixer
         </h1>
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-subtitle text-muted-foreground">
           Slider variants styled as a music production control surface.
         </p>
       </div>
@@ -345,38 +345,38 @@ export default function SliderPage() {
           Settings
         </h2>
         <div className="flex flex-col gap-2">
-          <SliderComfortable
+          <Slider
             variant="pips"
             label="Reverb Type"
             value={reverbType}
-            onChange={setReverbType}
+            onChange={(v) => setReverbType(v as number)}
             min={0}
             max={4}
             formatValue={(v) => reverbTypes[v]}
           />
-          <SliderComfortable
+          <Slider
             variant="pips"
             label="Quality"
             value={quality}
-            onChange={setQuality}
+            onChange={(v) => setQuality(v as number)}
             min={0}
             max={4}
             formatValue={(v) => qualityLabels[v]}
           />
-          <SliderComfortable
+          <Slider
             variant="pips"
             label="Filter"
             value={filterMode}
-            onChange={setFilterMode}
+            onChange={(v) => setFilterMode(v as number)}
             min={0}
             max={3}
             formatValue={(v) => filterModes[v]}
           />
-          <SliderComfortable
+          <Slider
             variant="pips"
             label="Oversample"
             value={oversample}
-            onChange={setOversample}
+            onChange={(v) => setOversample(v as number)}
             min={0}
             max={3}
             formatValue={(v) => `${Math.pow(2, v)}x`}
@@ -396,20 +396,20 @@ export default function SliderPage() {
           Master Controls
         </h2>
         <div className="flex flex-col gap-2">
-          <SliderComfortable
+          <Slider
             variant="scrubber"
             label="Master"
             value={masterVol}
-            onChange={setMasterVol}
+            onChange={(v) => setMasterVol(v as number)}
             min={0}
             max={100}
             formatValue={(v) => `${v}%`}
           />
-          <SliderComfortable
+          <Slider
             variant="scrubber"
             label="Pan"
             value={pan}
-            onChange={setPan}
+            onChange={(v) => setPan(v as number)}
             min={0}
             max={100}
             formatValue={(v) => {
@@ -417,38 +417,38 @@ export default function SliderPage() {
               return v < 50 ? `L${50 - v}` : `R${v - 50}`;
             }}
           />
-          <SliderComfortable
+          <Slider
             variant="scrubber"
             label="Tempo"
             value={tempo}
-            onChange={setTempo}
+            onChange={(v) => setTempo(v as number)}
             min={60}
             max={200}
             formatValue={(v) => `${v} BPM`}
           />
-          <SliderComfortable
+          <Slider
             variant="scrubber"
             label="Swing"
             value={swing}
-            onChange={setSwing}
+            onChange={(v) => setSwing(v as number)}
             min={0}
             max={100}
             formatValue={(v) => `${v}%`}
           />
-          <SliderComfortable
+          <Slider
             variant="scrubber"
             label="Dry / Wet"
             value={dryWet}
-            onChange={setDryWet}
+            onChange={(v) => setDryWet(v as number)}
             min={0}
             max={100}
             formatValue={(v) => `${v}%`}
           />
-          <SliderComfortable
+          <Slider
             variant="scrubber"
             label="Feedback"
             value={feedback}
-            onChange={setFeedback}
+            onChange={(v) => setFeedback(v as number)}
             min={0}
             max={100}
             formatValue={(v) => `${v}%`}

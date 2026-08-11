@@ -25,6 +25,7 @@ import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 
 // ─── Contexts ────────────────────────────────────────────────────────────────
 
@@ -90,6 +91,10 @@ type AccordionGroupMultipleProps = {
 
 type AccordionGroupProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
+  /** Pins the group's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 } & (AccordionGroupSingleProps | AccordionGroupMultipleProps);
 
 const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
@@ -97,6 +102,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     const {
       children,
       type = "single",
+      size,
       className,
       ...rest
     } = props;
@@ -297,7 +303,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       ]
     );
 
-    return (
+    const group = (
       <AccordionGroupContext.Provider value={groupContextValue}>
         <AccordionPrimitive.Root
           value={baseValue}
@@ -474,6 +480,9 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
         />
       </AccordionGroupContext.Provider>
     );
+
+    // A size prop pins every row in the group to one ladder step.
+    return size ? <SizeProvider size={size}>{group}</SizeProvider> : group;
   }
 );
 
@@ -488,6 +497,10 @@ interface AccordionProps extends HTMLAttributes<HTMLDivElement> {
   defaultValue?: string | string[];
   value?: string | string[];
   onValueChange?: ((value: string) => void) | ((value: string[]) => void);
+  /** Pins the accordion's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
@@ -499,6 +512,7 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
       defaultValue,
       value,
       onValueChange,
+      size,
       className,
       ...props
     },
@@ -561,7 +575,7 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
       else handleSingleChange(next[0] ?? "");
     };
 
-    return (
+    const root = (
       <AccordionPrimitive.Root
         value={baseValue}
         onValueChange={baseOnValueChange}
@@ -586,6 +600,9 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
         }}
       />
     );
+
+    // A size prop pins every row to one ladder step.
+    return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;
   }
 );
 
@@ -696,6 +713,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
     const groupCtx = useAccordionGroup();
     const { index, isOpen, triggerRef } = useAccordionItemContext();
     const shape = useShape();
+    const sizeClasses = useSize();
     const [isHovered, setIsHovered] = useState(false);
 
     const isActive = groupCtx?.grouped
@@ -710,7 +728,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
         <AccordionPrimitive.Trigger
           ref={ref as React.Ref<HTMLElement>}
           className={cn(
-            `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 w-full cursor-pointer outline-none select-none`,
+            `relative z-10 flex items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} ${sizeClasses.variant === "compact" ? "py-1" : "py-2"} w-full cursor-pointer outline-none select-none`,
             !groupCtx?.grouped &&
               "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-0",
             className
@@ -718,7 +736,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
           {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
         >
           {/* Label with dual-layer text */}
-          <span className="inline-grid text-[13px] flex-1 text-left">
+          <span className={cn("inline-grid flex-1 text-left", sizeClasses.text)}>
             <span
               className="col-start-1 row-start-1 invisible"
               style={{ fontVariationSettings: fontWeights.semibold }}
@@ -749,7 +767,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
             transition={spring.fast}
           >
             <ChevronRight
-              size={16}
+              size={sizeClasses.icon}
               strokeWidth={isOpen || isActive ? 2 : 1.5}
               className={cn(
                 "transition-[color,stroke-width] duration-80",
@@ -802,6 +820,7 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
   ({ children, className, ...props }, ref) => {
     const groupCtx = useAccordionGroup();
     const { isOpen } = useAccordionItemContext();
+    const sizeClasses = useSize();
 
     // The open height is animated to a self-measured LAYOUT pixel value, not
     // `height: "auto"`: framer resolves an "auto" target by measuring the
@@ -908,7 +927,12 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
               >
                 <div
                   ref={measureRef}
-                  className="px-3 pb-3 pt-1 text-[13px] text-muted-foreground"
+                  className={cn(
+                    "pt-1 text-muted-foreground",
+                    sizeClasses.px,
+                    sizeClasses.text,
+                    sizeClasses.variant === "compact" ? "pb-2.5" : "pb-3"
+                  )}
                 >
                   {children}
                 </div>

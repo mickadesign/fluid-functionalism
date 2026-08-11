@@ -424,7 +424,7 @@ useEffect(() => () => timers.current.forEach(clearTimeout), []);
             transition={{ type: "spring", duration: 0.16 }}
             style={{ height: CARD_H, transformOrigin: "bottom center", zIndex: 100 - i }}
             onDoubleClick={() => { setValue(item.text); setQueue((q) => q.filter((x) => x.id !== item.id)); }}
-            className="absolute bottom-0 left-7 right-7 flex items-center gap-2 rounded-[20px] bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] px-3.5 text-[14px] text-muted-foreground shadow-surface-3"
+            className="absolute bottom-0 left-7 right-7 flex items-center gap-2 rounded-[20px] bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] px-3.5 text-subtitle text-muted-foreground shadow-surface-3"
           >
             {/* Attachments: small thumbnails (1 or many; +N past 3). */}
             {item.files.length > 0 && (
@@ -477,6 +477,7 @@ const disabledCode = `import { InputMessage } from "./components";
 />`;
 
 const inputMessageProps: PropDef[] = [
+  { name: "size", type: '"default" | "compact"', default: "from SizeProvider", description: "Step on the size ladder (see /docs/sizes). Wins over the surrounding SizeProvider." },
   { name: "value", type: "string", description: "Controlled textarea value." },
   { name: "onValueChange", type: "(value: string) => void", description: "Called with the new value on every textarea change." },
   { name: "onSend", type: "(value: string, files: File[]) => void", description: "Fires on Enter (without Shift) or send-button click. Receives the trimmed value and the currently-attached files. Skipped when the value is empty and no files are attached." },

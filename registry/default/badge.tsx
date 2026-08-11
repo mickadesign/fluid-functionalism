@@ -4,6 +4,7 @@ import { forwardRef, type HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
+import { useSizeVariant } from "@/lib/size-context";
 
 const badgeColors = {
   gray: "#a3a3a3",
@@ -35,23 +36,39 @@ const badgeVariants = cva(
         solid: "",
         dot: "border border-border text-foreground",
       },
+      // The two-step size ladder shared by every control — see /docs/sizes.
       size: {
-        sm: "h-5 px-2 text-[11px] gap-1",
-        md: "h-6 px-2.5 text-[12px] gap-1.5",
-        lg: "h-7 px-3 text-[13px] gap-1.5",
+        default: "h-6 px-2.5 text-[12px] gap-1.5",
+        compact: "h-5 px-2 text-[11px] gap-1",
       },
     },
     defaultVariants: {
       variant: "solid",
-      size: "md",
+      size: "default",
     },
   }
 );
 
+type BadgeSizeCanonical = "default" | "compact";
+
+/** Public size values: the canonical two-size scale plus the pre-sizes-system
+ *  aliases, kept so existing call sites keep compiling. Aliases resolve onto
+ *  the canonical ladder (sm → compact; md/lg → default). */
+type BadgeSize = BadgeSizeCanonical | "sm" | "md" | "lg";
+
+const legacySizeAliases: Partial<Record<BadgeSize, BadgeSizeCanonical>> = {
+  sm: "compact",
+  md: "default",
+  lg: "default",
+};
+
 interface BadgeProps
   extends Omit<HTMLAttributes<HTMLSpanElement>, "color">,
-    VariantProps<typeof badgeVariants> {
+    Omit<VariantProps<typeof badgeVariants>, "size"> {
   color?: BadgeColor;
+  /** Omitted, the badge follows the surrounding SizeProvider. Legacy
+   *  sm/md/lg values still resolve. */
+  size?: BadgeSize;
 }
 
 const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
@@ -59,7 +76,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     {
       className,
       variant = "solid",
-      size = "md",
+      size: sizeProp,
       color = "gray",
       children,
       style,
@@ -68,9 +85,17 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     ref
   ) => {
     const shape = useShape();
+    // Resolve the size: explicit prop (legacy aliases mapped onto the
+    // canonical ladder) > surrounding SizeProvider > default.
+    const contextSize = useSizeVariant();
+    const size: BadgeSizeCanonical = sizeProp
+      ? legacySizeAliases[sizeProp] ?? (sizeProp as BadgeSizeCanonical)
+      : contextSize === "compact"
+        ? "compact"
+        : "default";
     const colorValue = badgeColors[color];
     const isSolid = variant === "solid";
-    const dotSize = size === "sm" ? 6 : size === "lg" ? 8 : 7;
+    const dotSize = size === "compact" ? 6 : 7;
 
     const colorStyle = isSolid
       ? color === "gray"
@@ -112,4 +137,4 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 Badge.displayName = "Badge";
 
 export { Badge, badgeVariants, badgeColors };
-export type { BadgeProps, BadgeColor };
+export type { BadgeProps, BadgeColor, BadgeSize };

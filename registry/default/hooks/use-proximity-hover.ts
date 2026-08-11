@@ -176,11 +176,29 @@ export function useProximityHover<T extends HTMLElement>(
     scheduleMeasurement(measurementAttempts);
   }, [scheduleMeasurement]);
 
+  // Observes the registered items themselves (not just the container): rows
+  // that change size in place — e.g. the site-wide size step flipping while a
+  // selection background is up — must invalidate the published rects even when
+  // the container the effect below captured has since been remounted and the
+  // ref points at a different element than the one being observed.
+  const itemRoRef = useRef<ResizeObserver | null>(null);
+  const getItemRo = useCallback(() => {
+    if (itemRoRef.current === null && typeof ResizeObserver !== "undefined") {
+      itemRoRef.current = new ResizeObserver(() =>
+        scheduleMeasurement(measurementAttempts)
+      );
+    }
+    return itemRoRef.current;
+  }, [scheduleMeasurement]);
+
   const registerItem = useCallback(
     (index: number, element: HTMLElement | null) => {
       if (element) {
         itemsRef.current.set(index, element);
+        getItemRo()?.observe(element);
       } else {
+        const previous = itemsRef.current.get(index);
+        if (previous) itemRoRef.current?.unobserve(previous);
         itemsRef.current.delete(index);
       }
       // Coalesce rapid register/unregister calls (e.g. when an AnimatePresence
@@ -189,7 +207,7 @@ export function useProximityHover<T extends HTMLElement>(
       // container's children swap.
       remeasure();
     },
-    [remeasure]
+    [remeasure, getItemRo]
   );
 
   const handleMouseMove = useCallback(
@@ -339,7 +357,7 @@ export function useProximityHover<T extends HTMLElement>(
     return () => ro.disconnect();
   }, [containerRef, scheduleMeasurement]);
 
-  // Clean up rAF on unmount
+  // Clean up rAF and the item observer on unmount
   useEffect(() => {
     return () => {
       if (rafIdRef.current !== null) {
@@ -348,6 +366,8 @@ export function useProximityHover<T extends HTMLElement>(
       if (remeasureRafIdRef.current !== null) {
         cancelAnimationFrame(remeasureRafIdRef.current);
       }
+      itemRoRef.current?.disconnect();
+      itemRoRef.current = null;
     };
   }, []);
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ReactNode } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
+import { useSizeVariant } from "@/lib/size-context";
 import { InputCopy } from "@/registry/default/input-copy";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
@@ -32,6 +33,10 @@ interface DocPageProps {
   installSlug?: string;
   /** Set to false to skip the auto-injected Installation block (when the page provides its own). */
   showInstall?: boolean;
+  /** Replaces the flavor note under the install command with a short
+   *  description of what the command actually adds — for system pages,
+   *  where "which primitive flavor" is the wrong question. */
+  installNote?: string;
   children: ReactNode;
 }
 
@@ -41,10 +46,15 @@ export function DocPage({
   slug,
   installSlug,
   showInstall = true,
+  installNote,
   children,
 }: DocPageProps) {
   const ArrowRight = useIcon("arrow-right");
   const { base } = useBase();
+  // Square buttons have no provider-following value, so the prev/next arrows
+  // derive their step explicitly (see /docs/sizes).
+  const iconSize =
+    useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
 
   const currentIndex = slug ? docOrder.findIndex((c) => c.slug === slug) : -1;
   const prev = currentIndex > 0
@@ -58,39 +68,41 @@ export function DocPage({
     <div className="flex flex-col gap-8 px-6">
       <div className="flex items-start justify-between gap-4">
         <div>
+          {/* Page chrome rides the type-scale roles (see /docs/sizes):
+              display for the h1, body for the description. */}
           <h1
-            className="text-[22px] sm:text-[28px] text-foreground leading-none mb-2"
+            className="text-display text-foreground leading-none mb-2"
             style={{ fontVariationSettings: fontWeights.bold }}
           >
             {title}
           </h1>
-          <p className="text-[13px] text-muted-foreground">{description}</p>
+          <p className="text-body text-muted-foreground">{description}</p>
         </div>
         {slug && (
           <div className="flex items-center gap-1 shrink-0">
             {prev ? (
               <Tooltip content={<span>{prev.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
                 <Link href={`/docs/${prev.slug}`} aria-label={`Previous: ${prev.name}`} className="outline-none" tabIndex={-1}>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size={iconSize}>
                     <ArrowRight className="rotate-180" />
                   </Button>
                 </Link>
               </Tooltip>
             ) : (
-              <Button variant="ghost" size="icon" disabled aria-label="No previous component">
+              <Button variant="ghost" size={iconSize} disabled aria-label="No previous component">
                 <ArrowRight className="rotate-180" />
               </Button>
             )}
             {next ? (
               <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
                 <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`} className="outline-none" tabIndex={-1}>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size={iconSize}>
                     <ArrowRight />
                   </Button>
                 </Link>
               </Tooltip>
             ) : (
-              <Button variant="ghost" size="icon" disabled aria-label="No next component">
+              <Button variant="ghost" size={iconSize} disabled aria-label="No next component">
                 <ArrowRight />
               </Button>
             )}
@@ -100,7 +112,7 @@ export function DocPage({
       {slug && showInstall && (
         <div className="flex flex-col gap-3">
           <h2
-            className="text-[16px] text-foreground leading-none"
+            className="text-title text-foreground leading-none"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             Installation
@@ -108,8 +120,10 @@ export function DocPage({
           <InputCopy
             value={`npx shadcn@latest add ${installUrl(installSlug ?? slug, base)}`}
           />
-          {DUAL_FLAVOR_SLUGS.has(installSlug ?? slug) ? (
-            <p className="text-[12px] text-muted-foreground">
+          {installNote ? (
+            <p className="text-caption text-muted-foreground">{installNote}</p>
+          ) : DUAL_FLAVOR_SLUGS.has(installSlug ?? slug) ? (
+            <p className="text-caption text-muted-foreground">
               {base === "base"
                 ? "Installs the Base UI flavor. Switch in the right panel."
                 : "Installs the Radix flavor. Switch in the right panel."}
@@ -118,14 +132,14 @@ export function DocPage({
             // Single-source component built on Base UI primitives. Shown under
             // BOTH flavors: a Radix-flavored install still pulls
             // @base-ui/react, which shouldn't be a surprise.
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Single source built on Base UI primitives — used as-is under
               either flavor.
             </p>
           ) : base === "base" ? (
             // User has Base UI selected globally, but this component has no
             // Base flavour. Surface that so the toggle doesn't feel inert.
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               This component is primitive-agnostic — same source under both
               flavors.
             </p>
@@ -143,10 +157,11 @@ interface DocSectionProps {
 }
 
 export function DocSection({ title, children }: DocSectionProps) {
+  // Section headings are the title role of the type scale (see /docs/sizes).
   return (
     <div className="flex flex-col gap-3">
       <h2
-        className="text-[16px] text-foreground leading-none"
+        className="text-title text-foreground leading-none"
         style={{ fontVariationSettings: fontWeights.semibold }}
       >
         {title}

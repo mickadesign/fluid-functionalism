@@ -5,6 +5,7 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
+import { useSize, type SizeVariant } from "@/lib/size-context";
 import { useTouchPrimary } from "@/hooks/use-touch-primary";
 import { FileThumbnail } from "@/registry/default/file-thumbnail";
 
@@ -26,6 +27,10 @@ interface ChatMessageProps
   actions?: ReactNode;
   /** Message body. When omitted the text bubble is dropped (attachment-only message). */
   children?: ReactNode;
+  /** Pins the message to one step of the size ladder (see /docs/sizes) —
+   *  compact tightens bubble type and padding. Omitted, it follows the
+   *  surrounding SizeProvider. */
+  size?: SizeVariant;
 }
 
 // ─── ChatMessage ──────────────────────────────────────────────────────────
@@ -34,10 +39,11 @@ interface ChatMessageProps
 // lets earlier messages slide up smoothly when a new one is appended.
 const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
   (
-    { from, files, thumbnailSize = 64, time, actions, children, className, ...props },
+    { from, files, thumbnailSize = 64, time, actions, children, size, className, ...props },
     ref
   ) => {
     const shape = useShape();
+    const compact = useSize(size).variant === "compact";
     const isUser = from === "user";
     // Hover-reveal is unreachable on touch — keep the meta row visible there.
     const isTouch = useTouchPrimary();
@@ -78,19 +84,21 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
         {children != null && children !== "" && (
           <div
             className={cn(
-              "py-2 text-[14px] whitespace-pre-wrap break-words",
+              "whitespace-pre-wrap break-words",
+              compact ? "py-1.5 text-[13px]" : "py-2 text-[14px]",
               // User keeps the bubble chrome (rounded fill + horizontal padding);
               // the assistant reply is flush-left plain text with no background.
               isUser
                 ? cn(
                     shape.bg,
+                    compact ? "px-3" : "px-3.5",
                     // `text-pretty` is reserved for settled user bubbles. On the
                     // assistant reply it's left off on purpose: `text-wrap: pretty`
                     // re-balances the last lines on every content change, so a
                     // word-by-word stream visibly reflows earlier words to new
                     // lines. Default (normal) wrapping appends left-to-right and
                     // stays put as the text grows.
-                    "px-3.5 text-pretty bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] text-accent-foreground"
+                    "text-pretty bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] text-accent-foreground"
                   )
                 : "text-foreground"
             )}
@@ -106,7 +114,8 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
           // show their actions alone. User rows read date → icons left-to-right.
           <div
             className={cn(
-              "flex items-center gap-2 px-1 text-[12px] leading-none text-muted-foreground select-none",
+              "flex items-center gap-2 px-1 leading-none text-muted-foreground select-none",
+              compact ? "text-[11px]" : "text-[12px]",
               !isTouch && [
                 "opacity-0 pointer-events-none transition-opacity duration-150",
                 "group-hover:opacity-100 group-hover:pointer-events-auto",

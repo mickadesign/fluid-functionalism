@@ -225,6 +225,7 @@ const fullCode = `// Kitchen sink: sources, details, descriptions, images, custo
 // ─── Props Tables ───────────────────────────────────────────────────────────
 
 const rootProps: PropDef[] = [
+  { name: "size", type: '"default" | "compact"', default: "from SizeProvider", description: "Step on the size ladder (see /docs/sizes). Wins over the surrounding SizeProvider." },
   { name: "defaultOpen", type: "boolean", default: "true", description: "Whether the accordion starts expanded (uncontrolled)." },
   { name: "open", type: "boolean", description: "Controlled open state. Use with onOpenChange." },
   { name: "onOpenChange", type: "(open: boolean) => void", description: "Callback when the open state changes." },
@@ -426,7 +427,7 @@ function StreamingDescription({ text, active, done }: { text: string; active: bo
   const show = done ? text : displayed;
   if (!show) return null;
   return (
-    <span className="text-[13px] text-muted-foreground leading-snug">
+    <span className="text-body text-muted-foreground leading-snug">
       {show}
     </span>
   );
@@ -767,7 +768,7 @@ export default function ThinkingStepsDoc() {
 
       {/* 2. Minimal — two dots, nothing else */}
       <DocSection title="Minimal">
-        <p className="text-[13px] text-muted-foreground mb-3">
+        <p className="text-body text-muted-foreground mb-3">
           The simplest usage — two dots with no children or extras.
         </p>
         <ComponentPreview code={minimalCode}>
@@ -783,7 +784,7 @@ export default function ThinkingStepsDoc() {
 
       {/* 3. Streaming — icons, sources, sequential animation */}
       <DocSection title="Streaming">
-        <p className="text-[13px] text-muted-foreground mb-3">
+        <p className="text-body text-muted-foreground mb-3">
           Steps appear sequentially as they stream in. Active steps show a shimmer effect.
         </p>
         <AnimatedPreview code={streamingCode}>
@@ -793,7 +794,7 @@ export default function ThinkingStepsDoc() {
 
       {/* 4. Streaming Text — dots, long streaming descriptions */}
       <DocSection title="Streaming Text">
-        <p className="text-[13px] text-muted-foreground mb-3">
+        <p className="text-body text-muted-foreground mb-3">
           Dots with long descriptions that stream in character by character, simulating LLM output.
         </p>
         <AnimatedPreview code={streamingTextCode}>
@@ -803,7 +804,7 @@ export default function ThinkingStepsDoc() {
 
       {/* 5. With Images — ThinkingStepImage in action */}
       <DocSection title="With Images">
-        <p className="text-[13px] text-muted-foreground mb-3">
+        <p className="text-body text-muted-foreground mb-3">
           Steps can include inline images with optional captions using ThinkingStepImage.
         </p>
         <AnimatedPreview code={withImagesCode}>
@@ -813,7 +814,7 @@ export default function ThinkingStepsDoc() {
 
       {/* 6. Full Example — kitchen sink */}
       <DocSection title="Full Example">
-        <p className="text-[13px] text-muted-foreground mb-3">
+        <p className="text-body text-muted-foreground mb-3">
           A 6-step research agent combining sources, details, descriptions, images, and a custom header.
         </p>
         <AnimatedPreview code={fullCode}>
@@ -822,22 +823,22 @@ export default function ThinkingStepsDoc() {
       </DocSection>
 
       <DocSection title="API Reference">
-        <h3 className="text-[14px] font-semibold text-foreground mb-2 mt-4">ThinkingSteps</h3>
+        <h3 className="text-subtitle font-semibold text-foreground mb-2 mt-4">ThinkingSteps</h3>
         <PropsTable props={rootProps} />
 
-        <h3 className="text-[14px] font-semibold text-foreground mb-2 mt-6">ThinkingStepsHeader</h3>
+        <h3 className="text-subtitle font-semibold text-foreground mb-2 mt-6">ThinkingStepsHeader</h3>
         <PropsTable props={headerProps} />
 
-        <h3 className="text-[14px] font-semibold text-foreground mb-2 mt-6">ThinkingStep</h3>
+        <h3 className="text-subtitle font-semibold text-foreground mb-2 mt-6">ThinkingStep</h3>
         <PropsTable props={stepProps} />
 
-        <h3 className="text-[14px] font-semibold text-foreground mb-2 mt-6">ThinkingStepDetails</h3>
+        <h3 className="text-subtitle font-semibold text-foreground mb-2 mt-6">ThinkingStepDetails</h3>
         <PropsTable props={detailsProps} />
 
-        <h3 className="text-[14px] font-semibold text-foreground mb-2 mt-6">ThinkingStepSource</h3>
+        <h3 className="text-subtitle font-semibold text-foreground mb-2 mt-6">ThinkingStepSource</h3>
         <PropsTable props={sourceProps} />
 
-        <h3 className="text-[14px] font-semibold text-foreground mb-2 mt-6">ThinkingStepImage</h3>
+        <h3 className="text-subtitle font-semibold text-foreground mb-2 mt-6">ThinkingStepImage</h3>
         <PropsTable props={imageProps} />
       </DocSection>
     </DocPage>

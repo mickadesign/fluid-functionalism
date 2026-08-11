@@ -21,6 +21,7 @@ import {
 } from "framer-motion";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
+import { useSizeVariant, type SizeVariant } from "@/lib/size-context";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
@@ -32,7 +33,10 @@ import { useShape } from "@/lib/shape-context";
 type SliderValue = number | [number, number];
 type ValuePosition = "left" | "right" | "top" | "bottom" | "tooltip";
 
-interface SliderProps
+/** Props of the compact engine — the feature-rich design (ranges, discrete
+ *  step lists, value display) that renders the ladder's compact step. The
+ *  public <Slider> accepts these plus `variant` and `size`. */
+interface SliderEngineProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "defaultValue"> {
   value: SliderValue;
   onChange: (value: SliderValue) => void;
@@ -310,10 +314,10 @@ function TooltipValue({ value, formatValue, motionX }: TooltipValueProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Slider
+// CompactSlider — the compact-step design (formerly the only `Slider`).
 // ---------------------------------------------------------------------------
 
-const Slider = forwardRef<HTMLDivElement, SliderProps>(
+const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
   (
     {
       value,
@@ -1075,10 +1079,10 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
   }
 );
 
-Slider.displayName = "Slider";
+CompactSlider.displayName = "SliderCompact";
 
 // ---------------------------------------------------------------------------
-// SliderComfortable
+// ComfortableSlider — the default-step design (pips / scrubber layouts).
 // ---------------------------------------------------------------------------
 
 interface SliderComfortableProps
@@ -1094,7 +1098,7 @@ interface SliderComfortableProps
   disabled?: boolean;
 }
 
-const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
+const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
   (
     {
       value,
@@ -1645,7 +1649,96 @@ const SliderComfortable = forwardRef<HTMLDivElement, SliderComfortableProps>(
   }
 );
 
-SliderComfortable.displayName = "SliderComfortable";
+ComfortableSlider.displayName = "SliderComfortable";
+
+// ---------------------------------------------------------------------------
+// Slider — the public component, riding the size ladder.
+//
+// The two historical designs are the two ladder steps: the comfortable
+// pips/scrubber design renders at the default step, the dense original
+// design at the compact step. Features only the compact engine implements
+// (range values, discrete step lists, value display, track styling) force
+// it regardless of the resolved step, so no capability is ever lost.
+// ---------------------------------------------------------------------------
+
+interface SliderProps extends SliderEngineProps {
+  /** Default-step layout: value pips along the track, or an edge-to-edge
+   *  scrubber. Ignored when the compact design renders. */
+  variant?: "pips" | "scrubber";
+  /** Pins the slider to one step of the size ladder (see /docs/sizes).
+   *  Omitted, it follows the surrounding SizeProvider. */
+  size?: SizeVariant;
+}
+
+const Slider = forwardRef<HTMLDivElement, SliderProps>(
+  ({ size, variant = "pips", ...props }, ref) => {
+    const resolved = useSizeVariant(size);
+    const needsCompactEngine =
+      Array.isArray(props.value) ||
+      props.steps !== undefined ||
+      props.showSteps !== undefined ||
+      props.showValue !== undefined ||
+      props.valuePosition !== undefined ||
+      props.trackClassName !== undefined ||
+      props.trackStyle !== undefined ||
+      props.fillClassName !== undefined ||
+      props.fillStyle !== undefined ||
+      props.hideFill !== undefined ||
+      props.thumbColor !== undefined ||
+      props.thumbBorderColor !== undefined;
+
+    if (resolved === "compact" || needsCompactEngine) {
+      return <CompactSlider ref={ref} {...props} />;
+    }
+
+    const {
+      value,
+      onChange,
+      min,
+      max,
+      step,
+      label,
+      formatValue,
+      disabled,
+      // Compact-engine-only fields — all undefined on this path (any defined
+      // one would have routed to the compact engine above).
+      steps: _steps,
+      showSteps: _showSteps,
+      showValue: _showValue,
+      valuePosition: _valuePosition,
+      trackClassName: _trackClassName,
+      trackStyle: _trackStyle,
+      fillClassName: _fillClassName,
+      fillStyle: _fillStyle,
+      hideFill: _hideFill,
+      thumbColor: _thumbColor,
+      thumbBorderColor: _thumbBorderColor,
+      ...html
+    } = props;
+
+    return (
+      <ComfortableSlider
+        ref={ref}
+        value={value as number}
+        onChange={onChange as (v: number) => void}
+        min={min}
+        max={max}
+        step={step}
+        variant={variant}
+        label={label}
+        formatValue={formatValue}
+        disabled={disabled}
+        {...(html as Omit<SliderComfortableProps, "value" | "onChange">)}
+      />
+    );
+  }
+);
+
+Slider.displayName = "Slider";
+
+/** @deprecated The comfortable design is now the ladder's default step —
+ *  render <Slider> (optionally with `variant`) instead. */
+const SliderComfortable = ComfortableSlider;
 
 export { Slider, SliderComfortable };
 export type { SliderProps, SliderValue, ValuePosition, SliderComfortableProps };

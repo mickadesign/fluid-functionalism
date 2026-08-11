@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
+import { useSize, useSizeVariant } from "@/lib/size-context";
 import { SurfaceProvider, useSurface } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,9 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const shape = useShape();
     const substrate = useSurface();
     const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
+    // The size ladder narrows the dialog one notch in compact regions —
+    // width only, the padding stays put (see /docs/sizes).
+    const compact = useSize().variant === "compact";
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -115,8 +119,8 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               "left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
               surfaceClasses(dialogLevel),
               "p-6 focus:outline-none",
-              size === "sm" && "max-w-[400px]",
-              size === "lg" && "max-w-[540px]",
+              size === "sm" && (compact ? "max-w-[360px]" : "max-w-[400px]"),
+              size === "lg" && (compact ? "max-w-[480px]" : "max-w-[540px]"),
               shape.container,
               className
             )}
@@ -172,26 +176,41 @@ function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 const DialogTitle = forwardRef<
   HTMLHeadingElement,
   ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn("text-[16px] text-foreground leading-tight", className)}
-    style={{ fontVariationSettings: "'wght' 700" }}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  // The title role of the type scale — see /docs/sizes.
+  const compact = useSizeVariant() === "compact";
+  return (
+    <DialogPrimitive.Title
+      ref={ref}
+      className={cn(
+        compact ? "text-[15px]" : "text-[16px]",
+        "text-foreground leading-tight",
+        className
+      )}
+      style={{ fontVariationSettings: "'wght' 700" }}
+      {...props}
+    />
+  );
+});
 DialogTitle.displayName = "DialogTitle";
 
 const DialogDescription = forwardRef<
   HTMLParagraphElement,
   ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
-    ref={ref}
-    className={cn("text-[13px] text-muted-foreground", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const compact = useSizeVariant() === "compact";
+  return (
+    <DialogPrimitive.Description
+      ref={ref}
+      className={cn(
+        compact ? "text-[12px]" : "text-[13px]",
+        "text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 DialogDescription.displayName = "DialogDescription";
 
 export {

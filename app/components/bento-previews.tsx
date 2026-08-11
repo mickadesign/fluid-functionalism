@@ -59,7 +59,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/flavored/select";
-import { Slider, SliderComfortable } from "@/registry/radix/slider";
+import { Slider } from "@/registry/radix/slider";
 import { Switch } from "@/registry/radix/switch";
 import {
   Table,
@@ -265,17 +265,17 @@ function SliderPreview() {
   return (
     <div className="flex flex-col gap-8 w-full max-w-[280px]">
       <div className="flex flex-col gap-1.5 w-full">
-        <div className="flex items-center justify-between text-[13px]">
+        <div className="flex items-center justify-between text-body">
           <span className="text-muted-foreground">{SLIDER_OPACITY.label}</span>
           <span className="text-muted-foreground tabular-nums">{basic}</span>
         </div>
         <Slider value={basic} onChange={(v) => setBasic(v as number)} showValue={false} />
       </div>
-      <SliderComfortable
+      <Slider
         variant="scrubber"
         label={SLIDER_VOLUME.label}
         value={volume}
-        onChange={setVolume}
+        onChange={(v) => setVolume(v as number)}
         min={0}
         max={100}
         formatValue={(v) => `${v}%`}

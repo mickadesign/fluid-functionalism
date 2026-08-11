@@ -10,6 +10,7 @@ import { SettingsContent } from "@/app/components/right-panel";
 import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { Tooltip, TooltipPortalContainer } from "@/registry/radix/tooltip";
 import { ColorPickerPortalContainer } from "@/registry/default/color-picker";
 
@@ -33,6 +34,9 @@ export default function DemoPage() {
 
 function DemoPageInner() {
   const router = useRouter();
+  // Square icon buttons follow the site-wide size step (see /docs/sizes).
+  const iconSize =
+    useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
   const searchParams = useSearchParams();
   const cardRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -153,12 +157,12 @@ function DemoPageInner() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
             <h1
-              className="text-[22px] sm:text-[28px] text-foreground leading-none"
+              className="text-display text-foreground leading-none"
               style={{ fontVariationSettings: fontWeights.bold }}
             >
               Fluid Functionalism
             </h1>
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-subtitle text-muted-foreground">
               Refined UI components with satisfying hover.
             </p>
             <div className="flex items-center gap-2 mt-2">
@@ -174,7 +178,7 @@ function DemoPageInner() {
             <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
               <Button
                 variant="ghost"
-                size="icon"
+                size={iconSize}
                 onClick={() => goTo(currentIndex - 1)}
                 disabled={!prevSlide}
                 aria-label="Previous slide"
@@ -185,7 +189,7 @@ function DemoPageInner() {
             <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
               <Button
                 variant="ghost"
-                size="icon"
+                size={iconSize}
                 onClick={() => goTo(currentIndex + 1)}
                 disabled={!nextSlide}
                 aria-label="Next slide"

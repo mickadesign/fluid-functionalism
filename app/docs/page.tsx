@@ -4,12 +4,16 @@ import Link from "next/link";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { docOrder } from "@/lib/docs/components";
 import { InputCopy } from "@/registry/default/input-copy";
 import { Tooltip } from "@/registry/radix/tooltip";
 
 export default function DocsIndex() {
   const ArrowRight = useIcon("arrow-right");
+  // Square icon buttons follow the site-wide size step (see /docs/sizes).
+  const iconSize =
+    useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
   const firstComponent = docOrder[0];
 
   return (
@@ -17,19 +21,19 @@ export default function DocsIndex() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1
-            className="text-[22px] sm:text-[28px] text-foreground leading-none mb-2"
+            className="text-display text-foreground leading-none mb-2"
             style={{ fontVariationSettings: fontWeights.bold }}
           >
             Introduction
           </h1>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Why these components feel different.
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Tooltip content={<span>Showcase &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
             <Link href="/" aria-label="Previous: Showcase" className="outline-none" tabIndex={-1}>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size={iconSize}>
                 <ArrowRight className="rotate-180" />
               </Button>
             </Link>
@@ -37,7 +41,7 @@ export default function DocsIndex() {
           {firstComponent && (
             <Tooltip content={<span>{firstComponent.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
               <Link href={`/docs/${firstComponent.slug}`} aria-label={`Next: ${firstComponent.name}`} className="outline-none" tabIndex={-1}>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size={iconSize}>
                   <ArrowRight />
                 </Button>
               </Link>
@@ -46,10 +50,10 @@ export default function DocsIndex() {
         </div>
       </div>
 
-      <section className="flex flex-col gap-6 text-[14px] text-foreground/90 leading-relaxed">
+      <section className="flex flex-col gap-6 text-subtitle text-foreground/90 leading-relaxed">
         <div className="flex flex-col gap-2">
           <h3
-            className="text-[16px] text-foreground leading-none"
+            className="text-title text-foreground leading-none"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             Motion that communicates
@@ -65,7 +69,7 @@ export default function DocsIndex() {
 
         <div className="flex flex-col gap-2">
           <h3
-            className="text-[16px] text-foreground leading-none"
+            className="text-title text-foreground leading-none"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             Hover as preview
@@ -81,7 +85,7 @@ export default function DocsIndex() {
 
         <div className="flex flex-col gap-2">
           <h3
-            className="text-[16px] text-foreground leading-none"
+            className="text-title text-foreground leading-none"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             Spring physics, not durations
@@ -97,7 +101,7 @@ export default function DocsIndex() {
 
         <div className="flex flex-col gap-2">
           <h3
-            className="text-[16px] text-foreground leading-none"
+            className="text-title text-foreground leading-none"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             Drop-in compatible
@@ -113,7 +117,7 @@ export default function DocsIndex() {
 
         <div className="flex flex-col gap-2">
           <h3
-            className="text-[16px] text-foreground leading-none"
+            className="text-title text-foreground leading-none"
             style={{ fontVariationSettings: fontWeights.semibold }}
           >
             Customize using the right panel
@@ -134,31 +138,31 @@ export default function DocsIndex() {
       <hr className="border-border/60 my-8" />
       <div className="flex flex-col gap-3 mb-4">
         <h2
-          className="text-[16px] text-foreground leading-none"
+          className="text-title text-foreground leading-none"
           style={{ fontVariationSettings: fontWeights.semibold }}
         >
           Installation
         </h2>
         <div className="flex flex-col gap-2 mt-2">
-          <p className="text-[13px] text-muted-foreground flex items-center gap-2 ml-1">
+          <p className="text-body text-muted-foreground flex items-center gap-2 ml-1">
             <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-muted text-muted-foreground text-[11px] shrink-0" style={{ fontVariationSettings: fontWeights.medium }}>1</span>
             Add the registry to your project:
           </p>
           <InputCopy value="npx shadcn@latest registry add @fluid" align="left" className="w-fit" />
         </div>
         <div className="flex flex-col gap-2 mt-2">
-          <p className="text-[13px] text-muted-foreground flex items-center gap-2 ml-1">
+          <p className="text-body text-muted-foreground flex items-center gap-2 ml-1">
             <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-muted text-muted-foreground text-[11px] shrink-0" style={{ fontVariationSettings: fontWeights.medium }}>2</span>
             Install any component:
           </p>
           <InputCopy value="npx shadcn@latest add @fluid/button" align="left" className="w-fit" />
         </div>
         <hr className="border-border/60 mt-4" />
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Or install directly without adding the registry:
         </p>
         <InputCopy value="npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json" align="left" className="w-fit" />
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Dependencies and shared utilities are resolved automatically.
           Font weight animations require the Inter variable font.
         </p>
@@ -167,19 +171,19 @@ export default function DocsIndex() {
       <hr className="border-border/60 my-8" />
       <div className="flex flex-col gap-3 mb-4">
         <h2
-          className="text-[16px] text-foreground leading-none"
+          className="text-title text-foreground leading-none"
           style={{ fontVariationSettings: fontWeights.semibold }}
         >
           Icons
         </h2>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Components render their icons through named slots with Lucide
           defaults, so lucide-react is the only icon dependency an
           install adds. To use another icon library, wrap your app in
           the installed IconProvider and override any slot — names you
           leave out keep their Lucide default:
         </p>
-        <pre className="text-[12px] leading-relaxed text-muted-foreground bg-muted/60 rounded-lg px-4 py-3 overflow-x-auto w-fit max-w-full">
+        <pre className="text-caption leading-relaxed text-muted-foreground bg-muted/60 rounded-lg px-4 py-3 overflow-x-auto w-fit max-w-full">
           <code>{`import { IconProvider } from "@/lib/icon-context";
 import { CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
 

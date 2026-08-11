@@ -18,6 +18,7 @@ import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useMergeSplitBlocks, SelectionBackgrounds } from "@/hooks/use-merge-split";
 import { useShape } from "@/lib/shape-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 
 interface CheckboxGroupContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
@@ -38,10 +39,14 @@ function useCheckboxGroup() {
 interface CheckboxGroupProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   checkedIndices: Set<number>;
+  /** Pins the group's rows to one step of the size ladder (default 36px,
+   *  compact 28px — see /docs/sizes). Omitted, it follows the surrounding
+   *  SizeProvider. */
+  size?: SizeVariant;
 }
 
 const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
-  ({ children, checkedIndices, className, ...props }, ref) => {
+  ({ children, checkedIndices, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const groupIdCounter = useRef(0);
     const prevGroupMap = useRef(new Map<number, number>());
@@ -103,7 +108,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
     // unchecked row bridges or splits two checked runs.
     const blocks = useMergeSplitBlocks(checkedGroups, itemRects, shape.mergedRadius);
 
-    return (
+    const group = (
       <CheckboxGroupContext.Provider value={{ registerItem, activeIndex }}>
         <div
           ref={(node) => {
@@ -222,6 +227,9 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
         </div>
       </CheckboxGroupContext.Provider>
     );
+
+    // A size prop pins every row in the group to one ladder step.
+    return size ? <SizeProvider size={size}>{group}</SizeProvider> : group;
   }
 );
 
@@ -252,6 +260,8 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
     const isActive = activeIndex === index;
     const skipAnimation = !hasMounted.current;
     const shape = useShape();
+    const sizeClasses = useSize();
+    const compact = sizeClasses.variant === "compact";
 
     return (
       <div
@@ -289,7 +299,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         className={cn(
           // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
           // text-box trim on the label doesn't shrink the row.
-          `relative z-10 flex h-8 items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none`,
+          `relative z-10 flex ${sizeClasses.control} items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} cursor-pointer outline-none`,
           className
         )}
         {...props}
@@ -300,13 +310,17 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           onCheckedChange={() => onToggle()}
           tabIndex={-1}
           aria-hidden
-          className="relative w-[15px] h-[15px] shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer"
+          className={cn(
+            "relative shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer",
+            compact ? "w-[14px] h-[14px]" : "w-[16px] h-[16px]"
+          )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Border */}
           <div
             className={cn(
-              "absolute inset-0 rounded-[5px] border-solid transition-all duration-80",
+              "absolute inset-0 border-solid transition-all duration-80",
+              compact ? "rounded-[4px]" : "rounded-[5px]",
               checked
                 ? "border-[1.5px] border-transparent"
                 : isActive
@@ -333,8 +347,8 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
                   return (
                     <motion.svg
                       {...rest}
-                      width={18}
-                      height={18}
+                      width={compact ? 16 : 18}
+                      height={compact ? 16 : 18}
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -369,7 +383,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         {/* Label */}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className="inline-grid text-[13px]">
+        <span className={cn("inline-grid", sizeClasses.text)}>
           <span
             className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}

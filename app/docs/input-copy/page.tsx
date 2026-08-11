@@ -141,7 +141,7 @@ export default function InputCopyDoc() {
               value="https://fluidfunctionalism.com/r/input-copy"
               onCopy={() => setCopyCount((count) => count + 1)}
             />
-            <p className="text-[12px] text-muted-foreground px-1">
+            <p className="text-caption text-muted-foreground px-1">
               Copied {copyCount} {copyCount === 1 ? "time" : "times"}
             </p>
           </div>

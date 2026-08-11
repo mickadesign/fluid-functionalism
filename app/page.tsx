@@ -6,10 +6,14 @@ import { BentoGrid } from "@/app/components/bento-grid";
 import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
+import { useSizeVariant } from "@/lib/size-context";
 import { Tooltip } from "@/registry/radix/tooltip";
 
 export default function Page() {
   const ArrowRight = useIcon("arrow-right");
+  // Square icon buttons follow the site-wide size step (see /docs/sizes).
+  const iconSize =
+    useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
 
   return (
     <div className="mt-12 lg:mt-0">
@@ -17,12 +21,12 @@ export default function Page() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
             <h1
-              className="text-[22px] sm:text-[28px] text-foreground leading-none"
+              className="text-display text-foreground leading-none"
               style={{ fontVariationSettings: fontWeights.bold }}
             >
               Fluid Functionalism
             </h1>
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-subtitle text-muted-foreground">
               Refined UI components with satisfying hover.
             </p>
             <div className="flex items-center gap-2 mt-2">
@@ -35,12 +39,12 @@ export default function Page() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" disabled aria-label="No previous page">
+            <Button variant="ghost" size={iconSize} disabled aria-label="No previous page">
               <ArrowRight className="rotate-180" />
             </Button>
             <Tooltip content={<span>Introduction &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
               <Link href="/docs" aria-label="Next: Introduction" className="outline-none" tabIndex={-1}>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size={iconSize}>
                   <ArrowRight />
                 </Button>
               </Link>
