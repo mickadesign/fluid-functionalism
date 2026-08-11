@@ -704,7 +704,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
-        "https://www.fluidfunctionalism.com/r/size-context.json"
+        "https://www.fluidfunctionalism.com/r/size-context.json",
+        "https://www.fluidfunctionalism.com/r/tooltip.json"
       ],
       "files": [
         {
@@ -1350,7 +1351,8 @@
         "https://www.fluidfunctionalism.com/r/use-proximity-hover.json",
         "https://www.fluidfunctionalism.com/r/elevated.json",
         "https://www.fluidfunctionalism.com/r/slider.json",
-        "https://www.fluidfunctionalism.com/r/size-context.json"
+        "https://www.fluidfunctionalism.com/r/size-context.json",
+        "https://www.fluidfunctionalism.com/r/tooltip.json"
       ],
       "files": [
         {

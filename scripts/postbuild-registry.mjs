@@ -22,6 +22,15 @@
  *    Base flavour of button. Inside `r/radix/dialog.json` and `r/dialog.json`,
  *    it becomes the URL of the Radix flavour. Primitive-agnostic deps
  *    (Badge, Table, etc.) always resolve to the bare `r/<name>.json`.
+ *
+ * 4. **Emit flavoured payloads for single-source components that depend on
+ *    dual-flavour components.** InputMessage, for example, has one source that
+ *    imports `@/registry/radix/button`; installing it from `r/base/…` must pull
+ *    the Base flavour of Button instead. For any flat item whose deps include a
+ *    dual-flavour slug, this script also writes `base/<name>.json` and
+ *    `radix/<name>.json` with flavour-matched dep URLs and with component
+ *    imports rewritten to their installed location (`@/components/ui/<name>`),
+ *    so the embedded source is flavour-neutral.
  */
 
 import { mkdir, readdir, readFile, writeFile, rm } from "node:fs/promises";
@@ -92,6 +101,22 @@ function rewriteDeps(item, flavor) {
   }
 }
 
+/**
+ * Rewrite a single-source file's component imports to their installed
+ * location. `@/registry/radix/button`, `@/registry/base/button`, and
+ * `@/registry/default/file-thumbnail` all install to `@/components/ui/*`, so
+ * the flavoured payload embeds a flavour-neutral source and lets
+ * `registryDependencies` decide which flavour of the dep gets installed.
+ * Lib/hook imports (`@/registry/default/lib/*`, `.../hooks/*`) are left for
+ * the shadcn CLI's own alias mapping.
+ */
+export function neutralizeComponentImports(content) {
+  return content.replace(
+    /@\/registry\/(?:default|radix|base)\/(?!lib\/|hooks\/)/g,
+    "@/components/ui/"
+  );
+}
+
 /** Pick the right flavour to use when rewriting an individual item. */
 export function flavorForItem(item) {
   return typeof item.name === "string" && item.name.endsWith("-base") ? "base" : "flat";
@@ -146,6 +171,16 @@ export async function processRegistry(registryDir = REGISTRY_DIR) {
         ? JSON.parse(JSON.stringify(data))
         : null;
 
+      // Single-source item that depends on dual-flavour components (e.g.
+      // InputMessage → Button/Tooltip): clone before the flat rewrite too, so
+      // base/ and radix/ variants below can pick flavour-matched dep URLs.
+      const flavourClone =
+        !DUAL_FLAVOR_ITEMS.has(baseName) &&
+        Array.isArray(data.registryDependencies) &&
+        data.registryDependencies.some((dep) => DUAL_FLAVOR_ITEMS.has(dep))
+          ? JSON.parse(JSON.stringify(data))
+          : null;
+
       // Flat file: rewrite deps as "flat" (back-compat URLs).
       rewriteDeps(data, "flat");
       await writeJson(filePath, data);
@@ -156,6 +191,22 @@ export async function processRegistry(registryDir = REGISTRY_DIR) {
         rewriteDeps(radixCopy, "radix");
         await writeJson(join(radixDir, `${baseName}.json`), radixCopy);
         console.log(`  ✓ radix/${baseName}.json`);
+      }
+
+      // Emit both flavoured variants of a single-source item with dual deps.
+      if (flavourClone) {
+        for (const flavor of ["base", "radix"]) {
+          const copy = JSON.parse(JSON.stringify(flavourClone));
+          rewriteDeps(copy, flavor);
+          for (const f of copy.files ?? []) {
+            if (typeof f.content === "string") {
+              f.content = neutralizeComponentImports(f.content);
+            }
+          }
+          const outDir = flavor === "base" ? baseDir : radixDir;
+          await writeJson(join(outDir, `${baseName}.json`), copy);
+          console.log(`  ✓ ${flavor}/${baseName}.json`);
+        }
       }
     }
   }

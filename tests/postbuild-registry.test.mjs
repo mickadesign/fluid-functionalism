@@ -6,6 +6,7 @@ import {
   BASE_URL,
   depUrl,
   flavorForItem,
+  neutralizeComponentImports,
   processRegistry,
 } from "../scripts/postbuild-registry.mjs";
 
@@ -26,6 +27,29 @@ describe("depUrl", () => {
     for (const flavor of ["flat", "radix", "base"]) {
       expect(depUrl("badge", flavor)).toBe(`${BASE_URL}/badge.json`);
       expect(depUrl("springs", flavor)).toBe(`${BASE_URL}/springs.json`);
+    }
+  });
+});
+
+describe("neutralizeComponentImports", () => {
+  it("rewrites component imports of every flavour to @/components/ui/*", () => {
+    expect(
+      neutralizeComponentImports('import { Button } from "@/registry/radix/button";')
+    ).toBe('import { Button } from "@/components/ui/button";');
+    expect(
+      neutralizeComponentImports('import { Slider } from "@/registry/base/slider";')
+    ).toBe('import { Slider } from "@/components/ui/slider";');
+    expect(
+      neutralizeComponentImports('import { FileThumbnail } from "@/registry/default/file-thumbnail";')
+    ).toBe('import { FileThumbnail } from "@/components/ui/file-thumbnail";');
+  });
+
+  it("leaves lib and hook imports for the CLI's own alias mapping", () => {
+    for (const src of [
+      'import { spring } from "@/registry/default/lib/springs";',
+      'import { useProximityHover } from "@/registry/default/hooks/use-proximity-hover";',
+    ]) {
+      expect(neutralizeComponentImports(src)).toBe(src);
     }
   });
 });
@@ -72,6 +96,22 @@ describe("processRegistry pipeline", () => {
       registryDependencies: ["button", "badge", "utils"],
     });
     await write("badge.json", { name: "badge", registryDependencies: ["utils"] });
+    // Single-source component that depends on a dual-flavour component —
+    // like input-message → button/tooltip.
+    await write("composer.json", {
+      name: "composer",
+      registryDependencies: ["button", "badge", "utils"],
+      files: [
+        {
+          path: "registry/default/composer.tsx",
+          type: "registry:ui",
+          content:
+            'import { Button } from "@/registry/radix/button";\n' +
+            'import { FileThumbnail } from "@/registry/default/file-thumbnail";\n' +
+            'import { spring } from "@/registry/default/lib/springs";\n',
+        },
+      ],
+    });
     vi.spyOn(console, "log").mockImplementation(() => {});
     await processRegistry(dir);
   });
@@ -115,6 +155,33 @@ describe("processRegistry pipeline", () => {
     expect(await exists("radix", "badge.json")).toBe(false);
     const badge = await read("badge.json");
     expect(badge.registryDependencies).toEqual(["utils"]);
+  });
+
+  it("emits flavoured variants for single-source items with dual-flavour deps", async () => {
+    const base = await read("base", "composer.json");
+    const radix = await read("radix", "composer.json");
+    expect(base.registryDependencies).toEqual([
+      `${BASE_URL}/base/button.json`,
+      `${BASE_URL}/badge.json`,
+      "utils",
+    ]);
+    expect(radix.registryDependencies).toEqual([
+      `${BASE_URL}/radix/button.json`,
+      `${BASE_URL}/badge.json`,
+      "utils",
+    ]);
+    // Component imports are rewritten to the installed location; lib imports
+    // are left alone. Both flavours embed the same flavour-neutral source.
+    for (const payload of [base, radix]) {
+      const content = payload.files[0].content;
+      expect(content).toContain('from "@/components/ui/button"');
+      expect(content).toContain('from "@/components/ui/file-thumbnail"');
+      expect(content).toContain('from "@/registry/default/lib/springs"');
+      expect(content).not.toContain("@/registry/radix/");
+    }
+    // The flat payload keeps its original imports.
+    const flat = await read("composer.json");
+    expect(flat.files[0].content).toContain('from "@/registry/radix/button"');
   });
 
   it("rewrites the index per item flavour: -base entries get base URLs, others back-compat", async () => {

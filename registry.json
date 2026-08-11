@@ -294,7 +294,7 @@
       "name": "ask-user-questions",
       "type": "registry:ui",
       "title": "Ask User Questions",
-      "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
+      "description": "Stepped question flow with numbered options, keyboard shortcuts (1\u20139), single or multi-select, inline 'other' text input, optional skip, proximity-based hover, and multi-question navigation. Auto-advances on selection in single-select.",
       "dependencies": [
         "framer-motion",
         "@base-ui/react"
@@ -704,7 +704,8 @@
         "font-weight",
         "shape-context",
         "icon-context",
-        "size-context"
+        "size-context",
+        "tooltip"
       ],
       "files": [
         {
@@ -1350,7 +1351,8 @@
         "use-proximity-hover",
         "elevated",
         "slider",
-        "size-context"
+        "size-context",
+        "tooltip"
       ],
       "files": [
         {
