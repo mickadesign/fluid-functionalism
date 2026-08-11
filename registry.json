@@ -726,6 +726,7 @@
         "surface-context",
         "surface-classes",
         "file-thumbnail",
+        "use-proximity-hover",
         "button",
         "tooltip"
       ],

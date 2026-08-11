@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ArrowDown,
   Search,
   Loader,
   Users,
@@ -50,6 +51,7 @@ import {
   Pencil,
   SkipForward,
   CornerDownRight,
+  CornerDownLeft,
 } from "lucide-react";
 
 export interface IconComponentProps {
@@ -64,14 +66,15 @@ export type IconName =
   | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
   | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
   | "square-library" | "clock" | "star" | "settings"
-  | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "search" | "loader"
+  | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "arrow-down"
+  | "search" | "loader"
   | "users" | "lock" | "mail" | "bell" | "shield" | "palette"
   | "lightbulb" | "rocket" | "heart" | "paintbrush" | "brain"
   | "globe" | "user"
   | "image" | "link" | "check" | "rotate-ccw"
   | "play" | "pause" | "pipette"
   | "home" | "message-circle" | "inbox"
-  | "pencil" | "skip-forward" | "corner-down-right";
+  | "pencil" | "skip-forward" | "corner-down-right" | "corner-down-left";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
   "chevron-right": ChevronRight,
@@ -94,6 +97,7 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "arrow-left": ArrowLeft,
   "arrow-right": ArrowRight,
   "arrow-up": ArrowUp,
+  "arrow-down": ArrowDown,
   "search": Search,
   "loader": Loader,
   "users": Users,
@@ -121,6 +125,7 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "pencil": Pencil,
   "skip-forward": SkipForward,
   "corner-down-right": CornerDownRight,
+  "corner-down-left": CornerDownLeft,
 };
 
 const IconContext = createContext<Record<IconName, IconComponent> | null>(null);

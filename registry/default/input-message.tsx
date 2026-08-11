@@ -4,6 +4,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -23,6 +24,7 @@ import { useShape } from "@/lib/shape-context";
 import { useIcon } from "@/lib/icon-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { SurfaceProvider } from "@/lib/surface-context";
+import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { FileThumbnail } from "@/registry/default/file-thumbnail";
 import { Button } from "@/registry/radix/button";
 import { Tooltip } from "@/registry/radix/tooltip";
@@ -141,6 +143,15 @@ interface InputMessageProps
    *  backward through history; ArrowDown (caret on the last line) walks forward
    *  toward the in-progress draft. Editing or sending exits history mode. */
   history?: string[];
+  /** Suggested prompt rendered as the placeholder (with a Tab keycap) while
+   *  the draft is empty. Pressing Tab fills it into the composer — it doesn't
+   *  send. Takes precedence over `placeholder`. */
+  placeholderSuggestion?: string;
+  /** Suggested prompts listed under the action bar while the draft is empty.
+   *  ArrowDown moves a highlight into the list (focus stays in the textarea),
+   *  ArrowUp walks back up and out, Enter or click fills the highlighted
+   *  prompt into the composer. Typing collapses the list. */
+  suggestions?: string[];
 }
 
 // ─── File preview tile ────────────────────────────────────────────────────
@@ -302,6 +313,82 @@ function QueuedRow({
   );
 }
 
+// ─── Suggestion row ───────────────────────────────────────────────────────
+// A suggested prompt in the listbox under the action bar. Registers itself
+// with the proximity-hover system in an effect (MenuItem's pattern — an
+// inline ref callback would re-register every render and keep the hook's
+// measurement pass from ever settling). The highlight itself is the parent's
+// sliding overlay, so the row only recolors its text when active.
+interface SuggestionRowProps {
+  text: string;
+  index: number;
+  active: boolean;
+  /** Show a ↓ keycap hint in the icon slot — the first row displays it while
+   *  no row is highlighted, signposting that ArrowDown enters the list. */
+  keyHint: boolean;
+  optionId: string;
+  registerItem: (index: number, element: HTMLElement | null) => void;
+  onSelect: () => void;
+}
+
+function SuggestionRow({
+  text,
+  index,
+  active,
+  keyHint,
+  optionId,
+  registerItem,
+  onSelect,
+}: SuggestionRowProps) {
+  const EnterIcon = useIcon("corner-down-left");
+  const ArrowDownIcon = useIcon("arrow-down");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    registerItem(index, ref.current);
+    return () => registerItem(index, null);
+  }, [index, registerItem]);
+
+  return (
+    <div
+      ref={ref}
+      id={optionId}
+      role="option"
+      aria-selected={active}
+      onClick={onSelect}
+      className={cn(
+        "relative flex h-8 cursor-pointer items-center gap-2 px-2.5",
+        "text-[13px] text-muted-foreground transition-colors duration-80",
+        active && "text-foreground"
+      )}
+      style={{ fontVariationSettings: fontWeights.normal }}
+    >
+      {/* py-1/-my-1 keeps truncate's overflow:hidden from clipping
+          ascenders/descenders outside the trimmed box. */}
+      <span className="min-w-0 flex-1 truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1">
+        {text}
+      </span>
+      {/* One icon slot: ↵ on the highlighted row; on the first row a muted ↓
+          takes the same slot while nothing is highlighted, signposting the
+          keyboard path into the list. */}
+      {!active && keyHint ? (
+        <ArrowDownIcon
+          size={13}
+          className="shrink-0 text-muted-foreground/70 transition-opacity duration-80"
+        />
+      ) : (
+        <EnterIcon
+          size={13}
+          className={cn(
+            "shrink-0 transition-opacity duration-80",
+            active ? "opacity-100" : "opacity-0"
+          )}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── InputMessage ─────────────────────────────────────────────────────────
 
 const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
@@ -330,6 +417,8 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       onQueueChange,
       showQueue = true,
       history = [],
+      placeholderSuggestion,
+      suggestions,
       className,
       style,
       ...props
@@ -352,6 +441,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const {
       onFocus: _textareaOnFocus,
       onBlur: _textareaOnBlur,
+      "aria-describedby": textareaDescribedBy,
       ...restTextareaProps
     } = textareaProps ?? {};
 
@@ -376,12 +466,64 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const [historyIndex, setHistoryIndex] = useState<number | null>(null);
     const draftBeforeHistory = useRef("");
 
+    // Suggested prompts. The list only shows while the draft is empty, and
+    // `activeSuggestion` is the highlighted row — focus never leaves the
+    // textarea (aria-activedescendant points at the highlighted option).
+    // Highlight state lives in the proximity-hover system so pointer and
+    // keyboard drive the same sliding bg-hover overlay (Dropdown's pattern):
+    // mouse movement resolves the nearest row, ↓/↑ set the index directly.
+    const suggestionsArr = useMemo(() => suggestions ?? [], [suggestions]);
+    const suggestionsOpen = suggestionsArr.length > 0 && value === "";
+    const suggestionListRef = useRef<HTMLDivElement>(null);
+    const {
+      activeIndex: activeSuggestion,
+      setActiveIndex: setActiveSuggestion,
+      itemRects: suggestionRects,
+      sessionRef: suggestionSession,
+      handlers: suggestionHandlers,
+      registerItem: registerSuggestion,
+      measureItems,
+    } = useProximityHover(suggestionListRef);
+
+    // Publish row rects as soon as the list is (re)opened or its content
+    // changes — same as Dropdown. Row registration alone schedules the
+    // measurement on a rAF, which is not guaranteed to have run before the
+    // first highlight renders.
+    useEffect(() => {
+      if (suggestionsOpen) measureItems();
+    }, [suggestionsOpen, suggestionsArr, measureItems]);
+    const suggestionListId = useId();
+    const ghostHintId = useId();
+    const showGhost =
+      !!placeholderSuggestion && value === "" && !(dragOver && supportsFiles);
+
+    useEffect(() => {
+      if (!suggestionsOpen) setActiveSuggestion(null);
+    }, [suggestionsOpen, setActiveSuggestion]);
+
+    // Fill a suggested prompt into the composer (Tab / Enter / click). Fills
+    // only — the user still reviews and sends.
+    const acceptSuggestion = useCallback(
+      (text: string) => {
+        setActiveSuggestion(null);
+        setHistoryIndex(null);
+        onValueChange(text);
+        requestAnimationFrame(() => {
+          const el = textareaRef.current;
+          if (!el) return;
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        });
+      },
+      [onValueChange, setActiveSuggestion]
+    );
+
     // Parsed line-height, cached per textarea element — getComputedStyle on
     // every keystroke is needless work when the value only changes with font
     // or zoom changes.
     const lineHeightCache = useRef<{ el: HTMLTextAreaElement; value: number } | null>(null);
 
-    useIsoLayoutEffect(() => {
+    const resizeTextarea = useCallback(() => {
       const el = textareaRef.current;
       if (!el) return;
       el.style.height = "auto";
@@ -396,7 +538,30 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       const next = Math.min(Math.max(el.scrollHeight, min), max);
       el.style.height = `${next}px`;
       el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
-    }, [value, minRows, maxRows]);
+    }, [minRows, maxRows]);
+
+    useIsoLayoutEffect(() => {
+      resizeTextarea();
+    }, [value, resizeTextarea]);
+
+    // Re-measure when the textarea's width changes. The mount-time pass can
+    // run while an ancestor is still laid out at (near-)zero width — the
+    // wrapped placeholder then reads as many lines and pins the height at
+    // maxRows until the next value change. Width-gated so the observer
+    // doesn't loop on its own height writes.
+    useEffect(() => {
+      const el = textareaRef.current;
+      if (!el || typeof ResizeObserver === "undefined") return;
+      let lastWidth = el.offsetWidth;
+      const ro = new ResizeObserver(() => {
+        const width = el.offsetWidth;
+        if (width === lastWidth) return;
+        lastWidth = width;
+        resizeTextarea();
+      });
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [resizeTextarea]);
 
     const trimmed = value.trim();
     const canSend = !disabled && (trimmed.length > 0 || filesArr.length > 0);
@@ -548,6 +713,60 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
         if (e.nativeEvent.isComposing) return;
 
+        // Suggested prompts: plain ArrowDown moves the highlight into / down
+        // the list, ArrowUp walks it back up (then out, returning to plain
+        // textarea behavior), Enter fills the highlighted prompt, Escape
+        // drops the highlight. With no highlight, ArrowUp still falls through
+        // to history recall below.
+        if (
+          suggestionsOpen &&
+          !e.shiftKey &&
+          !e.altKey &&
+          !e.metaKey &&
+          !e.ctrlKey
+        ) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActiveSuggestion((prev) =>
+              prev == null ? 0 : Math.min(prev + 1, suggestionsArr.length - 1)
+            );
+            return;
+          }
+          if (activeSuggestion != null) {
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setActiveSuggestion(
+                activeSuggestion === 0 ? null : activeSuggestion - 1
+              );
+              return;
+            }
+            if (e.key === "Enter") {
+              e.preventDefault();
+              acceptSuggestion(suggestionsArr[activeSuggestion]);
+              return;
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setActiveSuggestion(null);
+              return;
+            }
+          }
+        }
+
+        // Tab fills the suggested placeholder prompt into the empty composer
+        // (Shift+Tab still moves focus backward, and once the draft is
+        // non-empty Tab resumes normal focus traversal).
+        if (
+          e.key === "Tab" &&
+          !e.shiftKey &&
+          placeholderSuggestion &&
+          value === ""
+        ) {
+          e.preventDefault();
+          acceptSuggestion(placeholderSuggestion);
+          return;
+        }
+
         // Readline-style history. Only plain ArrowUp/ArrowDown navigate (no
         // modifiers), and only when the caret is on the first/last line so
         // multi-line editing still works normally.
@@ -598,7 +817,20 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
           handleSend();
         }
       },
-      [history, value, historyIndex, onValueChange, setCaretEnd, handleSend]
+      [
+        history,
+        value,
+        historyIndex,
+        onValueChange,
+        setCaretEnd,
+        handleSend,
+        suggestionsOpen,
+        suggestionsArr,
+        activeSuggestion,
+        setActiveSuggestion,
+        acceptSuggestion,
+        placeholderSuggestion,
+      ]
     );
 
     const handleContainerMouseDown = useCallback(
@@ -854,43 +1086,82 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
             </AnimatePresence>
           )}
 
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => {
-              // Real typing exits history mode (recall sets the value
-              // programmatically, which doesn't fire onChange).
-              setHistoryIndex(null);
-              onValueChange(e.target.value);
-            }}
-            onKeyDown={handleKeyDown}
-            // Compose the consumer's textareaProps handlers with the internal
-            // focus-visible tracking (the spread below would otherwise
-            // overwrite these).
-            onFocus={(e) => {
-              if (e.target.matches(":focus-visible")) setFocusVisible(true);
-              textareaProps?.onFocus?.(e);
-            }}
-            onBlur={(e) => {
-              setFocusVisible(false);
-              textareaProps?.onBlur?.(e);
-            }}
-            placeholder={
-              dragOver && supportsFiles
-                ? "Drop files here to add to chat"
-                : placeholder
-            }
-            disabled={disabled}
-            rows={minRows}
-            aria-label={textareaProps?.["aria-label"] ?? "Message"}
-            className={cn(
-              "w-full resize-none bg-transparent outline-none",
-              "text-[14px] leading-5 text-foreground placeholder:text-muted-foreground",
-              "px-2 py-2"
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => {
+                // Real typing exits history mode (recall sets the value
+                // programmatically, which doesn't fire onChange) and drops
+                // any suggestion highlight.
+                setHistoryIndex(null);
+                setActiveSuggestion(null);
+                onValueChange(e.target.value);
+              }}
+              onKeyDown={handleKeyDown}
+              // Compose the consumer's textareaProps handlers with the internal
+              // focus-visible tracking (the spread below would otherwise
+              // overwrite these).
+              onFocus={(e) => {
+                if (e.target.matches(":focus-visible")) setFocusVisible(true);
+                textareaProps?.onFocus?.(e);
+              }}
+              onBlur={(e) => {
+                setFocusVisible(false);
+                setActiveSuggestion(null);
+                textareaProps?.onBlur?.(e);
+              }}
+              placeholder={
+                dragOver && supportsFiles
+                  ? "Drop files here to add to chat"
+                  : placeholderSuggestion
+                    ? undefined // the ghost overlay below renders it
+                    : placeholder
+              }
+              disabled={disabled}
+              rows={minRows}
+              aria-label={textareaProps?.["aria-label"] ?? "Message"}
+              aria-describedby={
+                [showGhost ? ghostHintId : null, textareaDescribedBy]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
+              aria-activedescendant={
+                activeSuggestion != null
+                  ? `${suggestionListId}-${activeSuggestion}`
+                  : undefined
+              }
+              className={cn(
+                "w-full resize-none bg-transparent outline-none",
+                "text-[14px] leading-5 text-foreground placeholder:text-muted-foreground",
+                "px-2 py-2"
+              )}
+              style={{ fontVariationSettings: fontWeights.normal }}
+              {...restTextareaProps}
+            />
+            {/* Ghost placeholder: the suggested prompt with a Tab keycap. A
+                real overlay (not the native placeholder) so the keycap can
+                render inline after the text; typography mirrors the textarea
+                exactly so it sits where typed text will. */}
+            {showGhost && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 overflow-hidden px-2 py-2 text-[14px] leading-5 text-muted-foreground"
+                style={{ fontVariationSettings: fontWeights.normal }}
+              >
+                <span>{placeholderSuggestion}</span>{" "}
+                <kbd className="mx-0.5 inline-flex h-[18px] -translate-y-px items-center rounded-[5px] border border-border bg-background px-1 align-middle font-sans text-[11px] text-muted-foreground">
+                  Tab
+                </kbd>
+              </div>
             )}
-            style={{ fontVariationSettings: fontWeights.normal }}
-            {...restTextareaProps}
-          />
+            {showGhost && (
+              <span id={ghostHintId} className="sr-only">
+                Suggested prompt: {placeholderSuggestion}. Press Tab to fill
+                the composer with it.
+              </span>
+            )}
+          </div>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">{leftContent}</div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -936,6 +1207,91 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
               </Button>
             </div>
           </div>
+
+          {/* Suggested prompts — a listbox under the action bar, shown while
+              the draft is empty. ↓/↑ move the highlight without moving focus
+              (the textarea's aria-activedescendant tracks it); Enter or click
+              fills the composer. The outer motion.div collapses the region's
+              height once typing hides the list; -mx-2 cancels the container
+              padding so the divider runs the composer's full width. Pointer
+              and keyboard share one bg-hover overlay that springs between
+              row rects (proximity-hover, same as Dropdown). */}
+          {suggestionsArr.length > 0 && (
+            <AnimatePresence initial={false}>
+              {suggestionsOpen && (
+                <motion.div
+                  key="suggestions"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ ...spring.moderate, bounce: 0 }}
+                  className="-mx-2 overflow-hidden"
+                >
+                  <div
+                    ref={suggestionListRef}
+                    role="listbox"
+                    id={suggestionListId}
+                    aria-label="Suggested prompts"
+                    onMouseEnter={suggestionHandlers.onMouseEnter}
+                    onMouseMove={suggestionHandlers.onMouseMove}
+                    onMouseLeave={suggestionHandlers.onMouseLeave}
+                    className="relative mt-1 flex flex-col border-t border-border/60 px-1.5 pt-1.5"
+                  >
+                    {/* Hover / keyboard highlight — one overlay sliding
+                        between rows instead of per-row backgrounds. Keyed by
+                        the pointer session so re-entering fades in at the
+                        current row rather than sliding from the last one. */}
+                    <AnimatePresence>
+                      {activeSuggestion != null &&
+                        suggestionRects[activeSuggestion] && (
+                          <motion.div
+                            key={suggestionSession.current}
+                            className={cn(
+                              "pointer-events-none absolute bg-hover",
+                              shape.bg
+                            )}
+                            initial={{
+                              opacity: 0,
+                              top: suggestionRects[activeSuggestion].top,
+                              left: suggestionRects[activeSuggestion].left,
+                              width: suggestionRects[activeSuggestion].width,
+                              height: suggestionRects[activeSuggestion].height,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              top: suggestionRects[activeSuggestion].top,
+                              left: suggestionRects[activeSuggestion].left,
+                              width: suggestionRects[activeSuggestion].width,
+                              height: suggestionRects[activeSuggestion].height,
+                            }}
+                            exit={{
+                              opacity: 0,
+                              transition: spring.fast.exit,
+                            }}
+                            transition={{
+                              ...spring.fast,
+                              opacity: { duration: 0.08 },
+                            }}
+                          />
+                        )}
+                    </AnimatePresence>
+                    {suggestionsArr.map((s, i) => (
+                      <SuggestionRow
+                        key={`${s}-${i}`}
+                        text={s}
+                        index={i}
+                        active={i === activeSuggestion}
+                        keyHint={i === 0 && activeSuggestion == null}
+                        optionId={`${suggestionListId}-${i}`}
+                        registerItem={registerSuggestion}
+                        onSelect={() => acceptSuggestion(s)}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
           {/* Politely announces auto-dispatch of queued messages. */}
           <span className="sr-only" role="status" aria-live="polite">
             {liveMsg}

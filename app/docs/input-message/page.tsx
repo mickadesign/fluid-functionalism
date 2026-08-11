@@ -21,6 +21,30 @@ const [value, setValue] = useState("");
   onSend={(text) => console.log("send:", text)}
 />`;
 
+const suggestionsCode = `import { useState } from "react";
+import { InputMessage } from "./components";
+
+const SUGGESTIONS = [
+  "What is Fluid Functionalism about?",
+  "How does Micka tune the springs behind these animations?",
+  "Install the InputMessage component in my project",
+  "Draft a short thank-you note to Micka for the library",
+];
+
+const [value, setValue] = useState("");
+
+<InputMessage
+  value={value}
+  onValueChange={setValue}
+  onSend={() => setValue("")}
+  // The ghost placeholder renders with a Tab keycap — Tab fills it into the
+  // composer. ArrowDown/ArrowUp walk the list below (focus stays in the
+  // textarea) and Enter or click fills the highlighted prompt; the first row
+  // shows a ↓ hint until a row is highlighted. Typing collapses the list.
+  placeholderSuggestion={SUGGESTIONS[3]}
+  suggestions={SUGGESTIONS}
+/>`;
+
 const attachmentsCode = `import { useEffect, useRef, useState } from "react";
 import { InputMessage, ChatMessage } from "./components";
 
@@ -172,6 +196,8 @@ const FileTextIcon = useIcon("square-library");
       setValue("");
       setFiles([]);
     }}
+    // Ghost placeholder with a Tab keycap — Tab fills it into the composer.
+    placeholderSuggestion="Animate the dashboard cards with the moderate spring"
     // Drag-and-drop works on the whole container. Click + to choose a type.
     leftSlot={({ openFilePicker }) => (
     <div ref={attachRef} className="relative">
@@ -474,10 +500,20 @@ const inputMessageProps: PropDef[] = [
   { name: "onQueueChange", type: "(queue: QueuedMessage[]) => void", description: "Called whenever the queue changes — enqueue, edit, delete, reorder, or auto-dispatch. Each QueuedMessage is { id, text, files }." },
   { name: "showQueue", type: "boolean", default: "true", description: "Render the built-in reorderable queue rows above the textarea. Set to false to suppress them and render the queue yourself (e.g. as full-width rows above the composer) — enqueue and auto-dispatch still run." },
   { name: "history", type: "string[]", default: "[]", description: "Previously-sent messages, oldest first. With the textarea focused, ArrowUp (caret on the first line) recalls the previous message and walks backward; ArrowDown (caret on the last line) walks forward toward the in-progress draft. Editing or sending exits history mode." },
+  { name: "placeholderSuggestion", type: "string", description: "Suggested prompt rendered as the placeholder (with a Tab keycap) while the draft is empty. Pressing Tab fills it into the composer — it doesn't send. Takes precedence over placeholder. Shift+Tab still moves focus backward, and once the draft is non-empty Tab resumes normal focus traversal." },
+  { name: "suggestions", type: "string[]", description: "Suggested prompts listed under the action bar while the draft is empty. ArrowDown moves a highlight into the list (focus stays in the textarea, tracked via aria-activedescendant), ArrowUp walks back up and out, Enter or click fills the highlighted prompt into the composer. Escape drops the highlight; typing collapses the list. While nothing is highlighted the first row shows a ↓ hint in the slot where the highlighted row shows ↵." },
+];
+
+const SUGGESTIONS = [
+  "What is Fluid Functionalism about?",
+  "How does Micka tune the springs behind these animations?",
+  "Install the InputMessage component in my project",
+  "Draft a short thank-you note to Micka for the library",
 ];
 
 export default function InputMessageDoc() {
   const [basicValue, setBasicValue] = useState("");
+  const [suggestValue, setSuggestValue] = useState("");
   const [leftValue, setLeftValue] = useState("");
   const [rightValue, setRightValue] = useState("");
   const [handlerValue, setHandlerValue] = useState("");
@@ -560,6 +596,7 @@ export default function InputMessageDoc() {
           rich
           minHeightClass="h-[560px]"
           placeholder="Ask me anything…"
+          placeholderSuggestion="Animate the dashboard cards with the moderate spring"
         />
       </DocSection>
 
@@ -570,6 +607,20 @@ export default function InputMessageDoc() {
               value={basicValue}
               onValueChange={setBasicValue}
               onSend={() => setBasicValue("")}
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Suggestions">
+        <ComponentPreview code={suggestionsCode} minHeightClass="min-h-[360px]">
+          <div className="w-full max-w-xl">
+            <InputMessage
+              value={suggestValue}
+              onValueChange={setSuggestValue}
+              onSend={() => setSuggestValue("")}
+              placeholderSuggestion={SUGGESTIONS[3]}
+              suggestions={SUGGESTIONS}
             />
           </div>
         </ComponentPreview>

@@ -37,6 +37,7 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconArrowUp,
+  IconArrowDown,
   IconSearch,
   IconLoader2,
   IconUsers,
@@ -64,6 +65,7 @@ import {
   IconPencil,
   IconPlayerSkipForward,
   IconCornerDownRight,
+  IconCornerDownLeft,
 } from "@tabler/icons-react";
 
 // ── Phosphor ────────────────────────────────────────────────
@@ -88,6 +90,7 @@ import {
   ArrowLeft as PhArrowLeft,
   ArrowRight as PhArrowRight,
   ArrowUp as PhArrowUp,
+  ArrowDown as PhArrowDown,
   MagnifyingGlass as PhMagnifyingGlass,
   Spinner as PhSpinner,
   Users as PhUsers,
@@ -115,6 +118,7 @@ import {
   Pencil as PhPencil,
   SkipForward as PhSkipForward,
   ArrowElbowDownRight as PhArrowElbowDownRight,
+  ArrowElbowDownLeft as PhArrowElbowDownLeft,
 } from "@phosphor-icons/react";
 
 // ── HugeIcons ───────────────────────────────────────────────
@@ -138,6 +142,7 @@ import HiPlus from "@hugeicons/core-free-icons/PlusSignIcon";
 import HiArrowLeft from "@hugeicons/core-free-icons/ArrowLeft01Icon";
 import HiArrowRight from "@hugeicons/core-free-icons/ArrowRight01Icon";
 import HiArrowUp from "@hugeicons/core-free-icons/ArrowUp01Icon";
+import HiArrowDown from "@hugeicons/core-free-icons/ArrowDown01Icon";
 import HiSearch from "@hugeicons/core-free-icons/Search01Icon";
 import HiLoader from "@hugeicons/core-free-icons/Loading01Icon";
 import HiUsers from "@hugeicons/core-free-icons/UserGroupIcon";
@@ -163,6 +168,7 @@ import HiInbox from "@hugeicons/core-free-icons/InboxIcon";
 import HiPencil from "@hugeicons/core-free-icons/PencilEdit01Icon";
 import HiSkipForward from "@hugeicons/core-free-icons/NextIcon";
 import HiCornerDownRight from "@hugeicons/core-free-icons/ArrowMoveDownRightIcon";
+import HiCornerDownLeft from "@hugeicons/core-free-icons/ArrowMoveDownLeftIcon";
 
 // ── Untitled UI ─────────────────────────────────────────────
 // Aliased with a Uui prefix to avoid collisions with the Lucide imports above.
@@ -186,6 +192,7 @@ import {
   ArrowLeft as UuiArrowLeft,
   ArrowRight as UuiArrowRight,
   ArrowUp as UuiArrowUp,
+  ArrowDown as UuiArrowDown,
   SearchMd as UuiSearch,
   Loading01 as UuiLoader,
   Users01 as UuiUsers,
@@ -211,6 +218,7 @@ import {
   Pencil01 as UuiPencil,
   SkipForward as UuiSkipForward,
   CornerDownRight as UuiCornerDownRight,
+  CornerDownLeft as UuiCornerDownLeft,
 } from "@untitledui/icons";
 
 
@@ -291,6 +299,7 @@ const tablerMap: Record<IconName, IconComponent> = {
   "arrow-left": tabler(IconArrowLeft),
   "arrow-right": tabler(IconArrowRight),
   "arrow-up": tabler(IconArrowUp),
+  "arrow-down": tabler(IconArrowDown),
   "search": tabler(IconSearch),
   "loader": tabler(IconLoader2),
   "users": tabler(IconUsers),
@@ -318,6 +327,7 @@ const tablerMap: Record<IconName, IconComponent> = {
   "pencil": tabler(IconPencil),
   "skip-forward": tabler(IconPlayerSkipForward),
   "corner-down-right": tabler(IconCornerDownRight),
+  "corner-down-left": tabler(IconCornerDownLeft),
 };
 
 const phosphorMap: Record<IconName, IconComponent> = {
@@ -341,6 +351,7 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "arrow-left": phosphor(PhArrowLeft),
   "arrow-right": phosphor(PhArrowRight),
   "arrow-up": phosphor(PhArrowUp),
+  "arrow-down": phosphor(PhArrowDown),
   "search": phosphor(PhMagnifyingGlass),
   "loader": phosphor(PhSpinner),
   "users": phosphor(PhUsers),
@@ -368,6 +379,7 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "pencil": phosphor(PhPencil),
   "skip-forward": phosphor(PhSkipForward),
   "corner-down-right": phosphor(PhArrowElbowDownRight),
+  "corner-down-left": phosphor(PhArrowElbowDownLeft),
 };
 
 const hugeiconsMap: Record<IconName, IconComponent> = {
@@ -391,6 +403,7 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "arrow-left": hugeicons(HiArrowLeft),
   "arrow-right": hugeicons(HiArrowRight),
   "arrow-up": hugeicons(HiArrowUp),
+  "arrow-down": hugeicons(HiArrowDown),
   "search": hugeicons(HiSearch),
   "loader": hugeicons(HiLoader),
   "users": hugeicons(HiUsers),
@@ -418,6 +431,7 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "pencil": hugeicons(HiPencil),
   "skip-forward": hugeicons(HiSkipForward),
   "corner-down-right": hugeicons(HiCornerDownRight),
+  "corner-down-left": hugeicons(HiCornerDownLeft),
 };
 
 const untitleduiMap: Record<IconName, IconComponent> = {
@@ -442,6 +456,7 @@ const untitleduiMap: Record<IconName, IconComponent> = {
   "arrow-left": untitledui(UuiArrowLeft),
   "arrow-right": untitledui(UuiArrowRight),
   "arrow-up": untitledui(UuiArrowUp),
+  "arrow-down": untitledui(UuiArrowDown),
   "search": untitledui(UuiSearch),
   "loader": untitledui(UuiLoader),
   "users": untitledui(UuiUsers),
@@ -472,6 +487,7 @@ const untitleduiMap: Record<IconName, IconComponent> = {
   "pencil": untitledui(UuiPencil),
   "skip-forward": untitledui(UuiSkipForward),
   "corner-down-right": untitledui(UuiCornerDownRight),
+  "corner-down-left": untitledui(UuiCornerDownLeft),
 };
 
 // ── Unified Map ─────────────────────────────────────────────
