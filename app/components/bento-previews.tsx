@@ -34,6 +34,15 @@ import {
 import { Badge } from "@/registry/default/badge";
 import { Button } from "@/registry/radix/button";
 import {
+  Card,
+  CardGroup,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardMedia,
+} from "@/registry/default/card";
+import { InputMessage } from "@/registry/default/input-message";
+import {
   CheckboxGroup,
   CheckboxItem,
 } from "@/registry/radix/checkbox-group";
@@ -89,6 +98,53 @@ import {
   AskUserQuestions,
   type AskUserQuestion,
 } from "@/registry/default/ask-user-questions";
+
+function InputMessagePreview() {
+  const [value, setValue] = useState("");
+  return (
+    <div className="w-full max-w-[440px]">
+      <InputMessage
+        value={value}
+        onValueChange={setValue}
+        onSend={() => setValue("")}
+        placeholderSuggestion="Why is every other input box so stiff?"
+        suggestions={[
+          "What is Fluid Functionalism about?",
+          "How does Micka tune these springs?",
+          "Install InputMessage in my project",
+        ]}
+      />
+    </div>
+  );
+}
+
+function CardPreview() {
+  const Circle = useIcon("circle");
+  const Shield = useIcon("shield");
+  const Palette = useIcon("palette");
+  const Search = useIcon("search");
+  const items = [
+    { icon: Circle, title: "Fluid motion", description: "Spring-tuned transitions across three tiers" },
+    { icon: Shield, title: "Accessible", description: "Focus rings and ARIA roles in every part" },
+    { icon: Palette, title: "Yours to theme", description: "Swap radius, icons, and primitive at runtime" },
+    { icon: Search, title: "Proximity hover", description: "A magnetic highlight previews the click" },
+  ];
+  return (
+    <div className="w-full max-w-[460px]">
+      <CardGroup orientation="card" columns={2} proximityHover>
+        {items.map((item) => (
+          <Card key={item.title} label={item.title}>
+            <CardHeader>
+              <CardMedia icon={item.icon} />
+              <CardTitle>{item.title}</CardTitle>
+              <CardDescription>{item.description}</CardDescription>
+            </CardHeader>
+          </Card>
+        ))}
+      </CardGroup>
+    </div>
+  );
+}
 
 function AccordionPreview() {
   return (
@@ -543,6 +599,8 @@ function ColorPickerPreview() {
 }
 
 export const previewMap: Record<string, React.FC> = {
+  "input-message": InputMessagePreview,
+  card: CardPreview,
   accordion: AccordionPreview,
   "ask-user-questions": AskUserQuestionsPreview,
   badge: BadgePreview,

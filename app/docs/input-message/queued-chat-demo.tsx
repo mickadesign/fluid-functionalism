@@ -1,32 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   InputMessage,
   type QueuedMessage,
 } from "@/registry/default/input-message";
 import { ChatMessage } from "@/registry/default/chat-message";
 import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
-import { FileThumbnail } from "@/registry/default/file-thumbnail";
 import { Button } from "@/registry/radix/button";
 import { Dropdown } from "@/components/flavored/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
-import { useShape } from "@/registry/default/lib/shape-context";
-import { useSizeVariant } from "@/lib/size-context";
 import { spring } from "@/registry/default/lib/springs";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-
-// Sonner-style queued stack tuning (see the doc section for the rationale).
-// Card height per ladder step — the compact step drops the card with it.
-const CARD_H = 44;
-const CARD_H_COMPACT = 38;
-const STACK_PEEK = 12;
-const STACK_SCALE = 0.05;
-const STACK_GAP = 8;
-const STACK_MAX_PEEK = 2;
+import {
+  QueuedStack,
+  collapsedStackHeight,
+  useQueueCardHeight,
+} from "./queued-stack";
 
 const MODELS = ["Sonnet 5", "Sonnet 4.6", "Sonnet 4.5", "Haiku 4"] as const;
 
@@ -66,15 +59,10 @@ export function QueuedChatDemo({
   /** Tab-fillable ghost placeholder forwarded to the composer. */
   placeholderSuggestion?: string;
 }) {
-  const shape = useShape();
-  const compactStep = useSizeVariant() === "compact";
-  const cardH = compactStep ? CARD_H_COMPACT : CARD_H;
+  const cardH = useQueueCardHeight();
   const ResetIcon = useIcon("rotate-ccw");
   const PlayIcon = useIcon("play");
   const PauseIcon = useIcon("pause");
-  const XIcon = useIcon("x");
-  const PencilIcon = useIcon("pencil");
-  const CornerDownRightIcon = useIcon("corner-down-right");
   const PlusIcon = useIcon("plus");
   const ChevronDownIcon = useIcon("chevron-down");
   const ImageIcon = useIcon("image");
@@ -310,118 +298,10 @@ export function QueuedChatDemo({
   const removeQueuedMsg = (item: QueuedMessage) =>
     setQueue((q) => q.filter((x) => x.id !== item.id));
 
-  // ── Stack geometry.
+  // ── Stack geometry: the shared QueuedStack owns interaction; the demo only
+  // needs the collapsed pile height to reserve transcript padding.
   const stackCount = queue.length;
-  const collapsedStackH =
-    cardH + Math.min(Math.max(stackCount - 1, 0), STACK_MAX_PEEK) * STACK_PEEK;
-  const expandedStackH =
-    stackCount * cardH + Math.max(stackCount - 1, 0) * STACK_GAP;
-  // Collapsed, only the front card + STACK_MAX_PEEK peeks are visible; anything
-  // deeper is hidden. Surface that overflow as a "+N" on the gutter arrow.
-  const hiddenCount = Math.max(0, stackCount - (STACK_MAX_PEEK + 1));
-
-  // ── Drag-to-reorder the (expanded) stack. The dragged card follows the
-  // pointer; the rest snap to slots; on release it snaps too. Window listeners
-  // so release works anywhere.
-  const stackRef = useRef<HTMLDivElement>(null);
-  const [stackHovered, setStackHovered] = useState(false);
-  const [pointerDownId, setPointerDownId] = useState<string | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragY, setDragY] = useState(0);
-  const dragStartYRef = useRef(0);
-  const queueLenRef = useRef(queue.length);
-  queueLenRef.current = queue.length;
-
-  // Touch devices have no hover, so the stack can't fan out on pointer-over.
-  // Track `(hover: none)` to drive a tap-to-expand affordance instead: tapping
-  // a collapsed card expands the stack and pins it open until the collapse
-  // button is tapped.
-  const [isTouch, setIsTouch] = useState(false);
-  const [tapExpanded, setTapExpanded] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: none)");
-    const update = () => setIsTouch(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  // Collapse the (touch) stack whenever it empties, so a fresh fill starts
-  // collapsed rather than re-opening from the previous pinned state.
-  useEffect(() => {
-    if (queue.length === 0) setTapExpanded(false);
-  }, [queue.length]);
-
-  const stackExpanded =
-    stackHovered ||
-    pointerDownId !== null ||
-    draggingId !== null ||
-    tapExpanded;
-  const slotY = (i: number) => -i * (cardH + STACK_GAP);
-
-  // ── Enqueue feedback: once the collapsed stack hits its peek cap, a new
-  // message lands out of sight with no visible change. Recoil the whole stack
-  // (a quick spring settle) on every growth so each enqueue is felt. Skip while
-  // expanded (the card is already visible) and on the first fill (0 → N), where
-  // the stack appearing is its own feedback.
-  const stackBump = useAnimationControls();
-  const prevStackCountRef = useRef(stackCount);
-  useEffect(() => {
-    const prev = prevStackCountRef.current;
-    prevStackCountRef.current = stackCount;
-    if (stackCount > prev && prev > 0 && !stackExpanded) {
-      stackBump.set({ y: -7 });
-      stackBump.start({
-        y: 0,
-        transition: { type: "spring", duration: 0.42, bounce: 0.5 },
-      });
-    }
-    // Only react to the count changing.
-  }, [stackCount]);
-
-  useEffect(() => {
-    if (!pointerDownId) return;
-    let started = false;
-    const onMove = (e: PointerEvent) => {
-      const el = stackRef.current;
-      if (!el) return;
-      if (!started) {
-        if (Math.abs(e.clientY - dragStartYRef.current) < 4) return;
-        started = true;
-        setDraggingId(pointerDownId);
-      }
-      const rect = el.getBoundingClientRect();
-      const fromBottom = rect.bottom - e.clientY;
-      setQueue((q) => {
-        const slot = Math.max(
-          0,
-          Math.min(q.length - 1, Math.floor(fromBottom / (cardH + STACK_GAP)))
-        );
-        const cur = q.findIndex((x) => x.id === pointerDownId);
-        if (cur === -1 || cur === slot) return q;
-        const moved = q[cur];
-        const next = [...q];
-        next.splice(cur, 1);
-        next.splice(slot, 0, moved);
-        return next;
-      });
-      const minY = -(queueLenRef.current - 1) * (cardH + STACK_GAP);
-      setDragY(
-        Math.max(minY, Math.min(0, e.clientY - rect.bottom + cardH / 2))
-      );
-    };
-    const onUp = () => {
-      setPointerDownId(null);
-      setDraggingId(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-  }, [pointerDownId, cardH]);
+  const collapsedStackH = collapsedStackHeight(stackCount, cardH);
 
   // ── Composer chrome for the rich (hero) variant: attach dropdown + model
   // picker, with click-outside to close.
@@ -519,221 +399,16 @@ export function QueuedChatDemo({
         </div>
 
         {/* Queued messages — Sonner-style stack overlaying just above the
-            composer (front card = next to dispatch). */}
-        <AnimatePresence>
-          {stackCount > 0 && (
-            <motion.div
-              ref={stackRef}
-              className="absolute inset-x-0 z-10"
-              style={{ bottom: inputH + 8 }}
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: 1,
-                height: stackExpanded ? expandedStackH : collapsedStackH,
-              }}
-              exit={{ opacity: 0 }}
-              transition={{ ...spring.moderate, bounce: 0 }}
-              onMouseEnter={() => setStackHovered(true)}
-              onMouseLeave={() => setStackHovered(false)}
-            >
-              {/* Recoils as a whole on enqueue (see stackBump) so a message
-                  landing behind the peek cap is still felt by the user. */}
-              <motion.div animate={stackBump} className="absolute inset-0">
-              {isTouch && stackExpanded ? (
-                // Touch: the stack stays pinned open, so it needs an explicit way
-                // back. The collapse button takes the gutter slot the arrow + count
-                // occupied while collapsed.
-                <Tooltip content="Collapse" side="left">
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTapExpanded(false);
-                    }}
-                    aria-label="Collapse queued messages"
-                    className={`absolute bottom-0 left-0 flex items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] ${shape.button}`}
-                    style={{ height: cardH, width: 40 }}
-                  >
-                    <ChevronDownIcon size={18} strokeWidth={2} />
-                  </button>
-                </Tooltip>
-              ) : (
-                <Tooltip
-                  content={`${stackCount} queued message${stackCount === 1 ? "" : "s"}`}
-                  side="left"
-                >
-                  <div
-                    className="absolute bottom-0 left-0 flex items-center justify-end gap-1 pr-1 text-muted-foreground"
-                    style={{ height: cardH, width: 40 }}
-                  >
-                    {/* Total queued count, to the LEFT of the arrow — surfaced once
-                        the stack overflows its visible peeks, and kept visible on
-                        hover too. justify-end pins the arrow so the number fades in
-                        beside it without nudging it. */}
-                    <AnimatePresence>
-                      {hiddenCount > 0 && (
-                        <motion.span
-                          key="count"
-                          initial={{ opacity: 0, scale: 0.6 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.6 }}
-                          transition={spring.fast}
-                          className="pointer-events-none text-[10px] font-semibold leading-none tabular-nums text-muted-foreground"
-                        >
-                          {stackCount}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                    <CornerDownRightIcon size={16} strokeWidth={2} />
-                  </div>
-                </Tooltip>
-              )}
-              <AnimatePresence initial={false}>
-                {queue.map((item, i) => {
-                  const peek = Math.min(i, STACK_MAX_PEEK);
-                  const isDragging = draggingId === item.id;
-                  const target = stackExpanded
-                    ? {
-                        y: isDragging ? dragY : slotY(i),
-                        scale: isDragging ? 1.03 : 1,
-                        opacity: 1,
-                      }
-                    : {
-                        y: -peek * STACK_PEEK,
-                        scale: 1 - peek * STACK_SCALE,
-                        opacity: i <= STACK_MAX_PEEK ? 1 : 0,
-                      };
-                  return (
-                    <motion.div
-                      key={item.id}
-                      // Share a layoutId with the sent bubble to morph — but only
-                      // for text-only messages. With attachments the layouts
-                      // differ too much (inline vs stacked), so it dispatches
-                      // without a morph target and fades instead.
-                      //
-                      // Drop the layoutId while ANY drag is in progress: a card
-                      // is positioned with an animated `y`, and framer's layout
-                      // projection (driven by layoutId) fights that transform
-                      // every frame — which made dragging a card into slot 0
-                      // (place 1) fail to settle. The morph only needs the
-                      // layoutId at dispatch (unmount), never mid-drag.
-                      layoutId={
-                        pointerDownId !== null || item.files.length > 0
-                          ? undefined
-                          : `qm-${item.id}`
-                      }
-                      onDoubleClick={() => editQueuedMsg(item)}
-                      onClick={() => {
-                        // Touch tap-to-expand: a collapsed pile fans out on tap
-                        // (there's no hover to fan it out). No-op once expanded so
-                        // it doesn't swallow drags or button taps.
-                        if (isTouch && !stackExpanded) setTapExpanded(true);
-                      }}
-                      onPointerDown={(e) => {
-                        if (!stackExpanded || e.button !== 0) return;
-                        dragStartYRef.current = e.clientY;
-                        setDragY(slotY(i));
-                        setPointerDownId(item.id);
-                      }}
-                      initial={{ opacity: 0, y: 14, scale: 0.96 }}
-                      animate={target}
-                      exit={{
-                        opacity: 0,
-                        scale: 0.9,
-                        transition: { duration: 0.12 },
-                      }}
-                      transition={isDragging ? { duration: 0 } : spring.moderate}
-                      style={{
-                        height: cardH,
-                        transformOrigin: "bottom center",
-                        zIndex: isDragging ? 200 : 100 - i,
-                        cursor: stackExpanded ? "grab" : "default",
-                        // Once expanded the card is draggable: claim the vertical
-                        // gesture so a touch-drag reorders instead of scrolling
-                        // the transcript underneath.
-                        touchAction: stackExpanded ? "none" : undefined,
-                      }}
-                      // Equal left/right gutters (the left holds the queue icon)
-                      // so the cards sit centered above the composer.
-                      // With attachments, use 8px side padding to match the ~8px
-                      // above/below the 28px thumbnail in the 44px card (square
-                      // inset); otherwise the roomier 14px for text-only cards.
-                      className={`group/qm absolute bottom-0 left-10 right-10 flex select-none items-center bg-[color-mix(in_oklab,var(--accent),var(--background)_68%)] ${
-                        compactStep
-                          ? `gap-1.5 ${item.files.length > 0 ? "pl-1.5" : "pl-3"} pr-1`
-                          : `gap-2 ${item.files.length > 0 ? "pl-2" : "pl-3.5"} pr-1.5`
-                      } text-subtitle text-muted-foreground shadow-surface-3 active:cursor-grabbing ${shape.bg}`}
-                    >
-                      {item.files.length > 0 && (
-                        <div className="pointer-events-none flex shrink-0 items-center gap-1">
-                          {item.files.slice(0, 3).map((f, fi) => (
-                            <FileThumbnail
-                              key={`${f.name}-${f.size}-${fi}`}
-                              file={f}
-                              size={compactStep ? 24 : 28}
-                              className="rounded-md"
-                            />
-                          ))}
-                          {item.files.length > 3 && (
-                            <span className={`flex ${compactStep ? "h-6 w-6" : "h-7 w-7"} items-center justify-center rounded-md bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80`}>
-                              +{item.files.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <span className="pointer-events-none min-w-0 flex-1 truncate">
-                        {item.text ||
-                          `${item.files.length} attachment${
-                            item.files.length === 1 ? "" : "s"
-                          }`}
-                      </span>
-                      {/* Edit (same as double-click) then remove. On hover-capable
-                          devices the group is hidden until the card is hovered — so
-                          it's out of layout by default and the text gets the full
-                          width. On touch (no hover) it's always shown. */}
-                      <div
-                        className={`shrink-0 items-center gap-1 ${
-                          isTouch ? "flex" : "hidden group-hover/qm:flex"
-                        }`}
-                      >
-                        <Tooltip content="Edit" side="top">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              editQueuedMsg(item);
-                            }}
-                            aria-label={`Edit queued message: ${item.text}`}
-                            className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center ${shape.button} text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
-                          >
-                            <PencilIcon size={14} strokeWidth={2} />
-                          </button>
-                        </Tooltip>
-                        <Tooltip content="Remove" side="top">
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeQueuedMsg(item);
-                            }}
-                            aria-label={`Remove queued message: ${item.text}`}
-                            className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center ${shape.button} text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
-                          >
-                            <XIcon size={14} strokeWidth={2.5} />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            composer (front card = next to dispatch). Shared with the
+            playground; see queued-stack.tsx. */}
+        <QueuedStack
+          queue={queue}
+          onQueueChange={setQueue}
+          onEdit={editQueuedMsg}
+          onRemove={removeQueuedMsg}
+          bottom={inputH + 8}
+          morphLayoutId={(item) => `qm-${item.id}`}
+        />
 
         <InputMessage
           ref={inputRef}

@@ -7,6 +7,8 @@ import { BentoCard } from "@/app/components/bento-card";
 import { cn } from "@/lib/utils";
 
 const displayOrder = [
+  "input-message",
+  "card",
   "slider",
   "thinking-indicator",
   "tabs-subtle",

@@ -1,14 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { InputMessage } from "@/registry/default/input-message";
+import {
+  InputMessage,
+  type QueuedMessage,
+} from "@/registry/default/input-message";
 import { ChatMessage } from "@/registry/default/chat-message";
 import { Button } from "@/registry/radix/button";
+import { Switch } from "@/registry/radix/switch";
+import { Tooltip } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import {
+  PLAY_SWITCH,
+  PlayDivider,
+  PlayField,
+  PlaySection,
+  PlaySelect,
+  PlaygroundPanel,
+  PlaygroundLayout,
+} from "@/lib/docs/playground";
 import { QueuedChatDemo } from "./queued-chat-demo";
+import {
+  QueuedStack,
+  collapsedStackHeight,
+  useQueueCardHeight,
+} from "./queued-stack";
 
 const basicCode = `import { useState } from "react";
 import { InputMessage } from "./components";
@@ -41,7 +60,7 @@ const [value, setValue] = useState("");
   // composer. ArrowDown/ArrowUp walk the list below (focus stays in the
   // textarea) and Enter or click fills the highlighted prompt; the first row
   // shows a ↓ hint until a row is highlighted. Typing collapses the list.
-  placeholderSuggestion={SUGGESTIONS[3]}
+  placeholderSuggestion="Why is every other input box so stiff?"
   suggestions={SUGGESTIONS}
 />`;
 
@@ -116,177 +135,6 @@ useEffect(() => {
       setValue("");
       setFiles([]);
     }}
-  />
-</div>`;
-
-const actionsCode = `import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { InputMessage, ChatMessage, Button, Dropdown, MenuItem, Tooltip } from "./components";
-import { useIcon } from "@/lib/icon-context";
-
-const MODELS = ["Sonnet 5", "Sonnet 4.6", "Sonnet 4.5", "Haiku 4"] as const;
-
-const [value, setValue] = useState("");
-const [messages, setMessages] = useState<{ text: string; files: File[] }[]>([]);
-const [files, setFiles] = useState<File[]>([]);
-const [modelOpen, setModelOpen] = useState(false);
-const [attachOpen, setAttachOpen] = useState(false);
-const [model, setModel] = useState<typeof MODELS[number]>("Sonnet 5");
-
-const modelRef = useRef<HTMLDivElement>(null);
-const attachRef = useRef<HTMLDivElement>(null);
-const scrollRef = useRef<HTMLDivElement>(null);
-const inputRef = useRef<HTMLDivElement>(null);
-const [inputH, setInputH] = useState(0);
-
-useEffect(() => {
-  const handler = (e: MouseEvent) => {
-    if (modelRef.current && !modelRef.current.contains(e.target as Node))
-      setModelOpen(false);
-    if (attachRef.current && !attachRef.current.contains(e.target as Node))
-      setAttachOpen(false);
-  };
-  document.addEventListener("mousedown", handler);
-  return () => document.removeEventListener("mousedown", handler);
-}, []);
-
-// Measure the floating composer so we can reserve scroll padding under it.
-useEffect(() => {
-  const el = inputRef.current;
-  if (!el) return;
-  const ro = new ResizeObserver(() => setInputH(el.offsetHeight));
-  ro.observe(el);
-  setInputH(el.offsetHeight);
-  return () => ro.disconnect();
-}, []);
-
-// Keep the history pinned to the latest message as it grows.
-useEffect(() => {
-  const el = scrollRef.current;
-  if (el) el.scrollTop = el.scrollHeight;
-}, [messages, inputH]);
-
-const PlusIcon = useIcon("plus");
-const ChevronDownIcon = useIcon("chevron-down");
-const ImageIcon = useIcon("image");
-const FileTextIcon = useIcon("square-library");
-
-<div className="relative w-full h-[440px]">
-  <div ref={scrollRef} className="absolute inset-0 overflow-y-auto scrollbar-hide">
-    <div
-      className="flex min-h-full flex-col justify-start gap-2"
-      style={{ paddingBottom: inputH + 12 }}
-    >
-      {messages.map((m, i) => (
-        <ChatMessage key={i} from="user" files={m.files}>
-          {m.text}
-        </ChatMessage>
-      ))}
-    </div>
-  </div>
-  <InputMessage
-    ref={inputRef}
-    className="absolute inset-x-0 bottom-0"
-    value={value}
-    onValueChange={setValue}
-    files={files}
-    onFilesChange={setFiles}
-    onSend={(text, attachments) => {
-      setMessages((prev) => [...prev, { text, files: attachments }]);
-      setValue("");
-      setFiles([]);
-    }}
-    // Ghost placeholder with a Tab keycap — Tab fills it into the composer.
-    placeholderSuggestion="Animate the dashboard cards with the moderate spring"
-    // Drag-and-drop works on the whole container. Click + to choose a type.
-    leftSlot={({ openFilePicker }) => (
-    <div ref={attachRef} className="relative">
-      <Tooltip content="Add" side="top">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Attach files"
-          active={attachOpen}
-          onClick={() => setAttachOpen((o) => !o)}
-        >
-          <PlusIcon />
-        </Button>
-      </Tooltip>
-      <AnimatePresence>
-        {attachOpen && (
-          <motion.div
-            className="absolute bottom-full mb-2 left-0 z-10"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4, transition: { duration: 0.1 } }}
-            transition={spring.fast}
-          >
-            <Dropdown>
-              <MenuItem
-                index={0}
-                label="Image"
-                icon={ImageIcon}
-                onSelect={() => {
-                  setAttachOpen(false);
-                  openFilePicker("image/png,image/jpeg");
-                }}
-              />
-              <MenuItem
-                index={1}
-                label="PDF"
-                icon={FileTextIcon}
-                onSelect={() => {
-                  setAttachOpen(false);
-                  openFilePicker("application/pdf");
-                }}
-              />
-            </Dropdown>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )}
-  rightSlot={
-    <div ref={modelRef} className="relative">
-      <Tooltip content="Select model" side="top">
-        <Button
-          variant="ghost"
-          size="sm"
-          trailingIcon={ChevronDownIcon}
-          active={modelOpen}
-          onClick={() => setModelOpen((o) => !o)}
-        >
-          {model}
-        </Button>
-      </Tooltip>
-      <AnimatePresence>
-        {modelOpen && (
-          <motion.div
-            className="absolute bottom-full mb-2 right-0 z-10"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4, transition: { duration: 0.1 } }}
-            transition={spring.fast}
-          >
-            <Dropdown checkedIndex={MODELS.indexOf(model)}>
-              {MODELS.map((name, i) => (
-                <MenuItem
-                  key={name}
-                  index={i}
-                  label={name}
-                  checked={name === model}
-                  onSelect={() => {
-                    setModel(name);
-                    setModelOpen(false);
-                  }}
-                />
-              ))}
-            </Dropdown>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  }
   />
 </div>`;
 
@@ -512,6 +360,431 @@ const SUGGESTIONS = [
   "Draft a short thank-you note to Micka for the library",
 ];
 
+// ── Playground ───────────────────────────────────────────
+const PLACEHOLDER_PROMPT = "Why is every other input box so stiff?";
+
+type PlayStatus = "off" | "idle" | "streaming";
+
+function buildImPlaygroundCode(o: {
+  suggestion: boolean;
+  suggestionsOn: boolean;
+  historyOn: boolean;
+  leftSlot: boolean;
+  rightSlot: boolean;
+  attachments: boolean;
+  minRows: number;
+  disabled: boolean;
+  status: PlayStatus;
+}) {
+  const queueOn = o.status !== "off";
+  const filesOn = o.leftSlot || o.attachments;
+  const imports = ["InputMessage", "ChatMessage"];
+  if (o.leftSlot || o.rightSlot) imports.push("Button");
+  if (o.leftSlot) imports.push("Tooltip");
+  if (queueOn) imports.push("type QueuedMessage");
+
+  const l: string[] = [];
+  l.push(
+    o.attachments
+      ? `import { useEffect, useState } from "react";`
+      : `import { useState } from "react";`
+  );
+  l.push(`import { ${imports.join(", ")} } from "./components";`);
+  if (o.leftSlot || o.rightSlot)
+    l.push(`import { useIcon } from "@/lib/icon-context";`);
+  l.push(``);
+  if (o.suggestionsOn) {
+    l.push(`const SUGGESTIONS = [`);
+    for (const s of SUGGESTIONS) l.push(`  ${JSON.stringify(s)},`);
+    l.push(`];`);
+    l.push(``);
+  }
+  l.push(`const [value, setValue] = useState("");`);
+  l.push(`const [messages, setMessages] = useState<{ text: string; files: File[] }[]>([`);
+  l.push(`  { text: "Make my input box feel less stiff", files: [] },`);
+  l.push(`]);`);
+  if (filesOn) l.push(`const [files, setFiles] = useState<File[]>([]);`);
+  if (queueOn) {
+    l.push(`const [queue, setQueue] = useState<QueuedMessage[]>([]);`);
+    l.push(`const [status, setStatus] = useState<"idle" | "streaming">(${JSON.stringify(o.status)});`);
+  }
+  if (o.leftSlot) l.push(`const PlusIcon = useIcon("plus");`);
+  if (o.rightSlot) l.push(`const ChevronDownIcon = useIcon("chevron-down");`);
+  if (o.attachments) {
+    l.push(``);
+    l.push(`// Pre-fill the composer with a real image + PDF. Images use object-cover;`);
+    l.push(`// PDFs render their first page via pdfjs. Both show the × remove button.`);
+    l.push(`useEffect(() => {`);
+    l.push(`  Promise.all([`);
+    l.push(`    fetch("/micka.png")`);
+    l.push(`      .then((r) => r.blob())`);
+    l.push(`      .then((b) => new File([b], "micka.png", { type: "image/png" })),`);
+    l.push(`    fetch("/Receipt-2581-4039-8265.pdf")`);
+    l.push(`      .then((r) => r.blob())`);
+    l.push(`      .then((b) => new File([b], "Receipt-2581-4039-8265.pdf", { type: "application/pdf" })),`);
+    l.push(`  ]).then(setFiles);`);
+    l.push(`}, []);`);
+  }
+  l.push(``);
+  l.push(`<InputMessage`);
+  l.push(`  value={value}`);
+  l.push(`  onValueChange={setValue}`);
+  l.push(`  onSend={(text, sent) => {`);
+  l.push(`    if (text || sent.length) setMessages((m) => [...m, { text, files: sent }]);`);
+  l.push(`    setValue("");`);
+  if (filesOn) l.push(`    setFiles([]);`);
+  l.push(`  }}`);
+  if (o.suggestion)
+    l.push(`  placeholderSuggestion=${JSON.stringify(PLACEHOLDER_PROMPT)}`);
+  if (o.suggestionsOn) l.push(`  suggestions={SUGGESTIONS}`);
+  if (o.historyOn)
+    l.push(`  // ArrowUp recalls sent messages, ArrowDown walks back to the draft.`);
+  if (o.historyOn) l.push(`  history={messages.map((m) => m.text).filter(Boolean)}`);
+  if (o.minRows > 1) l.push(`  minRows={${o.minRows}}`);
+  if (o.disabled) l.push(`  disabled`);
+  if (filesOn) {
+    l.push(`  files={files}`);
+    l.push(`  onFilesChange={setFiles}`);
+  }
+  if (o.leftSlot) {
+    l.push(`  leftSlot={({ openFilePicker }) => (`);
+    l.push(`    <Tooltip content="Attach" side="top">`);
+    l.push(`      <Button variant="ghost" size="icon-sm" aria-label="Attach files" onClick={() => openFilePicker()}>`);
+    l.push(`        <PlusIcon />`);
+    l.push(`      </Button>`);
+    l.push(`    </Tooltip>`);
+    l.push(`  )}`);
+  }
+  if (o.rightSlot) {
+    l.push(`  rightSlot={`);
+    l.push(`    <Button variant="ghost" size="sm" trailingIcon={ChevronDownIcon}>`);
+    l.push(`      Sonnet 5`);
+    l.push(`    </Button>`);
+    l.push(`  }`);
+  }
+  if (queueOn) {
+    l.push(`  // While streaming, submits enqueue; flipping back to idle dispatches`);
+    l.push(`  // the head of the queue through onSend.`);
+    l.push(`  status={status}`);
+    l.push(`  queue={queue}`);
+    l.push(`  onQueueChange={setQueue}`);
+    l.push(`  onStop={() => setStatus("idle")}`);
+    l.push(`  // Suppress the built-in queue rows and render the queue yourself —`);
+    l.push(`  // e.g. the stacked cards above the composer (see Queued messages).`);
+    l.push(`  showQueue={false}`);
+  }
+  l.push(`/>`);
+  return l.join("\n");
+}
+
+function InputMessagePlayground() {
+  const PlusIcon = useIcon("plus");
+  const ChevronDownIcon = useIcon("chevron-down");
+
+  const [suggestion, setSuggestion] = useState(true);
+  const [suggestionsOn, setSuggestionsOn] = useState(true);
+  const [historyOn, setHistoryOn] = useState(true);
+  const [minRows, setMinRows] = useState("1");
+  const [disabled, setDisabled] = useState(false);
+  const [leftSlotOn, setLeftSlotOn] = useState(true);
+  const [rightSlotOn, setRightSlotOn] = useState(false);
+  const [attachments, setAttachments] = useState(false);
+  const [status, setStatus] = useState<PlayStatus>("off");
+
+  const [value, setValue] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const filesOn = leftSlotOn || attachments;
+
+  // "Attachments" toggle pre-fills the composer with a real image + PDF
+  // (fetched once from public assets, then cached).
+  const sampleFilesRef = useRef<File[] | null>(null);
+  useEffect(() => {
+    if (!attachments) {
+      setFiles([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      if (!sampleFilesRef.current) {
+        sampleFilesRef.current = await Promise.all([
+          fetch("/micka.png")
+            .then((r) => r.blob())
+            .then((b) => new File([b], "micka.png", { type: b.type || "image/png" })),
+          fetch("/Receipt-2581-4039-8265.pdf")
+            .then((r) => r.blob())
+            .then(
+              (b) =>
+                new File([b], "Receipt-2581-4039-8265.pdf", {
+                  type: b.type || "application/pdf",
+                })
+            ),
+        ]);
+      }
+      if (!cancelled) setFiles(sampleFilesRef.current);
+    })().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [attachments]);
+  const [queue, setQueue] = useState<QueuedMessage[]>([]);
+  // Seed one sent message so the transcript (and ArrowUp history recall)
+  // reads at a glance.
+  const [messages, setMessages] = useState<{ text: string; files: File[] }[]>([
+    { text: "Make my input box feel less stiff", files: [] },
+  ]);
+
+  const queueOn = status !== "off";
+  const cardH = useQueueCardHeight();
+
+  // Float the composer over the transcript (same treatment as the demos
+  // below): measure it to reserve scroll padding and position the queue
+  // stack, and keep the transcript pinned to the latest message.
+  const inputRef = useRef<HTMLDivElement>(null);
+  const [inputH, setInputH] = useState(0);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setInputH(el.offsetHeight));
+    ro.observe(el);
+    setInputH(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, inputH]);
+
+  // Double-click a queued card to pull it back into the composer.
+  const editQueued = (item: QueuedMessage) => {
+    setValue(item.text);
+    if (filesOn) setFiles(item.files);
+    setQueue((q) => q.filter((x) => x.id !== item.id));
+    requestAnimationFrame(() => {
+      const el = inputRef.current?.querySelector("textarea");
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    });
+  };
+
+  const code = buildImPlaygroundCode({
+    suggestion,
+    suggestionsOn,
+    historyOn,
+    leftSlot: leftSlotOn,
+    rightSlot: rightSlotOn,
+    attachments,
+    minRows: Number(minRows),
+    disabled,
+    status,
+  });
+
+  const randomize = () => {
+    const pick = <T,>(arr: readonly T[]) =>
+      arr[Math.floor(Math.random() * arr.length)];
+    setSuggestion(Math.random() > 0.3);
+    setSuggestionsOn(Math.random() > 0.3);
+    setHistoryOn(Math.random() > 0.4);
+    setMinRows(pick(["1", "1", "2", "3"] as const));
+    setDisabled(false);
+    setLeftSlotOn(Math.random() > 0.4);
+    setRightSlotOn(Math.random() > 0.5);
+    setAttachments(Math.random() > 0.7);
+    setStatus(pick(["off", "off", "idle", "streaming"] as const));
+  };
+
+  const controls = (
+    <PlaygroundPanel onShuffle={randomize}>
+      <PlaySection label="Composer" />
+      <div>
+        <Switch
+          label="Placeholder suggestion"
+          checked={suggestion}
+          onToggle={() => setSuggestion((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Suggested prompts"
+          checked={suggestionsOn}
+          onToggle={() => setSuggestionsOn((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="History recall"
+          checked={historyOn}
+          onToggle={() => setHistoryOn((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Attachments"
+          checked={attachments}
+          onToggle={() => setAttachments((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+        <PlayField label="Min rows">
+          <PlaySelect
+            value={minRows}
+            onChange={setMinRows}
+            options={[
+              { value: "1", label: "1" },
+              { value: "2", label: "2" },
+              { value: "3", label: "3" },
+            ]}
+          />
+        </PlayField>
+        <Switch
+          label="Disabled"
+          checked={disabled}
+          onToggle={() => setDisabled((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+      </div>
+
+      <PlayDivider />
+
+      <PlaySection label="Slots" />
+      <div>
+        <Switch
+          label="Left slot"
+          checked={leftSlotOn}
+          onToggle={() => setLeftSlotOn((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Right slot"
+          checked={rightSlotOn}
+          onToggle={() => setRightSlotOn((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+      </div>
+
+      <PlayDivider />
+
+      <PlaySection label="Queue" />
+      <div>
+        <PlayField label="Status">
+          <PlaySelect
+            value={status}
+            onChange={(v) => setStatus(v as PlayStatus)}
+            options={[
+              { value: "off", label: "Off" },
+              { value: "idle", label: "Idle" },
+              { value: "streaming", label: "Streaming" },
+            ]}
+          />
+        </PlayField>
+      </div>
+    </PlaygroundPanel>
+  );
+
+  return (
+    <PlaygroundLayout
+      controls={controls}
+      preview={
+        <ComponentPreview
+          code={code}
+          padding="compact"
+          minHeightClass="h-[560px]"
+          align="bottom"
+        >
+          <div className="relative w-full self-stretch">
+            <div
+              ref={scrollRef}
+              className="absolute inset-0 overflow-y-auto scrollbar-hide"
+            >
+              <div
+                className="flex min-h-full flex-col justify-start gap-2"
+                style={{
+                  paddingBottom:
+                    inputH +
+                    8 +
+                    (queueOn && queue.length > 0
+                      ? collapsedStackHeight(queue.length, cardH) + 8
+                      : 0),
+                }}
+              >
+                {messages.map((m, i) => (
+                  <ChatMessage key={i} from="user" files={m.files}>
+                    {m.text}
+                  </ChatMessage>
+                ))}
+              </div>
+            </div>
+            {queueOn && (
+              <QueuedStack
+                queue={queue}
+                onQueueChange={setQueue}
+                onEdit={editQueued}
+                onRemove={(item) =>
+                  setQueue((q) => q.filter((x) => x.id !== item.id))
+                }
+                bottom={inputH + 8}
+              />
+            )}
+            <InputMessage
+              ref={inputRef}
+              className="absolute inset-x-0 bottom-0"
+              value={value}
+              onValueChange={setValue}
+              onSend={(text, sent) => {
+                if (text || sent.length)
+                  setMessages((m) => [...m, { text, files: sent }]);
+                setValue("");
+                if (filesOn) setFiles([]);
+              }}
+              placeholderSuggestion={suggestion ? PLACEHOLDER_PROMPT : undefined}
+              suggestions={suggestionsOn ? SUGGESTIONS : undefined}
+              history={
+                historyOn
+                  ? messages.map((m) => m.text).filter(Boolean)
+                  : undefined
+              }
+              minRows={Number(minRows)}
+              disabled={disabled}
+              files={filesOn ? files : undefined}
+              onFilesChange={filesOn ? setFiles : undefined}
+              leftSlot={
+                leftSlotOn
+                  ? ({ openFilePicker }) => (
+                      <Tooltip content="Attach" side="top">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Attach files"
+                          onClick={() => openFilePicker()}
+                        >
+                          <PlusIcon />
+                        </Button>
+                      </Tooltip>
+                    )
+                  : undefined
+              }
+              rightSlot={
+                rightSlotOn ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    trailingIcon={ChevronDownIcon}
+                  >
+                    Sonnet 5
+                  </Button>
+                ) : undefined
+              }
+              status={queueOn ? (status as "idle" | "streaming") : undefined}
+              queue={queueOn ? queue : undefined}
+              onQueueChange={queueOn ? setQueue : undefined}
+              onStop={queueOn ? () => setStatus("idle") : undefined}
+              showQueue={false}
+            />
+          </div>
+        </ComponentPreview>
+      }
+    />
+  );
+}
+
 export default function InputMessageDoc() {
   const [basicValue, setBasicValue] = useState("");
   const [suggestValue, setSuggestValue] = useState("");
@@ -591,14 +864,8 @@ export default function InputMessageDoc() {
       slug="input-message"
       description="Chat-style message composer with an auto-resizing textarea, flexible left/right action slots, and a built-in send button on a Surface-2 substrate."
     >
-      <DocSection title="Example">
-        <QueuedChatDemo
-          code={actionsCode}
-          rich
-          minHeightClass="h-[560px]"
-          placeholder="Ask me anything…"
-          placeholderSuggestion="Animate the dashboard cards with the moderate spring"
-        />
+      <DocSection title="Playground">
+        <InputMessagePlayground />
       </DocSection>
 
       <DocSection title="Basic">
@@ -620,7 +887,7 @@ export default function InputMessageDoc() {
               value={suggestValue}
               onValueChange={setSuggestValue}
               onSend={() => setSuggestValue("")}
-              placeholderSuggestion={SUGGESTIONS[3]}
+              placeholderSuggestion="Why is every other input box so stiff?"
               suggestions={SUGGESTIONS}
             />
           </div>

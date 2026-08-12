@@ -367,8 +367,10 @@ function SuggestionRow({
       onClick={onSelect}
       className={cn(
         "relative flex cursor-pointer items-center gap-2",
-        // Matches QueuedRow's step ladder.
-        compactStep ? "h-7 px-2 text-[12px]" : "h-8 px-2.5 text-[13px]",
+        // Text size mirrors the composer's textarea/placeholder (the rows
+        // read as prompt candidates, not metadata); heights follow the
+        // QueuedRow step ladder.
+        compactStep ? "h-7 px-2 text-[13px]" : "h-8 px-2.5 text-[14px]",
         "text-muted-foreground transition-colors duration-80",
         active && "text-foreground"
       )}
@@ -1266,9 +1268,17 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                   key="suggestions"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
+                  // Height-only exit: the region clips shut bottom-up under
+                  // overflow-hidden, so the divider holds its place until the
+                  // space actually closes (a simultaneous opacity fade made it
+                  // vanish mid-collapse, which read as a height glitch).
+                  exit={{ height: 0 }}
                   transition={{ ...spring.moderate, bounce: 0 }}
-                  className="-mx-2 overflow-hidden"
+                  // -mt-1 cancels the container's gap-1 above this region and
+                  // the listbox's mt-2 restores it INSIDE the collapsible
+                  // area — otherwise that 4px gap sits outside the height
+                  // animation and snaps away only at unmount.
+                  className="-mx-2 -mt-1 overflow-hidden"
                 >
                   <div
                     ref={suggestionListRef}
@@ -1278,7 +1288,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                     onMouseEnter={suggestionHandlers.onMouseEnter}
                     onMouseMove={suggestionHandlers.onMouseMove}
                     onMouseLeave={suggestionHandlers.onMouseLeave}
-                    className="relative mt-1 flex flex-col border-t border-border/60 px-1.5 pt-1.5"
+                    className="relative mt-2 flex flex-col border-t border-border/60 px-1.5 pt-1.5"
                   >
                     {/* Hover / keyboard highlight — one overlay sliding
                         between rows instead of per-row backgrounds. Keyed by

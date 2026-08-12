@@ -37,7 +37,7 @@ export const componentList: ComponentEntry[] = [
   { slug: "dropdown", name: "Dropdown", description: "Menu-style dropdown with proximity hover and animated backgrounds.", gridSize: "medium" },
   { slug: "input-copy", name: "InputCopy", description: "Read-only input with copy-to-clipboard button and animated feedback.", gridSize: "small" },
   { slug: "input-group", name: "InputGroup", description: "Input field group with proximity hover and validation.", gridSize: "small" },
-  { slug: "input-message", name: "InputMessage", description: "Chat-style message composer with auto-resizing textarea and configurable action slots.", gridSize: "medium" },
+  { slug: "input-message", name: "InputMessage", description: "Chat-style message composer with auto-resizing textarea and configurable action slots.", isNew: true, gridSize: "medium" },
   { slug: "radio-group", name: "RadioGroup", description: "Radio button group with proximity hover and animated selection.", gridSize: "small" },
   { slug: "select", name: "Select", description: "Animated select menu with bordered/borderless variants and optional icons.", gridSize: "medium" },
   { slug: "slider", name: "Slider", description: "One slider, two ladder steps: the default pip/scrubber design and the compact design with range mode and value display.", gridSize: "medium" },
