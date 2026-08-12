@@ -400,30 +400,48 @@ export function InputMessagePlayground({ children }: PlaygroundProps) {
     onStop: queueOn ? () => setStatus("idle") : undefined,
   } as const;
 
-  const preview = (
+  // Space the transcript has to leave free at the bottom: the composer, plus
+  // the collapsed queue stack when it's showing.
+  const reservedBottom =
+    inputH +
+    8 +
+    (queueOn && queue.length > 0
+      ? collapsedStackHeight(queue.length, cardH) + 8
+      : 0);
+
+  const transcript = messages.map((m, i) => (
+    <ChatMessage key={i} from="user" files={m.files}>
+      {m.text}
+    </ChatMessage>
+  ));
+
+  // `scroll` picks how the transcript handles more content than there is room
+  // for. The doc page scrolls it inside a fixed-height box; the demo card lets
+  // it grow upward into the card's empty space instead, so turning on
+  // attachments + queue + suggestions together doesn't crop the transcript.
+  const composerStage = (scroll: boolean) => (
     <div className="relative w-full self-stretch">
-      <div
-        ref={scrollRef}
-        className="absolute inset-0 overflow-y-auto scrollbar-hide"
-      >
+      {scroll ? (
         <div
-          className="flex min-h-full flex-col justify-start gap-2"
-          style={{
-            paddingBottom:
-              inputH +
-              8 +
-              (queueOn && queue.length > 0
-                ? collapsedStackHeight(queue.length, cardH) + 8
-                : 0),
-          }}
+          ref={scrollRef}
+          className="absolute inset-0 overflow-y-auto scrollbar-hide"
         >
-          {messages.map((m, i) => (
-            <ChatMessage key={i} from="user" files={m.files}>
-              {m.text}
-            </ChatMessage>
-          ))}
+          <div
+            className="flex min-h-full flex-col justify-start gap-2"
+            style={{ paddingBottom: reservedBottom }}
+          >
+            {transcript}
+          </div>
         </div>
-      </div>
+      ) : (
+        // Top-aligned and unclipped: the transcript starts at the top of the
+        // stage and grows down toward the composer, so it reads as a real
+        // conversation rather than a bubble hovering just above the input. No
+        // scroll box, so nothing is cropped when the composer grows tall.
+        <div className="absolute inset-x-0 top-0 flex flex-col gap-2">
+          {transcript}
+        </div>
+      )}
       {queueOn && (
         <QueuedStack
           queue={queue}
@@ -444,19 +462,19 @@ export function InputMessagePlayground({ children }: PlaygroundProps) {
     </div>
   );
 
-  // Compact variant for the demo slide: the same state-driven composer,
-  // without the transcript — the built-in queue rows stand in for the
-  // stacked-cards demo.
+  const preview = composerStage(true);
+
+  // The demo slide renders the same tree as the doc page — transcript,
+  // queued-message stack, and the composer floating over both — rather than a
+  // bare composer, so the two surfaces show the identical thing.
   //
-  // The composer is pinned to the TOP of a fixed-height stage rather than laid
-  // out in flow. Its height changes constantly — the suggestion list sits
-  // inside the box below the textarea and collapses on the first keystroke —
-  // and inside the demo card's centered preview area that re-centers the whole
-  // box, sliding the input row out from under the cursor as you type. Anchoring
-  // the top keeps the textarea still while the list collapses beneath it.
+  // It only supplies the stage the doc page's ComponentPreview would: a fixed
+  // height for the absolutely-positioned children to resolve against. 480px
+  // sits comfortably inside the demo card at 1:1 while giving the transcript
+  // real room above the composer.
   const demoPreview = (
-    <div className="relative h-[340px] w-full max-w-[440px]">
-      <InputMessage className="absolute inset-x-0 top-0" {...composerProps} />
+    <div className="flex h-[480px] w-full max-w-[440px]">
+      {composerStage(false)}
     </div>
   );
 

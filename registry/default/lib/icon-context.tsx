@@ -49,6 +49,7 @@ import {
   MessageCircle,
   Inbox,
   Pencil,
+  Scaling,
   SkipForward,
   CornerDownRight,
   CornerDownLeft,
@@ -74,7 +75,7 @@ export type IconName =
   | "image" | "link" | "check" | "rotate-ccw"
   | "play" | "pause" | "pipette"
   | "home" | "message-circle" | "inbox"
-  | "pencil" | "skip-forward" | "corner-down-right" | "corner-down-left";
+  | "pencil" | "scaling" | "skip-forward" | "corner-down-right" | "corner-down-left";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
   "chevron-right": ChevronRight,
@@ -123,6 +124,7 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "message-circle": MessageCircle,
   "inbox": Inbox,
   "pencil": Pencil,
+  "scaling": Scaling,
   "skip-forward": SkipForward,
   "corner-down-right": CornerDownRight,
   "corner-down-left": CornerDownLeft,

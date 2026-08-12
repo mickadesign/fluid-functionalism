@@ -63,6 +63,7 @@ import {
   IconMessageCircle,
   IconInbox,
   IconPencil,
+  IconResize,
   IconPlayerSkipForward,
   IconCornerDownRight,
   IconCornerDownLeft,
@@ -116,6 +117,7 @@ import {
   ChatCircle as PhChatCircle,
   Tray as PhTray,
   Pencil as PhPencil,
+  Resize as PhResize,
   SkipForward as PhSkipForward,
   ArrowElbowDownRight as PhArrowElbowDownRight,
   ArrowElbowDownLeft as PhArrowElbowDownLeft,
@@ -166,6 +168,7 @@ import HiHome from "@hugeicons/core-free-icons/Home01Icon";
 import HiMessage from "@hugeicons/core-free-icons/BubbleChatIcon";
 import HiInbox from "@hugeicons/core-free-icons/InboxIcon";
 import HiPencil from "@hugeicons/core-free-icons/PencilEdit01Icon";
+import HiScaling from "@hugeicons/core-free-icons/Resize01Icon";
 import HiSkipForward from "@hugeicons/core-free-icons/NextIcon";
 import HiCornerDownRight from "@hugeicons/core-free-icons/ArrowMoveDownRightIcon";
 import HiCornerDownLeft from "@hugeicons/core-free-icons/ArrowMoveDownLeftIcon";
@@ -216,6 +219,7 @@ import {
   MessageCircle01 as UuiMessage,
   Inbox01 as UuiInbox,
   Pencil01 as UuiPencil,
+  Scale01 as UuiScaling,
   SkipForward as UuiSkipForward,
   CornerDownRight as UuiCornerDownRight,
   CornerDownLeft as UuiCornerDownLeft,
@@ -325,6 +329,7 @@ const tablerMap: Record<IconName, IconComponent> = {
   "message-circle": tabler(IconMessageCircle),
   "inbox": tabler(IconInbox),
   "pencil": tabler(IconPencil),
+  "scaling": tabler(IconResize),
   "skip-forward": tabler(IconPlayerSkipForward),
   "corner-down-right": tabler(IconCornerDownRight),
   "corner-down-left": tabler(IconCornerDownLeft),
@@ -377,6 +382,7 @@ const phosphorMap: Record<IconName, IconComponent> = {
   "message-circle": phosphor(PhChatCircle),
   "inbox": phosphor(PhTray),
   "pencil": phosphor(PhPencil),
+  "scaling": phosphor(PhResize),
   "skip-forward": phosphor(PhSkipForward),
   "corner-down-right": phosphor(PhArrowElbowDownRight),
   "corner-down-left": phosphor(PhArrowElbowDownLeft),
@@ -429,6 +435,7 @@ const hugeiconsMap: Record<IconName, IconComponent> = {
   "message-circle": hugeicons(HiMessage),
   "inbox": hugeicons(HiInbox),
   "pencil": hugeicons(HiPencil),
+  "scaling": hugeicons(HiScaling),
   "skip-forward": hugeicons(HiSkipForward),
   "corner-down-right": hugeicons(HiCornerDownRight),
   "corner-down-left": hugeicons(HiCornerDownLeft),
@@ -485,6 +492,7 @@ const untitleduiMap: Record<IconName, IconComponent> = {
   "message-circle": untitledui(UuiMessage),
   "inbox": untitledui(UuiInbox),
   "pencil": untitledui(UuiPencil),
+  "scaling": untitledui(UuiScaling),
   "skip-forward": untitledui(UuiSkipForward),
   "corner-down-right": untitledui(UuiCornerDownRight),
   "corner-down-left": untitledui(UuiCornerDownLeft),

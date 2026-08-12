@@ -93,36 +93,30 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout
       </motion.div>
 
       {/* Footer row: the name (a link to the docs when `slug` is set) on the
-          left, the optional action on the right. The action sits OUTSIDE the
-          link — nesting a button inside an anchor is invalid, and a click on
-          the pen must not navigate. The link keeps its own hover/focus ring by
-          staying its own flex child rather than wrapping the whole row. */}
-      <div
-        className={cn(
-          "shrink-0 flex items-stretch border-t border-border/40",
-          // The link paints its own hover fill to the card's bottom corners, so
-          // the row itself stays transparent.
-          action ? "pr-2" : undefined
-        )}
-      >
+          left, the optional action pinned to the right.
+
+          The link spans the FULL row so its hover fill runs the whole footer
+          edge-to-edge; the action is layered on top of it, absolutely
+          positioned, rather than sitting beside it as a flex sibling. It has to
+          stay outside the anchor — a button nested in an anchor is invalid
+          markup, and a click on the pen must not navigate — so overlaying is
+          what buys the link its full width. */}
+      <div className="relative shrink-0 border-t border-border/40">
         {slug ? (
           <Link
             href={`/docs/${slug}`}
             aria-label={`View ${name} documentation`}
-            className={cn(
-              "group/link flex flex-1 min-w-0 items-center gap-2 px-4 py-3 transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]",
-              action ? "rounded-bl-xl" : "rounded-b-xl"
-            )}
+            className="group/link flex items-center gap-2 px-4 py-3 rounded-b-xl transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
           >
             {footerLabel}
           </Link>
         ) : (
-          <div className="flex flex-1 min-w-0 items-center gap-2 px-4 py-3">
-            {footerLabel}
-          </div>
+          <div className="flex items-center gap-2 px-4 py-3">{footerLabel}</div>
         )}
         {action && (
-          <div className="flex shrink-0 items-center pl-2">{action}</div>
+          <div className="absolute inset-y-0 right-2 z-10 flex items-center">
+            {action}
+          </div>
         )}
       </div>
     </motion.div>

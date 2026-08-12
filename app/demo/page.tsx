@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { componentList } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
 import { playgroundMap } from "@/lib/docs/playgrounds";
@@ -11,6 +12,7 @@ import { PlaygroundMenu } from "@/app/components/playground-menu";
 import { SettingsContent } from "@/app/components/right-panel";
 import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
+import { spring } from "@/lib/springs";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
 import { Tooltip, TooltipPortalContainer } from "@/registry/radix/tooltip";
@@ -42,6 +44,9 @@ function DemoPageInner() {
   const searchParams = useSearchParams();
   const cardRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  // Slides render at 1:1 by default — the size the component actually ships
+  // at. Toggling this on scales the slide up to fill the card.
+  const [scaleOn, setScaleOn] = useState(false);
   const [scaleEl, setScaleEl] = useState<HTMLDivElement | null>(null);
   const slideOrder = [
     "dropdown",
@@ -166,8 +171,53 @@ function DemoPageInner() {
       ? playgroundMap[current.slug]
       : undefined;
   const ArrowRight = useIcon("arrow-right");
+  const ScalingIcon = useIcon("scaling");
   const prevSlide = currentIndex > 0 ? slides[currentIndex - 1] : null;
   const nextSlide = currentIndex < slides.length - 1 ? slides[currentIndex + 1] : null;
+
+  // The scaling stage, shared by every slide type. A plain helper (not a
+  // component) so it inlines into the same tree on each render — a nested
+  // component would be a new type every render and remount the slide.
+  const stage = (children: ReactNode) => (
+    <motion.div
+      ref={setScaleEl}
+      className="w-full max-w-[420px] mx-auto flex justify-center relative"
+      // Springs between the two scales on toggle instead of snapping, and
+      // chases the resize-driven scale closely enough to feel immediate.
+      // initial={false} — a slide arrives already at its scale; without this
+      // every mount plays a zoom-in from 1.
+      initial={false}
+      animate={{ scale: scaleOn ? scale : 1 }}
+      transition={spring.moderate}
+      style={{ transformOrigin: "center" }}
+    >
+      <TooltipPortalContainer value={scaleEl}>
+        <ColorPickerPortalContainer value={scaleEl}>
+          {children}
+        </ColorPickerPortalContainer>
+      </TooltipPortalContainer>
+    </motion.div>
+  );
+
+  // Card footer controls: scaling toggle first, then the playground pen when
+  // the slide has one.
+  const cardActions = (playgroundMenu?: ReactNode) => (
+    <div className="flex items-center gap-1">
+      <Tooltip content={scaleOn ? "Actual size" : "Scale to fit"} side="top">
+        <Button
+          variant="ghost"
+          size="icon-compact"
+          aria-label={scaleOn ? "Show preview at actual size" : "Scale preview to fit the card"}
+          aria-pressed={scaleOn}
+          active={scaleOn}
+          onClick={() => setScaleOn((v) => !v)}
+        >
+          <ScalingIcon />
+        </Button>
+      </Tooltip>
+      {playgroundMenu}
+    </div>
+  );
 
   return (
     <div className="w-screen flex flex-col items-center px-6 md:px-12">
@@ -227,14 +277,14 @@ function DemoPageInner() {
       >
         {current && (
           current.type === "settings" ? (
-            <BentoCard key={current.slug} slug="" name={current.name} style={{ height: "100%" }}>
-              <div ref={setScaleEl} className="w-full max-w-[420px] mx-auto flex justify-center relative" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
-                <TooltipPortalContainer value={scaleEl}>
-                  <ColorPickerPortalContainer value={scaleEl}>
-                    <SettingsContent tooltipSide="right" />
-                  </ColorPickerPortalContainer>
-                </TooltipPortalContainer>
-              </div>
+            <BentoCard
+              key={current.slug}
+              slug=""
+              name={current.name}
+              style={{ height: "100%" }}
+              action={cardActions()}
+            >
+              {stage(<SettingsContent tooltipSide="right" />)}
             </BentoCard>
           ) : Playground ? (
             <Playground key={current.slug}>
@@ -244,19 +294,13 @@ function DemoPageInner() {
                   name={current.name}
                   isNew={"isNew" in current ? current.isNew : undefined}
                   style={{ height: "100%" }}
-                  action={
+                  action={cardActions(
                     <PlaygroundMenu label={`Customize ${current.name}`}>
                       {controls}
                     </PlaygroundMenu>
-                  }
+                  )}
                 >
-                  <div ref={setScaleEl} className="w-full max-w-[420px] mx-auto flex justify-center relative" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
-                    <TooltipPortalContainer value={scaleEl}>
-                      <ColorPickerPortalContainer value={scaleEl}>
-                        {demoPreview}
-                      </ColorPickerPortalContainer>
-                    </TooltipPortalContainer>
-                  </div>
+                  {stage(demoPreview)}
                 </BentoCard>
               )}
             </Playground>
@@ -267,14 +311,9 @@ function DemoPageInner() {
               name={current.name}
               isNew={"isNew" in current ? current.isNew : undefined}
               style={{ height: "100%" }}
+              action={cardActions()}
             >
-              <div ref={setScaleEl} className="w-full max-w-[420px] mx-auto flex justify-center relative" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
-                <TooltipPortalContainer value={scaleEl}>
-                  <ColorPickerPortalContainer value={scaleEl}>
-                    <SlidePreview slug={current.slug} />
-                  </ColorPickerPortalContainer>
-                </TooltipPortalContainer>
-              </div>
+              {stage(<SlidePreview slug={current.slug} />)}
             </BentoCard>
           )
         )}
