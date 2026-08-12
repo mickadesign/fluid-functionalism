@@ -378,9 +378,18 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
               <motion.span
                 key="label"
                 className="overflow-hidden"
+                // Until the measurement lands, let CSS resolve the width
+                // instead of handing framer "auto": framer resolves an "auto"
+                // target from the element's *visual* size, so under a scaled
+                // ancestor (the /demo card, ~1.76x) it writes back a layout
+                // width that much too wide, then springs back down when the
+                // measured value arrives — the selected tab visibly pulses on
+                // arrival. Plain CSS auto is the true layout width, and the
+                // measured number that follows matches it exactly.
+                style={labelWidth == null ? { width: "auto" } : undefined}
                 initial={{ width: 0, opacity: 0, marginLeft: 0 }}
                 animate={{
-                  width: labelWidth ?? "auto",
+                  ...(labelWidth != null ? { width: labelWidth } : null),
                   opacity: 1,
                   // Matches the ladder's icon-to-label gap (gap-2 / gap-1.5).
                   marginLeft: sizeClasses.variant === "compact" ? 6 : 8,

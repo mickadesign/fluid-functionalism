@@ -25,12 +25,16 @@ interface BentoCardProps {
    *  `layout="position"` nodes — framer scale-corrects nested layout nodes,
    *  so the content stays crisp instead of stretching with the box. */
   animateLayout?: boolean;
+  /** Optional control pinned to the preview area's bottom-right corner —
+   *  the /demo page puts the playground pen menu here. Rendered outside the
+   *  (possibly scaled) preview content so it keeps its natural size. */
+  action?: ReactNode;
   className?: string;
   style?: CSSProperties;
   children: ReactNode;
 }
 
-export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout = false, className: extraClassName, style, children }: BentoCardProps) {
+export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout = false, action, className: extraClassName, style, children }: BentoCardProps) {
   // No click-to-focus wiring here. Previously a mousedown on empty space
   // inside the card routed focus to the preview's first interactive element
   // (so the user could keyboard-drive the demo afterwards). In practice it
@@ -88,19 +92,39 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout
         {children}
       </motion.div>
 
-      {slug ? (
-        <Link
-          href={`/docs/${slug}`}
-          aria-label={`View ${name} documentation`}
-          className="group/link shrink-0 flex items-center gap-2 px-4 py-3 border-t border-border/40 rounded-b-xl transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
-        >
-          {footerLabel}
-        </Link>
-      ) : (
-        <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-border/40">
-          {footerLabel}
-        </div>
-      )}
+      {/* Footer row: the name (a link to the docs when `slug` is set) on the
+          left, the optional action on the right. The action sits OUTSIDE the
+          link — nesting a button inside an anchor is invalid, and a click on
+          the pen must not navigate. The link keeps its own hover/focus ring by
+          staying its own flex child rather than wrapping the whole row. */}
+      <div
+        className={cn(
+          "shrink-0 flex items-stretch border-t border-border/40",
+          // The link paints its own hover fill to the card's bottom corners, so
+          // the row itself stays transparent.
+          action ? "pr-2" : undefined
+        )}
+      >
+        {slug ? (
+          <Link
+            href={`/docs/${slug}`}
+            aria-label={`View ${name} documentation`}
+            className={cn(
+              "group/link flex flex-1 min-w-0 items-center gap-2 px-4 py-3 transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]",
+              action ? "rounded-bl-xl" : "rounded-b-xl"
+            )}
+          >
+            {footerLabel}
+          </Link>
+        ) : (
+          <div className="flex flex-1 min-w-0 items-center gap-2 px-4 py-3">
+            {footerLabel}
+          </div>
+        )}
+        {action && (
+          <div className="flex shrink-0 items-center pl-2">{action}</div>
+        )}
+      </div>
     </motion.div>
   );
 }

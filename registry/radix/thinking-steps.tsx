@@ -335,6 +335,30 @@ interface ThinkingStepProps {
   className?: string;
 }
 
+/** Measured layout height for a step's opening animation. `height: "auto"`
+ *  is resolved by framer from the element's *visual* (transformed) size, so
+ *  under a scaled ancestor (the /demo card) every step springs out to scale x
+ *  its real height and snaps back when "auto" lands — the whole list visibly
+ *  overshoots as it builds. offsetHeight and ResizeObserver are
+ *  transform-immune. Same setup as CollapsePanel above. */
+function useStepHeight() {
+  const roRef = useRef<ResizeObserver | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    roRef.current = null;
+    if (!el) return;
+    const sync = () => {
+      if (el.offsetHeight > 0) setHeight(el.offsetHeight);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    roRef.current = ro;
+  }, []);
+  return [ref, height] as const;
+}
+
 function ThinkingStep({
   icon = "dot",
   showIcon = true,
@@ -349,6 +373,7 @@ function ThinkingStep({
     const Icon = useIcon(icon);
     const shape = useShape();
     const sizeClasses = useSize();
+    const [stepRef, stepHeight] = useStepHeight();
 
     if (status === "pending") return null;
 
@@ -359,11 +384,13 @@ function ThinkingStep({
       <motion.div
         className={cn("relative z-10 overflow-hidden", className)}
         initial={{ height: 0 }}
-        animate={{ height: "auto" }}
+        animate={{ height: stepHeight ?? 0 }}
         transition={spring.slow}
       >
-        {/* Inner: fades content in after space starts opening */}
+        {/* Inner: fades content in after space starts opening — and is the
+            element measured for the height above. */}
         <motion.div
+          ref={stepRef}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24, delay, ease: "easeOut" }}

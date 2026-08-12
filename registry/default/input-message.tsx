@@ -33,6 +33,43 @@ import { Tooltip } from "@/registry/radix/tooltip";
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+/**
+ * Measured layout height for one of the composer's collapsible regions
+ * (attachments, queue, suggestions).
+ *
+ * These animate to a self-measured PIXEL height rather than `height: "auto"`:
+ * framer resolves an "auto" target from the element's *visual* (transformed)
+ * size, so under a scaled ancestor — the /demo card scales its slide — the
+ * region springs out to scale× its real height and snaps back when "auto"
+ * lands, which reads as the region ballooning and then correcting. Same
+ * treatment as Accordion's content height.
+ *
+ * Returns a ref for the region's CONTENT element. The height it reports is the
+ * clipping parent's scrollHeight, so inner margins count (the parent's
+ * overflow-hidden makes it a block formatting context, so they don't collapse
+ * out) and the value stays correct while the animated height is mid-flight.
+ * Observing the child rather than the parent keeps the ResizeObserver out of a
+ * feedback loop with that animation.
+ */
+function useRegionHeight() {
+  const roRef = useRef<ResizeObserver | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const ref = useCallback((el: HTMLElement | null) => {
+    roRef.current?.disconnect();
+    roRef.current = null;
+    if (!el) return;
+    const sync = () => {
+      const next = el.parentElement?.scrollHeight ?? el.offsetHeight;
+      if (next > 0) setHeight(next);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    roRef.current = ro;
+  }, []);
+  return [ref, height] as const;
+}
+
 // Touch devices have no hover, so hover-revealed affordances (like a queued
 // row's × button) would never appear. `(hover: none)` flags those so they can
 // be shown persistently instead. SSR-safe: starts false, resolves on mount.
@@ -490,6 +527,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     const suggestionsArr = useMemo(() => suggestions ?? [], [suggestions]);
     const suggestionsOpen = suggestionsArr.length > 0 && value === "";
     const suggestionListRef = useRef<HTMLDivElement>(null);
+    // Pixel heights for the three collapsible regions (see useRegionHeight).
+    const [filesRegionRef, filesRegionHeight] = useRegionHeight();
+    const [queueRegionRef, queueRegionHeight] = useRegionHeight();
+    const [suggestionsRegionRef, suggestionsRegionHeight] = useRegionHeight();
     const {
       activeIndex: activeSuggestion,
       setActiveIndex: setActiveSuggestion,
@@ -1037,12 +1078,12 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
               <motion.div
                 key="preview-row"
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
+                animate={{ height: filesRegionHeight ?? 0, opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ ...spring.moderate, bounce: 0 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-wrap gap-2 pb-1">
+                <div ref={filesRegionRef} className="flex flex-wrap gap-2 pb-1">
                   <AnimatePresence initial={false} mode="popLayout">
                     {filesArr.map((file, i) => (
                       <FilePreviewTile
@@ -1068,12 +1109,13 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                 <motion.div
                   key="queue-row"
                   initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
+                  animate={{ height: queueRegionHeight ?? 0, opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ ...spring.moderate, bounce: 0 }}
                   className="overflow-hidden"
                 >
                   <Reorder.Group
+                    ref={queueRegionRef}
                     axis="y"
                     values={queueArr}
                     onReorder={(next) => onQueueChange?.(next)}
@@ -1267,7 +1309,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                 <motion.div
                   key="suggestions"
                   initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
+                  animate={{ height: suggestionsRegionHeight ?? 0, opacity: 1 }}
                   // Height-only exit: the region clips shut bottom-up under
                   // overflow-hidden, so the divider holds its place until the
                   // space actually closes (a simultaneous opacity fade made it
@@ -1281,7 +1323,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                   className="-mx-2 -mt-1 overflow-hidden"
                 >
                   <div
-                    ref={suggestionListRef}
+                    ref={(el) => {
+                      suggestionListRef.current = el;
+                      suggestionsRegionRef(el);
+                    }}
                     role="listbox"
                     id={suggestionListId}
                     aria-label="Suggested prompts"

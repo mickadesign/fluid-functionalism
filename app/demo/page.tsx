@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { componentList } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
+import { playgroundMap } from "@/lib/docs/playgrounds";
 import { BentoCard } from "@/app/components/bento-card";
+import { PlaygroundMenu } from "@/app/components/playground-menu";
 import { SettingsContent } from "@/app/components/right-panel";
 import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
@@ -49,16 +51,24 @@ function DemoPageInner() {
     "radio-group",
     "slider",
     "ask-user-questions",
+    "input-message",
+    "button",
     "color-picker",
     "input-group",
     "switch",
     "table",
+    "card",
     "tabs-subtle",
     "thinking-indicator",
     "thinking-steps",
     "__settings__",
     "input-copy",
-  ];
+    // Any component with a registered playground gets a slide automatically
+    // (see lib/docs/playgrounds) — a playground on the doc page always shows
+    // up here too, under the pen menu. Curate the position by naming the slug
+    // above; anything unnamed lands at the end.
+    ...Object.keys(playgroundMap),
+  ].filter((slug, i, all) => all.indexOf(slug) === i);
 
   const componentMap = new Map(componentList.map((c) => [c.slug, c]));
 
@@ -67,7 +77,9 @@ function DemoPageInner() {
       return { slug: SETTINGS_SLUG, name: "Make them yours", type: "settings" as const };
     }
     const c = componentMap.get(slug);
-    if (!c || !previewMap[c.slug]) return null;
+    // A slide needs either a static bento preview or a registered playground
+    // (which brings its own state-driven preview + pen menu).
+    if (!c || (!previewMap[c.slug] && !playgroundMap[c.slug])) return null;
     return { slug: c.slug, name: c.name, isNew: c.isNew, type: "component" as const };
   }).filter((s): s is NonNullable<typeof s> => s != null);
 
@@ -147,6 +159,12 @@ function DemoPageInner() {
   }, []);
 
   const current = slides[currentIndex];
+  // Slides with a registered playground swap the static bento preview for the
+  // playground-driven one and gain the pen menu (see lib/docs/playgrounds).
+  const Playground =
+    current && current.type === "component"
+      ? playgroundMap[current.slug]
+      : undefined;
   const ArrowRight = useIcon("arrow-right");
   const prevSlide = currentIndex > 0 ? slides[currentIndex - 1] : null;
   const nextSlide = currentIndex < slides.length - 1 ? slides[currentIndex + 1] : null;
@@ -218,6 +236,30 @@ function DemoPageInner() {
                 </TooltipPortalContainer>
               </div>
             </BentoCard>
+          ) : Playground ? (
+            <Playground key={current.slug}>
+              {({ demoPreview, controls }) => (
+                <BentoCard
+                  slug={current.slug}
+                  name={current.name}
+                  isNew={"isNew" in current ? current.isNew : undefined}
+                  style={{ height: "100%" }}
+                  action={
+                    <PlaygroundMenu label={`Customize ${current.name}`}>
+                      {controls}
+                    </PlaygroundMenu>
+                  }
+                >
+                  <div ref={setScaleEl} className="w-full max-w-[420px] mx-auto flex justify-center relative" style={{ transform: `scale(${scale})`, transformOrigin: "center" }}>
+                    <TooltipPortalContainer value={scaleEl}>
+                      <ColorPickerPortalContainer value={scaleEl}>
+                        {demoPreview}
+                      </ColorPickerPortalContainer>
+                    </TooltipPortalContainer>
+                  </div>
+                </BentoCard>
+              )}
+            </Playground>
           ) : (
             <BentoCard
               key={current.slug}

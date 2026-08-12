@@ -69,6 +69,8 @@ const ThinkingIndicator = forwardRef<HTMLDivElement, ThinkingIndicatorProps>(
             <path d={infinity} />
           ) : (
             <motion.path
+              d={circleA}
+              initial={{ d: circleA }}
               animate={{
                 d: [circleA, infinity, circleB, infinity, circleA],
               }}

@@ -19,7 +19,7 @@ import {
   QueuedStack,
   collapsedStackHeight,
   useQueueCardHeight,
-} from "./queued-stack";
+} from "@/lib/docs/playgrounds/queued-stack";
 
 const MODELS = ["Sonnet 5", "Sonnet 4.6", "Sonnet 4.5", "Haiku 4"] as const;
 
