@@ -5,7 +5,7 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
-import { useSize, type SizeVariant } from "@/lib/size-context";
+import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useTouchPrimary } from "@/hooks/use-touch-primary";
 import { FileThumbnail } from "@/registry/default/file-thumbnail";
 
@@ -45,12 +45,16 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
     const shape = useShape();
     const compact = useSize(size).variant === "compact";
     const isUser = from === "user";
+    // A size prop pins nested ladder-aware content too (action buttons in
+    // the meta row), matching every other compound's re-provide behavior.
+    const withSize = (node: ReactNode) =>
+      size ? <SizeProvider size={size}>{node}</SizeProvider> : node;
     // Hover-reveal is unreachable on touch — keep the meta row visible there.
     const isTouch = useTouchPrimary();
     // Timestamps are a user-message affordance; assistant replies show actions only.
     const showTime = isUser && time != null;
 
-    return (
+    return withSize(
       <motion.div
         ref={ref}
         layout="position"

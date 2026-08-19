@@ -388,11 +388,13 @@ export default function CompareBasesPage() {
       </Row>
 
       <Row label="Slider">
+        {/* size="compact" pins the dense engine this page has always
+            compared — a bare Slider now renders the default pip design. */}
         <div className="pt-1">
-          <RadixSlider value={sliderA} onChange={(v) => setSliderA(v as number)} min={0} max={100} step={1} />
+          <RadixSlider size="compact" value={sliderA} onChange={(v) => setSliderA(v as number)} min={0} max={100} step={1} />
         </div>
         <div className="pt-1">
-          <BaseSlider value={sliderB} onChange={(v) => setSliderB(v as number)} min={0} max={100} step={1} />
+          <BaseSlider size="compact" value={sliderB} onChange={(v) => setSliderB(v as number)} min={0} max={100} step={1} />
         </div>
       </Row>
 
