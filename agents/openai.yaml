@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fluid Functionalism"
+  short_description: "Optionally use or reference Fluid Functionalism UI"
+  default_prompt: "Use $fluid-functionalism as an optional component source or design reference for this React interface."
