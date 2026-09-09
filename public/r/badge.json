@@ -2,7 +2,7 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "badge",
   "title": "Badge",
-  "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
+  "description": "Compact label with solid and dot variants, Tailwind color palette, and two sizes: default and compact.",
   "dependencies": [
     "class-variance-authority"
   ],
