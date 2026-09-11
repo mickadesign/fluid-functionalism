@@ -38,7 +38,7 @@ Reference: `app/concepts/quill/page.tsx`.
 - Use the size ladder regionally: default for ordinary forms and dialogs, compact for toolbars, navigation, filters, and dense data.
 - Let nested overlays raise themselves through the surface system. Avoid manual z-index escalation.
 - Reserve animated `ThinkingSteps` for useful user-visible progress. Do not fabricate progress or expose hidden chain-of-thought.
-- Keep proximity hover subordinate to semantic hover, focus, selected, checked, open, and disabled states.
+- Keep fluid hover subordinate to semantic hover, focus, selected, checked, open, and disabled states.
 - Prefer component public APIs and composition slots. Fork internals only when the requested behavior cannot be expressed otherwise.
 
 ## What not to copy

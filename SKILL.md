@@ -33,7 +33,7 @@ Use sources in this order:
 3. `motion-guidelines.md`, `component-documentation-guidelines.md`, `app/globals.css`, and `eslint.config.mjs` for system behavior.
 4. `public/r/**` for the actual committed install payload and flavor-specific dependency graph.
 
-Treat `BASE-UI-MIGRATION-PLAN.md` as historical. Do not derive the current flavor inventory from it. `public/design-notes.pdf` is a placeholder, not a specification.
+Derive the current flavor inventory from `lib/dual-flavor-slugs.mjs`, not from prose or historical planning documents. `public/design-notes.pdf` is a placeholder, not a specification.
 
 ## Integration boundaries
 

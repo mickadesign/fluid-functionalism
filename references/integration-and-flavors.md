@@ -14,12 +14,13 @@ This snapshot targets React 19, Tailwind CSS 4, Framer Motion 12, and the shadcn
 
 ## Choose the payload, not just the source flavor
 
-The 16 dual-source components are:
+The dual-source components (17 at this snapshot) are listed in `lib/dual-flavor-slugs.mjs` as `DUAL_FLAVOR_SLUGS`:
 
 ```text
 accordion
 button
 checkbox-group
+combobox
 dialog
 dropdown
 mobile-drawer
@@ -35,16 +36,17 @@ thinking-steps
 tooltip
 ```
 
-Four additional components are single-source but have both Radix and Base payloads because they compose dual-flavor dependencies:
+Additional items are single-source but have both Radix and Base payloads because they compose dual-flavor dependencies. The same file lists them as `FLAVORED_SINGLE_SOURCE_SLUGS`; the documented components among them are:
 
 ```text
 ask-user-questions
 color-picker
+command-menu
 input-copy
 input-message
 ```
 
-For those four, choosing the Base payload changes transitive installs even though their own source file remains under `registry/default/`.
+For those, choosing the Base payload changes transitive installs even though their own source file remains under `registry/default/`. The blocks (`queued-stack`, `dialog-sidebar`, and the sidebar blocks) behave the same way. Treat `lib/dual-flavor-slugs.mjs` as the source of truth for both lists; the snapshots above go stale as components land.
 
 Use the query script rather than inferring availability:
 
@@ -85,7 +87,7 @@ The shadcn CLI maps files through the consumer's aliases. Typical imports are:
 ```tsx
 import { Button } from "@/components/ui/button";
 import { spring } from "@/lib/springs";
-import { useProximityHover } from "@/hooks/use-proximity-hover";
+import { useFluidHover } from "@/hooks/use-fluid-hover";
 ```
 
 Follow the paths the CLI actually wrote. Never leave consumer code importing this repository's `@/registry/radix/*`, `@/registry/base/*`, or `@/registry/default/*` paths.
@@ -114,7 +116,7 @@ The `surfaces` registry theme supplies the surface/shadow ladder. Elevated compo
 ## Providers and fonts
 
 - Wrap the application or relevant tree in `<MotionConfig reducedMotion="user">` when Framer Motion components are used.
-- `ShapeProvider` is optional. Without one, `useShape()` falls back to `pill`; this docs site explicitly chooses `rounded` at its root.
+- `ShapeProvider` is optional. Without one, `useShape()` falls back to `rounded`, the same corners the docs site renders; the preset generators only emit a provider when pill is chosen.
 - `SizeProvider` is optional. Without one, components use the 36px `default` step. Use a controlled compact provider for dense regions rather than raw height/font overrides.
 - `IconProvider` is optional. Lucide is the default; override named slots to use another library. Do not add per-component icon-library imports.
 - `SurfaceProvider` is normally managed by elevated components. Use it directly when composing a new nested substrate.

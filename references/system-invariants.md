@@ -22,7 +22,7 @@ Measured-height containers spring only when they own the open/close transition. 
 
 ## Hover previews an action
 
-`useProximityHover` finds the nearest registered item along `x`, `y`, or `xy`, tracks transforms and scrolling, coalesces measurements, and exposes `isMeasured` so overlays do not animate from stale geometry.
+The system is called fluid hover; its docs page is `app/docs/fluid-hover/page.tsx`. `useFluidHover` (from the `use-fluid-hover` registry hook) finds the nearest registered item along `x`, `y`, or `xy`, tracks transforms and scrolling, coalesces measurements, and exposes `isMeasured` so overlays do not animate from stale geometry.
 
 - Gate absolutely positioned hover/selection overlays on complete measurement.
 - Use `isItemDisabled` for mounted-but-clipped rows.

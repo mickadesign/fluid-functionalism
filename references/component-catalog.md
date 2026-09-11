@@ -13,7 +13,7 @@ node scripts/query-registry.mjs input-message --flavor base
 node scripts/query-registry.mjs select --flavor radix --json
 ```
 
-The repository currently exposes 27 logical UI registry entries: 24 documented product components and 3 lower-level support components.
+The repository currently exposes 29 logical UI registry entries: 26 documented product components and 3 lower-level support components. Confirm the live inventory with `--list` rather than trusting this count.
 
 ## Actions and information
 
@@ -33,9 +33,11 @@ The repository currently exposes 27 logical UI registry entries: 24 documented p
 | Modal task or confirmation | `dialog` | Large surface with managed focus and exit motion |
 | Inline action list or triggered menu | `dropdown` | Actions, checked items, labels, separators, popup positioning |
 | Choose one value from a list | `select` | Trigger/content/items, groups, icons, errors, long scrollable lists |
+| Type-to-filter from many options | `combobox` | Single or multiple with chips, creatable rows (`onCreate`), keyboard highlight, clear control |
 | Segmented view switch | `tabs` | Strong segmented control with active indicator |
 | Quiet page-level navigation | `tabs-subtle` | Subtle pill, optional icons and active-label mode |
 | Application navigation rail | `sidebar` | Left/right, floating/inset, offcanvas, peek, resize, nested groups |
+| Global command palette | `command-menu` | Dialog shell on a global shortcut (default ⌘K), type-to-filter actions, groups, shortcut caps, filter tabs |
 
 ## Inputs and selection
 
@@ -45,7 +47,7 @@ The repository currently exposes 27 logical UI registry entries: 24 documented p
 | Exactly one visible choice | `radio-group` | Use when options should stay visible instead of hiding in Select |
 | Binary state | `switch` | Immediate on/off setting; do not use for a one-shot action |
 | Numeric or stepped value | `slider` | Single/range, uniform or non-uniform steps, value display, formatters |
-| One or more text fields | `input-group` | Labels, multiple fields, errors, and proximity hover |
+| One or more text fields | `input-group` | Labels, multiple fields, errors, and fluid hover |
 | Read-only value with copy | `input-copy` | Icon/button actions, alignment, disabled state, copy callback |
 | Color value editing | `color-picker` | HEX/RGB/HSL/OKLCH, alpha, swatches, eyedropper, inline/popover |
 
@@ -74,10 +76,14 @@ Other files such as `menu-item`, `sidebar-core`, and `sidebar-menu` are multi-fi
 ## System entries
 
 - `surfaces`: eight-level theme and shadow ladder.
+- `tokens`: shared interaction-state tokens (hover/active overlays, selected fill, `--overlay` triplet, `--focus-ring`, the base-layer focus fallback).
 - `springs`: `fast`, `moderate`, and `slow` enter/exit motion tokens.
 - `font-weight`: Inter variable-font weight/optical-size pairs.
 - `shape-context`, `size-context`, `icon-context`: cross-component runtime systems.
 - `surface-context`, `surface-classes`, `elevated`: nested elevation mechanics.
-- `use-proximity-hover`, `use-merge-split`, `use-touch-primary`: shared interaction hooks.
+- `popup`: shared popup chrome (side-aware motion, list scrolling) for the dropdown, select, and combobox popups.
+- `use-fluid-hover`, `use-merge-split`, `use-touch-primary`, `use-keyboard-nav-gate`: shared interaction hooks.
+
+The registry also ships composed blocks (`queued-stack`, `dialog-sidebar`, `sidebar-app`, and the sidebar building blocks such as `sidebar-workspace-header` and `sidebar-user-footer`). Treat them as installable reference assemblies, not primitives.
 
 Install these directly only when composing new components or system-level behavior. Ordinary component installs should resolve them through `registryDependencies`.
