@@ -12,10 +12,10 @@ description: >-
   installed, or asks to review/audit existing UI motion against the system.
   Also use before hand-writing animation code (hover highlights, icon swaps,
   weight changes, enter/exit transitions) there, so custom code follows the
-  system instead of inventing timings. On first use
-  in a project it audits the stack (React 19, Tailwind v4, framer-motion,
-  Radix vs Base UI flavor, MotionConfig, Inter opsz axis) and records
-  verdicts in .claude/fluid-functionalism.md for later runs to reuse.
+  system instead of inventing timings. On first use in a
+  project it audits the stack (deps, Radix vs Base UI flavor, MotionConfig,
+  Inter opsz axis) and records verdicts in .claude/fluid-functionalism.md
+  for later runs.
 ---
 
 # Fluid Functionalism
