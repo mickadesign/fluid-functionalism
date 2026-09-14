@@ -23,6 +23,15 @@ unrelated parts of the UI move at consistent magnitudes. Springs (not tweens)
 for enters so an interrupted animation reverses from where it is instead of
 finishing first.
 
+**Retrofitting an existing app:** most hand-written values sit within a hair
+of a tier — adopt the token. A value that is *deliberately* outside the tiers
+(a one-off cinematic entrance, a large canvas re-layout) can stay, but hoist
+it into one named export next to the code that owns it, so it can't drift or
+get re-invented with slightly different numbers in the next file — the same
+literal defined twice is how systems decay. Recommend, don't bulldoze:
+whether a bespoke value is intent or drift is the author's call, so name the
+nearest token and let them choose.
+
 **Exits are tweens, one tier quicker**, so a dismissal reads crisp and final
 instead of replaying the entrance in reverse. Each spring carries its own exit
 token — never hand-write an exit `{ duration }`:

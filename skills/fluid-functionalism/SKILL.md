@@ -7,11 +7,12 @@ description: >-
   change weight without layout shift. Use whenever the user mentions Fluid
   Functionalism, @fluid, or fluidfunctionalism.com, asks for UI with
   satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or
-  Base UI project, or builds any interface (settings dialogs, sidebars,
-  command menus, chat UIs, forms, lists, tables) in a project with @fluid
-  components installed. Also use before hand-writing animation code (hover
-  highlights, icon swaps, weight changes, enter/exit transitions) there, so
-  custom code follows the system instead of inventing timings. On first use
+  Base UI project, builds any interface (settings dialogs, sidebars, command
+  menus, chat UIs, forms, lists, tables) in a project with @fluid components
+  installed, or asks to review/audit existing UI motion against the system.
+  Also use before hand-writing animation code (hover highlights, icon swaps,
+  weight changes, enter/exit transitions) there, so custom code follows the
+  system instead of inventing timings. On first use
   in a project it audits the stack (React 19, Tailwind v4, framer-motion,
   Radix vs Base UI flavor, MotionConfig, Inter opsz axis) and records
   verdicts in .claude/fluid-functionalism.md for later runs to reuse.
