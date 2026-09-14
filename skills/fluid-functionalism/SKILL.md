@@ -101,7 +101,10 @@ The audit above tells you which of these are already done — skip those.
 ```bash
 npx shadcn@latest add @fluid/button            # Radix flavor
 npx shadcn@latest add @fluid/base/button       # Base UI flavor
-npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json  # no registry entry needed
+# URL form (no registry entry needed) - the flavor lives in the path, so a
+# base project needs the /base/ segment here too:
+npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json       # Radix
+npx shadcn@latest add https://www.fluidfunctionalism.com/r/base/button.json  # Base UI
 ```
 
 Dependencies, shared libs (`springs`, `font-weight`, contexts), and hooks
