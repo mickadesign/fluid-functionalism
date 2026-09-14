@@ -2,20 +2,19 @@
 name: fluid-functionalism
 description: >-
   Build React UIs with Fluid Functionalism — a shadcn/ui registry (@fluid) of
-  animated components with a shared motion system: three spring speeds, one
-  hover highlight that glides to the item nearest the cursor, and labels that
-  change weight without shifting layout. Use this skill whenever the user
-  mentions Fluid Functionalism, @fluid, fluidfunctionalism.com, or asks for UI
-  with "satisfying"/"fluid"/"polished" motion in a React, Next.js, shadcn,
-  Radix, or Base UI project — and whenever building any interface (settings
-  dialogs, sidebars, command menus, chat UIs, forms, lists, tables) in a
-  project that already has @fluid components installed. Also use it before
-  hand-writing animation code (hover highlights, icon swaps, font-weight
-  changes, enter/exit transitions) in such a project, so custom code follows
-  the same system instead of inventing its own timings. On first use in a
-  project it audits the stack (React 19, Tailwind v4, framer-motion, Radix
-  vs Base UI flavor, MotionConfig, Inter opsz axis) and records the verdicts
-  in .claude/fluid-functionalism.md for every later run to reuse.
+  animated components with a shared motion system: three spring speeds, a
+  hover highlight that glides to the item nearest the cursor, labels that
+  change weight without layout shift. Use whenever the user mentions Fluid
+  Functionalism, @fluid, or fluidfunctionalism.com, asks for UI with
+  satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or
+  Base UI project, or builds any interface (settings dialogs, sidebars,
+  command menus, chat UIs, forms, lists, tables) in a project with @fluid
+  components installed. Also use before hand-writing animation code (hover
+  highlights, icon swaps, weight changes, enter/exit transitions) there, so
+  custom code follows the system instead of inventing timings. On first use
+  in a project it audits the stack (React 19, Tailwind v4, framer-motion,
+  Radix vs Base UI flavor, MotionConfig, Inter opsz axis) and records
+  verdicts in .claude/fluid-functionalism.md for later runs to reuse.
 ---
 
 # Fluid Functionalism
