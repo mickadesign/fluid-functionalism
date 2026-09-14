@@ -12,7 +12,10 @@ description: >-
   project that already has @fluid components installed. Also use it before
   hand-writing animation code (hover highlights, icon swaps, font-weight
   changes, enter/exit transitions) in such a project, so custom code follows
-  the same system instead of inventing its own timings.
+  the same system instead of inventing its own timings. On first use in a
+  project it audits the stack (React 19, Tailwind v4, framer-motion, Radix
+  vs Base UI flavor, MotionConfig, Inter opsz axis) and records the verdicts
+  in .claude/fluid-functionalism.md for every later run to reuse.
 ---
 
 # Fluid Functionalism
@@ -27,21 +30,37 @@ Docs and live demos: <https://www.fluidfunctionalism.com> — every component
 page has a playground and a **Copy prompt** button whose text is a
 self-contained brief (install command, usage snippet, props, docs URL).
 
-Two jobs this skill covers:
+Three jobs this skill covers:
 
-1. **Install and compose the components** — pick the right registry item and
+1. **Know the project** — the first time this skill runs in a project, audit
+   the stack and record it (next section). Every later run reads that record
+   instead of re-guessing.
+2. **Install and compose the components** — pick the right registry item and
    flavor, wire it in. See the workflow below and
    [references/components.md](references/components.md) for the full catalog.
-2. **Write custom UI that belongs next to them** — when you build something
+3. **Write custom UI that belongs next to them** — when you build something
    the library doesn't ship, follow the motion system so it moves like the
    rest of the app. Read
    [references/motion-system.md](references/motion-system.md) before writing
    any animation, hover, or state-change styling by hand.
 
+## First run in a project: the stack audit
+
+Check for `.claude/fluid-functionalism.md`. If it exists and `package.json`
+hasn't changed since it was written, read it and trust its verdicts — flavor,
+`--overwrite`, what's installed — without re-deriving them; surface any still-
+open advice items only when the current task touches what they affect. If it
+doesn't exist (or is stale), run the audit in
+[references/stack-audit.md](references/stack-audit.md) first: it checks the
+dependencies FF needs (React 19, Tailwind v4, framer-motion, shadcn wiring),
+settles the flavor verdict from what the project already depends on, catches
+the two silent quality killers (`MotionConfig reducedMotion="user"` missing,
+Inter without the `opsz` axis), inventories what's already installed, and
+writes the results to that file so the project remembers.
+
 ## One-time project setup
 
-Skip any step that's already done (check `components.json`, `package.json`,
-and the app layout before redoing them).
+The audit above tells you which of these are already done — skip those.
 
 1. **Add the registry** (or install per-URL, next section):
 
@@ -50,11 +69,12 @@ and the app layout before redoing them).
    ```
 
 2. **Pick the flavor once, per project.** The bare name installs the Radix
-   flavor; prefix `base/` for Base UI. Decide by what the project already
-   depends on: `@base-ui-components/react` in `package.json` → use `base/`
-   names everywhere; `@radix-ui/*` (or nothing yet) → bare names. Never mix
-   flavors in one project — dependencies follow the flavor you pick, so a
-   Base UI dialog pulls in the Base UI button.
+   flavor; prefix `base/` for Base UI. The audit records the verdict: decide
+   by what the project already depends on — `@base-ui/react` in
+   `package.json` → use `base/` names everywhere; `@radix-ui/react-*` (or
+   nothing yet) → bare names. Never mix flavors in one project —
+   dependencies follow the flavor you pick, so a Base UI dialog pulls in the
+   Base UI button.
 
 3. **Enable reduced motion at the root.** One line in the app layout, like a
    ThemeProvider:
