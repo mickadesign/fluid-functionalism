@@ -1100,4 +1100,114 @@ const items = [
       "children (required): CommandMenuInput, optional CommandMenuTabs/Filters, CommandMenuList, optional CommandMenuFooter.",
     ],
   },
+  "queued-stack": {
+    craft: [
+      "At rest only the front card plus at most 2 peeks show: each deeper card rises 12px and scales down 0.05 per step (transform-origin bottom center); anything past peek 2 sits at opacity 0. Card height rides the size ladder (44px default, 38px compact), and collapsedStackHeight() is exported so the transcript can reserve exactly that much padding.",
+      "Hover fans the stack out (container animates to count*cardH + 8px gaps, cards spring to slots on spring.moderate, bounce 0 on the height). Touch is detected via (hover: none): a tap expands and PINS the stack open, a chevron button collapses it, and the pinned state resets when the queue empties.",
+      "Once the collapsed pile hits its peek cap, a new message lands out of sight \u2014 so every growth recoils the whole stack: snap to y -7, spring-settle back (0.42s, bounce 0.5). Skipped while expanded and on the first fill, where the stack appearing is its own feedback.",
+      "A corner-arrow sits in the 40px left gutter with an 'N queued messages' tooltip; the count fades/scales in beside it only once cards overflow the visible peeks, pinned so the number appearing never nudges the arrow.",
+      "Drag-to-reorder works only while expanded: a 4px dead zone arms the drag, the card follows the pointer at duration 0 (scale 1.03, z-index 200) while the rest spring to their slots; listeners are on window so release works anywhere, and touchAction none claims the vertical gesture so a touch drag reorders instead of scrolling the transcript.",
+      "morphLayoutId shares a framer layoutId between a dispatching card and its sent bubble \u2014 but only for text-only cards (attachment layouts differ too much; those fade) and only while no drag is in progress (layout projection fights the animated y transform). The consumer clears the morph props ~450ms after dispatch so later transcript reflows don't re-fire it.",
+      "Edit (pencil, same as double-click) and remove buttons are hidden until hover \u2014 out of layout so the text gets the full card width \u2014 and always visible on touch; both stopPropagation on pointer-down so they never start a drag.",
+    ],
+    usage: `import { InputMessage, type QueuedMessage } from "@/components/ui/input-message";
+import { QueuedStack, collapsedStackHeight, useQueueCardHeight } from "@/components/queued-stack";
+
+const [queue, setQueue] = useState<QueuedMessage[]>([]);
+const cardH = useQueueCardHeight();
+// transcript bottom padding: inputH + 8 + (queue.length ? collapsedStackHeight(queue.length, cardH) + 8 : 0)
+
+<div className="relative">
+  {/* scrolling transcript */}
+  <QueuedStack queue={queue} onQueueChange={setQueue}
+    onEdit={(item) => {/* restore item.text + item.files into the composer, drop from queue */}}
+    onRemove={(item) => setQueue((q) => q.filter((x) => x.id !== item.id))}
+    bottom={inputH + 8}
+    morphLayoutId={(item) => \`qm-\${item.id}\`} />
+  <InputMessage className="absolute inset-x-0 bottom-0" value={value} onValueChange={setValue}
+    status={status} queue={queue} onQueueChange={setQueue} showQueue={false}
+    onSend={(text, files, meta) => {/* meta?.queuedId tags queue dispatches */}} />
+</div>`,
+    props: [
+      "queue: QueuedMessage[] (required). The controlled queue; the front card is queue[0]. Items are { id, text, files }.",
+      "onQueueChange: (queue) => void (required). Fired with the reordered queue while dragging a card between slots.",
+      "onEdit: (item) => void (required). Pull a card back into the composer (pencil button / double-click).",
+      "onRemove: (item) => void (required). Remove a card.",
+      "bottom: number (required). Distance from the container's bottom edge, usually composer height + 8.",
+      "morphLayoutId?: (item) => string. Shared-layout id per card so a dispatching card morphs into its sent bubble; applied only to text-only cards while no drag is in progress.",
+      "Also exported: QUEUE_CARD_H (44), QUEUE_CARD_H_COMPACT (38), useQueueCardHeight(), collapsedStackHeight(count, cardH).",
+    ],
+  },
+  "sidebar-app": {
+    craft: [
+      "While the sidebar is only peeked, the floating overlay covers the pointer's one way to pin it \u2014 so a SidebarTrigger takes the workspace tile's slot, positioned as a sibling over the row (never a button inside the row button). Trigger and tile cross-fade in place (opacity only, 80ms, nothing moves) and the row's constant padding keeps the name pinned on the rows' 32px text axis through the swap.",
+      "The overlaid trigger deliberately drops its hover fill (its box is off-axis from the tile slot; a background would read as a second, non-concentric rectangle) and pins its glyph to 16px. A container query hides the dropdown chevron once the row is too narrow to show a useful slice of the name.",
+      "Search sits on the menu rows' own rhythm: leading icon on the rows' 16px icon axis, text starting on the 32px text axis, and the field is composed with the 'New' action row as one block so it reads as the list's first row.",
+      "Shortcut chips wait invisible at the trailing edge (the search field's command-K, the New row's kbd chip) and fade in over 80ms on hover or focus-within, so the placeholder and label own the row at rest.",
+      "The user footer rides the shared axes: 20px avatar pulled onto the rows' leading icon axis, trailing glyph on the action axis, and its menu opens upward on the shared popup grid \u2014 sized to the trigger +10px and shifted onto the row's edge so the popup's labels line up with the trigger row exactly.",
+      "The inset topbar's trigger hides while the sidebar is only peeked (the overlay covers it anyway) and fades back in slightly late after a pin (200ms delay) so it appears at its settled position instead of riding the inset's slide.",
+      "Collapsed means gone \u2014 no icon rail. peek='hover' floats the real sidebar, labels and all, the moment the cursor reaches the collapsed edge; pinning from a peek never shifts the rows. Desktop open state persists to the sidebar_state cookie \u2014 read it in a server layout for a flicker-free default.",
+    ],
+    usage: `"use client";
+
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/sidebar-app/app-sidebar";
+import { SidebarInsetTopbar } from "@/components/sidebar-app/inset-topbar";
+
+export default function Page() {
+  return (
+    <SidebarProvider peek="hover">
+      <AppSidebar />
+      <SidebarInset>
+        <SidebarInsetTopbar />
+        <main className="flex flex-1 flex-col gap-4 p-4">{/* your page */}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+// Swap components/sidebar-app/nav-data.ts and the names in AppSidebar for your own.
+// Flicker-free default: read the sidebar_state cookie in a server layout and pass defaultOpen.`,
+    props: [
+      "AppSidebar: no props of its own beyond Omit<SidebarProps, 'children'> (side, collapsible, rail, bordered; it pins variant='inset'). Content is edited in place; seed data lives in nav-data.ts.",
+      "SidebarWorkspaceHeader: name (required), tile (required, a 20px mark - see WorkspaceTile), menu? (dropdown rows; omit for a non-interactive lockup), checkedIndex?.",
+      "SidebarUserFooter: name (required), avatar (required, 20px), menu (required, opens upward), className?.",
+      "SidebarSearchField: shortcut? (default '\\u2318K', null drops the chip), placeholder?, plus SidebarInput props.",
+      "SidebarInsetTopbar: children? (content after the trigger), className?.",
+    ],
+  },
+  "dialog-sidebar": {
+    craft: [
+      "The xl Dialog (880px; 800 compact) becomes a layout canvas: p-0, flex, and a FIXED height (min(640px, 100dvh - 4rem)) so the panel scrolls inside it rather than the dialog growing.",
+      "The left column is the same composable Sidebar the app shell uses, in a bounded frame: collapsible='none' drops the rail and drawer, the provider gets persist={false} and shortcut={null}, width 13rem, and a faint overlay tint sets the column apart from the panel.",
+      "Below the sm breakpoint the sidebar column hides and a Select at the top of the panel \u2014 same sections, same icons \u2014 takes over navigation under a visible 'Settings' h2.",
+      "The one DialogTitle lives in the sidebar header at NORMAL weight \u2014 headings here are labels, not a headline; the dialog's own title weight would out-shout the nav beneath it \u2014 with an sr-only DialogDescription. A referenced title names the dialog even while hidden, so the narrow layout only needs the h2 duplicate.",
+      "The section list renders SidebarMenu focusRing={false}: rows are the whole surface, so keyboard focus moves the highlight instead of drawing a ring around it.",
+      "Switches carry their required accessible label but the row already shows it, so the switch's own copy is visually hidden (sr-only) rather than doubled.",
+      "Every setting is a SettingRow: 13px label + 12px muted description left, control right, hairline border-b between rows; a per-row Select uses the borderless trigger variant so it sits quietly inside the row.",
+    ],
+    usage: `"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { SettingsDialog } from "@/components/dialog-sidebar/settings-dialog";
+
+export function Settings() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" onClick={() => setOpen(true)}>
+        Open settings
+      </Button>
+      <SettingsDialog open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+// Swap SECTIONS and the *Panel components in settings-dialog.tsx for your own settings.`,
+    props: [
+      "open?: boolean. Controlled open state, forwarded to Dialog.",
+      "defaultOpen?: boolean. Uncontrolled initial open state.",
+      "onOpenChange?: (open: boolean) => void. Called when the dialog opens or closes.",
+      "defaultSection?: string (default 'general'). The section shown first - one of the ids in SECTIONS as shipped: general | notifications | appearance | security | members.",
+    ],
+  },
 };

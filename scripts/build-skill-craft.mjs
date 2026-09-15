@@ -53,6 +53,11 @@ const COMPONENTS = [
   ["thinking-steps", "ThinkingSteps"],
   ["tooltip", "Tooltip"],
 ];
+const BLOCKS = [
+  ["queued-stack", "Queued message stack (queued-stack)"],
+  ["sidebar-app", "App Sidebar (sidebar-app)"],
+  ["dialog-sidebar", "Settings Dialog (dialog-sidebar)"],
+];
 
 const src = readFileSync(SRC, "utf8");
 
@@ -86,12 +91,13 @@ const lines = [
   "## Contents",
   "",
 ];
-for (const [slug, name] of [...SYSTEMS, ...COMPONENTS]) {
+for (const [slug, name] of [...SYSTEMS, ...COMPONENTS, ...BLOCKS]) {
   lines.push(`- [${name}](#${slug})`);
 }
 for (const [group, list] of [
   ["# Systems", SYSTEMS],
   ["# Components", COMPONENTS],
+  ["# Blocks", BLOCKS],
 ]) {
   lines.push("", group);
   for (const [slug, name] of list) {
@@ -103,6 +109,6 @@ lines.push("");
 
 writeFileSync(OUT, lines.join("\n"));
 console.log(
-  `wrote ${SYSTEMS.length + COMPONENTS.length} sections to`,
+  `wrote ${SYSTEMS.length + COMPONENTS.length + BLOCKS.length} sections to`,
   OUT,
 );

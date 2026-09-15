@@ -45,6 +45,9 @@ Systems first — their craft applies across every component below.
 - [ThinkingIndicator](#thinking-indicator)
 - [ThinkingSteps](#thinking-steps)
 - [Tooltip](#tooltip)
+- [Queued message stack (queued-stack)](#queued-stack)
+- [App Sidebar (sidebar-app)](#sidebar-app)
+- [Settings Dialog (dialog-sidebar)](#dialog-sidebar)
 
 # Systems
 
@@ -377,3 +380,35 @@ Systems first — their craft applies across every component below.
 - The bubble is an inverted surface (`bg-foreground text-background`), 12px at medium weight (`fontVariationSettings`); `text-box: trim-both cap alphabetic` recenters the label, with the padding bump applied only where text-box is supported so overall height stays ~26px on untrimmed browsers.
 - `contentClassName` exists because Radix copies the content's z-index onto its popper wrapper: pass a z utility there to lift the whole tooltip above other fixed layers (default z-50); `className` styles the bubble itself.
 - `forceOpen` pins the tooltip open (or closed) over the hover/focus behavior — `onOpenChange` still reports the internal state before forceOpen is applied.
+
+# Blocks
+
+## Queued message stack (queued-stack) {#queued-stack}
+
+- At rest only the front card plus at most 2 peeks show: each deeper card rises 12px and scales down 0.05 per step (transform-origin bottom center); anything past peek 2 sits at opacity 0. Card height rides the size ladder (44px default, 38px compact), and collapsedStackHeight() is exported so the transcript can reserve exactly that much padding.
+- Hover fans the stack out (container animates to count*cardH + 8px gaps, cards spring to slots on spring.moderate, bounce 0 on the height). Touch is detected via (hover: none): a tap expands and PINS the stack open, a chevron button collapses it, and the pinned state resets when the queue empties.
+- Once the collapsed pile hits its peek cap, a new message lands out of sight — so every growth recoils the whole stack: snap to y -7, spring-settle back (0.42s, bounce 0.5). Skipped while expanded and on the first fill, where the stack appearing is its own feedback.
+- A corner-arrow sits in the 40px left gutter with an 'N queued messages' tooltip; the count fades/scales in beside it only once cards overflow the visible peeks, pinned so the number appearing never nudges the arrow.
+- Drag-to-reorder works only while expanded: a 4px dead zone arms the drag, the card follows the pointer at duration 0 (scale 1.03, z-index 200) while the rest spring to their slots; listeners are on window so release works anywhere, and touchAction none claims the vertical gesture so a touch drag reorders instead of scrolling the transcript.
+- morphLayoutId shares a framer layoutId between a dispatching card and its sent bubble — but only for text-only cards (attachment layouts differ too much; those fade) and only while no drag is in progress (layout projection fights the animated y transform). The consumer clears the morph props ~450ms after dispatch so later transcript reflows don't re-fire it.
+- Edit (pencil, same as double-click) and remove buttons are hidden until hover — out of layout so the text gets the full card width — and always visible on touch; both stopPropagation on pointer-down so they never start a drag.
+
+## App Sidebar (sidebar-app) {#sidebar-app}
+
+- While the sidebar is only peeked, the floating overlay covers the pointer's one way to pin it — so a SidebarTrigger takes the workspace tile's slot, positioned as a sibling over the row (never a button inside the row button). Trigger and tile cross-fade in place (opacity only, 80ms, nothing moves) and the row's constant padding keeps the name pinned on the rows' 32px text axis through the swap.
+- The overlaid trigger deliberately drops its hover fill (its box is off-axis from the tile slot; a background would read as a second, non-concentric rectangle) and pins its glyph to 16px. A container query hides the dropdown chevron once the row is too narrow to show a useful slice of the name.
+- Search sits on the menu rows' own rhythm: leading icon on the rows' 16px icon axis, text starting on the 32px text axis, and the field is composed with the 'New' action row as one block so it reads as the list's first row.
+- Shortcut chips wait invisible at the trailing edge (the search field's command-K, the New row's kbd chip) and fade in over 80ms on hover or focus-within, so the placeholder and label own the row at rest.
+- The user footer rides the shared axes: 20px avatar pulled onto the rows' leading icon axis, trailing glyph on the action axis, and its menu opens upward on the shared popup grid — sized to the trigger +10px and shifted onto the row's edge so the popup's labels line up with the trigger row exactly.
+- The inset topbar's trigger hides while the sidebar is only peeked (the overlay covers it anyway) and fades back in slightly late after a pin (200ms delay) so it appears at its settled position instead of riding the inset's slide.
+- Collapsed means gone — no icon rail. peek='hover' floats the real sidebar, labels and all, the moment the cursor reaches the collapsed edge; pinning from a peek never shifts the rows. Desktop open state persists to the sidebar_state cookie — read it in a server layout for a flicker-free default.
+
+## Settings Dialog (dialog-sidebar) {#dialog-sidebar}
+
+- The xl Dialog (880px; 800 compact) becomes a layout canvas: p-0, flex, and a FIXED height (min(640px, 100dvh - 4rem)) so the panel scrolls inside it rather than the dialog growing.
+- The left column is the same composable Sidebar the app shell uses, in a bounded frame: collapsible='none' drops the rail and drawer, the provider gets persist={false} and shortcut={null}, width 13rem, and a faint overlay tint sets the column apart from the panel.
+- Below the sm breakpoint the sidebar column hides and a Select at the top of the panel — same sections, same icons — takes over navigation under a visible 'Settings' h2.
+- The one DialogTitle lives in the sidebar header at NORMAL weight — headings here are labels, not a headline; the dialog's own title weight would out-shout the nav beneath it — with an sr-only DialogDescription. A referenced title names the dialog even while hidden, so the narrow layout only needs the h2 duplicate.
+- The section list renders SidebarMenu focusRing={false}: rows are the whole surface, so keyboard focus moves the highlight instead of drawing a ring around it.
+- Switches carry their required accessible label but the row already shows it, so the switch's own copy is visually hidden (sr-only) rather than doubled.
+- Every setting is a SettingRow: 13px label + 12px muted description left, control right, hairline border-b between rows; a per-row Select uses the borderless trigger variant so it sits quietly inside the row.
