@@ -171,6 +171,21 @@ system:
   Lucide by default; swap libraries app-wide via `IconProvider` from
   `@/lib/icon-context`, not by editing installed components.
 
+## The last 1%: where the deep craft lives
+
+The references here teach the system; the fine grain of each component —
+its exact choreography, edge-case behavior, and the reasons — lives in two
+places you already have:
+
+- **The installed source is the deep documentation.** These components ship
+  with their rationale in comments. Before modifying, wrapping, or imitating
+  one, read its installed file (`components/ui/*`, `hooks/*`, `lib/*`) —
+  never restyle or re-time from memory of what the stock shadcn version
+  does.
+- **Each doc page's Copy-prompt brief carries a "Craft" section** — the
+  built-in behaviors to compose around rather than re-implement. When a user
+  pastes one, treat those bullets as constraints, not suggestions.
+
 ## Gotchas
 
 - **Don't edit installed components to change timing or hover behaviour** —

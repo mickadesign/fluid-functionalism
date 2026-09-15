@@ -10,6 +10,13 @@ export interface PromptEntry {
   props: string[];
   /** Extra sentence when the two primitive flavors differ in usage. */
   flavorNote?: string;
+  /** The craft: the interaction-design decisions built into the component
+   *  that a consumer (human or agent) would miss from the API alone — exact
+   *  behaviors, exact values, and the why where one exists. Each bullet is
+   *  one decision, ≤2 lines, sourced from the component code and doc page —
+   *  never aspirational. Rendered in the Copy-prompt brief so composed code
+   *  respects the behaviors instead of fighting them. */
+  craft?: string[];
 }
 
 export const PROMPT_ENTRIES: Record<string, PromptEntry> = {
