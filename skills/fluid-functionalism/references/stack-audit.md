@@ -142,6 +142,23 @@ verdict, or delete it to force a re-audit — say so when you create it. Ask
 before writing anywhere else, and if the project forbids new files, keep the
 results in your reply instead.
 
+**Verdict hygiene — a wrong verdict poisons every later session.** The file
+outlives your run and later sessions trust it, so hold verdicts to a higher
+bar than advice:
+
+- Record *observations*, not extrapolations: "GET /r/select-base.json → 404"
+  is a fact; "the registry serves Radix only" is a conclusion the fact
+  doesn't support. Before recording any verdict about what the registry
+  serves, try the documented forms (`@fluid/base/<name>`,
+  `/r/base/<name>.json` — see components.md); a guessed URL failing proves
+  only that the guess was wrong.
+- A claim you couldn't verify goes in as a question ("check: …"), not a
+  verdict — later sessions treat verdicts as settled.
+- In the inventory, record **local aliases of system pieces** — a
+  hand-rolled `use-proximity-hover` that is this project's
+  `use-fluid-hover`, a `motion.ts` that is its `springs` — so later
+  sessions don't treat the local copy and the registry item as unrelated.
+
 Template (fill every section; keep it under ~40 lines):
 
 ```markdown
