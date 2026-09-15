@@ -72,27 +72,53 @@ flavor mixing happens.
 - **TypeScript strictness, `"use client"` conventions**: only worth noting
   if the project deviates in a way that will fight the installed components.
 
-## Replacement shortlist (2–5 components, rated)
+## Replacement shortlist (2–5 items, systems first)
 
-Part of every audit and refresh: name the **2–5 components** in this project
-that would gain the most from being replaced with their @fluid counterpart,
-ranked, each rated for impact and effort. Two to five is a hard band — one
-suggestion reads as an afterthought, six reads as a rewrite plan. If fewer
-than two genuine candidates exist, say so; never pad.
+Part of every audit and refresh: name the **2–5 upgrades** that would most
+improve this project's UI, ranked, each rated for impact and effort. Two to
+five is a hard band — one suggestion reads as an afterthought, six reads as
+a rewrite plan. If fewer than two genuine candidates exist, say so; never
+pad.
+
+**UI and design system only.** Every slot goes to something the user sees or
+feels. Infrastructure findings — dead dependencies, package-manager notes,
+framework or Tailwind migrations, icon-library consolidation — are recorded
+as verdicts or inventory facts, but they never occupy a shortlist slot and
+never lead the conversation. (An infra blocker can still appear *inside* an
+entry, as the reason its effort is L.)
+
+**Systems before components.** Work through the FF system pages
+(fluidfunctionalism.com/docs — Motion, Fluid Hover, Surfaces, Sizes,
+Scrollbars) before individual components: one system adopted lifts every
+surface at once, and components installed afterwards land on rails that
+already exist. Candidates in that order:
+
+1. **Motion tokens** (`springs`) — hand-written durations scattered around,
+   missing `.exit` tweens, drifted bounce values → one token file, everything
+   moves at the same magnitudes.
+2. **Fluid hover** (`use-fluid-hover`) — any list/menu/table/grid with
+   per-row `:hover` or a hand-rolled glide → the one highlight per list.
+3. **Surfaces** (`elevated` + tokens) — popovers/dropdowns/dialogs with
+   ad-hoc backgrounds and shadows that break at depth or in dark mode.
+4. **Sizes** (`size-context`) — three-plus control heights in the wild →
+   the 36/28 ladder shared by buttons, inputs, selects, tabs, rows.
+5. **Scrollbars** (`scroll-area`) — default scrollbars inside panels and
+   popups.
+
+Then components, picked by the same felt-difference test: the card grid that
+would gain 2-D fluid hover and composed layouts, the sidebar (resize,
+collapse, mobile drawer), a hand-rolled palette → `command-menu`, a plain
+modal → `dialog`'s spring enter / crisp exit, form controls that snap →
+`select`/`switch`/`checkbox-group`.
 
 **Impact (high / medium / low)** — how much the user would actually feel it:
+surface traffic (a sidebar or nav beats a rarely-opened modal); whether the
+current code has the exact failure modes FF fixes (blinking per-row hover,
+CSS-snap state changes, mushy exits, labels that shift on selection, popups
+that vanish at depth); systems default high when several surfaces inherit
+the fix at once.
 
-- Surface traffic: a sidebar, nav, or list the user touches constantly beats
-  a rarely-opened modal.
-- Whether the current component has the exact failure modes FF exists to
-  fix: per-row `:hover` that blinks between rows (→ fluid hover), unanimated
-  or CSS-snap state changes, mushy exits, labels that shift layout on
-  selection, popups without elevation handling.
-- Signature-move upgrades rate high: any list/menu/table hover → the gliding
-  highlight; a hand-rolled palette → `command-menu`; a plain modal →
-  `dialog`'s spring enter / crisp exit.
-
-**Effort (S / M / L)** — what replacement really costs here:
+**Effort (S / M / L)** — what it really costs here:
 
 - **S**: shadcn-compatible API, few call sites, stock file that `--overwrite`
   can just take.
@@ -100,16 +126,16 @@ than two genuine candidates exist, say so; never pad.
   wrapper to keep).
 - **L**: heavily customized local component (`--overwrite` would eat real
   work — plan a diff-and-merge), many call sites, or a blocked install
-  (Tailwind v3 → the effort includes the hand-roll or the migration).
-  A block or flavor mismatch never hides a candidate — it raises its effort
-  and says why.
+  (the effort includes the hand-roll or the migration). A block or flavor
+  mismatch never hides a candidate — it raises its effort and says why.
 
-Each entry: current component → registry item (correct flavor), impact,
-effort, one line of *why* naming the felt difference. Rank by
-impact-per-effort — a medium-impact S usually belongs above a high-impact L.
-Record the shortlist in the audit file (template below): done items move to
-the installed inventory, declined ones to done/declined, and refreshes
-re-rank what's left instead of re-pitching from scratch.
+Each entry: current state → registry item (correct flavor), impact, effort,
+one line of *why* naming the felt difference. Rank by impact-per-effort
+within the systems-then-components order — a medium-impact S usually belongs
+above a high-impact L. Record the shortlist in the audit file (template
+below): done items move to the installed inventory, declined ones to
+done/declined, and refreshes re-rank what's left instead of re-pitching
+from scratch.
 
 ## When installs are blocked
 
@@ -186,9 +212,10 @@ Template (fill every section; keep it under ~40 lines):
 ## Replacement shortlist
 | Now | Replace with | Impact | Effort | Why |
 |---|---|---|---|---|
-| hand-rolled command palette (cmd-k.tsx) | base/command-menu | high | M | used constantly; gets the gliding highlight, shortcut caps, ⌘K dialog shell |
-| stock select in settings | base/select | med | S | drop-in; animated open + typeahead where today it snaps |
-| nav :hover rows (app-nav.tsx) | use-fluid-hover | med | S | per-row hover blinks between rows; one highlight glides instead |
+| durations hand-written in 6 files | springs (motion tokens) | high | S | one token file; every surface moves at the same magnitudes, exits get crisp |
+| nav + table per-row :hover | use-fluid-hover | high | S | hover blinks between rows today; one highlight glides, and later installs ride it |
+| static card grid (projects.tsx) | card | med | M | composed layouts + 2-D fluid hover; local markup to carry over |
+| hand-rolled command palette (cmd-k.tsx) | base/command-menu | med | M | used constantly; gliding highlight, shortcut caps, ⌘K dialog shell |
 
 ## Advice (done / declined)
 - (move items here instead of deleting, so they aren't re-raised)

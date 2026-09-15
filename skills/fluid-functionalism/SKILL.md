@@ -55,10 +55,13 @@ doesn't exist (or is stale), run the audit in
 dependencies FF needs (React 19, Tailwind v4, framer-motion, shadcn wiring),
 settles the flavor verdict from what the project already depends on, catches
 the two silent quality killers (`MotionConfig reducedMotion="user"` missing,
-Inter without the `opsz` axis), inventories what's already installed, picks
-the 2–5 components that would gain most from an @fluid replacement (each
-rated impact / effort, ranked by impact-per-effort), and writes the results
-to that file so the project remembers.
+Inter without the `opsz` axis), inventories what's already installed, and
+picks the 2–5 UI upgrades that would help most — systems first (motion
+tokens, fluid hover, surfaces, sizes), then components — each rated
+impact / effort and ranked by impact-per-effort. UI and design system only:
+infrastructure findings are recorded as facts, never pitched as
+recommendations. It writes the results to that file so the project
+remembers.
 
 ## One-time project setup
 
