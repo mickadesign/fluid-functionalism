@@ -174,17 +174,23 @@ system:
 ## The last 1%: where the deep craft lives
 
 The references here teach the system; the fine grain of each component —
-its exact choreography, edge-case behavior, and the reasons — lives in two
-places you already have:
+its exact choreography, edge-case behavior, and the reasons — is also
+written down. In order of reach:
 
-- **The installed source is the deep documentation.** These components ship
-  with their rationale in comments. Before modifying, wrapping, or imitating
-  one, read its installed file (`components/ui/*`, `hooks/*`, `lib/*`) —
-  never restyle or re-time from memory of what the stock shadcn version
-  does.
-- **Each doc page's Copy-prompt brief carries a "Craft" section** — the
-  built-in behaviors to compose around rather than re-implement. When a user
-  pastes one, treat those bullets as constraints, not suggestions.
+- **[references/craft.md](references/craft.md)** — per-component craft for
+  every system and component: the built-in behaviors, exact values, and the
+  why. Read the relevant section **before composing with, wrapping,
+  extending, or imitating a component** — it is what keeps composed code
+  from fighting behaviors it didn't know existed (the button already
+  handles its own press geometry; select already acknowledges a pick for
+  300ms; the panel already snaps under a collapsing child).
+- **The installed source is the final word.** These components ship with
+  their rationale in comments. Before modifying one, read its installed
+  file (`components/ui/*`, `hooks/*`, `lib/*`) — never restyle or re-time
+  from memory of what the stock shadcn version does.
+- **Each doc page's Copy-prompt brief carries the same "Craft" section.**
+  When a user pastes one, treat those bullets as constraints, not
+  suggestions.
 
 ## Gotchas
 
