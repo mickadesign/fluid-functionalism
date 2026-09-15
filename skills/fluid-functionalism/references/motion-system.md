@@ -28,9 +28,11 @@ of a tier — adopt the token. A value that is *deliberately* outside the tiers
 (a one-off cinematic entrance, a large canvas re-layout) can stay, but hoist
 it into one named export next to the code that owns it, so it can't drift or
 get re-invented with slightly different numbers in the next file — the same
-literal defined twice is how systems decay. Recommend, don't bulldoze:
-whether a bespoke value is intent or drift is the author's call, so name the
-nearest token and let them choose.
+literal defined twice is how systems decay. The same goes for token values
+mirrored across languages (a CSS class re-declaring the TS `fontWeights`
+numbers): one source of truth, the other side derives or goes. Recommend,
+don't bulldoze: whether a bespoke value is intent or drift is the author's
+call, so name the nearest token and let them choose.
 
 **Exits are tweens, one tier quicker**, so a dismissal reads crisp and final
 instead of replaying the entrance in reverse. Each spring carries its own exit
@@ -62,9 +64,17 @@ Animate `transform` (`x`, `y`, `scale`) and `opacity` — never `top` / `left` /
 `width` / `height`. Two reasons with one fix: layout properties are off the
 GPU's fast path, and `MotionConfig reducedMotion="user"` only neutralises
 transform/layout animations, so a component moving via `top` ignores the OS
-reduced-motion setting. If you genuinely must animate a layout property, gate
-the movement on `useReducedMotion()` yourself and keep the opacity fade —
-reduced motion means *fewer and gentler*, not *none*.
+reduced-motion setting. A plain **CSS transition** on a positional property
+(`transition-[left,bottom]`) is doubly exempt — it's not framer-motion at
+all, so `MotionConfig` never sees it; move it to `x`/`y` motion values to get
+both the compositor and reduced-motion back. If you genuinely must animate a
+layout property, gate the movement on `useReducedMotion()` yourself and keep
+the opacity fade — reduced motion means *fewer and gentler*, not *none*.
+
+**Depicted UI is exempt.** A mockup frame, product screenshot rebuilt in
+code, or demo that *portrays another product's interface* isn't bound by
+these rules — a per-row `:hover` inside a fake app frame is set dressing,
+not system drift. Judge the app's own chrome, not what it depicts.
 
 ## Fluid hover for custom lists
 

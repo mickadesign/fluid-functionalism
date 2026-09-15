@@ -43,7 +43,7 @@ flavor mixing happens.
 | Check | How | Consequence when missing |
 |---|---|---|
 | `MotionConfig reducedMotion="user"` wraps the app | grep the root layout | OS reduced-motion is ignored for transform/layout animations — an accessibility gap, one line to fix |
-| Inter loaded as a variable font **with the `opsz` axis** | `next/font/google`: `Inter({ axes: ["opsz"] })`; `next/font/local`: the call declares `weight: "100 900"` (without a range the variable axis isn't addressable at all); plain CSS: `@font-face` with `font-weight: 100 900` on a variable file | Weight animations still run but labels widen on hover/selection — the "weight without reflow" promise silently breaks. A `localFont` with no weight range breaks harder: `fontVariationSettings` has nothing to move. If the project doesn't use Inter, or its font ships one static weight, note that the ghost-span machinery is inert there — no action, just don't promise weight animation |
+| Inter loaded as a variable font **with the `opsz` axis** | `next/font/google`: `Inter({ axes: ["opsz"] })`; `next/font/local`: the call declares `weight: "100 900"` (without a range the variable axis isn't addressable at all); plain CSS: `@font-face` with `font-weight: 100 900` on a variable file | Weight animations still run but labels widen on hover/selection — the "weight without reflow" promise silently breaks. A `localFont` with no weight range breaks harder: `fontVariationSettings` has nothing to move. If the font is static, note the ghost-span machinery is inert — and **cross-check what the code animates**: components animating `font-variation-settings` over static font files are a live site-wide no-op, worth flagging on its own. The fallback there is honest: remap the pattern to plain `font-weight` steps between the shipped weights — the ghost span still prevents reflow, the weight change just snaps instead of animating |
 | Interaction-state tokens (`bg-hover`, `bg-active`) available | entry CSS (installed by `@fluid/tokens`, arrives with components) | Custom code can't use the shared hover/active fills; ad-hoc grays creep in |
 | `--overwrite` situation | stock shadcn files present in `components/ui/`? Are they actually stock, or customized (local edits, colocated stories/tests)? | Stock files: every `@fluid` install needs `--overwrite`, one explicit heads-up before the first install. Customized files: `--overwrite` would destroy local work — install to review (or diff the registry source against the local file) instead of a blind pass, and record which files carry customizations |
 
@@ -61,6 +61,14 @@ flavor mixing happens.
   suggest the `IconProvider` mapping once, instead of per-component overrides.
 - **`pdfjs-dist`**: only needed by `file-thumbnail` (PDF previews). Don't
   flag its absence unless that component is in play.
+- **Dead flavor and icon deps**: after a flavor consolidation (or FF installs
+  replacing stock components), packages from the superseded side often linger
+  with zero imports — `@radix-ui/react-*` in a base project, extra icon
+  libraries. Grep before claiming dead, then suggest removal **with the
+  project's own package manager** (read the lockfile: `pnpm-lock.yaml` →
+  `pnpm remove`, `bun.lock` → `bun`, etc. — the wrong one forks the lockfile).
+- **Package manager**: note which one, for every command you hand over, not
+  just removals.
 - **TypeScript strictness, `"use client"` conventions**: only worth noting
   if the project deviates in a way that will fight the installed components.
 
