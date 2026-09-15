@@ -110,10 +110,12 @@ npx shadcn@latest add https://www.fluidfunctionalism.com/r/base/button.json  # B
 Dependencies, shared libs (`springs`, `font-weight`, contexts), and hooks
 resolve on their own — install the component you want, not its plumbing.
 
-**Always pass `--overwrite`** when the project already has stock shadcn files:
-this library installs under the same names (`button.tsx`, `dialog.tsx`, …),
-and without the flag the CLI asks per file — a non-interactive shell (you)
-exits at the first question.
+**Pass `--overwrite`** when the project's shadcn files are stock: this
+library installs under the same names (`button.tsx`, `dialog.tsx`, …), and
+without the flag the CLI asks per file — a non-interactive shell (you) exits
+at the first question. But if those files carry local customizations or
+colocated stories/tests (the audit records which), `--overwrite` destroys
+that work — review or diff instead of a blind pass.
 
 ```bash
 npx shadcn@latest add @fluid/dialog --overwrite
