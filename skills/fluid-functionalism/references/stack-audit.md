@@ -130,12 +130,29 @@ the fix at once.
   mismatch never hides a candidate — it raises its effort and says why.
 
 Each entry: current state → registry item (correct flavor), impact, effort,
-one line of *why* naming the felt difference. Rank by impact-per-effort
-within the systems-then-components order — a medium-impact S usually belongs
-above a high-impact L. Record the shortlist in the audit file (template
-below): done items move to the installed inventory, declined ones to
-done/declined, and refreshes re-rank what's left instead of re-pitching
-from scratch.
+one line of *why* naming the felt difference. **Ground the why in the
+craft:** before writing an entry, read the candidate's section in
+[craft.md](craft.md) and pick the one or two details the project's current
+component visibly lacks — "your select snaps open and closes on the click;
+`base/select` animates the open and holds the popup 300ms so the checkmark
+is seen drawing in" persuades where "animated select" doesn't. Rules for
+using it honestly:
+
+- Cite at most two craft details per entry — the sharpest contrasts with
+  what the current code does, not a feature dump.
+- Only cite what the project actually lacks: if their hand-rolled version
+  already fades in at the nearest row, that bullet is not an argument.
+  Reading the current component first is what makes the pitch credible.
+- The same comparison sets the effort honestly: craft the local version
+  already replicates means the replacement changes less than it seems
+  (lower risk), while local behaviors the registry item *doesn't* have
+  belong in the entry as a named trade-off, not a surprise.
+
+Rank by impact-per-effort within the systems-then-components order — a
+medium-impact S usually belongs above a high-impact L. Record the shortlist
+in the audit file (template below): done items move to the installed
+inventory, declined ones to done/declined, and refreshes re-rank what's
+left instead of re-pitching from scratch.
 
 ## When installs are blocked
 
@@ -212,10 +229,10 @@ Template (fill every section; keep it under ~40 lines):
 ## Replacement shortlist
 | Now | Replace with | Impact | Effort | Why |
 |---|---|---|---|---|
-| durations hand-written in 6 files | springs (motion tokens) | high | S | one token file; every surface moves at the same magnitudes, exits get crisp |
-| nav + table per-row :hover | use-fluid-hover | high | S | hover blinks between rows today; one highlight glides, and later installs ride it |
-| static card grid (projects.tsx) | card | med | M | composed layouts + 2-D fluid hover; local markup to carry over |
-| hand-rolled command palette (cmd-k.tsx) | base/command-menu | med | M | used constantly; gliding highlight, shortcut caps, ⌘K dialog shell |
+| durations hand-written in 6 files | springs (motion tokens) | high | S | exits reuse the entrance spring today, so dismissals drag; tokens pair every tier with a one-tier-quicker exit tween |
+| nav + table per-row :hover | use-fluid-hover | high | S | hover blinks off between rows; the highlight glides to the nearest row and a gap click still lands on what's lit |
+| static card grid (projects.tsx) | card | med | M | 2-D nearest-card hover with gap clicks capped at 16px; hairline dividers drop beside the active card — local markup to carry over |
+| hand-rolled command palette (cmd-k.tsx) | base/command-menu | med | M | keyboard scroll keeps the row centered and travels with the highlight; ⌘K resolves per-platform with a Dvorak-safe fallback — both missing locally |
 
 ## Advice (done / declined)
 - (move items here instead of deleting, so they aren't re-raised)
