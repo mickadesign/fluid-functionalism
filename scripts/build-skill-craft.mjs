@@ -2,13 +2,19 @@
 // arrays in lib/docs/prompt-entries.ts, so the skill ships the same craft
 // the Copy-prompt briefs carry, without a second hand-maintained copy.
 // Run after editing any craft entry:  node scripts/build-skill-craft.mjs
+// tests/skill-craft.test.mjs regenerates to a temp path (--out <path>) and
+// fails the build when the committed file has drifted.
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const SRC = new URL("../lib/docs/prompt-entries.ts", import.meta.url);
-const OUT = new URL(
-  "../skills/fluid-functionalism/references/craft.md",
-  import.meta.url,
-);
+const outFlag = process.argv.indexOf("--out");
+const OUT =
+  outFlag !== -1
+    ? process.argv[outFlag + 1]
+    : fileURLToPath(
+        new URL("../skills/fluid-functionalism/references/craft.md", import.meta.url),
+      );
 
 // Section order: the five systems first (one adopted system lifts every
 // surface), then components alphabetically. Display names match the docs.
@@ -98,5 +104,5 @@ lines.push("");
 writeFileSync(OUT, lines.join("\n"));
 console.log(
   `wrote ${SYSTEMS.length + COMPONENTS.length} sections to`,
-  OUT.pathname,
+  OUT,
 );

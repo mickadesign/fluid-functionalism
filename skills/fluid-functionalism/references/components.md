@@ -3,8 +3,10 @@
 Install with `npx shadcn@latest add @fluid/<registry name>` (add `--overwrite`
 when stock shadcn files exist). A second name in the Registry column means the
 component has a Base UI flavor — use it when the project depends on
-`@base-ui-components/react`. Every row links to a doc page with a live
-playground, full props, and a Copy prompt button.
+`@base-ui/react`. Every row links to a doc page with a live playground,
+full props, and a Copy prompt button. Before composing with any item here,
+read its section in [craft.md](craft.md) — the behaviors built into it that
+composed code must not fight.
 
 ## Components
 
@@ -86,4 +88,4 @@ Smaller sidebar blocks also install individually: `sidebar-workspace-header`,
 - Data display → `table`, `card` (grid layout has 2-D fluid hover), `badge`
 - Custom list/menu/grid you're writing yourself → `use-fluid-hover` +
   `springs`, then follow
-  [motion-system.md](motion-system.md)
+  [custom-motion.md](custom-motion.md)

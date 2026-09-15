@@ -36,12 +36,16 @@ Three jobs this skill covers:
    the stack and record it (next section). Every later run reads that record
    instead of re-guessing.
 2. **Install and compose the components** — pick the right registry item and
-   flavor, wire it in. See the workflow below and
-   [references/components.md](references/components.md) for the full catalog.
+   flavor, wire it in, and compose around what's already built in. The
+   catalog is [references/components.md](references/components.md); the
+   per-component craft — the exact behaviors, values, and reasons baked into
+   each item — is [references/craft.md](references/craft.md), and reading
+   the relevant section before composing is what separates using this
+   library from merely installing it.
 3. **Write custom UI that belongs next to them** — when you build something
    the library doesn't ship, follow the motion system so it moves like the
    rest of the app. Read
-   [references/motion-system.md](references/motion-system.md) before writing
+   [references/custom-motion.md](references/custom-motion.md) before writing
    any animation, hover, or state-change styling by hand.
 
 ## First run in a project: the stack audit
@@ -146,7 +150,7 @@ install it directly as a composed block:
 Installed components already follow every rule. The rules matter when you
 write UI *around* them — a custom list, a bespoke card grid, an animated icon
 of your own. The recipes and code snippets live in
-[references/motion-system.md](references/motion-system.md); the shape of the
+[references/custom-motion.md](references/custom-motion.md); the shape of the
 system:
 
 - **Three spring speeds, tokenised.** `spring.fast` (0.08s) / `spring.moderate`

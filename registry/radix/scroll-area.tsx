@@ -172,7 +172,7 @@ const ScrollBar = forwardRef<
         // it rests narrow and low-contrast, then widens + darkens on hover so
         // it gets out of the way until you reach for it.
         "group/scrollbar z-20 flex touch-none select-none",
-        // Show immediately; on hide, wait out the 150ms thumb shrink before
+        // Show immediately; on hide, wait out the 160ms thumb shrink before
         // fading so the thumb visibly narrows back first instead of the fade
         // masking it.
         "opacity-0 transition-opacity duration-120 ease-out delay-160",
