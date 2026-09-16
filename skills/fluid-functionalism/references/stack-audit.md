@@ -96,8 +96,10 @@ already exist. Candidates in that order:
 1. **Motion tokens** (`springs`) — hand-written durations scattered around,
    missing `.exit` tweens, drifted bounce values → one token file, everything
    moves at the same magnitudes.
-2. **Fluid hover** (`use-fluid-hover`) — any list/menu/table/grid with
-   per-row `:hover` or a hand-rolled glide → the one highlight per list.
+2. **Fluid hover** (`use-fluid-hover`) — a list/menu/table/grid whose glide
+   is hand-rolled, or whose per-row `:hover` blinks off between rows and
+   drops clicks in the gaps → the one highlight per list. An app where
+   *nothing* animates hover is the ask-first case below, not this one.
 3. **Surfaces** (`elevated` + tokens) — popovers/dropdowns/dialogs with
    ad-hoc backgrounds and shadows that break at depth or in dark mode.
 4. **Sizes** (`size-context`) — three-plus control heights in the wild →
@@ -110,6 +112,58 @@ would gain 2-D fluid hover and composed layouts, the sidebar (resize,
 collapse, mobile drawer), a hand-rolled palette → `command-menu`, a plain
 modal → `dialog`'s spring enter / crisp exit, form controls that snap →
 `select`/`switch`/`checkbox-group`.
+
+**Separate a repair from a new character.** Most entries are repairs: the app
+already does this thing, and does it inconsistently, late, or not at all
+where its neighbours do. Those are recommendations, and you make them.
+
+A few would introduce a signature behavior the product has never had. Fluid
+hover is the main one. If nothing in the app animates a hover today, that is
+as likely a deliberate register as an oversight — plenty of good interfaces
+are still, and mean to be. Adopting it changes how the whole product feels,
+which is the user's call and not an audit finding, so ask once before it
+takes a slot: name where it would land first, what it would feel like there,
+and what it would cost. "Nothing glides on hover" is an observation about
+their code. "Do you want hover in these menus to follow the cursor the way
+the rest of the library does, or is the stillness deliberate?" is the
+question behind it, and it is the one worth asking. Record the answer as a
+verdict so no later run re-opens a settled question.
+
+**Write every entry from the interface, not from the code.** The reader is
+looking at their own product, so an entry opens on what someone using it sees
+now, where, and how often. The file, the missing config line, the token, and
+the size of the fix all come after, as the explanation for a difference
+already named. An entry whose subject is a symbol, a config key, or a package
+has been written backwards, and so has any heading that leads with the cost:
+"one line" is not a headline, it is a footnote.
+
+Three things carry a why:
+
+- **Exposure.** How much of a session this surface is on screen, and for how
+  long. A dock, a sidebar, a message list, the model picker in a composer sit
+  in front of someone continuously; a settings modal does not. Say which it
+  is, and let it move the ranking more than the size of the diff does.
+- **What it costs them now.** Read the current behavior and name the moment
+  it goes wrong: a state you have to read instead of glance at, a hover that
+  blinks off between rows, a panel that lands late, a dismissal that drags.
+- **Which quality it buys back.** Cohesion, so the surface moves like the
+  rest of the app. Immediacy, so it answers the instant you act. Legibility
+  of state, so you can tell what is selected without comparing. Finish, so
+  nothing jumps or snaps.
+
+The same finding, written both ways:
+
+> Backwards: "InterVariable loads as a single 400 face (one line). No
+> `weight`, so next/font emits an `@font-face` with no weight range."
+>
+> Right: "A selected row in the model picker looks almost the same as an
+> unselected one, so people read the list instead of glancing at it. Weight
+> is the cue that would carry that, and it is the one cue this app cannot
+> currently use: the variable font is declared without a weight range, so
+> every weight resolves to the same face. One line in the font declaration
+> turns selection into something you see rather than parse."
+
+Same fact, same fix, same length. The second one is about the product.
 
 **Impact (high / medium / low)** — how much the user would actually feel it:
 surface traffic (a sidebar or nav beats a rarely-opened modal); whether the
@@ -176,6 +230,16 @@ is rarely the advice the user came for. Instead:
   project migrates, the path is already written down.
 - **Advise the migration question once, deliberately**, as its own decision
   with its costs, not as a prerequisite smuggled into every suggestion.
+- **Never present the block as a gate on the list.** A blocked CLI blocks
+  *installs*, not the outcome. Every item on the shortlist is a way this
+  interface can feel better, and each one is reachable by hand against the
+  project's own tokens, so write the shortlist to read the same either way:
+  the blocker changes how an item lands and what it costs, never whether it
+  is worth doing. Above all, don't close with a summary that puts the
+  migration in front of everything — "the gate behind all of this is
+  Tailwind v3" tells someone their product cannot improve until they take on
+  a migration they never asked for, which is discouraging and, on every item
+  above it, untrue.
 
 ## The audit file
 
@@ -215,6 +279,8 @@ Template (fill every section; keep it under ~40 lines):
 - flavor: base (@base-ui/react 1.4.1 present) — all flavored installs use base/<name>
 - framework: Next.js app router; root layout at app/layout.tsx
 - stock shadcn files present → always pass --overwrite
+- fluid hover: asked 2026-09-14, wanted — menus first, then the sidebar
+  (a declined answer is recorded the same way, and stops being pitched)
 
 ## Ready
 - shadcn wired (components.json, @/ aliases), theme tokens in app/globals.css
@@ -231,7 +297,7 @@ Template (fill every section; keep it under ~40 lines):
 |---|---|---|---|---|
 | durations hand-written in 6 files | springs (motion tokens) | high | S | exits reuse the entrance spring today, so dismissals drag; tokens pair every tier with a one-tier-quicker exit tween |
 | nav + table per-row :hover | use-fluid-hover | high | S | hover blinks off between rows; the highlight glides to the nearest row and a gap click still lands on what's lit |
-| static card grid (projects.tsx) | card | med | M | 2-D nearest-card hover with gap clicks capped at 16px; hairline dividers drop beside the active card — local markup to carry over |
+| static card grid (projects.tsx), the landing surface | card | med | M | the grid is the first thing anyone sees and nothing answers the cursor on it; the highlight tracks the nearest card in both axes and dividers drop beside the active one — local markup to carry over |
 | hand-rolled command palette (cmd-k.tsx) | base/command-menu | med | M | keyboard scroll keeps the row centered and travels with the highlight; ⌘K resolves per-platform with a Dvorak-safe fallback — both missing locally |
 
 ## Advice (done / declined)

@@ -64,8 +64,22 @@ picks the 2–5 UI upgrades that would help most — systems first (motion
 tokens, fluid hover, surfaces, sizes), then components — each rated
 impact / effort and ranked by impact-per-effort. UI and design system only:
 infrastructure findings are recorded as facts, never pitched as
-recommendations. It writes the results to that file so the project
-remembers.
+recommendations. Three rules decide how those land, and they are what
+separates advice from a lint report:
+
+- **Write each one from the interface**, not from the code that causes it:
+  what someone using the product sees now, on which surface, how often they
+  are looking at it, and which quality it buys back. The file and the size
+  of the fix are the footnote, never the headline.
+- **A behavior the app has never had is a question, not a finding.** Fixing
+  something the product already does badly is advice you give; introducing a
+  new signature motion — fluid hover above all — changes how the whole thing
+  feels, so ask before spending a slot on it. Stillness is often deliberate.
+- **A blocked install is never a gate on the outcome.** Old Tailwind or React
+  blocks the CLI, not the product getting better; every item is reachable by
+  hand. Never front a migration the user didn't ask for.
+
+It writes the results to that file so the project remembers.
 
 ## One-time project setup
 
