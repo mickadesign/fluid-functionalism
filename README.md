@@ -83,7 +83,9 @@ With `next/font/google`, ask for the axis: `Inter({ subsets: ["latin"], axes: ["
 
 ## With an AI coding agent
 
-Every doc page and playground has a **Copy prompt** button. The prompt is a self-contained brief: the install command, a usage snippet, the props, and the docs URL. Paste it into your agent and it wires the component in without fetching anything.
+Every doc page and playground has a **Copy prompt** button. The prompt is a self-contained brief: the install command, a usage snippet, the props, the built-in behaviors to compose around, and the docs URL. Paste it into your agent and it wires the component in without fetching anything.
+
+For a whole project rather than one component, this repo also ships an agent skill in [skills/fluid-functionalism](skills/fluid-functionalism). It audits the stack the first time it runs and records the flavor verdict, so later runs install without re-deriving it. Alongside it sit the component catalog, the interaction-design decisions built into each component, and the rules for writing custom motion next to them.
 
 ## Components
 
@@ -190,9 +192,10 @@ npm run dev              # docs site on http://localhost:3000
 npm test                 # vitest
 npm run lint
 npm run registry:build   # shadcn build + scripts/postbuild-registry.mjs, writes public/r
+node scripts/build-skill-craft.mjs   # writes the skill's craft reference
 ```
 
-Sources live in `registry/`: `radix/` and `base/` hold the two flavors, `default/` the single-source components, hooks, and libs, `blocks/` the compositions. `public/r` is the built output users install from, and it is committed. CI rebuilds it and fails when it drifts from the sources, so run `npm run registry:build` and commit the result with any registry change.
+Sources live in `registry/`: `radix/` and `base/` hold the two flavors, `default/` the single-source components, hooks, and libs, `blocks/` the compositions. `public/r` is the built output users install from, and it is committed. CI rebuilds it and fails when it drifts from the sources, so run `npm run registry:build` and commit the result with any registry change. The skill's craft reference works the same way: it is generated from the prompt entries in `lib/docs/prompt-entries.ts`, and a test fails when the committed copy has drifted.
 
 Guides in the repo: [motion-guidelines.md](motion-guidelines.md), [component-documentation-guidelines.md](component-documentation-guidelines.md), [preset-guidelines.md](preset-guidelines.md), [tone-of-voice.md](tone-of-voice.md), and [README-guidelines.md](README-guidelines.md) for what this file carries and what it defers.
 

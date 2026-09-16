@@ -73,8 +73,11 @@ Compositions that install as one item, with every component they use.
 | [Settings Dialog](https://www.fluidfunctionalism.com/docs/dialog) | `dialog-sidebar` · `base/dialog-sidebar` | The xl Dialog as a canvas, a Sidebar of sections down its left edge, and a scrolling panel of controls |
 | [Queued message stack](https://www.fluidfunctionalism.com/docs/input-message) | `queued-stack` · `base/queued-stack` | Sonner-style stack of queued composer messages: fan out on hover, drag to reorder, morph into the sent message |
 
-Smaller sidebar blocks also install individually: `sidebar-workspace-header`,
-`sidebar-user-footer`, `sidebar-search-field`, `sidebar-inset-topbar`.
+Smaller sidebar blocks also install individually, and each has a Base UI
+flavor too: `sidebar-workspace-header` · `base/sidebar-workspace-header`,
+`sidebar-user-footer` · `base/sidebar-user-footer`, `sidebar-search-field` ·
+`base/sidebar-search-field`, `sidebar-inset-topbar` ·
+`base/sidebar-inset-topbar`.
 
 ## Choosing quickly
 

@@ -18,14 +18,14 @@ const OUT =
 
 // Section order: the five systems first (one adopted system lifts every
 // surface), then components alphabetically. Display names match the docs.
-const SYSTEMS = [
+export const SYSTEMS = [
   ["motion", "Motion (springs)"],
   ["fluid-hover", "Fluid Hover (use-fluid-hover)"],
   ["surfaces", "Surfaces (elevated)"],
   ["sizes", "Sizes (size-context)"],
   ["scrollbars", "Scrollbars (scroll-area)"],
 ];
-const COMPONENTS = [
+export const COMPONENTS = [
   ["accordion", "Accordion"],
   ["ask-user-questions", "AskUserQuestions"],
   ["badge", "Badge"],
@@ -53,7 +53,7 @@ const COMPONENTS = [
   ["thinking-steps", "ThinkingSteps"],
   ["tooltip", "Tooltip"],
 ];
-const BLOCKS = [
+export const BLOCKS = [
   ["queued-stack", "Queued message stack (queued-stack)"],
   ["sidebar-app", "App Sidebar (sidebar-app)"],
   ["dialog-sidebar", "Settings Dialog (dialog-sidebar)"],
@@ -107,8 +107,16 @@ for (const [group, list] of [
 }
 lines.push("");
 
-writeFileSync(OUT, lines.join("\n"));
-console.log(
-  `wrote ${SYSTEMS.length + COMPONENTS.length + BLOCKS.length} sections to`,
-  OUT,
-);
+/** Every section this reference renders, in order. tests/skill-craft.test.mjs
+ *  asserts it covers every doc page: a component added to app/docs and to
+ *  prompt-entries.ts but not to the lists above would otherwise be missing
+ *  from craft.md while both other checks still passed. Blocks are in here
+ *  too, and deliberately have no doc page of their own. */
+export const SECTIONS = [...SYSTEMS, ...COMPONENTS, ...BLOCKS];
+
+// Only write when run as a script. The test imports SECTIONS, and an import
+// that rewrote craft.md would repair drift before the drift check could see it.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  writeFileSync(OUT, lines.join("\n"));
+  console.log(`wrote ${SECTIONS.length} sections to`, OUT);
+}

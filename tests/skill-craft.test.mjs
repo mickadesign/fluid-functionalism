@@ -9,6 +9,7 @@ import { mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SECTIONS } from "../scripts/build-skill-craft.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const entriesSrc = readFileSync(join(root, "lib/docs/prompt-entries.ts"), "utf8");
@@ -29,6 +30,36 @@ describe("prompt entries cover the docs", () => {
       bullets.length,
       `${slug} needs at least 4 craft bullets (one decision per bullet)`,
     ).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("the craft reference covers every component", () => {
+  // The generator's section list is hand-maintained. Without this check a new
+  // doc page could carry a full craft entry, satisfy the per-page test AND the
+  // drift test (which regenerates with the same incomplete list), and still be
+  // absent from the reference the skill ships.
+  const listed = SECTIONS.map(([slug]) => slug);
+
+  it.each(docSlugs)("doc page %s has a section in build-skill-craft.mjs", (slug) => {
+    expect(
+      listed,
+      `add ["${slug}", "<DisplayName>"] to SYSTEMS, COMPONENTS or BLOCKS in scripts/build-skill-craft.mjs, or it never reaches craft.md`,
+    ).toContain(slug);
+  });
+
+  // The reverse direction cannot require a doc page: blocks are sections by
+  // design and have none. What every section must have is a craft entry, so
+  // a typo or a slug left behind by a rename fails here rather than throwing
+  // out of the generator with no context.
+  it.each(listed)("section %s has a craft entry to render", (slug) => {
+    const entry = new RegExp(
+      `^  ("?)${slug}\\1: \\{\\n    craft: \\[\\n`,
+      "m",
+    ).test(entriesSrc);
+    expect(
+      entry,
+      `scripts/build-skill-craft.mjs lists "${slug}", but lib/docs/prompt-entries.ts has no craft entry for it`,
+    ).toBe(true);
   });
 });
 

@@ -29,6 +29,7 @@ the site.
 | `--overwrite` note | `lib/docs/install-prompt.ts` | routine |
 | Inter with its `opsz` axis | `registry/default/lib/font-weight.ts`, `app/globals.css` | routine |
 | Copy prompt paragraph | `lib/docs/install-prompt.ts` | routine |
+| Agent skill paragraph | `skills/fluid-functionalism/SKILL.md` | routine |
 | Components table | `componentList` in `lib/docs/components.ts` | test: every slug linked |
 | Systems table | `systemList` in `lib/docs/components.ts`; `installSlug` on each system page | test |
 | Blocks table: top-level compositions only | `registry:block` items in `registry.json`, minus the parts of `sidebar-app` | test: names resolve |
