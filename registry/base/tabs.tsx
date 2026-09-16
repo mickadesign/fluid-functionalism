@@ -288,7 +288,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
             // segmentPad + segmentItem add up to the ladder's control height
             // (36px default, 28px compact) so the segmented control's outer
             // box lines up with buttons, selects, and inputs beside it.
-            "relative inline-flex items-center gap-0.5 select-none bg-muted",
+            "relative inline-flex items-center select-none bg-muted",
             sizeClasses.segmentPad,
             shape.container,
             className

@@ -536,7 +536,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                   <ScrollArea className={popupScrollAreaClass} viewportClassName={cn(popupViewportClass, "scroll-fade")}>
                     <div
                       ref={containerRef}
-                      className="relative flex flex-col gap-0.5 p-1"
+                      className="relative flex flex-col p-1"
                     >
                   {/* The three overlays are torn down as the close begins rather
                       than exit-animated, because an overlay still mounted when the

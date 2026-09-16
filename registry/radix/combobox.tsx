@@ -15,7 +15,7 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate, useMotionValue, type MotionValue } from "framer-motion";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useIcon, type IconComponent } from "@/lib/icon-context";
@@ -716,22 +716,63 @@ function FieldControls({
   );
 }
 
+/** Springs the chips field's height to the measured chip row stack (plus
+ *  `padY`, the field's vertical padding) as chips wrap and unwrap. The
+ *  height lives in a MotionValue driving an inline style, and for a reason:
+ *  the field must stay pinned at its old height through the reflow that
+ *  wraps a chip, or its auto height lands on the new row before any spring
+ *  can start and the growth snaps. First measure sets the pin; every later
+ *  one springs it. Measured (offsetHeight + ResizeObserver), never
+ *  `height: "auto"`: framer resolves "auto" from the element's *visual*
+ *  (transformed) size, so under a scaled ancestor (the /demo card) the
+ *  spring would overshoot. Layout metrics are transform-immune. */
+function useChipRowHeight(padY: number) {
+  const height = useMotionValue<number | "auto">("auto");
+  const roRef = useRef<ResizeObserver | null>(null);
+  const padRef = useRef(padY);
+  padRef.current = padY;
+  const ref = useCallback(
+    (el: HTMLDivElement | null) => {
+      roRef.current?.disconnect();
+      roRef.current = null;
+      if (!el) return;
+      const measure = () => {
+        if (el.offsetHeight <= 0) return;
+        const target = el.offsetHeight + padRef.current;
+        if (height.get() === "auto") height.set(target);
+        else if (height.get() !== target) animate(height, target, spring.fast);
+      };
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      roRef.current = ro;
+    },
+    [height]
+  );
+  return { ref, height };
+}
+
 /** The anchored field frame: a click on the icon or padding focuses the
- *  input without disturbing its caret. */
+ *  input without disturbing its caret. `height` (the chips field's animated
+ *  height from useChipRowHeight) pins and springs the frame as chips wrap
+ *  and unwrap; omitted, the frame just sizes to its content. */
 function FieldFrame({
   className,
+  height,
   children,
 }: {
   className: string;
+  height?: MotionValue<number | "auto">;
   children: ReactNode;
 }) {
   const { open, disabled, anchorRef, inputRef } = useComboboxContext();
   return (
     <PopoverPrimitive.Anchor asChild>
-      <div
+      <motion.div
         ref={anchorRef}
         data-disabled={disabled || undefined}
         data-popup-open={open || undefined}
+        style={height ? { height } : undefined}
         onMouseDown={(e) => {
           if (e.target === inputRef.current) return;
           if ((e.target as HTMLElement).closest("button")) return;
@@ -741,7 +782,7 @@ function FieldFrame({
         className={className}
       >
         {children}
-      </div>
+      </motion.div>
     </PopoverPrimitive.Anchor>
   );
 }
@@ -826,12 +867,19 @@ const ComboboxChips = forwardRef<HTMLInputElement, ComboboxChipsProps>(
     const sizeClasses = useSize(size);
     const compact = sizeClasses.variant === "compact";
     const { values, itemsByValue, disabled, remove, inputValue } = useComboboxContext();
+    const rowHeight = useChipRowHeight(compact ? 8 : 12);
 
     return (
       <div className="flex flex-col gap-1">
         <FieldFrame
+          // The frame springs to the chip rows' measured height as they wrap
+          // and unwrap, instead of snapping a row taller or shorter.
+          height={rowHeight.height}
           className={cn(
             fieldVariants({ variant }),
+            // The spring above owns the height; leaving it in transition-all
+            // would have the 80ms CSS ease drag behind every spring frame.
+            "transition-[color,background-color,border-radius,box-shadow,opacity]",
             // Grows with its chips. Rows top-align (`items-start`) so the
             // icon and controls hold the first line while chips wrap; the
             // vertical padding is exactly what centers one 24px (20px
@@ -856,7 +904,22 @@ const ComboboxChips = forwardRef<HTMLInputElement, ComboboxChipsProps>(
               />
             </span>
           )}
-          <div role="toolbar" aria-label="Selected" className="relative flex min-w-0 flex-1 flex-wrap items-center gap-1">
+          <div
+            role="toolbar"
+            aria-label="Selected"
+            ref={rowHeight.ref}
+            className={cn(
+              "relative flex min-w-0 flex-1 flex-wrap items-center gap-1",
+              // A chip leads the field: the row pulls left so the chip sits
+              // an even distance from every edge. The offset lives here, not
+              // on the container's padding — the container's transition-all
+              // would ease a padding change against the chip's spring and
+              // drag the caret with it; the row snaps instead, in the same
+              // frame as the chip. An icon keeps the full inset — it leads,
+              // not the chip.
+              !Icon && values.length > 0 && "-ml-1"
+            )}
+          >
             {/* Chips pop in and out on the fast tier and slide into their
                 new slots; an exiting chip is inert while it fades. popLayout
                 lifts the exiting chip out of the flow at once, so the field
@@ -873,6 +936,9 @@ const ComboboxChips = forwardRef<HTMLInputElement, ComboboxChipsProps>(
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9, pointerEvents: "none", transition: spring.fast.exit }}
                     transition={spring.fast}
+                    // Grow from the left edge, where the typed text just
+                    // was — not from the middle of the chip.
+                    style={{ originX: 0 }}
                     aria-label={label}
                     className={cn(
                       "inline-flex max-w-full shrink-0 items-center gap-0.5 bg-hover pl-2 pr-0.5 text-foreground",
@@ -1069,6 +1135,31 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
       remeasure();
     }, [open, remeasure]);
 
+    // Typing re-filters the rows underneath the overlays, and those frames
+    // must snap, not glide — an overlay springing to wherever its row LANDED
+    // reads as the list smearing on every keystroke. The flag arms when the
+    // VISIBLE row set changes (the values, not the array: multiple-mode
+    // picks rebuild the array without moving a row, and their merge/split
+    // glide must survive) and holds until the rects measured from that row
+    // set land — measurement coalesces on a rAF, one render behind.
+    const rowsSig = useMemo(
+      () => filteredItems.map(itemValue).join(" "),
+      [filteredItems]
+    );
+    const reflowRef = useRef(false);
+    const prevSigRef = useRef(rowsSig);
+    const armedRectsRef = useRef(itemRects);
+    if (prevSigRef.current !== rowsSig) {
+      prevSigRef.current = rowsSig;
+      armedRectsRef.current = itemRects;
+      reflowRef.current = true;
+    }
+    const reflowSnap = reflowRef.current;
+    useEffect(() => {
+      if (reflowRef.current && itemRects !== armedRectsRef.current)
+        reflowRef.current = false;
+    });
+
     // The checked rows' indices shift as the query filters the list.
     const checkedIndices = useMemo(
       () =>
@@ -1156,7 +1247,7 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
             // The list is the overlays' offsetParent, so rows and overlays
             // scroll together inside the ScrollArea. Padding collapses when
             // the list is empty (ComboboxEmpty takes over).
-            "relative flex flex-col gap-0.5 p-1 outline-none data-[empty]:p-0",
+            "relative flex flex-col p-1 outline-none data-[empty]:p-0",
             className
           )}
         >
@@ -1165,7 +1256,11 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
               reopens is one AnimatePresence re-adopts under its old key and
               animates from the row it had before. */}
           {/* Selected background */}
-          {open && multiple && <SelectionBackgrounds blocks={blocks} />}
+          {open && multiple && (
+            <SelectionBackgrounds
+              blocks={reflowSnap ? blocks.map((b) => ({ ...b, instant: true })) : blocks}
+            />
+          )}
           {open && !multiple && (
             <AnimatePresence>
               {checkedRect && (
@@ -1182,20 +1277,23 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
                     opacity: 1,
                   }}
                   exit={{ opacity: 0, transition: spring.moderate.exit }}
-                  transition={{
-                    ...spring.moderate,
-                    opacity: { duration: 0.08 },
-                  }}
+                  transition={
+                    reflowSnap
+                      ? { duration: 0 }
+                      : { ...spring.moderate, opacity: { duration: 0.08 } }
+                  }
                 />
               )}
             </AnimatePresence>
           )}
 
-          {/* Hover background */}
+          {/* Hover background. Snaps (no travel) while a filter reflow is
+              moving the rows underneath. */}
           {open && (
             <FluidHoverHighlight
               hover={hover}
               className={shape.bg}
+              transition={reflowSnap ? false : undefined}
             />
           )}
 

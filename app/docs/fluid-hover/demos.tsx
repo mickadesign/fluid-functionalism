@@ -81,7 +81,7 @@ function List({ rows }: { rows: string[] }) {
   const hover = useFluidHover(containerRef);
 
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-1 p-2" {...hover.handlers}>
+    <div ref={containerRef} className="relative flex flex-col p-2" {...hover.handlers}>
       {/* The highlight reads the hook: it sits on the nearest row and fades
           in fresh on every entry instead of sliding over from its last spot. */}
       <FluidHoverHighlight hover={hover} className="rounded-lg" />
@@ -808,7 +808,7 @@ function CostList({ onMeter }: { onMeter: (m: CostMeter) => void }) {
   return (
     <div
       ref={containerRef}
-      className="relative flex max-h-64 w-full flex-col gap-1 overflow-y-auto p-2"
+      className="relative flex max-h-64 w-full flex-col overflow-y-auto p-2"
       onMouseEnter={() => {
         insideRef.current = true;
         handlers.onMouseEnter();

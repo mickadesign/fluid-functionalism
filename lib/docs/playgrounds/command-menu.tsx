@@ -431,7 +431,15 @@ export function CommandMenuPlayground({ children }: PlaygroundProps) {
 
   return children({
     preview,
-    demoPreview: panel("max-h-[340px]"),
+    // The dialog's own defaults: 540px wide, capped at 440px, top edge held
+    // where a cap-height panel sits centered — the fixed-height box anchors
+    // the panel's top so the field stays put while the rows filter down.
+    demoPreview: (
+      <div className="flex h-[440px] w-full items-start justify-center">
+        {panel("max-h-[440px]")}
+      </div>
+    ),
+    demoMaxWidth: 540,
     controls,
     code,
   });

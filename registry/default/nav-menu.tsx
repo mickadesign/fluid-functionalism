@@ -140,7 +140,7 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
             }
           }}
           className={cn(
-            "relative flex flex-col gap-0.5 w-full select-none",
+            "relative flex flex-col w-full select-none",
             className
           )}
           {...props}

@@ -880,7 +880,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
           setActiveIndex(null);
         }}
         onKeyDown={handleNavKey}
-        className="relative flex flex-col gap-0.5 -mx-3"
+        className="relative flex flex-col -mx-3"
       >
         {/* Other-row input hint — shown only when the Other input is
             focused and still empty, to signal "type here". As soon as

@@ -315,7 +315,14 @@ export function ComboboxPlayground({ children }: PlaygroundProps) {
 
   return children({
     preview,
-    demoPreview: preview,
+    // Top-anchored in a box tall enough for the open list (field + 6px
+    // offset + 300px popup cap), so the field sits high and the rows have
+    // room to drop below instead of flipping above a centered field.
+    demoPreview: (
+      <div className="flex h-[350px] w-full items-start justify-center">
+        {preview}
+      </div>
+    ),
     controls,
     code,
   });

@@ -572,7 +572,7 @@ function ProblemDemo() {
                     the body melts straight into the dialog. */}
                 <div
                   className={cn(
-                    "-mt-px rounded-2xl p-1 flex flex-col gap-0.5",
+                    "-mt-px rounded-2xl p-1 flex flex-col",
                     surfaceClasses(5, 3)
                   )}
                 >

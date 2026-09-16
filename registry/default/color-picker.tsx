@@ -901,7 +901,7 @@ function FormatDropdown({
                   setActiveIndex(null);
                 }}
                 className={cn(
-                  `relative flex flex-col gap-0.5 min-w-[var(--anchor-width)] ${menuShape.container} p-1 select-none outline-none`
+                  `relative flex flex-col min-w-[var(--anchor-width)] ${menuShape.container} p-1 select-none outline-none`
                 )}
               >
                 {/* Selected background */}

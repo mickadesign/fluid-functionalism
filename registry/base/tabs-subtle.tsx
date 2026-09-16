@@ -164,7 +164,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
                 // parents size against the margin box (8px narrower than the
                 // border box), so a plain max-w-full would clamp the list 8px
                 // too small and clip the first/last tab's ring.
-                "relative flex items-center gap-0.5 select-none overflow-x-auto max-w-[calc(100%_+_8px)] scrollbar-hide -mx-1 px-1 -my-1 py-1",
+                "relative flex items-center select-none overflow-x-auto max-w-[calc(100%_+_8px)] scrollbar-hide -mx-1 px-1 -my-1 py-1",
                 className
               )}
               {...props}

@@ -965,7 +965,7 @@ function IconRailVsPeekPreview({ paused }: { paused: boolean }) {
           <AnimatePresence>
             {engaged && (
               <motion.div
-                className={`absolute inset-y-2 left-2 z-10 flex w-44 flex-col gap-0.5 overflow-hidden p-2 ${shape.container} ${surfaceClasses(floatingLevel, 3)}`}
+                className={`absolute inset-y-2 left-2 z-10 flex w-44 flex-col overflow-hidden p-2 ${shape.container} ${surfaceClasses(floatingLevel, 3)}`}
                 initial={{ x: "-108%" }}
                 animate={{ x: 0, transition: spring.moderate }}
                 exit={{ x: "-108%", transition: spring.moderate.exit }}
@@ -1686,7 +1686,7 @@ function HeaderFooterPreview({ stack }: { stack: "vertical" | "horizontal" }) {
             {/* Search and the action rows are ONE block: the header's gap-2
                 separates it from the brand row, while inside it the search
                 field reads as the list's first row (menu row rhythm). */}
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col">
               <DemoSearch />
               <SidebarMenu aria-label="Header actions">
                 <SidebarMenuItem>

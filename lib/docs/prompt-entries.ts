@@ -39,7 +39,7 @@ function List({ rows }: { rows: string[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hover = useFluidHover(containerRef); // options: { axis: "y" | "x" | "xy" }
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-1 p-2" {...hover.handlers}>
+    <div ref={containerRef} className="relative flex flex-col p-2" {...hover.handlers}>
       <FluidHoverHighlight hover={hover} className="rounded-lg" />
       {rows.map((label, i) => <Row key={label} index={i} registerItem={hover.registerItem}>{label}</Row>)}
     </div>

@@ -686,7 +686,7 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
     }
     lines.push(`      {/* search + action rows are ONE block: the field reads as the`);
     lines.push(`          list's first row, on the menu rows' own tight rhythm */}`);
-    lines.push(`      <div className="flex flex-col gap-0.5">`);
+    lines.push(`      <div className="flex flex-col">`);
     lines.push(`        <div className="group/search relative">`);
     lines.push(`          <SearchIcon size={16} strokeWidth={1.5}`);
     lines.push(`            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />`);
@@ -1378,7 +1378,7 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
               // Search and the action rows are ONE block: the header's gap-2
               // separates it from the brand row, while inside it the search
               // field reads as the list's first row (menu row rhythm).
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col">
                 <SidebarSearchField />
                 {headerActionSet.length > 0 && (
                   <SidebarMenu aria-label="Actions">
