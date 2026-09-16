@@ -64,6 +64,12 @@ export function buildInstallPrompt({ slug, installSlug, base }: BuildInstallProm
     for (const prop of details.props) lines.push(`- ${prop}`);
   }
 
+  if (details?.craft?.length) {
+    lines.push("");
+    lines.push("Craft (built-in behaviors — compose around them, don't re-implement or fight them):");
+    for (const point of details.craft) lines.push(`- ${point}`);
+  }
+
   lines.push("");
   const about: string[] = [];
   if (description) about.push(stripTrailingPeriod(description) + ".");

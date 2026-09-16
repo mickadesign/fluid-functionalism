@@ -64,11 +64,10 @@ import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 //   tween finishes).
 //
 // - Radix Select is modal-ish: it scroll-locks the page and disables outside
-//   pointer events while open. The Viewport's injected
-//   stylesheet hides its own scrollbar, which would leave long lists with no
-//   scroll affordance at all (the scroll buttons aren't rendered either) —
-//   overridden with `![scrollbar-width:thin]` on the viewport, which also
-//   makes Chromium/Safari ignore the ::-webkit-scrollbar{display:none} rule.
+//   pointer events while open. The Viewport's injected stylesheet hides its
+//   own scrollbar and the scroll buttons are never rendered, so the rows sit
+//   inside a ScrollArea instead — its thumb is the scroll affordance for long
+//   lists.
 // ---------------------------------------------------------------------------
 
 // How long a selection holds the popup open before closing, so the

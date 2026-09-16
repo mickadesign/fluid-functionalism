@@ -5,10 +5,9 @@
 // and must produce zero diagnostics. A seeded fuzz sweep parses a wide
 // sample cheaply, and payload purity + dep existence match the route tests.
 import { describe, it, expect } from "vitest";
-import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import path from "node:path";
 import ts from "typescript";
+import { createPresetTypechecker } from "./helpers/preset-typecheck.mjs";
 import {
   encodeInputMessagePreset,
   decodeInputMessagePreset,
@@ -21,10 +20,6 @@ import {
   generateInputMessagePresetFiles,
   inputMessagePresetRegistryDeps,
 } from "../lib/preset/input-message-install.ts";
-
-const root = path.dirname(
-  fileURLToPath(new URL("../package.json", import.meta.url))
-);
 
 // Deterministic PRNG (mulberry32) — seeded, so failures reproduce.
 function rng(seed) {
@@ -134,63 +129,19 @@ describe("input-message preset codec", () => {
 
 // ── Install generator ───────────────────────────────────────────────────────
 
+const typecheck = createPresetTypechecker({
+  // The generated page imports the composer by alias, so map it into the
+  // virtual dir. The shipped queued-stack block installs to
+  // components/queued-stack.tsx; in-repo its source lives under
+  // registry/blocks, so map the install path onto it.
+  paths: {
+    "@/components/chat-composer": ["./__preset__/components/chat-composer.tsx"],
+    "@/components/queued-stack": ["./registry/blocks/queued-stack.tsx"],
+  },
+});
+
 function typecheckPreset(preset) {
-  const files = generateInputMessagePresetFiles(preset);
-  const virtual = new Map(
-    files.map((f) => [path.join(root, "__preset__", f.target), f.content])
-  );
-  const configFile = ts.readConfigFile(
-    path.join(root, "tsconfig.json"),
-    ts.sys.readFile
-  );
-  const parsed = ts.parseJsonConfigFileContent(configFile.config, ts.sys, root);
-  const options = {
-    ...parsed.options,
-    noEmit: true,
-    skipLibCheck: true,
-    paths: {
-      ...parsed.options.paths,
-      // The generated page imports the composer by alias — map it into the
-      // virtual dir. The shipped queued-stack block installs to
-      // components/queued-stack.tsx; in-repo its source lives under
-      // registry/blocks, so map the install path onto it.
-      "@/components/chat-composer": [
-        "./__preset__/components/chat-composer.tsx",
-      ],
-      "@/components/queued-stack": ["./registry/blocks/queued-stack.tsx"],
-    },
-    baseUrl: parsed.options.baseUrl ?? root,
-  };
-  const host = ts.createCompilerHost(options);
-  const origReadFile = host.readFile.bind(host);
-  const origFileExists = host.fileExists.bind(host);
-  const origDirExists = (host.directoryExists ?? ts.sys.directoryExists).bind(
-    host.directoryExists ? host : ts.sys
-  );
-  const virtualDirs = new Set(
-    [...virtual.keys()].flatMap((f) => {
-      const dirs = [];
-      let d = path.dirname(f);
-      while (d.startsWith(root) && d !== root) {
-        dirs.push(d);
-        d = path.dirname(d);
-      }
-      return dirs;
-    })
-  );
-  host.readFile = (f) => virtual.get(path.normalize(f)) ?? origReadFile(f);
-  host.fileExists = (f) => virtual.has(path.normalize(f)) || origFileExists(f);
-  host.directoryExists = (d) =>
-    virtualDirs.has(path.normalize(d)) || origDirExists(d);
-  const program = ts.createProgram([...virtual.keys()], options, host);
-  const diagnostics = [
-    ...program.getSyntacticDiagnostics(),
-    ...program.getSemanticDiagnostics(),
-  ].filter((d) => d.file && virtual.has(path.normalize(d.file.fileName)));
-  return diagnostics.map(
-    (d) =>
-      `${path.basename(d.file.fileName)}:${d.file.getLineAndCharacterOfPosition(d.start).line + 1} ${ts.flattenDiagnosticMessageText(d.messageText, " ")}`
-  );
+  return typecheck(generateInputMessagePresetFiles(preset));
 }
 
 // Curated matrix: every structural branch flips at least once — queue mode,

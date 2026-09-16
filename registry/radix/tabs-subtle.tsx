@@ -391,7 +391,8 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
                 animate={{
                   ...(labelWidth != null ? { width: labelWidth } : null),
                   opacity: 1,
-                  // Matches the ladder's icon-to-label gap (gap-2 / gap-1.5).
+                  // 8px matches the ladder's icon-to-label gap (gap-2); the
+                  // compact 6px is its own value, 2px wider than gap-1.
                   marginLeft: sizeClasses.variant === "compact" ? 6 : 8,
                 }}
                 exit={{ width: 0, opacity: 0, marginLeft: 0 }}

@@ -4,65 +4,22 @@
 // diagnostics. A curated matrix covers the structural branches; a seeded
 // fuzz sweep parses a wide sample for syntax errors cheaply.
 import { describe, it, expect } from "vitest";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
 import ts from "typescript";
+import { createPresetTypechecker } from "./helpers/preset-typecheck.mjs";
 import { generateSidebarPresetFiles } from "../lib/preset/sidebar-install.ts";
 import {
   DEFAULT_PRESET,
   SIDEBAR_PRESET_FIELDS,
 } from "../lib/preset/sidebar-options.ts";
 
-const root = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
+const typecheck = createPresetTypechecker({
+  // The generated component imports its sibling by alias; map the
+  // alias into the virtual dir.
+  paths: { "@/components/sidebar-preset/*": ["./__preset__/components/sidebar-preset/*"] },
+});
 
 function typecheckPreset(preset) {
-  const files = generateSidebarPresetFiles(preset);
-  const virtual = new Map(
-    files.map((f) => [path.join(root, "__preset__", f.target), f.content])
-  );
-  // The generated component imports its sibling by alias — map the alias
-  // into the virtual dir via extra paths below.
-  const configFile = ts.readConfigFile(path.join(root, "tsconfig.json"), ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(configFile.config, ts.sys, root);
-  const options = {
-    ...parsed.options,
-    noEmit: true,
-    skipLibCheck: true,
-    paths: {
-      ...parsed.options.paths,
-      "@/components/sidebar-preset/*": ["./__preset__/components/sidebar-preset/*"],
-    },
-    baseUrl: parsed.options.baseUrl ?? root,
-  };
-  const host = ts.createCompilerHost(options);
-  const origReadFile = host.readFile.bind(host);
-  const origFileExists = host.fileExists.bind(host);
-  const origDirExists = (host.directoryExists ?? ts.sys.directoryExists).bind(
-    host.directoryExists ? host : ts.sys
-  );
-  const virtualDirs = new Set(
-    [...virtual.keys()].flatMap((f) => {
-      const dirs = [];
-      let d = path.dirname(f);
-      while (d.startsWith(root) && d !== root) {
-        dirs.push(d);
-        d = path.dirname(d);
-      }
-      return dirs;
-    })
-  );
-  host.readFile = (f) => virtual.get(path.normalize(f)) ?? origReadFile(f);
-  host.fileExists = (f) => virtual.has(path.normalize(f)) || origFileExists(f);
-  host.directoryExists = (d) =>
-    virtualDirs.has(path.normalize(d)) || origDirExists(d);
-  const program = ts.createProgram([...virtual.keys()], options, host);
-  const diagnostics = [
-    ...program.getSyntacticDiagnostics(),
-    ...program.getSemanticDiagnostics(),
-  ].filter((d) => d.file && virtual.has(path.normalize(d.file.fileName)));
-  return diagnostics.map((d) =>
-    `${path.basename(d.file.fileName)}:${d.file.getLineAndCharacterOfPosition(d.start).line + 1} ${ts.flattenDiagnosticMessageText(d.messageText, " ")}`
-  );
+  return typecheck(generateSidebarPresetFiles(preset));
 }
 
 // Curated matrix: every structural branch flips at least once.
