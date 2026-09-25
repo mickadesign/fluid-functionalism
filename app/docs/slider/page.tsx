@@ -422,8 +422,8 @@ export default function SliderDoc() {
         <p className="text-body text-muted-foreground mb-3">
           One component: the default step renders the pip/scrubber design, the
           compact step the dense one. Compact-only props (an array value,
-          steps, showSteps, showValue, valuePosition, track styling) always
-          render the compact design so no capability is lost.
+          steps, showSteps when true, showValue, valuePosition, track styling)
+          always render the compact design so no capability is lost.
         </p>
         <PropsTable props={sliderProps} />
       </DocSection>

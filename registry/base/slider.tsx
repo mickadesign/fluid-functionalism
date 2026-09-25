@@ -101,6 +101,51 @@ function nearestStepIndex(v: number, steps: number[]): number {
   return idx;
 }
 
+/** A zero, negative or non-finite step would divide by zero; fall back to 1. */
+function safeStep(step: number): number {
+  return Number.isFinite(step) && step > 0 ? step : 1;
+}
+
+function decimalCount(n: number): number {
+  return (String(n).split(".")[1] ?? "").length;
+}
+
+/** Strips float noise (0.1 * 3 = 0.30000000000000004) back to the precision
+ *  of `min` and `step`, the way the keyboard path already rounds. */
+function roundToGrid(v: number, min: number, step: number): number {
+  const factor = 10 ** Math.max(decimalCount(min), decimalCount(step));
+  return Math.round(v * factor) / factor;
+}
+
+/** Snaps a raw value to the step grid (or the discrete list) inside [min, max]. */
+function snapValue(
+  raw: number,
+  min: number,
+  max: number,
+  step: number,
+  stepValues: number[] | null = null
+): number {
+  if (stepValues) return stepValues[nearestStepIndex(raw, stepValues)];
+  const v = Math.max(min, Math.min(max, raw));
+  // Nearest of the grid value below and the one above, where "above" is max
+  // itself when the range isn't a whole number of steps.
+  const below = roundToGrid(Math.floor((v - min) / step) * step + min, min, step);
+  const above = Math.min(max, roundToGrid(below + step, min, step));
+  return above - v <= v - below ? above : below;
+}
+
+/** Every reachable value on a uniform grid: min, each step up to max, and max
+ *  itself when the range isn't a whole number of steps (the snap clamps there). */
+function gridValues(min: number, max: number, step: number): number[] {
+  if (max <= min) return [min];
+  const count = Math.floor((max - min) / step + 1e-9);
+  const values = Array.from({ length: count + 1 }, (_, i) =>
+    roundToGrid(min + i * step, min, step)
+  );
+  if (values[values.length - 1] < max) values.push(max);
+  return values;
+}
+
 function pixelToValue(
   px: number,
   min: number,
@@ -112,9 +157,17 @@ function pixelToValue(
   const usable = trackWidth - THUMB_SIZE;
   if (usable <= 0) return min;
   const raw = (px / usable) * (max - min) + min;
-  if (stepValues) return stepValues[nearestStepIndex(raw, stepValues)];
-  const snapped = Math.round((raw - min) / step) * step + min;
-  return Math.max(min, Math.min(max, snapped));
+  return snapValue(raw, min, max, step, stepValues);
+}
+
+/** Which range thumb a press at `x` grabs: the nearer one. Stacked thumbs
+ *  (equal values) tie, so the press direction decides — otherwise the low
+ *  thumb always wins and, clamped under the high one, can't move right. */
+function pickThumb(x: number, x0: number, x1: number): 0 | 1 {
+  const d0 = Math.abs(x - x0);
+  const d1 = Math.abs(x - x1);
+  if (Math.abs(d0 - d1) < 0.5) return x > x0 ? 1 : 0;
+  return d0 < d1 ? 0 : 1;
 }
 
 function toRadixValue(value: SliderValue): number[] {
@@ -171,11 +224,7 @@ function ValueDisplay({
     (index: number) => {
       const parsed = parseFloat(inputValue);
       if (!isNaN(parsed)) {
-        const clamped = Math.max(min, Math.min(max, parsed));
-        const snapped = stepValues
-          ? stepValues[nearestStepIndex(clamped, stepValues)]
-          : Math.round((clamped - min) / step) * step + min;
-        onCommitEdit(index, snapped);
+        onCommitEdit(index, snapValue(parsed, min, max, step, stepValues));
       } else {
         onCancelEdit();
       }
@@ -324,7 +373,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
       onChange,
       min: minProp = 0,
       max: maxProp = 100,
-      step = 1,
+      step: stepProp = 1,
       steps,
       showSteps = false,
       showValue = true,
@@ -347,6 +396,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     const isRange = Array.isArray(value);
     const values = toRadixValue(value);
     const shape = useShape();
+    const step = safeStep(stepProp);
 
     // Non-uniform step mode: sorted, deduped list of allowed values. Keyed on
     // the joined string so inline array literals don't recompute every render.
@@ -441,21 +491,14 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
         const rawPx = cursorX - THUMB_SIZE / 2;
         const clampedPx = Math.max(0, Math.min(usable, rawPx));
         const rawVal = usable > 0 ? (clampedPx / usable) * (max - min) + min : min;
-        const snappedVal = stepValues
-          ? stepValues[nearestStepIndex(rawVal, stepValues)]
-          : Math.max(
-              min,
-              Math.min(max, Math.round((rawVal - min) / step) * step + min)
-            );
+        const snappedVal = snapValue(rawVal, min, max, step, stepValues);
         const snappedPercent = max === min ? 0 : (snappedVal - min) / (max - min);
         const snappedX = THUMB_SIZE / 2 + snappedPercent * usable;
 
         // Find nearest thumb center
         const c0 = motionX0.get() + THUMB_SIZE / 2;
         const c1 = motionX1.get() + THUMB_SIZE / 2;
-        const nearestIdx = isRange
-          ? (Math.abs(snappedX - c0) <= Math.abs(snappedX - c1) ? 0 : 1)
-          : 0;
+        const nearestIdx = isRange ? pickThumb(snappedX, c0, c1) : 0;
         const nearest = nearestIdx === 0 ? c0 : c1;
 
         // Extend hover bar to track edges at extremes so there's no gap
@@ -512,6 +555,8 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     // Depend on a primitive key rather than the `values` array — its identity
     // changes every render (toRadixValue allocates), which would restart the
     // animation on unrelated re-renders (hover/tooltip state churn).
+    // `isPressed` re-runs it when a drag ends, so the thumbs always settle on
+    // the committed value, even if the parent adjusted what the drag emitted.
     const valuesKey = values.join(",");
     useEffect(() => {
       if (!initialSyncDone.current) return;
@@ -525,19 +570,18 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
         const px1 = valueToPixel(v[1], min, max, tw);
         animate(motionX1, px1, spring.moderate);
       }
-    }, [valuesKey, min, max, isRange, motionX0, motionX1]);
+    }, [valuesKey, min, max, isRange, isPressed, motionX0, motionX1]);
 
     // --- Range crossing prevention ---
+    // In value space, so a thumb pushed into the other stops on its value (on
+    // a step), never on an unsnapped pixel between dots.
     const clampForRange = useCallback(
-      (px: number, thumbIndex: number): number => {
-        if (!isRange) return px;
-        if (thumbIndex === 0) {
-          return Math.min(px, motionX1.get() - THUMB_SIZE * 0.5);
-        } else {
-          return Math.max(px, motionX0.get() + THUMB_SIZE * 0.5);
-        }
+      (v: number, thumbIndex: number): number => {
+        if (!isRange) return v;
+        const [v0, v1] = valuesRef.current;
+        return thumbIndex === 0 ? Math.min(v, v1) : Math.max(v, v0);
       },
-      [isRange, motionX0, motionX1]
+      [isRange]
     );
 
     // --- Emit value change ---
@@ -554,6 +598,25 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
       [isRange, values, onChange]
     );
 
+    // --- Pointer → snapped value ---
+    // Normalizes the cursor to layout space so it matches motionX (rendered
+    // as a CSS-pixel transform), even under an ancestor CSS scale (/demo).
+    const valueAtClientX = useCallback(
+      (clientX: number) => {
+        const trackEl = trackRef.current;
+        if (!trackEl) return null;
+        const trackRect = trackEl.getBoundingClientRect();
+        const layoutWidth = trackEl.offsetWidth;
+        if (layoutWidth <= 0 || trackRect.width <= 0) return null;
+        const scale = trackRect.width / layoutWidth;
+        const localX = (clientX - trackRect.left) / scale - THUMB_SIZE / 2;
+        const px = Math.max(0, Math.min(layoutWidth - THUMB_SIZE, localX));
+        const value = pixelToValue(px, min, max, step, layoutWidth, stepValues);
+        return { px, value, layoutWidth };
+      },
+      [min, max, step, stepValues]
+    );
+
     // --- Pointer handlers on track ---
     const handlePointerDown = useCallback(
       (e: React.PointerEvent<HTMLDivElement>) => {
@@ -562,133 +625,61 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
         e.preventDefault();
         e.stopPropagation(); // Prevent Radix from also handling the drag
 
-        const trackEl = trackRef.current;
-        if (!trackEl) return;
-        const trackRect = trackEl.getBoundingClientRect();
-        const layoutWidth = trackEl.offsetWidth;
-        if (layoutWidth <= 0 || trackRect.width <= 0) return;
-        // Normalize cursor to layout space so it matches motionX (which is
-        // rendered as a CSS-pixel transform), even under ancestor CSS scale.
-        const scale = trackRect.width / layoutWidth;
-        const localX = (e.clientX - trackRect.left) / scale - THUMB_SIZE / 2;
-        const clamped = Math.max(
-          0,
-          Math.min(layoutWidth - THUMB_SIZE, localX)
-        );
+        const hit = valueAtClientX(e.clientX);
+        if (!hit) return;
 
         // Determine which thumb to drag
-        if (isRange) {
-          const dist0 = Math.abs(clamped - motionX0.get());
-          const dist1 = Math.abs(clamped - motionX1.get());
-          activeDragThumb.current = dist0 <= dist1 ? 0 : 1;
-        } else {
-          activeDragThumb.current = 0;
-        }
+        activeDragThumb.current = isRange
+          ? pickThumb(hit.px, motionX0.get(), motionX1.get())
+          : 0;
 
         dragging.current = true;
         setIsPressed(true);
 
         const motionX =
           activeDragThumb.current === 0 ? motionX0 : motionX1;
+        const finalValue = clampForRange(hit.value, activeDragThumb.current);
 
-        // Snap to step grid immediately
-        const snappedValue = pixelToValue(
-          clamped,
-          min,
-          max,
-          step,
-          layoutWidth,
-          stepValues
-        );
-        const snappedPx = valueToPixel(snappedValue, min, max, layoutWidth);
-
-        // Clamp for range crossing
-        const finalPx = clampForRange(
-          snappedPx,
-          activeDragThumb.current
-        );
-        // Spring-animate thumb to clicked position
-        animate(motionX, finalPx, spring.moderate);
-
-        // Update value
-        const finalValue = pixelToValue(
-          finalPx,
-          min,
-          max,
-          step,
-          layoutWidth,
-          stepValues
+        // Spring-animate thumb to the clicked step
+        animate(
+          motionX,
+          valueToPixel(finalValue, min, max, hit.layoutWidth),
+          spring.moderate
         );
         emitChange(activeDragThumb.current, finalValue);
 
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       },
-      [disabled, isRange, min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
+      [disabled, isRange, min, max, motionX0, motionX1, valueAtClientX, clampForRange, emitChange]
     );
 
     const handlePointerMove = useCallback(
       (e: React.PointerEvent<HTMLDivElement>) => {
         if (!dragging.current) return;
         e.stopPropagation();
-        const trackEl = trackRef.current;
-        if (!trackEl) return;
-        const trackRect = trackEl.getBoundingClientRect();
-        const layoutWidth = trackEl.offsetWidth;
-        if (layoutWidth <= 0 || trackRect.width <= 0) return;
-        const scale = trackRect.width / layoutWidth;
-        const localX = (e.clientX - trackRect.left) / scale - THUMB_SIZE / 2;
-        const clamped = Math.max(
-          0,
-          Math.min(layoutWidth - THUMB_SIZE, localX)
-        );
+        const hit = valueAtClientX(e.clientX);
+        if (!hit) return;
 
         const motionX =
           activeDragThumb.current === 0 ? motionX0 : motionX1;
+        const finalValue = clampForRange(hit.value, activeDragThumb.current);
 
-        // Snap to step grid during drag
-        const snappedValue = pixelToValue(
-          clamped,
-          min,
-          max,
-          step,
-          layoutWidth,
-          stepValues
-        );
-        const snappedPx = valueToPixel(snappedValue, min, max, layoutWidth);
-        const finalPx = clampForRange(
-          snappedPx,
-          activeDragThumb.current
-        );
-        motionX.set(finalPx);
-
-        const finalValue = pixelToValue(
-          finalPx,
-          min,
-          max,
-          step,
-          layoutWidth,
-          stepValues
-        );
+        // jump(), not set(): set() leaves the press spring running, and its
+        // next frame drags the thumb back to where the press landed.
+        motionX.jump(valueToPixel(finalValue, min, max, hit.layoutWidth));
         emitChange(activeDragThumb.current, finalValue);
       },
-      [min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
+      [min, max, motionX0, motionX1, valueAtClientX, clampForRange, emitChange]
     );
 
+    // The thumb already sits on the emitted step; the value sync effect
+    // (keyed on isPressed) settles it on the committed value.
     const handlePointerUp = useCallback(() => {
       if (!dragging.current) return;
       dragging.current = false;
       setIsPressed(false);
       setHoverPreview(null);
-
-      // Spring settle to final quantized position
-      const tw = trackWidthRef.current;
-      const motionX =
-        activeDragThumb.current === 0 ? motionX0 : motionX1;
-      const currentPx = motionX.get();
-      const snapped = pixelToValue(currentPx, min, max, step, tw, stepValues);
-      const snappedPx = valueToPixel(snapped, min, max, tw);
-      animate(motionX, snappedPx, spring.moderate);
-    }, [min, max, step, stepValues, motionX0, motionX1]);
+    }, []);
 
     // --- Radix keyboard handler ---
     // In steps mode the primitive runs on indices (0..len-1, step 1) so arrow
@@ -715,10 +706,10 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
 
     const handleCommitEdit = useCallback(
       (index: number, v: number) => {
-        emitChange(index, v);
+        emitChange(index, clampForRange(v, index));
         setEditingIndex(null);
       },
-      [emitChange]
+      [emitChange, clampForRange]
     );
 
     const handleCancelEdit = useCallback(() => {
@@ -729,19 +720,10 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     const stepDots = useMemo(
       () =>
         showSteps
-          ? stepValues
-            ? stepValues.map((v) => ({
-                value: v,
-                percent: max === min ? 0 : (v - min) / (max - min),
-              }))
-            : Array.from(
-                { length: Math.round((max - min) / step) + 1 },
-                (_, i) => {
-                  const v = min + i * step;
-                  const percent = (v - min) / (max - min);
-                  return { value: v, percent };
-                }
-              )
+          ? (stepValues ?? gridValues(min, max, step)).map((v) => ({
+              value: v,
+              percent: max === min ? 0 : (v - min) / (max - min),
+            }))
           : [],
       [showSteps, min, max, step, stepValues]
     );
@@ -1113,7 +1095,7 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
       onChange,
       min = 0,
       max = 100,
-      step = 1,
+      step: stepProp = 1,
       variant = "pips",
       label,
       formatValue = String,
@@ -1159,14 +1141,8 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
       [ref]
     );
 
-    const pipSteps = useMemo(
-      () => Array.from(
-        { length: Math.round((max - min) / step) + 1 },
-        (_, i) => min + i * step
-      ),
-      [min, max, step]
-    );
-    const pipCount = pipSteps.length;
+    const step = safeStep(stepProp);
+    const pipSteps = useMemo(() => gridValues(min, max, step), [min, max, step]);
 
     // Fill motion value
     const fillPercent = useMotionValue(
@@ -1221,15 +1197,8 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         const clamped = Math.max(0, Math.min(w, layoutX));
 
         // Snap to nearest step value
-        let snappedVal: number;
-        if (variant === "pips") {
-          if (pipCount <= 1) return;
-          const index = Math.max(0, Math.min(pipCount - 1, Math.round((clamped / w) * (pipCount - 1))));
-          snappedVal = pipSteps[index];
-        } else {
-          const raw = min + (clamped / w) * (max - min);
-          snappedVal = Math.max(min, Math.min(max, Math.round((raw - min) / step) * step + min));
-        }
+        if (variant === "pips" && pipSteps.length <= 1) return;
+        const snappedVal = snapValue(min + (clamped / w) * (max - min), min, max, step);
         const snappedPercent = max === min ? 0 : (snappedVal - min) / (max - min);
         const snappedX = snappedPercent * w;
 
@@ -1249,7 +1218,7 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         const width = Math.abs(edgeX - handleX);
         setHoverPreview({ left, width, snappedValue: snappedVal, cursorX: snappedX });
       },
-      [variant, pipSteps, pipCount, min, max, step, fillPercent, zeroOffset]
+      [variant, pipSteps, min, max, step, fillPercent, zeroOffset]
     );
 
     // Sync fill on programmatic value change
@@ -1266,20 +1235,10 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         if (!rect) return min;
         const x = clientX - rect.left;
         const clamped = Math.max(0, Math.min(rect.width, x));
-        if (variant === "pips") {
-          if (pipCount <= 1) return min;
-          const index = Math.max(
-            0,
-            Math.min(pipCount - 1, Math.round((clamped / rect.width) * (pipCount - 1)))
-          );
-          return pipSteps[index];
-        } else {
-          const raw = min + (clamped / rect.width) * (max - min);
-          const snapped = Math.round((raw - min) / step) * step + min;
-          return Math.max(min, Math.min(max, snapped));
-        }
+        if (variant === "pips" && pipSteps.length <= 1) return min;
+        return snapValue(min + (clamped / rect.width) * (max - min), min, max, step);
       },
-      [variant, pipSteps, pipCount, min, max, step]
+      [variant, pipSteps, min, max, step]
     );
 
     const handlePointerDown = useCallback(
@@ -1480,16 +1439,24 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         {/* Pips: dots layer — z-[1] */}
         {variant === "pips" && (
           <motion.div
-            className="absolute inset-0 flex justify-between items-center px-3 pointer-events-none z-[1]"
+            className="absolute inset-0 pointer-events-none z-[1]"
             style={{ WebkitMaskImage: pipsMaskStyle, maskImage: pipsMaskStyle }}
           >
             {pipSteps.map((pipValue) => {
               const isActivePip = pipValue === value;
+              const percent = max === min ? 0 : (pipValue - min) / (max - min);
+              // Placed by value inside the 12px side padding (the spacing a
+              // justify-between row gives an even grid), so a shorter last
+              // step up to an off-grid max stays under the fill edge.
               return (
                 <div
                   key={pipValue}
-                  className="relative flex items-center justify-center"
-                  style={{ width: PIP_SIZE, height: PIP_SIZE }}
+                  className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center"
+                  style={{
+                    left: `calc(12px + ${percent} * (100% - ${24 + PIP_SIZE}px))`,
+                    width: PIP_SIZE,
+                    height: PIP_SIZE,
+                  }}
                 >
                   <motion.div
                     className="rounded-full"
@@ -1687,7 +1654,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     const needsCompactEngine =
       Array.isArray(props.value) ||
       props.steps !== undefined ||
-      props.showSteps !== undefined ||
+      props.showSteps === true ||
       props.showValue !== undefined ||
       props.valuePosition !== undefined ||
       props.trackClassName !== undefined ||
@@ -1712,7 +1679,8 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       formatValue,
       disabled,
       // Compact-engine-only fields — all undefined on this path (any defined
-      // one would have routed to the compact engine above).
+      // one would have routed to the compact engine above), except
+      // showSteps, which may be false (no dots asked for, so no switch).
       steps: _steps,
       showSteps: _showSteps,
       showValue: _showValue,
