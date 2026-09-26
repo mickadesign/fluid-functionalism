@@ -26,8 +26,9 @@ interface SwitchProps extends HTMLAttributes<HTMLDivElement> {
   size?: SizeVariant;
 }
 
-// Track/thumb geometry per ladder step. The hover pill-extend and press
-// squash scale down with the thumb so the compact switch keeps the same feel.
+// Track/thumb geometry per ladder step. The hover pill-extend is the same 2px
+// at both steps; only the press extend/squash scales down with the thumb, so the
+// compact switch keeps the same feel.
 const METRICS = {
   default: {
     trackWidth: 34,

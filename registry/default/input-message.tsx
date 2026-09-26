@@ -20,7 +20,7 @@ import { AnimatePresence, motion, Reorder, useReducedMotion } from "framer-motio
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { spring } from "@/lib/springs";
-import { useShape } from "@/lib/shape-context";
+import { nestedRadius, useShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useIcon } from "@/lib/icon-context";
 import { surfaceClasses } from "@/lib/surface-classes";
@@ -207,6 +207,10 @@ interface FilePreviewTileProps {
 
 function FilePreviewTile({ file, onRemove, size }: FilePreviewTileProps) {
   const XIcon = useIcon("x");
+  const shape = useShape();
+  // The tile sits 8px inside the composer's container edge. Derive its curve
+  // from that actual inset instead of reusing the popup-specific 4px pair.
+  const radius = nestedRadius(shape.containerRadius, 8);
 
   return (
     <motion.div
@@ -223,7 +227,7 @@ function FilePreviewTile({ file, onRemove, size }: FilePreviewTileProps) {
       // a preview tile doesn't look like it'll land in the textarea.
       className="relative shrink-0 cursor-default group/tile"
     >
-      <FileThumbnail file={file} size={size} />
+      <FileThumbnail file={file} size={size} radius={radius} />
       <Tooltip content="Remove" side="top">
         <button
           type="button"

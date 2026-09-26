@@ -25,6 +25,13 @@ interface BuildInstallPromptOptions {
   base: Base;
 }
 
+function appendCraft(lines: string[], details: PromptEntry | undefined): void {
+  if (!details?.craft?.length) return;
+  lines.push("");
+  lines.push("Craft (built-in behaviors — compose around them, don't re-implement or fight them):");
+  for (const point of details.craft) lines.push(`- ${point}`);
+}
+
 /** Builds the text behind the "Copy prompt" button on every doc page: a
  *  self-contained brief a visitor pastes into an AI coding agent. It carries
  *  the install command, a usage snippet, the main props, a one-line
@@ -63,6 +70,8 @@ export function buildInstallPrompt({ slug, installSlug, base }: BuildInstallProm
     lines.push("Props:");
     for (const prop of details.props) lines.push(`- ${prop}`);
   }
+
+  appendCraft(lines, details);
 
   lines.push("");
   const about: string[] = [];
@@ -137,6 +146,8 @@ export function buildPresetPrompt({ def, code, base }: BuildPresetPromptOptions)
     lines.push(`Props of the underlying ${name}:`);
     for (const prop of details.props) lines.push(`- ${prop}`);
   }
+
+  appendCraft(lines, details);
 
   lines.push("");
   const about: string[] = [];

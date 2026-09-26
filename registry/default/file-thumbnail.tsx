@@ -40,17 +40,20 @@ async function renderPdfFirstPage(file: File, targetWidth: number): Promise<stri
 // ─── File thumbnail ───────────────────────────────────────────────────────
 // Read-only square preview of a File. Images use object-cover via
 // `URL.createObjectURL`; PDFs render the first page via pdfjs; while either is
-// resolving a spinner is shown. Self-contained (border + surface + sizing) so
+// resolving a spinner is shown. Self-contained (outline + surface + sizing) so
 // it can be reused both inside the composer's preview row and to render
 // already-sent attachments in a chat transcript.
 interface FileThumbnailProps {
   file: File;
   /** Side length of the square thumbnail in pixels. */
   size: number;
+  /** Explicit corner radius for a known nested inset. Defaults to the active
+   *  shape's regular image/control radius. */
+  radius?: number;
   className?: string;
 }
 
-function FileThumbnail({ file, size, className }: FileThumbnailProps) {
+function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
   const shape = useShape();
   const isImage = file.type.startsWith("image/");
   const isPdf = file.type === "application/pdf";
@@ -109,11 +112,19 @@ function FileThumbnail({ file, size, className }: FileThumbnailProps) {
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden bg-accent border border-border",
+        // Paint the hairline over the preview: unlike a border, it costs no
+        // space, and pure neutral ink stays clean over every surface tint.
+        "relative shrink-0 overflow-hidden bg-accent outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
         shape.bg,
         className
       )}
-      style={{ width: size, height: size }}
+      style={{
+        width: size,
+        height: size,
+        // Keep className radius overrides working at the default. Inline
+        // geometry is reserved for an explicit nested-radius calculation.
+        ...(radius == null ? {} : { borderRadius: radius }),
+      }}
     >
       {previewUrl ? (
         // eslint-disable-next-line @next/next/no-img-element

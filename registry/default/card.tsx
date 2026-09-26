@@ -753,7 +753,11 @@ function CardMedia({ logo, logoAlt, icon: Icon, size = 22, className }: CardMedi
               alt={logoAlt ?? ""}
               width={size}
               height={size}
-              className={cn("object-contain", shape.bg)}
+              className={cn(
+                // Inset image edge: no layout change, theme-neutral ink.
+                "object-contain outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
+                shape.bg
+              )}
               style={{ width: size, height: size }}
             />
           </span>
@@ -802,9 +806,11 @@ function CardImage({ src, alt, className }: CardImageProps) {
       data-slot="card-image"
       // The image keeps a fixed 2px corner radius in every state — stacked or
       // inline, framed or borderless — rather than inheriting a frame's larger
-      // clip. (A framed tile still clips the surrounding surface as before.)
+      // clip. The inset outline paints over the edge pixels, so it neither
+      // changes this geometry nor disappears when a pale image meets the page.
+      // (A framed tile still clips the surrounding surface as before.)
       className={cn(
-        "object-cover rounded-[2px]",
+        "object-cover rounded-[2px] outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
         orientation === "inline"
           ? "size-40 shrink-0"
           : "w-full aspect-[16/9]",

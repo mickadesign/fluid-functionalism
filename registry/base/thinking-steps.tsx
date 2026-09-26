@@ -575,11 +575,13 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
         filter: { duration: 0.15, delay },
       }}
     >
+      {/* Screenshots often end in white; an inset neutral hairline keeps the
+          edge visible without changing the measured image or panel height. */}
       <img
         src={src}
         alt={alt}
         className={cn(
-          "w-full max-w-[200px] object-cover",
+          "w-full max-w-[200px] object-cover outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
           shape.container
         )}
       />

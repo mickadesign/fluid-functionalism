@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  * left/right band by band.
  *
  * The size mix is balanced so the grid fills with NO holes at both md and xl:
- * smalls needed = 2·(larges) + 1·(mediums) = 2·6 + 4 = 16 = smalls available
+ * smalls needed = 2·(larges) + 1·(mediums) = 2·5 + 6 = 16 = smalls available
  * (and an even small count keeps md's half-width pairs complete). Adding a
  * card or changing a gridSize breaks that equation — rebalance before
  * shipping or the bottom rows develop holes again.
@@ -39,12 +39,13 @@ const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "dropdown" },
   { slug: "tabs" },                           // band 7 · medium left
   { slug: "input-copy" },
-  { slug: "accordion", side: "right" },       // band 8 · large right
+  { slug: "accordion", side: "right" },       // band 8 · medium right
   { slug: "input-group" },
+  { slug: "carousel-dots" },                // band 9 · medium left
   { slug: "button" },
-  { slug: "table" },                          // band 9 · medium left
+  { slug: "table", side: "right" },           // band 10 · medium right
   { slug: "dialog" },
-  { slug: "color-picker", side: "right" },    // band 10 · large right
+  { slug: "color-picker" },                   // band 11 · large left
   { slug: "tooltip" },
   { slug: "badge" },
 ];

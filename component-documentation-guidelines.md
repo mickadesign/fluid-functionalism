@@ -120,6 +120,23 @@ export default function ComponentNameDoc() {
 }
 ```
 
+### 5b. Prompt Entry (`lib/docs/prompt-entries.ts`)
+
+Every doc page has a matching `PROMPT_ENTRIES` entry — it feeds the page's
+Copy-prompt brief and the skill's craft reference:
+
+- [ ] `usage`: minimal composition, ~12 lines, imports from the installed
+      paths (`@/components/ui/*`), never the repo's registry paths
+- [ ] `props`: one line per public prop — `name: type (default X). What it does.`
+- [ ] `craft`: 5–10 bullets of the interaction-design decisions built into
+      the component — exact behaviors, exact values, the why where the code
+      or page states one. One decision per bullet, sourced from the shipped
+      code, never aspirational.
+- [ ] Regenerate the skill's craft reference:
+      `node scripts/build-skill-craft.mjs` (writes
+      `skills/fluid-functionalism/references/craft.md`) and commit both files
+      together — the script fails if a page's `craft` array is missing.
+
 ### 6. Motion System Page (`app/docs/motion/page.tsx`)
 
 If the component animates, add it to the `REFERENCE_TIERS` array on the Motion page so its "Where each speed shows up" list stays complete, and keep [motion-guidelines.md](motion-guidelines.md) in sync. Pick the spring tier by the component's headline motion (small state flip → `fast`; panel/indicator that travels → `moderate`; surface that takes over the view → `slow`), enter on that tier, and exit one tier faster. See [motion-guidelines.md](motion-guidelines.md) for the full motion checklist.

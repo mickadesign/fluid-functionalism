@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
         destination: "/r/use-fluid-hover.json",
         permanent: true,
       },
+      // Short link to the agent skill page, for sharing.
+      {
+        source: "/skill",
+        destination: "/docs/skill",
+        permanent: false,
+      },
     ];
   },
 };

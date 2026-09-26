@@ -489,7 +489,7 @@ function userRowLines(horizontal: boolean, indent: string): string[] {
     `              the chevron rides a 24px slot pulled -mr-0.5 onto the trailing`,
     `              action axis */}`,
     `          <img src="/avatar.png" alt="" width={20} height={20}`,
-    `            className="-ml-0.5 -mr-0.5 size-5 shrink-0 rounded-full" />`,
+    `            className="-ml-0.5 -mr-0.5 size-5 shrink-0 rounded-full outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" />`,
     `          <span className="min-w-0 truncate text-[13px] text-foreground">Micka Touillaud</span>`,
     `          <span className="ml-auto -mr-0.5 flex size-6 shrink-0 items-center justify-center">`,
     `            <ChevronsUpDownIcon size={16} strokeWidth={1.5} className="text-muted-foreground" />`,
@@ -1446,7 +1446,7 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                         alt=""
                         width={20}
                         height={20}
-                        className="size-5 shrink-0 rounded-full"
+                        className="size-5 shrink-0 rounded-full outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                       />
                     }
                     className={footerHorizontal ? "min-w-0 flex-1" : undefined}

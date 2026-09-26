@@ -414,7 +414,7 @@ function DemoFooterUser() {
                   width={20}
                   height={20}
                   data-guide-img
-                  className="-ml-0.5 -mr-0.5 size-5 shrink-0 rounded-full"
+                  className="-ml-0.5 -mr-0.5 size-5 shrink-0 rounded-full outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                 />
                 <span className="min-w-0 truncate text-[13px] text-foreground">Micka Touillaud</span>
                 <span data-guide className="ml-auto -mr-0.5 flex size-6 shrink-0 items-center justify-center">

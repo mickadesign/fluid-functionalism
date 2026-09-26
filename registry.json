@@ -1242,6 +1242,31 @@
       ]
     },
     {
+      "name": "carousel-dots",
+      "type": "registry:ui",
+      "title": "Carousel Dots",
+      "description": "Carousel dots, static or on autoplay: fluid-hover click areas, and a current pill that fills over each slide's duration.",
+      "dependencies": [
+        "framer-motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "use-fluid-hover",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/default/carousel-dots.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/carousel-dots.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "table",
       "type": "registry:ui",
       "title": "Table",

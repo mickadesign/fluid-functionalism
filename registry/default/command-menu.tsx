@@ -192,10 +192,11 @@ export function parseShortcut(shortcut: string): ParsedShortcut {
 }
 
 /** Whether a keydown is the parsed combo. The physical key (`code`) stands
- *  in only when `key` is not a Latin letter or digit: ⌥ combos on a Mac
- *  (where `key` becomes a symbol) and non-Latin layouts (Cyrillic, Greek).
- *  A Latin letter is taken at face value, so on Dvorak or AZERTY the key
- *  that types "t" is never read as the physical K. */
+ *  in when `key` is not a Latin letter or digit — non-Latin layouts
+ *  (Cyrillic, Greek) — or whenever ⌥ is held, since a Mac ⌥ combo usually
+ *  turns `key` into a symbol but not on every layout. Without ⌥ a Latin
+ *  letter is taken at face value, so on Dvorak or AZERTY the key that types
+ *  "t" is never read as the physical K. */
 export function matchesShortcut(
   e: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
   parsed: ParsedShortcut
@@ -772,9 +773,18 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
         case "ArrowLeft":
         case "ArrowRight": {
           // With tabs under the field, ← and → switch tabs (wrapping) instead
-          // of moving the caret. Modified presses keep their editing meaning.
+          // of moving the caret. Modified presses keep their editing meaning —
+          // Shift+Arrow in particular must still extend the selection.
           const tabs = tabsRef.current;
-          if (!tabs || tabs.tabs.length === 0 || e.altKey || e.metaKey || e.ctrlKey) return;
+          if (
+            !tabs ||
+            tabs.tabs.length === 0 ||
+            e.shiftKey ||
+            e.altKey ||
+            e.metaKey ||
+            e.ctrlKey
+          )
+            return;
           e.preventDefault();
           const count = tabs.tabs.length;
           const current = tabs.tabs.findIndex((tab) => tab.value === tabs.value);

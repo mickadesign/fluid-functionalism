@@ -263,7 +263,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
         <img
           src="/micka.png"
           alt=""
-          className="w-5 h-5 rounded-full object-cover shrink-0"
+          className="w-5 h-5 rounded-full object-cover shrink-0 outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
         />
         <p className="text-body text-muted-foreground">
           Created by{" "}

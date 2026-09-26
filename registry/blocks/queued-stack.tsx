@@ -6,7 +6,7 @@ import { FileThumbnail } from "@/components/ui/file-thumbnail";
 import { Tooltip } from "@/components/ui/tooltip";
 import { type QueuedMessage } from "@/components/ui/input-message";
 import { useIcon } from "@/lib/icon-context";
-import { useShape } from "@/lib/shape-context";
+import { nestedRadius, useShape } from "@/lib/shape-context";
 import { useSizeVariant } from "@/lib/size-context";
 import { spring } from "@/lib/springs";
 
@@ -63,6 +63,13 @@ export function QueuedStack({
   const shape = useShape();
   const compactStep = useSizeVariant() === "compact";
   const cardH = useQueueCardHeight();
+  // Default cards leave 8px around a 28px preview; compact leaves ~7px
+  // around 24px inside 38px. The first preview reaches the card's leading
+  // corner, so its curve follows the outer card concentrically.
+  const attachmentRadius = nestedRadius(
+    shape.bgRadius,
+    compactStep ? 7 : 8
+  );
   const XIcon = useIcon("x");
   const PencilIcon = useIcon("pencil");
   const ChevronDownIcon = useIcon("chevron-down");
@@ -335,11 +342,14 @@ export function QueuedStack({
                             key={`${f.name}-${f.size}-${fi}`}
                             file={f}
                             size={compactStep ? 24 : 28}
-                            className="rounded-md"
+                            radius={attachmentRadius}
                           />
                         ))}
                         {item.files.length > 3 && (
-                          <span className={`flex ${compactStep ? "h-6 w-6" : "h-7 w-7"} items-center justify-center rounded-md bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80`}>
+                          <span
+                            className={`flex ${compactStep ? "h-6 w-6" : "h-7 w-7"} items-center justify-center bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80`}
+                            style={{ borderRadius: attachmentRadius }}
+                          >
                             +{item.files.length - 3}
                           </span>
                         )}

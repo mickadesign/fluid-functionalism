@@ -78,6 +78,7 @@ export const CUSTOM_ITEMS = new Set([
   "dialog-sidebar",
   // primitive-agnostic UI components (single source under @fluid)
   "badge",
+  "carousel-dots",
   "chat-message",
   "color-picker",
   "command-menu",

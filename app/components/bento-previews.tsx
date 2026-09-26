@@ -1,6 +1,9 @@
 "use client";
 
 import { useContext, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { slideVariants, useSlideDirection } from "@/lib/docs/slide-direction";
+import { CarouselDots } from "@/registry/default/carousel-dots";
 import Image from "next/image";
 import { useIcon, useIcons } from "@/lib/icon-context";
 import { fontWeights } from "@/lib/font-weight";
@@ -211,6 +214,48 @@ function AccordionPreview() {
           </AccordionItem>
         ))}
       </AccordionGroup>
+    </div>
+  );
+}
+
+const CAROUSEL_SLIDES = ["Inbox", "Drafts", "Sent", "Archive"];
+
+/** A small carousel on the dots' built-in autoplay: the current pill fills,
+ *  then the next slide comes in from the right. A dot picked by hand slides
+ *  the label from its side. Hover the slide to pause. */
+function CarouselDotsPreview() {
+  const { slide, direction, onValueChange, markByHand } = useSlideDirection();
+  const [hovering, setHovering] = useState(false);
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div
+        className="grid h-16 w-48 place-items-center overflow-hidden rounded-xl border border-border/60 bg-background"
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      >
+        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+          <motion.span
+            key={slide}
+            className="col-start-1 row-start-1 text-body text-foreground"
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
+            {CAROUSEL_SLIDES[slide]}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+      <div {...markByHand}>
+        <CarouselDots
+          count={CAROUSEL_SLIDES.length}
+          value={slide}
+          onValueChange={onValueChange}
+          autoplay={{ duration: 2400, paused: hovering }}
+          getLabel={(i) => `Show ${CAROUSEL_SLIDES[i]}`}
+        />
+      </div>
     </div>
   );
 }
@@ -824,7 +869,7 @@ function SidebarPreview() {
                     alt=""
                     width={20}
                     height={20}
-                    className="size-5 shrink-0 rounded-full"
+                    className="size-5 shrink-0 rounded-full outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                   />
                   <span className="min-w-0 truncate text-foreground">Micka Touillaud</span>
                 </SidebarMenuButton>
@@ -848,6 +893,7 @@ export const previewMap: Record<string, React.FC> = {
   accordion: AccordionPreview,
   "ask-user-questions": AskUserQuestionsPreview,
   badge: BadgePreview,
+  "carousel-dots": CarouselDotsPreview,
   button: ButtonPreview,
   "checkbox-group": CheckboxPreview,
   "color-picker": ColorPickerPreview,

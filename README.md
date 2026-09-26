@@ -83,7 +83,15 @@ With `next/font/google`, ask for the axis: `Inter({ subsets: ["latin"], axes: ["
 
 ## With an AI coding agent
 
-Every doc page and playground has a **Copy prompt** button. The prompt is a self-contained brief: the install command, a usage snippet, the props, and the docs URL. Paste it into your agent and it wires the component in without fetching anything.
+Every doc page and playground has a **Copy prompt** button. The prompt is a self-contained brief: the install command, a usage snippet, the props, the built-in behaviors to compose around, and the docs URL. Paste it into your agent and it wires the component in without fetching anything.
+
+For a whole project rather than one component, install the [/fluid-functionalism skill](https://www.fluidfunctionalism.com/docs/skill):
+
+```bash
+npx skills add mickadesign/fluid-functionalism
+```
+
+The source lives in [skills/fluid-functionalism](skills/fluid-functionalism). It audits the stack the first time it runs and records the flavor verdict, so later runs install without re-deriving it. Alongside it sit the component catalog, the interaction-design decisions built into each component, and the rules for writing custom motion next to them.
 
 ## Components
 
@@ -96,6 +104,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | `badge` | Compact label with solid and dot variants, the Tailwind color palette, and 2 sizes |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | `button` · `base/button` | Variants, sizes, loading state, icon slots, and a weight shift on hover |
 | [Card](https://www.fluidfunctionalism.com/docs/card) | `card` | shadcn's compositional card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, and 2-D fluid hover |
+| [CarouselDots](https://www.fluidfunctionalism.com/docs/carousel-dots) | `carousel-dots` | Carousel dots, static or on autoplay, with fluid-hover click areas and a current pill that fills over each slide |
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments |
 | [CheckboxGroup](https://www.fluidfunctionalism.com/docs/checkbox-group) | `checkbox-group` · `base/checkbox-group` | Checkbox group with merged backgrounds for contiguous selections |
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | `color-picker` · `base/color-picker` | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper, inline or in a popover |
@@ -190,9 +199,10 @@ npm run dev              # docs site on http://localhost:3000
 npm test                 # vitest
 npm run lint
 npm run registry:build   # shadcn build + scripts/postbuild-registry.mjs, writes public/r
+node scripts/build-skill-craft.mjs   # writes the skill's craft reference
 ```
 
-Sources live in `registry/`: `radix/` and `base/` hold the two flavors, `default/` the single-source components, hooks, and libs, `blocks/` the compositions. `public/r` is the built output users install from, and it is committed. CI rebuilds it and fails when it drifts from the sources, so run `npm run registry:build` and commit the result with any registry change.
+Sources live in `registry/`: `radix/` and `base/` hold the two flavors, `default/` the single-source components, hooks, and libs, `blocks/` the compositions. `public/r` is the built output users install from, and it is committed. CI rebuilds it and fails when it drifts from the sources, so run `npm run registry:build` and commit the result with any registry change. The skill's craft reference works the same way: it is generated from the prompt entries in `lib/docs/prompt-entries.ts`, and a test fails when the committed copy has drifted.
 
 Guides in the repo: [motion-guidelines.md](motion-guidelines.md), [component-documentation-guidelines.md](component-documentation-guidelines.md), [preset-guidelines.md](preset-guidelines.md), [tone-of-voice.md](tone-of-voice.md), and [README-guidelines.md](README-guidelines.md) for what this file carries and what it defers.
 

@@ -177,8 +177,8 @@ const partProps: PropDef[] = [
   { name: "CardAction", type: "part", description: "Top-right slot in the header (e.g. a menu button); stays clickable above the card overlay." },
   { name: "CardContent", type: "part", description: "Body region below the header." },
   { name: "CardFooter", type: "part", description: "Actions row. Trailing-right in inline cards, but drops below the text (natural order) in an inline card with a CardImage; wraps under the content when stacked." },
-  { name: "CardMedia", type: "IconComponent | logo", description: "Leading icon in a tinted 32×32 tile, or a brand logo / [logoA, logoB] tuple." },
-  { name: "CardImage", type: "{ src }", description: "Full-bleed image — a top banner when stacked, a square leading image when inline. Corners round only inside a framed tile (outlined, or a caller's overflow-hidden wrapper); a borderless card reads as a plain rectangle." },
+  { name: "CardMedia", type: "IconComponent | logo", description: "Leading icon in a tinted 32×32 tile, or a brand logo / [logoA, logoB] tuple. Logos get a subtle inset image outline." },
+  { name: "CardImage", type: "{ src }", description: "Full-bleed image — a top banner when stacked, a square leading image when inline. A 1px inset outline preserves pale edges without changing layout. Corners round only inside a framed tile (outlined, or a caller's overflow-hidden wrapper); a borderless card reads as a plain rectangle." },
   { name: "CardEyebrow", type: "part", description: "Small uppercase label above the title." },
   { name: "CardFeature", type: "{ icon, title, description }", description: "Icon + title + description row for feature lists." },
 ];

@@ -5,7 +5,7 @@
  * flow the input drives through aria-activedescendant.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, createEvent } from "@testing-library/react";
 import { useRef } from "react";
 import {
   CommandMenu,
@@ -234,6 +234,31 @@ describe("CommandMenu", () => {
     // The footer knows the tabs are there.
     expect(getByText("Tabs")).toBeTruthy();
     expect(getByText("Select")).toBeTruthy();
+  });
+
+  it("leaves Shift+\u2190/\u2192 to the field so selection still extends", () => {
+    // Shift+Arrow is how you select text in an input. The tab switcher claimed
+    // every unmodified-looking arrow and swallowed it, so a user could not
+    // select their own query while tabs were mounted.
+    const onValueChange = vi.fn();
+    const tabs = [
+      { value: "all", label: "All" },
+      { value: "Actions", label: "Actions" },
+    ];
+    const { getByRole } = render(
+      <CommandMenu items={ITEMS}>
+        <CommandMenuInput />
+        <CommandMenuTabs tabs={tabs} value="all" onValueChange={onValueChange} />
+        <CommandMenuList />
+      </CommandMenu>
+    );
+    const input = getByRole("combobox");
+    for (const key of ["ArrowLeft", "ArrowRight"]) {
+      const event = createEvent.keyDown(input, { key, shiftKey: true });
+      fireEvent(input, event);
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+    }
   });
 
   it("the footer names Enter after the highlighted row, its action first", async () => {

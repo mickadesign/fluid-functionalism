@@ -4,10 +4,9 @@
 // virtual files into a REAL TypeScript program over the project's tsconfig
 // and must produce zero diagnostics.
 import { describe, it, expect } from "vitest";
-import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import path from "node:path";
 import ts from "typescript";
+import { createPresetTypechecker } from "./helpers/preset-typecheck.mjs";
 import {
   encodeCommandMenuPreset,
   decodeCommandMenuPreset,
@@ -20,8 +19,6 @@ import {
   generateCommandMenuPresetFiles,
   commandMenuPresetRegistryDeps,
 } from "../lib/preset/command-menu-install.ts";
-
-const root = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 
 // Deterministic PRNG (mulberry32) — seeded, so failures reproduce.
 function rng(seed) {
@@ -163,48 +160,10 @@ describe("command menu preset codec", () => {
 
 // ── Install generator: compile guard ────────────────────────────────────────
 
+const typecheck = createPresetTypechecker();
+
 function typecheckPreset(preset) {
-  const files = generateCommandMenuPresetFiles(preset);
-  const virtual = new Map(
-    files.map((f) => [path.join(root, "__preset__", f.target), f.content])
-  );
-  const configFile = ts.readConfigFile(path.join(root, "tsconfig.json"), ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(configFile.config, ts.sys, root);
-  const options = {
-    ...parsed.options,
-    noEmit: true,
-    skipLibCheck: true,
-    baseUrl: parsed.options.baseUrl ?? root,
-  };
-  const host = ts.createCompilerHost(options);
-  const origReadFile = host.readFile.bind(host);
-  const origFileExists = host.fileExists.bind(host);
-  const origDirExists = (host.directoryExists ?? ts.sys.directoryExists).bind(
-    host.directoryExists ? host : ts.sys
-  );
-  const virtualDirs = new Set(
-    [...virtual.keys()].flatMap((f) => {
-      const dirs = [];
-      let d = path.dirname(f);
-      while (d.startsWith(root) && d !== root) {
-        dirs.push(d);
-        d = path.dirname(d);
-      }
-      return dirs;
-    })
-  );
-  host.readFile = (f) => virtual.get(path.normalize(f)) ?? origReadFile(f);
-  host.fileExists = (f) => virtual.has(path.normalize(f)) || origFileExists(f);
-  host.directoryExists = (d) => virtualDirs.has(path.normalize(d)) || origDirExists(d);
-  const program = ts.createProgram([...virtual.keys()], options, host);
-  const diagnostics = [
-    ...program.getSyntacticDiagnostics(),
-    ...program.getSemanticDiagnostics(),
-  ].filter((d) => d.file && virtual.has(path.normalize(d.file.fileName)));
-  return diagnostics.map(
-    (d) =>
-      `${path.basename(d.file.fileName)}:${d.file.getLineAndCharacterOfPosition(d.start).line + 1} ${ts.flattenDiagnosticMessageText(d.messageText, " ")}`
-  );
+  return typecheck(generateCommandMenuPresetFiles(preset));
 }
 
 // Curated matrix: every structural branch flips at least once — each header

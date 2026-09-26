@@ -260,7 +260,7 @@ const sourceProps: PropDef[] = [
 ];
 
 const imageProps: PropDef[] = [
-  { name: "src", type: "string", description: "Image URL." },
+  { name: "src", type: "string", description: "Image URL. The rendered image includes a theme-aware 1px inset outline." },
   { name: "alt", type: "string", default: '""', description: "Alt text for accessibility." },
   { name: "caption", type: "string", description: "Optional caption below the image." },
   { name: "delay", type: "number", default: "0", description: "Entrance animation delay in seconds." },

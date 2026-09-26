@@ -106,13 +106,16 @@ describe("docs pages", () => {
     }
   });
 
-  it("every docs page is listed in componentList or systemList (no orphan pages)", async () => {
+  it("every public docs page is listed; the skill beta stays unlisted", async () => {
     const { componentList, systemList } = await import("../lib/docs/components.ts");
     const listed = new Set([...componentList, ...systemList].map((e) => e.slug));
     const pages = readdirSync(join(ROOT, "app/docs"), { withFileTypes: true })
       .filter((e) => e.isDirectory() && existsSync(join(ROOT, "app/docs", e.name, "page.tsx")))
       .map((e) => e.name);
-    for (const page of pages) {
+    // The skill beta is deliberately reachable only by direct link.
+    expect(pages).toContain("skill");
+    expect(listed.has("skill")).toBe(false);
+    for (const page of pages.filter((slug) => slug !== "skill")) {
       expect(listed.has(page), `app/docs/${page} is not in componentList/systemList`).toBe(true);
     }
   });

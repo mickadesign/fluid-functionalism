@@ -20,7 +20,7 @@ import { NumberField } from "@base-ui/react/number-field";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
-import { useShape, shapeMap } from "@/lib/shape-context";
+import { nestedRadius, useShape, shapeMap } from "@/lib/shape-context";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
@@ -440,6 +440,9 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
   const [hovered, setHovered] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const shape = useShape();
+  // The square is the first surface inside the picker's 12px padding. Its
+  // corner follows the panel rather than reusing the popup-specific p-1 pair.
+  const radius = nestedRadius(shape.containerRadius, 12);
 
   const updateFromPointer = useCallback(
     (clientX: number, clientY: number) => {
@@ -526,20 +529,18 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
       onPointerUp={onPointerUp}
       onKeyDown={onKeyDown}
       className={cn(
-        "relative w-full select-none touch-none cursor-none outline-none",
-        shape.bg
+        "relative w-full select-none touch-none cursor-none outline-none"
       )}
       style={{
         height: SQUARE_HEIGHT,
+        borderRadius: radius,
         boxShadow: focused ? "0 0 0 2px var(--focus-ring, #6B97FF)" : undefined,
       }}
     >
       <div
-        className={cn(
-          "absolute inset-0 overflow-hidden",
-          shape.bg === "rounded-[20px]" ? "rounded-2xl" : shape.bg
-        )}
+        className="absolute inset-0 overflow-hidden"
         style={{
+          borderRadius: radius,
           background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${h}, 100%, 50%))`,
         }}
       />

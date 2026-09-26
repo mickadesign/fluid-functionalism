@@ -28,7 +28,7 @@ import { SIDEBAR_MENU_POPUP } from "@/lib/sidebar-menu-grid";
 export interface SidebarUserFooterProps {
   /** Display name shown in the row. */
   name: ReactNode;
-  /** 20px avatar — e.g. <img className="size-5 rounded-full" …/>. The row
+  /** 20px avatar — e.g. <img className="size-5 rounded-full outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10" …/>. The row
    *  positions it on the leading icon axis; the element owns its look. */
   avatar: ReactNode;
   /** Dropdown content (MenuItem rows). */

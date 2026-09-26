@@ -444,10 +444,10 @@ const removeQueued = (item: QueuedMessage) =>
                   {item.files.length > 0 && (
                     <div className="pointer-events-none flex shrink-0 items-center gap-1">
                       {item.files.slice(0, 3).map((f, fi) => (
-                        <FileThumbnail key={fi} file={f} size={28} className="rounded-md" />
+                        <FileThumbnail key={fi} file={f} size={28} radius={12} />
                       ))}
                       {item.files.length > 3 && (
-                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-background/40 text-[11px] font-medium tabular-nums text-foreground/80">
                           +{item.files.length - 3}
                         </span>
                       )}
@@ -539,7 +539,7 @@ const inputMessageProps: PropDef[] = [
   { name: "onFilesChange", type: "(files: File[]) => void", description: "Called when files are added (drag-drop or picker) or removed via the preview tile’s × button. Duplicate drops of the same file (same name + size + lastModified) are silently de-duplicated." },
   { name: "accept", type: "string", default: '"image/png,image/jpeg,application/pdf"', description: "Accepted MIME types as a comma-separated string. Used by both the file picker and the drag-and-drop filter." },
   { name: "maxFiles", type: "number", description: "Maximum number of attached files. Extra files beyond this limit are dropped." },
-  { name: "filePreviewSize", type: "number", default: "80", description: "Side length (in pixels) of each preview tile. Images use object-cover; PDFs render the first page via pdfjs; other types fall back to a centered icon." },
+  { name: "filePreviewSize", type: "number", default: "80", description: "Side length (in pixels) of each preview tile. Images use object-cover; PDFs render the first page via pdfjs; other types fall back to a centered icon. A theme-aware inset outline keeps light media edges visible." },
   { name: "textareaProps", type: "TextareaHTMLAttributes", description: "Extra props forwarded to the underlying textarea (value, onChange, onKeyDown, disabled and placeholder are controlled by the component)." },
   { name: "status", type: '"idle" | "streaming"', description: "Assistant response state. When \"streaming\", the send button becomes a Stop control (empty draft) or a Queue action (non-empty draft). On the streaming→idle edge the next queued message auto-dispatches via onSend. Leave undefined for the legacy send-immediately behavior." },
   { name: "onStop", type: "() => void", description: "Fires when the Stop control is pressed (streaming + empty draft). Halt the current response and set status to \"idle\" — that edge immediately dispatches the next queued message." },
