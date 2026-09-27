@@ -1323,6 +1323,16 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
     );
 
     const isActive = isHovered || isFocused;
+    // Colors change through CSS transitions, not framer: framer hands color
+    // keyframes it can't parse (the light-dark() / color-mix() a token
+    // resolves to) to the Web Animations API, and a light-dark() keyframe
+    // there freezes Chrome 153's renderer.
+    const textColor = isActive ? "var(--foreground)" : "var(--muted-foreground)";
+    const handleLineColor = isFocused
+      ? "var(--foreground)"
+      : isHovered
+      ? "color-mix(in srgb, var(--foreground) 50%, transparent)"
+      : "color-mix(in srgb, var(--foreground) 25%, transparent)";
 
     return (
       <div
@@ -1459,14 +1469,15 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
                   }}
                 >
                   <motion.div
-                    className="rounded-full"
+                    className="rounded-full transition-colors duration-80"
                     initial={false}
-                    animate={{
-                      backgroundColor: isActivePip ? "var(--foreground)" : "var(--muted-foreground)",
-                      opacity: isActivePip ? 1 : 0.3,
-                    }}
+                    animate={{ opacity: isActivePip ? 1 : 0.3 }}
                     transition={spring.fast}
-                    style={{ width: PIP_SIZE, height: PIP_SIZE }}
+                    style={{
+                      width: PIP_SIZE,
+                      height: PIP_SIZE,
+                      backgroundColor: isActivePip ? "var(--foreground)" : "var(--muted-foreground)",
+                    }}
                   />
                 </div>
               );
@@ -1505,21 +1516,17 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         {/* Pips: handle line — z-[3] */}
         {variant === "pips" && (
           <motion.div
-            className="absolute rounded-full pointer-events-none z-[3]"
+            className="absolute rounded-full pointer-events-none z-[3] transition-colors duration-80"
             initial={false}
             animate={{
               top: isActive ? 7 : 8,
               bottom: isActive ? 7 : 8,
-              backgroundColor: isFocused
-                ? "var(--foreground)"
-                : isHovered
-                ? "color-mix(in srgb, var(--foreground) 50%, transparent)"
-                : "color-mix(in srgb, var(--foreground) 25%, transparent)",
             }}
             transition={spring.fast}
             style={{
               left: pipsHandleLineLeftStyle,
               width: 2,
+              backgroundColor: handleLineColor,
             }}
           />
         )}
@@ -1528,24 +1535,23 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         {variant === "pips" && (
           <div className="absolute inset-0 flex items-center px-2 z-[4] pointer-events-none">
             {label && (
-              <motion.span
-                className="text-[13px] px-2"
-                initial={false}
-                animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
-                transition={spring.fast}
+              <span
+                className="text-[13px] px-2 transition-colors duration-80"
+                style={{ color: textColor }}
               >
                 {label}
-              </motion.span>
+              </span>
             )}
-            <motion.span
-              className="text-[13px] tabular-nums ml-auto px-2"
-              initial={false}
-              animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
-              transition={spring.fast}
-              style={{ minWidth: `${String(formatValue(max)).length}ch`, textAlign: "right" }}
+            <span
+              className="text-[13px] tabular-nums ml-auto px-2 transition-colors duration-80"
+              style={{
+                minWidth: `${String(formatValue(max)).length}ch`,
+                textAlign: "right",
+                color: textColor,
+              }}
             >
               {formatValue(value)}
-            </motion.span>
+            </span>
           </div>
         )}
 
@@ -1563,50 +1569,44 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
         {/* Scrubber: handle line */}
         {variant === "scrubber" && (
           <motion.div
-            className="absolute rounded-full pointer-events-none z-10"
+            className="absolute rounded-full pointer-events-none z-10 transition-colors duration-80"
             initial={false}
             animate={{
               top: isActive ? 7 : 8,
               bottom: isActive ? 7 : 8,
-              backgroundColor: isFocused
-                ? "var(--foreground)"
-                : isHovered
-                ? "color-mix(in srgb, var(--foreground) 50%, transparent)"
-                : "color-mix(in srgb, var(--foreground) 25%, transparent)",
             }}
             transition={spring.fast}
             style={{
               left: handleLineLeftStyle,
               width: 2,
+              backgroundColor: handleLineColor,
             }}
           />
         )}
 
         {/* Scrubber: label */}
         {variant === "scrubber" && label && (
-          <motion.span
-            className="text-[13px] shrink-0 z-10"
-            initial={false}
-            animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
-            transition={spring.fast}
+          <span
+            className="text-[13px] shrink-0 z-10 transition-colors duration-80"
+            style={{ color: textColor }}
           >
             {label}
-          </motion.span>
+          </span>
         )}
 
         {/* Scrubber: flex-1 spacer + value */}
         {variant === "scrubber" && (
           <>
             <div className="flex-1" />
-            <motion.span
-              className="text-[13px] shrink-0 tabular-nums text-right z-10"
-              initial={false}
-              animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
-              transition={spring.fast}
-              style={{ minWidth: `${String(formatValue(max)).length}ch` }}
+            <span
+              className="text-[13px] shrink-0 tabular-nums text-right z-10 transition-colors duration-80"
+              style={{
+                minWidth: `${String(formatValue(max)).length}ch`,
+                color: textColor,
+              }}
             >
               {formatValue(value)}
-            </motion.span>
+            </span>
           </>
         )}
 
