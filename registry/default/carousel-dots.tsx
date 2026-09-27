@@ -176,6 +176,7 @@ const CarouselDots = forwardRef<HTMLDivElement, CarouselDotsProps>(
             label={getLabel(i)}
             current={i === value}
             fillTransform={fillTransform}
+            reduced={reduced === true}
             registerItem={hover.registerItem}
             onSelect={onValueChange}
           />
@@ -192,6 +193,7 @@ function Dot({
   label,
   current,
   fillTransform,
+  reduced,
   registerItem,
   onSelect,
 }: {
@@ -199,6 +201,7 @@ function Dot({
   label: string;
   current: boolean;
   fillTransform: MotionValue<string>;
+  reduced: boolean;
   registerItem: (index: number, element: HTMLElement | null) => void;
   onSelect?: (index: number) => void;
 }) {
@@ -220,7 +223,9 @@ function Dot({
         style={{ height: DOT_PX, backgroundColor: TRACK_COLOR }}
         initial={false}
         animate={{ width: current ? PILL_PX : DOT_PX }}
-        transition={spring.moderate}
+        // Width is a layout value, which MotionConfig's reduced motion does
+        // not cover, so the dot gates it itself: instant under reduced motion.
+        transition={reduced ? { duration: 0 } : spring.moderate}
       >
         {current && (
           <motion.span

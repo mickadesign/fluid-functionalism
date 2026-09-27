@@ -412,7 +412,6 @@ function useMenuScope(
   }>({ hover: null, focus: null, actives: new Map() });
 
   const levelOccurrence = new Map<number, number>();
-  const levelFirstActive = new Map<number, HTMLElement>();
   const activeRects: {
     key: string;
     rect: ItemRect;
@@ -425,7 +424,6 @@ function useMenuScope(
     const levelId = overlayGroupId(level);
     const occurrence = levelOccurrence.get(levelId) ?? 0;
     levelOccurrence.set(levelId, occurrence + 1);
-    if (!levelFirstActive.has(levelId)) levelFirstActive.set(levelId, row);
     const rect = overlayRect(row);
     if (rect)
       activeRects.push({
@@ -447,14 +445,6 @@ function useMenuScope(
       actives: new Map(activeRects.map(({ key, row }) => [key, row])),
     };
   });
-  // The hover background fades in anchored on the active row of the hovered
-  // row's own level (falling back to any active), so entering the menu reads
-  // as the highlight detaching from where the selection lives.
-  const hoveredLevel = hoveredRowEl ? rowLevel(hoveredRowEl) : null;
-  const hoverAnchorRow =
-    (hoveredLevel ? levelFirstActive.get(overlayGroupId(hoveredLevel)) : undefined) ??
-    levelFirstActive.values().next().value;
-  const hoverAnchorRect = hoverAnchorRow ? overlayRect(hoverAnchorRow) : null;
 
   const overlays = isMeasured ? (
     <>
@@ -482,12 +472,11 @@ function useMenuScope(
         ))}
       </AnimatePresence>
 
-      {/* Hover background. Fades in from the level's active row; snaps (no
+      {/* Hover background. Fades in at the first hovered row; snaps (no
           travel) when only a reflow moved the rows underneath. */}
       <FluidHoverHighlight
         rect={hoverRect}
         session={sessionRef.current}
-        from={hoverAnchorRect}
         className={shape.bg}
         transition={hoverRowChanged ? undefined : false}
       />
