@@ -95,7 +95,7 @@ type AccordionGroupMultipleProps = {
 type AccordionGroupProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   /** Pins the group's rows to one step of the size ladder (default 36px,
-   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  compact 28px). Omitted, they follow the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
   /** What an open item tints. "item" paints the row and its panel as one
@@ -417,7 +417,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                   // a newly-opened item's background would pop in at full
                   // opacity mid-layout-shift while the previous item's bg is
                   // still fading out — reads as a glitch when switching items
-                  // (especially under /demo's scaled card). Geometry still
+                  // (especially under a scaled ancestor). Geometry still
                   // snaps (duration 0) so the bg hugs the animating item.
                   initial={{
                     top: rect.top,
@@ -495,7 +495,7 @@ interface AccordionProps extends HTMLAttributes<HTMLDivElement> {
   value?: string | string[];
   onValueChange?: ((value: string) => void) | ((value: string[]) => void);
   /** Pins the accordion's rows to one step of the size ladder (default 36px,
-   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  compact 28px). Omitted, they follow the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
 }
@@ -838,7 +838,7 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
     // The open height is animated to a self-measured LAYOUT pixel value, not
     // `height: "auto"`: framer resolves an "auto" target by measuring the
     // element's *visual* (transformed) size, so under a scaled ancestor
-    // (e.g. /demo's 1.7x card) the animation overshoots to scale× the real
+    // (e.g. a card scaled 1.7x) the animation overshoots to scale× the real
     // height and snaps back when the final "auto" lands — a visible height
     // reduction at the end of every open. offsetHeight and ResizeObserver
     // are transform-immune.

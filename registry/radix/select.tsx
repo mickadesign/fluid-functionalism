@@ -121,7 +121,7 @@ interface SelectProps {
   name?: string;
   required?: boolean;
   /** Pins trigger and popup to one step of the size ladder (default 36px,
-   *  compact 28px — see /docs/sizes). Omitted, both follow the surrounding
+   *  compact 28px). Omitted, both follow the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
 }
@@ -786,7 +786,7 @@ SelectGroup.displayName = "SelectGroup";
 
 const SelectLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    // Group labels are the caption role of the type scale — see /docs/sizes.
+    // Group labels are the caption role of the type scale.
     const compact = useSize().variant === "compact";
     return (
     <div

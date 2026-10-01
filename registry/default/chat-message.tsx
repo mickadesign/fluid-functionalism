@@ -27,7 +27,7 @@ interface ChatMessageProps
   actions?: ReactNode;
   /** Message body. When omitted the text bubble is dropped (attachment-only message). */
   children?: ReactNode;
-  /** Pins the message to one step of the size ladder (see /docs/sizes) —
+  /** Pins the message to one step of the size ladder:
    *  compact tightens bubble type and padding. Omitted, it follows the
    *  surrounding SizeProvider. */
   size?: SizeVariant;

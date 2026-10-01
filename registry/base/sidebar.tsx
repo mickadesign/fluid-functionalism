@@ -306,7 +306,7 @@ SidebarContent.displayName = "SidebarContent";
 
 export { Sidebar, SidebarContent };
 
-// Re-export the flavor-neutral parts so `sidebar` is a one-stop import.
+// Re-export the primitive-agnostic parts so `sidebar` is a one-stop import.
 export {
   SidebarProvider,
   useSidebar,

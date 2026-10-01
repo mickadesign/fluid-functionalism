@@ -392,8 +392,8 @@ SidebarProvider.displayName = "SidebarProvider";
 // ─── Slot helpers (render / asChild polymorphism) ────────────────────────────
 //
 // A local slot instead of a primitive-library one so every menu part exists in
-// exactly one flavor-neutral copy: Radix's Slot would leak into the Base UI
-// flavor, and Base UI's useRender the other way around. Supports both the
+// exactly one primitive-agnostic copy: Radix's Slot would leak into Base UI
+// projects, and Base UI's useRender the other way around. Supports both the
 // library's `render={<Link/>}` convention and shadcn's `asChild`.
 
 type SlotProps = {
@@ -472,7 +472,7 @@ export function slotElement(
   return cloneElement(template, merged, content);
 }
 
-// ─── SidebarShell (shared desktop DOM for both flavors) ──────────────────────
+// ─── SidebarShell (desktop DOM shared by both primitive libraries) ───────────
 
 // Literal map so Tailwind's scanner emits the utilities: for the standard
 // breakpoints the shell is also hidden by CSS, avoiding a pre-hydration flash

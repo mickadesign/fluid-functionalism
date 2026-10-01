@@ -241,7 +241,7 @@ interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "onClick"> {
    *  Pass false for an always-visible control. @default true */
   dismissOnHover?: boolean;
   onDismiss?: () => void;
-  /** Pins the card to one step of the size ladder (see /docs/sizes) — compact
+  /** Pins the card to one step of the size ladder: compact
    *  tightens type and padding. Omitted, it follows the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
@@ -826,7 +826,7 @@ CardImage.displayName = "CardImage";
 
 // ── CardEyebrow ──────────────────────────────────────────
 // Small uppercase label above the title (e.g. "New Model"). Typographically
-// it's the caption role of the type scale in uppercase — see /docs/sizes.
+// it's the caption role of the type scale in uppercase.
 
 const CardEyebrow = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
   ({ className, ...props }, ref) => {

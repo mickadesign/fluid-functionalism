@@ -45,7 +45,7 @@ interface TabsSubtleProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect
   /** When true, only the selected tab shows its text label. Requires icons on tabs. */
   activeLabel?: boolean;
   /** Pins the tabs to one step of the size ladder (default 36px, compact
-   *  28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  28px). Omitted, they follow the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
 }
@@ -273,7 +273,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
     const internalRef = useRef<HTMLButtonElement | null>(null);
     // The collapsing label animates to a MEASURED layout width, not "auto":
     // framer resolves an "auto" target from the element's *visual*
-    // (transformed) size, so under a scaled ancestor (e.g. /demo's card) the
+    // (transformed) size, so under a scaled ancestor the
     // spring overshoots to scale-x the real width and snaps when "auto"
     // lands. offsetWidth and ResizeObserver are transform-immune — same
     // setup as the accordions' height animation.
@@ -382,7 +382,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
                 // Until the measurement lands, let CSS resolve the width
                 // instead of handing framer "auto": framer resolves an "auto"
                 // target from the element's *visual* size, so under a scaled
-                // ancestor (the /demo card, ~1.76x) it writes back a layout
+                // ancestor (e.g. a card scaled ~1.76x) it writes back a layout
                 // width that much too wide, then springs back down when the
                 // measured value arrives — the selected tab visibly pulses on
                 // arrival. Plain CSS auto is the true layout width, and the

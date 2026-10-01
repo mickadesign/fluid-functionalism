@@ -166,7 +166,7 @@ interface ComboboxProps<
   name?: string;
   required?: boolean;
   /** Pins field and popup to one step of the size ladder (default 36px,
-   *  compact 28px — see /docs/sizes). Omitted, both follow the surrounding
+   *  compact 28px). Omitted, both follow the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
 }
@@ -554,7 +554,7 @@ type ComboboxChipsProps = ComboboxFieldProps;
  *  can start and the growth snaps. First measure sets the pin; every later
  *  one springs it. Measured (offsetHeight + ResizeObserver), never
  *  `height: "auto"`: framer resolves "auto" from the element's *visual*
- *  (transformed) size, so under a scaled ancestor (the /demo card) the
+ *  (transformed) size, so under a scaled ancestor the
  *  spring would overshoot. Layout metrics are transform-immune. */
 function useChipRowHeight(padY: number) {
   const height = useMotionValue<number | "auto">("auto");

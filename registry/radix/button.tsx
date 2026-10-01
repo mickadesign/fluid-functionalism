@@ -30,7 +30,7 @@ const buttonVariants = cva(
         tertiary: "text-foreground",
         ghost: "text-muted-foreground hover:text-foreground",
       },
-      // The two-step size ladder shared by every control — see /docs/sizes.
+      // The two-step size ladder shared by every control.
       // default = 36px control height, compact = 28px for dense surfaces.
       size: {
         default: "h-9 px-4 text-[13px] gap-1.5",

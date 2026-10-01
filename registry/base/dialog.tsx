@@ -129,7 +129,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const substrate = useSurface();
     const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     // The size ladder narrows the dialog one notch in compact regions —
-    // width only, the padding stays put (see /docs/sizes).
+    // width only, the padding stays put.
     const compact = useSize().variant === "compact";
 
     // No `if (!open) return null` here — Base UI's `<DialogPrimitive.Popup>`
@@ -268,7 +268,7 @@ const DialogTitle = forwardRef<
   HTMLHeadingElement,
   HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => {
-  // The title role of the type scale — see /docs/sizes.
+  // The title role of the type scale.
   const compact = useSizeVariant() === "compact";
   return (
     <DialogPrimitive.Title

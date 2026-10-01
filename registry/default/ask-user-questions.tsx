@@ -101,7 +101,7 @@ export interface AskUserQuestionsProps
   onSkip?: (questionId: string, currentIndex: number) => void;
   skipLabel?: string;
   /** Pins the flow to one step of the size ladder (default 36px, compact
-   *  28px — see /docs/sizes). Omitted, it follows the surrounding
+   *  28px). Omitted, it follows the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
 }
@@ -823,7 +823,7 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     // One tab stop for the whole group, single- AND multi-select alike: the
     // first selected row, or — when the question is unanswered — the first
     // row, so the group stays keyboard-reachable (the hasSelection-style
-    // fallback from registry/base). Arrows handle row-to-row movement; Tab
+    // fallback RadioGroup uses). Arrows handle row-to-row movement; Tab
     // moves on past the group. The Other row never takes the stop — its
     // textarea is natively focusable on its own.
     const firstSelectedRow = options.findIndex((opt, i) =>

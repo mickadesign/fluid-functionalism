@@ -87,7 +87,7 @@ interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
    *  contiguous runs share one merged background (see CheckboxGroup). */
   checkedIndices?: number[];
   /** Pins the panel's rows to one step of the size ladder (default 36px,
-   *  compact 28px — see /docs/sizes). Omitted, they follow the surrounding
+   *  compact 28px). Omitted, they follow the surrounding
    *  SizeProvider. */
   size?: SizeVariant;
 }
@@ -278,7 +278,7 @@ interface DropdownMenuProps {
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   /** Pins trigger-side content and the portalled popup rows to one step of
-   *  the size ladder (default 36px, compact 28px — see /docs/sizes).
+   *  the size ladder (default 36px, compact 28px).
    *  Omitted, they follow the surrounding SizeProvider. */
   size?: SizeVariant;
 }
@@ -704,7 +704,7 @@ DropdownContent.displayName = "DropdownContent";
 
 const DropdownLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    // Group labels are the caption role of the type scale — see /docs/sizes.
+    // Group labels are the caption role of the type scale.
     const compact = useSize().variant === "compact";
     return (
     <div

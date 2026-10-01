@@ -40,7 +40,7 @@ const useIsoLayoutEffect =
  *
  * These animate to a self-measured PIXEL height rather than `height: "auto"`:
  * framer resolves an "auto" target from the element's *visual* (transformed)
- * size, so under a scaled ancestor — the /demo card scales its slide — the
+ * size, so under a scaled ancestor the
  * region springs out to scale× its real height and snaps back when "auto"
  * lands, which reads as the region ballooning and then correcting. Same
  * treatment as Accordion's content height.

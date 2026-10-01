@@ -150,7 +150,7 @@ function CollapsePanel({ open, children }: CollapsePanelProps) {
   // The open height is animated to a self-measured LAYOUT pixel value, not
   // `height: "auto"`: framer resolves an "auto" target by measuring the
   // element's *visual* (transformed) size, so under a scaled ancestor
-  // (e.g. /demo's 1.7x card) the animation overshoots to scale× the real
+  // (e.g. a card scaled 1.7x) the animation overshoots to scale× the real
   // height and snaps back when the final "auto" lands. offsetHeight and
   // ResizeObserver are transform-immune. Same setup as the accordions.
   const innerRef = useRef<HTMLDivElement | null>(null);
@@ -346,7 +346,7 @@ interface ThinkingStepProps {
 
 /** Measured layout height for a step's opening animation. `height: "auto"`
  *  is resolved by framer from the element's *visual* (transformed) size, so
- *  under a scaled ancestor (the /demo card) every step springs out to scale x
+ *  under a scaled ancestor every step springs out to scale x
  *  its real height and snaps back when "auto" lands — the whole list visibly
  *  overshoots as it builds. offsetHeight and ResizeObserver are
  *  transform-immune. Same setup as CollapsePanel above. */
@@ -563,7 +563,7 @@ interface ThinkingStepImageProps {
 
 function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: ThinkingStepImageProps) {
   const shape = useShape();
-  // The caption role of the type scale — see /docs/sizes.
+  // The caption role of the type scale.
   const compact = useSize().variant === "compact";
   return (
     <motion.div
