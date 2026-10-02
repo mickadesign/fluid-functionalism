@@ -37,12 +37,13 @@ const hookReturn: PropDef[] = [
   { name: "isMeasured", type: "boolean", description: "True once every item has a box. Measured again on register and on resize." },
   { name: "remeasure", type: "() => void", description: "Measure again and hide the highlight until done. Call it when a popup opens." },
   { name: "sessionRef", type: "RefObject<number>", description: "Counts pointer entries. The highlight fades in fresh on each one." },
+  { name: "pointerDrivenRef", type: "RefObject<boolean>", description: "True while the pointer lights the highlight. A key press, a press outside, or leaving turns it off." },
 ];
 
 const highlightProps: PropDef[] = [
   { name: "hover", type: "ReturnType<typeof useFluidHover>", description: "The hook. The highlight reads what it needs from it." },
   { name: "hidden", type: "boolean", default: "false", description: "Show nothing, keep the state. A closed popup." },
-  { name: "from", type: "ItemRect | null", description: "Where a fresh entry fades in from. Dropdowns pass the checked row when the pointer enters." },
+  { name: "from", type: "ItemRect | null", description: "Where a fresh highlight fades in from when the pointer lights it. Dropdowns pass the checked row. A row lit by the keyboard fades in where it is." },
   { name: "className", type: "string", description: "Radius and z-index. The container must be position: relative." },
   { name: "transition", type: "Transition | false", default: "spring.fast", description: "The travel. false snaps in place after a reflow." },
 ];

@@ -58,6 +58,14 @@ export interface UseFluidHoverReturn {
    */
   isMeasured: boolean;
   sessionRef: RefObject<number>;
+  /**
+   * True while the pointer drives the highlight: it entered or moved in the
+   * container, and no key press or press outside the container has happened
+   * since. `FluidHoverHighlight` reads it to start a fresh highlight at its
+   * `from` rect only for the pointer; a row lit by the keyboard, or by a
+   * popup's own open focus, fades in where it is.
+   */
+  pointerDrivenRef: RefObject<boolean>;
   handlers: {
     onMouseMove: (e: React.MouseEvent) => void;
     onMouseEnter: () => void;
@@ -246,6 +254,11 @@ export function useFluidHover<T extends HTMLElement>(
   const [isMeasured, setIsMeasured] = useState(false);
   const itemRectsRef = useRef<ItemRect[]>([]);
   const sessionRef = useRef(0);
+  const pointerDrivenRef = useRef(false);
+  // Ends the current pointer-driven stretch and detaches its listeners. They
+  // are attached only while it lasts, so a list nobody is pointing at costs
+  // no document listeners.
+  const releasePointerRef = useRef<(() => void) | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const remeasureRafIdRef = useRef<number | null>(null);
 
@@ -404,8 +417,32 @@ export function useFluidHover<T extends HTMLElement>(
     [remeasure, getItemRo]
   );
 
+  const markPointerDriven = useCallback(() => {
+    if (pointerDrivenRef.current) return;
+    pointerDrivenRef.current = true;
+    const end = (e: Event) => {
+      // A press inside the list is the pointer still at work.
+      if (e.type === "pointerdown" && containerRef.current?.contains(e.target as Node)) {
+        return;
+      }
+      release();
+    };
+    const release = () => {
+      pointerDrivenRef.current = false;
+      document.removeEventListener("keydown", end, true);
+      document.removeEventListener("pointerdown", end, true);
+      releasePointerRef.current = null;
+    };
+    // Capture phase: a key that moves focus onto a row must have ended the
+    // pointer's stretch before the row lights.
+    document.addEventListener("keydown", end, true);
+    document.addEventListener("pointerdown", end, true);
+    releasePointerRef.current = release;
+  }, [containerRef]);
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
+      markPointerDriven();
       const mouseX = e.clientX;
       const mouseY = e.clientY;
 
@@ -436,18 +473,20 @@ export function useFluidHover<T extends HTMLElement>(
         );
       });
     },
-    [axis, containerRef, isItemDisabled]
+    [axis, containerRef, isItemDisabled, markPointerDriven]
   );
 
   const handleMouseEnter = useCallback(() => {
     sessionRef.current += 1;
-  }, []);
+    markPointerDriven();
+  }, [markPointerDriven]);
 
   const handleMouseLeave = useCallback(() => {
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
+    releasePointerRef.current?.();
     setActiveIndex(null);
   }, []);
 
@@ -511,6 +550,7 @@ export function useFluidHover<T extends HTMLElement>(
       }
       itemRoRef.current?.disconnect();
       itemRoRef.current = null;
+      releasePointerRef.current?.();
     };
   }, []);
 
@@ -520,6 +560,7 @@ export function useFluidHover<T extends HTMLElement>(
     itemRects,
     isMeasured,
     sessionRef,
+    pointerDrivenRef,
     handlers: {
       onMouseMove: handleMouseMove,
       onMouseEnter: handleMouseEnter,

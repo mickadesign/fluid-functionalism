@@ -18,6 +18,7 @@ import {
   FluidHoverHighlight,
   resolveHighlightTransition,
   resolveHighlightSource,
+  resolveHighlightFrom,
 } from "@/registry/default/fluid-hover-highlight";
 import { spring } from "@/registry/default/lib/springs";
 
@@ -158,5 +159,32 @@ describe("FluidHoverHighlight, driven by the hook", () => {
     const el = highlight(container)!;
     expect(el.style.transform).toContain("translateY(48px)");
     expect(el.style.height).toBe("36px");
+  });
+});
+
+describe("FluidHoverHighlight, where a fresh highlight starts", () => {
+  const hook = (pointerDriven?: boolean) => ({
+    activeIndex: 1,
+    itemRects: [rowA, rowB],
+    isMeasured: true,
+    sessionRef: { current: 1 },
+    ...(pointerDriven === undefined ? {} : { pointerDrivenRef: { current: pointerDriven } }),
+  });
+
+  it("starts at `from` when the pointer lit the row", () => {
+    expect(resolveHighlightFrom({ hover: hook(true), from: rowA })).toBe(rowA);
+    const { container } = render(<FluidHoverHighlight hover={hook(true)} from={rowA} />);
+    expect(highlight(container)!.style.transform).toContain("translateY(8px)");
+  });
+
+  it("fades in where it is when the keyboard lit the row", () => {
+    expect(resolveHighlightFrom({ hover: hook(false), from: rowA })).toBeNull();
+    const { container } = render(<FluidHoverHighlight hover={hook(false)} from={rowA} />);
+    expect(highlight(container)!.style.transform).toContain("translateY(48px)");
+  });
+
+  it("keeps `from` for a source without pointerDrivenRef, and for the rect form", () => {
+    expect(resolveHighlightFrom({ hover: hook(), from: rowA })).toBe(rowA);
+    expect(resolveHighlightFrom({ rect: rowB, session: 1, from: rowA })).toBe(rowA);
   });
 });

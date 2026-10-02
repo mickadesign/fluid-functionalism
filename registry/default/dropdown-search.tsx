@@ -44,8 +44,10 @@ import { SURFACE_BG } from "@/lib/surface-classes";
 
 interface SearchHandle {
   input: HTMLInputElement | null;
-  /** Whether the field takes focus when the popup opens. */
-  autoFocus: boolean;
+  /** True from the popup's open until the field takes focus (autofocus
+   *  only): the window in which the primitive's own open autofocus lands on
+   *  a row that the field is about to take over. */
+  claimsFocus: boolean;
   append: (text: string) => void;
   deleteBackward: () => void;
 }
@@ -166,17 +168,18 @@ export function useDropdownSearchHost(open: boolean) {
   /** Whether a search field is mounted in the popup right now. */
   const hasSearch = useCallback(() => handleRef.current !== null, []);
 
-  /** Whether a mounted field takes focus when the popup opens, a frame after
-   *  the primitive's own open autofocus. */
-  const searchTakesFocus = useCallback(
-    () => handleRef.current?.autoFocus ?? false,
+  /** Whether a mounted field is about to take focus: it autofocuses and has
+   *  not yet, so a row focused in the meantime is the primitive's own open
+   *  autofocus, a frame before the field takes over. */
+  const searchClaimsFocus = useCallback(
+    () => handleRef.current?.claimsFocus ?? false,
     []
   );
 
   return {
     host,
     hasSearch,
-    searchTakesFocus,
+    searchClaimsFocus,
     searchMounted,
     onKeyDownCapture,
   };
@@ -212,6 +215,7 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
       autoFocus = true,
       className,
       onKeyDown,
+      onFocus,
       ...props
     },
     ref
@@ -236,8 +240,7 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
     onValueChangeRef.current = onValueChange;
     const clearOnCloseRef = useRef(clearOnClose);
     clearOnCloseRef.current = clearOnClose;
-    const autoFocusRef = useRef(autoFocus);
-    autoFocusRef.current = autoFocus;
+    const claimingFocusRef = useRef(false);
 
     useEffect(() => {
       if (!host) return;
@@ -245,8 +248,8 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
         get input() {
           return inputRef.current;
         },
-        get autoFocus() {
-          return autoFocusRef.current;
+        get claimsFocus() {
+          return claimingFocusRef.current;
         },
         append: (text) => onValueChangeRef.current(valueRef.current + text),
         deleteBackward: () =>
@@ -265,11 +268,16 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
         onValueChangeRef.current("");
       }
       if (!autoFocus) return;
+      claimingFocusRef.current = true;
       let inner: number | undefined;
       const outer = requestAnimationFrame(() => {
-        inner = requestAnimationFrame(() => inputRef.current?.focus());
+        inner = requestAnimationFrame(() => {
+          claimingFocusRef.current = false;
+          inputRef.current?.focus();
+        });
       });
       return () => {
+        claimingFocusRef.current = false;
         cancelAnimationFrame(outer);
         if (inner !== undefined) cancelAnimationFrame(inner);
       };
@@ -340,6 +348,12 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={(e) => {
+            // However the field got focus (its own autofocus, a click, a
+            // redirected keystroke), the claim is settled.
+            claimingFocusRef.current = false;
+            onFocus?.(e);
+          }}
           placeholder={placeholder}
           // rounded-none: the site's base :focus-visible rule hands focused
           // elements the shape radius, and a text input clips its caret to
