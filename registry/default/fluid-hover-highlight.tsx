@@ -23,11 +23,14 @@ import type { ItemRect, UseFluidHoverReturn } from "@/hooks/use-fluid-hover";
 // ---------------------------------------------------------------------------
 
 /** What the highlight reads off the hook: the highlighted index, the
- *  measured rects, whether they are current, and the pointer session. */
+ *  measured rects, whether they are current, the pointer session, and
+ *  whether the pointer drives it. A hand-built source may leave the last
+ *  one out; `from` then always applies. */
 export type FluidHoverSource = Pick<
   UseFluidHoverReturn,
   "activeIndex" | "itemRects" | "isMeasured" | "sessionRef"
->;
+> &
+  Partial<Pick<UseFluidHoverReturn, "pointerDrivenRef">>;
 
 interface HighlightFromHook {
   /** The hook's return value. The highlight sits on
@@ -54,8 +57,11 @@ interface HighlightFromRect {
 }
 
 export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) & {
-  /** Where a fresh session fades in from. A dropdown passes its checked row,
-   *  a nav menu its active route. Defaults to the rect itself. */
+  /** Where a fresh highlight fades in from when the pointer lights it: a
+   *  dropdown passes its checked row, a nav menu its active route, so the
+   *  highlight rises from there toward the cursor. With `hover`, a row lit
+   *  by the keyboard (`pointerDrivenRef` false) fades in where it is. The
+   *  `rect` form always uses it. Defaults to the rect itself. */
   from?: ItemRect | null;
   /** Radius, z-index, anything else. Merged onto
    *  `absolute bg-hover pointer-events-none`. */
@@ -104,9 +110,22 @@ export function resolveHighlightSource(
   return { rect: props.rect, session: props.session };
 }
 
+/**
+ * Where a fresh highlight starts: `from` only when the pointer lit it. A row
+ * lit by the keyboard, or by a popup's own open focus, would otherwise slide
+ * over from `from`; it fades in where it is instead. Exported for the test.
+ */
+export function resolveHighlightFrom(
+  props: FluidHoverHighlightProps
+): ItemRect | null {
+  const pointerDriven = props.hover?.pointerDrivenRef?.current ?? true;
+  return pointerDriven ? (props.from ?? null) : null;
+}
+
 export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
-  const { from, className, transition } = props;
+  const { className, transition } = props;
   const { rect, session } = resolveHighlightSource(props);
+  const from = resolveHighlightFrom(props);
   // Reads the OS media query directly, so an installed copy honours reduced
   // motion without the app wrapping its tree in MotionConfig. A wrapped app
   // gets the same result twice over: the travel is a transform, which

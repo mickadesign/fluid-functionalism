@@ -157,8 +157,12 @@ Rules the hook enforces, worth knowing when you consume it:
   (the session increments on `onMouseEnter`, so the highlight fades in at the
   nearest row instead of sliding over from where it was last). `hidden` keeps
   the list's state but shows nothing (a closed popup). Optional `from` is where
-  a fresh entry starts (dropdowns pass the checked row, the sidebar its level's
-  active row), `className` carries radius and z-index, and `transition={false}`
+  a fresh entry starts when the pointer lights it (dropdowns pass the checked
+  row, the sidebar its level's active row); a row lit by the keyboard fades in
+  where it is, read off the hook's `pointerDrivenRef` (on when the pointer
+  enters or moves, off on any key press, a press outside, or leaving), so
+  arrowing in never slides over from `from`. `className` carries radius and
+  z-index, and `transition={false}`
   snaps when only a reflow moved the rows. A list that resolves its own rect
   (the sidebar's unified scope) passes `rect` and `session` instead.
   `tests/registry-consistency.test.mjs` fails on any new hand-rolled copy.

@@ -403,7 +403,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const {
       host: searchHost,
       hasSearch,
-      searchTakesFocus,
+      searchClaimsFocus,
       searchMounted,
       onKeyDownCapture: redirectTypingToSearch,
     } = useDropdownSearchHost(open);
@@ -455,16 +455,6 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const multiple = checkedIndices != null;
     const checkedRect =
       !multiple && checkedIndex != null ? itemRects[checkedIndex] : null;
-    // What lights the highlight: the open itself (its first-row focus), the
-    // pointer, or the keyboard. A highlight that appears from nothing fades
-    // in at `from` and glides to its row. That suits the pointer entering the
-    // list (it rises from the checked row toward the cursor), not a row lit
-    // by the open or by arrowing in from the search field: those would slide
-    // over from the checked row, so they fade in where they are.
-    const litByRef = useRef<"open" | "pointer" | "keyboard">("open");
-    useEffect(() => {
-      if (open) litByRef.current = "open";
-    }, [open]);
     // Multiple: one merged block per contiguous run of checked rows.
     const runs = useSelectionRuns(checkedIndices ?? []);
     const blocks = useMergeSplitBlocks(runs, open ? itemRects : [], shape.bgRadius);
@@ -571,18 +561,9 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                     ref={ref}
                   />
                 }
-                onKeyDownCapture={(e) => {
-                  litByRef.current = "keyboard";
-                  redirectTypingToSearch(e);
-                }}
-                onMouseEnter={() => {
-                  litByRef.current = "pointer";
-                  handlers.onMouseEnter();
-                }}
-                onMouseMove={(e) => {
-                  litByRef.current = "pointer";
-                  handlers.onMouseMove(e);
-                }}
+                onKeyDownCapture={redirectTypingToSearch}
+                onMouseEnter={handlers.onMouseEnter}
+                onMouseMove={handlers.onMouseMove}
                 onClick={handlers.onClick}
                 onMouseLeave={handlers.onMouseLeave}
                 onFocus={(e) => {
@@ -592,10 +573,10 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                   // Keyboard navigation moves the hover background only — no
                   // ring: in a menu the highlighted row is the focus indicator.
                   if (indexAttr != null) {
-                    // With an autofocusing search field, the primitive's open
-                    // autofocus lands on the first row a frame before the
-                    // field takes over: that row stays unlit.
-                    if (litByRef.current === "open" && searchTakesFocus()) return;
+                    // The primitive's open autofocus lands on the first row a
+                    // frame before an autofocusing search field takes over:
+                    // that row stays unlit.
+                    if (searchClaimsFocus()) return;
                     setActiveIndex(Number(indexAttr));
                   } else if (e.target !== e.currentTarget) {
                     // Focus moved to a non-row inside the popup, such as the
@@ -655,7 +636,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                 {/* Hover background */}
                 <FluidHoverHighlight
                   hover={hover}
-                  from={litByRef.current === "pointer" ? checkedRect : null}
+                  from={checkedRect}
                   className={shape.bg}
                 />
 

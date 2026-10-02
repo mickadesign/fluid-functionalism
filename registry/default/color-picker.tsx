@@ -1035,7 +1035,7 @@ function FormatDropdown({
 
                 {/* Hover background: each hover session fades in on the
                     checked row (from), then glides to the row under the
-                    pointer. */}
+                    pointer. A row lit by the keyboard fades in where it is. */}
                 <FluidHoverHighlight
                   hover={hover}
                   from={checkedRect}
