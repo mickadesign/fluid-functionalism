@@ -121,8 +121,12 @@ describe("Banner gap", () => {
     await act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
     // Starting closed used to open with gap 0, so the content below jumped
     // by the whole gap on the first frame. The row has barely opened, so the
-    // margin is still close to minus the whole gap.
-    expect(parseFloat(row(getByTestId("column")).style.marginBottom)).toBeLessThan(-10);
+    // margin is still close to minus the whole gap. How far the spring got
+    // depends on how long that frame took, and a busy CI runner reached 18%
+    // (-9.8px), so the bar is half the gap: 0 still fails it.
+    expect(parseFloat(row(getByTestId("column")).style.marginBottom)).toBeLessThan(
+      -parseFloat(column.rowGap) / 2,
+    );
   });
 
   it("takes nothing back when the banner is the only child", async () => {
