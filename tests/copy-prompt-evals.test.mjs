@@ -4,8 +4,9 @@
 import { describe, it, expect } from "vitest";
 import { docPages, listBriefs, parseInstallCommand } from "../evals/copy-prompts/briefs.mjs";
 import { rankBriefs, rotationSlice, selectWeek } from "../evals/copy-prompts/select.mjs";
-import { attention, compare, summaryMarkdown } from "../evals/copy-prompts/report.mjs";
+import { attention, compare, reportHtml, summaryMarkdown } from "../evals/copy-prompts/report.mjs";
 import { readTranscript } from "../evals/copy-prompts/agents.mjs";
+import { flavorLeaks, readVerdict, runStatus, statusOf } from "../evals/copy-prompts/grade.mjs";
 
 const briefs = await listBriefs();
 const ids = briefs.map((b) => b.id);
@@ -102,6 +103,38 @@ describe("the report", () => {
     expect(compare(now, then)).toEqual({ broke: ["a@base (claude)"], fixed: ["b@base (claude)"] });
   });
 
+  it("calls an unverified run neither broken nor fixed", () => {
+    const now = { agents, briefs: [brief("a@base", "pass", "unverified"), brief("b@base", "pass", "fail")] };
+    const then = { agents, briefs: [brief("a@base", "pass", "fail"), brief("b@base", "pass", "unverified")] };
+    expect(compare(now, then)).toEqual({ broke: [], fixed: [] });
+  });
+
+  it("doesn't count an unverified run as a pass, and says why it needs a look", () => {
+    const looks = { id: "looks", pass: null, detail: "judge gave no verdict: timed out" };
+    const results = {
+      week: 41,
+      startedAt: 0,
+      finishedAt: 60000,
+      shadcnVersion: "4.21.3",
+      judgeModel: "opus",
+      selection: { rankingError: null },
+      agents,
+      briefs: [
+        {
+          ...brief("a@base", "pass", "unverified"),
+          runs: { claude: { status: "unverified", attempts: [{ ms: 1000, checks: [{ id: "build", pass: true }, looks] }] } },
+        },
+      ],
+    };
+    const summary = summaryMarkdown(results, { broke: [], fixed: [] });
+    expect(summary).toContain("Claude Code 0/1 (1 unverified)");
+    expect(summary).toContain("Unverified on Claude Code: the screenshot judge gave no verdict");
+    expect(summary).not.toContain("Nothing failed");
+    const html = reportHtml(results, { broke: [], fixed: [] });
+    expect(html).toContain('<a href="#a@base-claude"><span class="m unverified" title="unverified">?</span></a>');
+    expect(html).toContain('<li class="warn"><b>looks</b>');
+  });
+
   it("puts a brief that fails with no agent first", () => {
     const results = {
       week: 41,
@@ -135,5 +168,67 @@ describe("the report", () => {
       JSON.stringify({ type: "result", total_cost_usd: 0.42, num_turns: 9 }),
     ].join("\n");
     expect(readTranscript(text)).toEqual({ model: "claude-opus-5-5", costUsd: 0.42, turns: 9 });
+  });
+});
+
+describe("grading", () => {
+  const ok = (id) => ({ id, pass: true, detail: "" });
+  const rendered = [ok("installed"), ok("untouched"), ok("flavor"), ok("build"), ok("render")];
+
+  it("reads the judge's verdict", () => {
+    const out = [
+      "some log line",
+      JSON.stringify({ structured_output: { verdict: "fail", problems: ["Text overflows."], notes: "Broken." }, total_cost_usd: 0.1 }),
+    ].join("\n");
+    expect(readVerdict(out)).toEqual({ check: { id: "looks", pass: false, detail: "Text overflows. | Broken." }, costUsd: 0.1 });
+  });
+
+  it.each([
+    ["a timeout", ""],
+    ["a usage limit", "Claude AI usage limit reached|1791400000"],
+    ["malformed JSON", '{"structured_output": {"verdict": "pa'],
+    ["no structured output", JSON.stringify({ result: "Looks fine to me." })],
+    ["a verdict outside the schema", JSON.stringify({ structured_output: { verdict: "unsure", problems: [], notes: "" } })],
+  ])("never passes a run the judge gave no verdict on: %s", (_, out) => {
+    expect(readVerdict(out)).toBeNull();
+    const looks = { id: "looks", pass: null, detail: "judge gave no verdict" };
+    expect(statusOf([...rendered, looks])).toBe("unverified");
+  });
+
+  it("fails on a failed check, and advisory checks never decide", () => {
+    expect(statusOf(rendered)).toBe("pass");
+    expect(statusOf([...rendered, { id: "lint", pass: false, detail: "", advisory: true }])).toBe("pass");
+    expect(statusOf([...rendered, { id: "lint", pass: null, detail: "", advisory: true }])).toBe("pass");
+    expect(statusOf([{ id: "build", pass: false }, { id: "render", pass: null, detail: "skipped: typecheck or build failed" }])).toBe(
+      "fail",
+    );
+  });
+
+  it("lets the last attempt decide an agent's status", () => {
+    expect(runStatus(["pass"])).toBe("pass");
+    expect(runStatus(["fail", "pass"])).toBe("flaky");
+    expect(runStatus(["fail", "fail"])).toBe("fail");
+    expect(runStatus(["unverified"])).toBe("unverified");
+    expect(runStatus(["fail", "unverified"])).toBe("unverified");
+  });
+
+  it("fails a run that imports the other flavor in its own files", () => {
+    const sources = new Map([
+      ["app/page.tsx", 'import * as Dialog from "@radix-ui/react-dialog";'],
+      ["components/menu.tsx", 'import { DropdownMenu } from "radix-ui";'],
+      ["components/ui/button.tsx", 'import { Button } from "@base-ui/react/button";'],
+    ]);
+    expect(flavorLeaks(sources, "base", new Map())).toEqual(["app/page.tsx", "components/menu.tsx"]);
+    expect(flavorLeaks(sources, "radix", new Map())).toEqual(["components/ui/button.tsx"]);
+  });
+
+  it("leaves the payload's own cross-flavor imports alone, unless the agent edited them", () => {
+    // color-picker's Radix payload imports Base UI on purpose.
+    const picker = 'import { Popover } from "@base-ui/react/popover";';
+    const installed = new Map([["components/ui/color-picker.tsx", picker]]);
+    expect(flavorLeaks(new Map([["components/ui/color-picker.tsx", picker]]), "radix", installed)).toEqual([]);
+    expect(flavorLeaks(new Map([["components/ui/color-picker.tsx", `${picker}\n// edited`]]), "radix", installed)).toEqual([
+      "components/ui/color-picker.tsx",
+    ]);
   });
 });

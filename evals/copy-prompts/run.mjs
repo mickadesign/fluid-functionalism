@@ -14,7 +14,7 @@ import { parseArgs } from "node:util";
 import { chromium } from "playwright-core";
 import { AGENTS, detectAgents, runAgent } from "./agents.mjs";
 import { listBriefs, ROOT } from "./briefs.mjs";
-import { captureReference, gradeRun, judge, runControl } from "./grade.mjs";
+import { captureReference, gradeRun, judge, runControl, runStatus, statusOf } from "./grade.mjs";
 import { cloneProject, makeTemplates } from "./project.mjs";
 import { compare, previousResults, reportHtml, summaryMarkdown } from "./report.mjs";
 import { fetchInstallRows, isoWeek, rankBriefs, selectWeek } from "./select.mjs";
@@ -111,9 +111,6 @@ const agentTimeout = Number(opts["agent-timeout"]) * 60000;
 const SHOW_IT = "Show it on the home page (app/page.tsx) so I can see it.";
 const taskFor = (brief) => `${brief.prompt}\n\n${SHOW_IT}`;
 
-// Advisory checks (lint) are reported but never fail a run.
-const statusOf = (checks) => (checks.some((c) => c.pass === false && !c.advisory) ? "fail" : "pass");
-
 async function sweep(brief) {
   const briefDir = join(workDir, safe(brief.id));
   const logDir = join(resultsDir, "logs", safe(brief.id));
@@ -171,7 +168,10 @@ async function sweep(brief) {
           logDir,
           label: `${agent.name}-${i}`,
         });
-        if (graded.shot && brief.reference && judgeReady) {
+        // Every page that rendered gets a `looks` answer, even one the judge
+        // can't give (no screenshot or reference): a missing one would read
+        // as a pass.
+        if (judgeReady && graded.checks.some((c) => c.id === "render" && c.pass)) {
           const verdict = await judge({
             brief,
             shot: graded.shot,
@@ -184,11 +184,11 @@ async function sweep(brief) {
         }
         tries.push({ ...result, checks: graded.checks, shot: graded.shot });
         if (!opts["keep-work"]) rmSync(dir, { recursive: true, force: true });
-        if (statusOf(graded.checks) === "pass") break;
+        // Only a failure earns the agent a retry. An unverified run is the
+        // judge's gap, and running the agent again wouldn't fill it.
+        if (statusOf(graded.checks) !== "fail") break;
       }
-      const first = statusOf(tries[0].checks);
-      const last = statusOf(tries.at(-1).checks);
-      runs[agent.name] = { status: first === "pass" ? "pass" : last === "pass" ? "flaky" : "fail", attempts: tries };
+      runs[agent.name] = { status: runStatus(tries.map((t) => statusOf(t.checks))), attempts: tries };
       log(`${brief.id}: ${agent.label} ${runs[agent.name].status}`);
     }),
   );

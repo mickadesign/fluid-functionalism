@@ -4,7 +4,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MARK = { pass: "✓", flaky: "~", fail: "✗", blocked: "○", skipped: "–" };
+const MARK = { pass: "✓", flaky: "~", fail: "✗", unverified: "?", blocked: "○", skipped: "–" };
 
 /** Most recent earlier results.json in the results folder, if any. */
 export function previousResults(resultsRoot, currentStamp) {
@@ -17,18 +17,19 @@ export function previousResults(resultsRoot, currentStamp) {
 }
 
 /** Cells whose status changed since the previous sweep, for briefs both
- *  sweeps ran. */
+ *  sweeps ran. An unverified cell is neither broken nor fixed: nobody knows. */
 export function compare(results, previous) {
   const changes = { broke: [], fixed: [] };
   if (!previous) return changes;
   const before = new Map(previous.briefs.map((b) => [b.id, b]));
+  const unknown = (s) => !s || s === "skipped" || s === "unverified";
   for (const brief of results.briefs) {
     const old = before.get(brief.id);
     if (!old) continue;
     for (const col of ["control", ...results.agents.map((a) => a.name)]) {
       const now = cellStatus(brief, col);
       const then = cellStatus(old, col);
-      if (!now || !then || now === "skipped" || then === "skipped") continue;
+      if (unknown(now) || unknown(then)) continue;
       const bad = (s) => s === "fail" || s === "blocked";
       if (bad(now) && !bad(then)) changes.broke.push(`${brief.id} (${col})`);
       if (!bad(now) && bad(then)) changes.fixed.push(`${brief.id} (${col})`);
@@ -41,11 +42,16 @@ function cellStatus(brief, col) {
   return col === "control" ? brief.control?.status : brief.runs?.[col]?.status;
 }
 
+/** The check that left a run unverified: not advisory, and no answer. */
+function unansweredCheck(run) {
+  return run?.attempts?.at(-1)?.checks.find((c) => !c.advisory && c.pass !== true && c.pass !== false);
+}
+
 export function tally(results) {
   const cols = ["control", ...results.agents.map((a) => a.name)];
   return Object.fromEntries(
     cols.map((col) => {
-      const counts = { pass: 0, flaky: 0, fail: 0, blocked: 0, skipped: 0 };
+      const counts = { pass: 0, flaky: 0, fail: 0, unverified: 0, blocked: 0, skipped: 0 };
       for (const b of results.briefs) {
         const s = cellStatus(b, col);
         if (s) counts[s]++;
@@ -77,8 +83,9 @@ export function slowPasses(results, { ratio = 1.75, minRuns = 3 } = {}) {
 
 /** What needs looking at, most actionable first: a broken install or build
  *  with no agent involved is ours to fix; a brief two or more agents fail
- *  is probably unclear; a single agent failing may be that agent; a slow
- *  pass may hide a brief the agent had to work around. */
+ *  is probably unclear; a single agent failing may be that agent, and an
+ *  unverified run may hide a broken page; a slow pass may hide a brief the
+ *  agent had to work around. */
 export function attention(results) {
   const items = slowPasses(results).map((p) => ({
     level: 3,
@@ -96,6 +103,16 @@ export function attention(results) {
     const failing = results.agents.filter((a) => b.runs[a.name]?.status === "fail").map((a) => a.label);
     if (failing.length >= 2) items.push({ level: 1, id: b.id, text: `Fails on ${failing.join(", ")}` });
     else if (failing.length === 1) items.push({ level: 2, id: b.id, text: `Fails on ${failing[0]} only` });
+    const unverified = results.agents.filter((a) => b.runs[a.name]?.status === "unverified");
+    if (unverified.length) {
+      const why = unansweredCheck(b.runs[unverified[0].name])?.detail ?? "";
+      const reason = why.startsWith("judge gave no verdict") ? "the screenshot judge gave no verdict" : why || "no screenshot verdict";
+      items.push({
+        level: 2,
+        id: b.id,
+        text: `Unverified on ${unverified.map((a) => a.label).join(", ")}: ${reason}, so nothing checked the page`,
+      });
+    }
   }
   return items.sort((a, b) => a.level - b.level || a.id.localeCompare(b.id));
 }
@@ -105,7 +122,9 @@ export function summaryMarkdown(results, changes) {
   const agentLine = results.agents
     .map((a) =>
       a.bin
-        ? `${a.label} ${counts[a.name].pass + counts[a.name].flaky}/${results.briefs.length - counts[a.name].blocked}`
+        ? `${a.label} ${counts[a.name].pass + counts[a.name].flaky}/${results.briefs.length - counts[a.name].blocked}${
+            counts[a.name].unverified ? ` (${counts[a.name].unverified} unverified)` : ""
+          }`
         : `${a.label} ${a.problem ?? "not installed"}`,
     )
     .join(", ");
@@ -137,11 +156,19 @@ function img(path, alt) {
   return `<img alt="${esc(alt)}" src="data:image/jpeg;base64,${data}">`;
 }
 
+/** ✓ passed, ✗ failed, ! an advisory failure or a check with no answer, –
+ *  skipped because an earlier check failed. */
+function checkClass(c) {
+  if (c.pass === true) return "ok";
+  if (c.pass === false) return c.advisory ? "warn" : "bad";
+  return c.advisory || c.detail?.startsWith("skipped") ? "skip" : "warn";
+}
+
 function checksList(checks) {
   return `<ul class="checks">${checks
     .map(
       (c) =>
-        `<li class="${c.pass === false ? (c.advisory ? "warn" : "bad") : c.pass ? "ok" : "skip"}"><b>${esc(c.id)}</b>${c.advisory ? " (advisory)" : ""}${
+        `<li class="${checkClass(c)}"><b>${esc(c.id)}</b>${c.advisory ? " (advisory)" : ""}${
           c.detail ? `<pre>${esc(c.detail)}</pre>` : ""
         }</li>`,
     )
@@ -155,7 +182,10 @@ export function reportHtml(results, changes) {
   const head = cols
     .map((c) => {
       const n = counts[c.name];
-      const sub = c.name !== "control" && !c.bin ? (c.problem ?? "not installed") : `${n.pass + n.flaky} pass · ${n.fail} fail`;
+      const sub =
+        c.name !== "control" && !c.bin
+          ? (c.problem ?? "not installed")
+          : `${n.pass + n.flaky} pass · ${n.fail} fail${n.unverified ? ` · ${n.unverified} unverified` : ""}`;
       return `<th>${esc(c.label)}<span>${esc(sub)}</span></th>`;
     })
     .join("");
@@ -164,7 +194,7 @@ export function reportHtml(results, changes) {
       const cells = cols
         .map((c) => {
           const s = cellStatus(b, c.name) ?? "skipped";
-          const linked = s === "fail" || s === "flaky" || (c.name === "control" && s === "fail");
+          const linked = s === "fail" || s === "flaky" || s === "unverified";
           const mark = `<span class="m ${s}" title="${s}">${MARK[s]}</span>`;
           return `<td>${linked ? `<a href="#${esc(b.id)}-${c.name}">${mark}</a>` : mark}</td>`;
         })
@@ -189,11 +219,19 @@ export function reportHtml(results, changes) {
       }
       for (const a of results.agents) {
         const r = b.runs[a.name];
-        if (!r || (r.status !== "fail" && r.status !== "flaky")) continue;
+        if (!r || !["fail", "flaky", "unverified"].includes(r.status)) continue;
         const last = r.attempts.at(-1);
         const shown = r.status === "flaky" ? r.attempts[0] : last;
+        const retried =
+          r.attempts.length < 2
+            ? ""
+            : r.status === "flaky"
+              ? "first attempt shown; the retry passed"
+              : r.status === "unverified"
+                ? "the first attempt failed; the retry is shown"
+                : "failed twice; last attempt shown";
         blocks.push(`<section id="${esc(b.id)}-${a.name}"><h3><code>${esc(b.id)}</code> on ${esc(a.label)} <span class="m ${r.status}">${r.status}</span></h3>
-          <p class="meta">${[shown.model, `${Math.round(shown.ms / 1000)}s`, shown.turns ? `${shown.turns} turns` : "", shown.costUsd != null ? `$${shown.costUsd.toFixed(2)}` : "", shown.timedOut ? "timed out" : "", r.status === "flaky" ? "first attempt shown; the retry passed" : r.attempts.length > 1 ? "failed twice; last attempt shown" : ""].filter(Boolean).map(esc).join(" · ")}</p>
+          <p class="meta">${[shown.model, `${Math.round(shown.ms / 1000)}s`, shown.turns ? `${shown.turns} turns` : "", shown.costUsd != null ? `$${shown.costUsd.toFixed(2)}` : "", shown.timedOut ? "timed out" : "", retried].filter(Boolean).map(esc).join(" · ")}</p>
           ${checksList(shown.checks)}
           <div class="shots"><figure>${img(shown.shot, "Agent's page")}<figcaption>Agent's page</figcaption></figure><figure>${img(b.reference, "Reference")}<figcaption>Reference${b.referenceKind === "control" ? " (no-agent render)" : " (docs demo)"}</figcaption></figure></div>
           ${shown.tail ? `<details><summary>End of the agent's output</summary><pre>${esc(shown.tail)}</pre></details>` : ""}
@@ -227,7 +265,7 @@ main{max-width:1040px;margin:0 auto;padding:32px 16px 64px}h1{font-size:22px;mar
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}table{border-collapse:collapse;width:100%;min-width:520px}
 th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:center}thead th{font-weight:600;font-size:13px;vertical-align:bottom}thead th span{display:block;color:var(--muted);font-weight:400;font-size:12px}
 tbody th{text-align:left;font-weight:400}tbody tr:last-child>*{border-bottom:0}.why{color:var(--muted);font-size:12px;margin-left:8px}
-.m{font-weight:700}.m.pass{color:var(--ok)}.m.fail{color:var(--bad)}.m.flaky{color:var(--warn)}.m.blocked,.m.skipped{color:var(--skip)}a{color:inherit}
+.m{font-weight:700}.m.pass{color:var(--ok)}.m.fail{color:var(--bad)}.m.flaky,.m.unverified{color:var(--warn)}.m.blocked,.m.skipped{color:var(--skip)}a{color:inherit}
 .attention{padding-left:18px}.attention .l0::marker{color:var(--bad)}section{border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0;background:var(--card)}
 .checks{list-style:none;padding:0;margin:8px 0}.checks li{padding:2px 0}.checks li::before{display:inline-block;width:18px;font-weight:700}
 .checks .ok::before{content:"✓";color:var(--ok)}.checks .bad::before{content:"✗";color:var(--bad)}.checks .skip::before{content:"–";color:var(--skip)}.checks .warn::before{content:"!";color:var(--warn)}

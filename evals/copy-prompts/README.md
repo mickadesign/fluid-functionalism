@@ -14,6 +14,7 @@ A weekly check that each doc page's Copy prompt still gets a component working w
 |---|---|
 | `installed` | every file the no-agent install wrote exists |
 | `untouched` | those files match the no-agent install exactly. The brief says to compose, not edit, so an edit usually means the agent worked around a broken brief |
+| `flavor` | no file the agent wrote or edited imports the other flavor's primitives (`@radix-ui` in a Base UI project, `@base-ui` in a Radix one). Files that match the no-agent install don't count: a few Radix payloads use Base UI on purpose |
 | `deps` | the npm packages the install adds are in `package.json` |
 | `used` | an app file imports the brief's component |
 | `typecheck`, `build` | `tsc --noEmit` and `next build` pass |
@@ -21,6 +22,8 @@ A weekly check that each doc page's Copy prompt still gets a component working w
 | `looks` | a vision model compares the page with the docs demo (a preset compares with its no-agent render) and finds nothing broken. A stock shadcn theme looks different from the site, and the rubric allows for that |
 
 A failed run gets one retry in a fresh copy. Passing on the retry shows as `~`.
+
+A run whose page rendered but got no `looks` verdict shows as `?`, unverified: the judge timed out, hit a usage limit, or gave a malformed answer twice, or a screenshot is missing. It doesn't count as a pass, lands under "Needs a look", and doesn't get an agent retry, since running the agent again wouldn't fix the judge.
 
 2 more signals never fail a run but land under "Needs a look":
 

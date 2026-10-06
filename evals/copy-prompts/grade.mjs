@@ -15,6 +15,25 @@ function check(id, pass, detail = "", advisory = false) {
   return advisory ? { id, pass, detail, advisory } : { id, pass, detail };
 }
 
+/** A run fails on any failed check that isn't advisory. A check with no
+ *  answer (the screenshot judge timed out, hit a usage limit, or gave no
+ *  verdict) leaves it unverified: nothing failed, but nothing confirmed the
+ *  page either, so it is not a pass. */
+export function statusOf(checks) {
+  const counted = checks.filter((c) => !c.advisory);
+  if (counted.some((c) => c.pass === false)) return "fail";
+  if (counted.some((c) => c.pass !== true)) return "unverified";
+  return "pass";
+}
+
+/** An agent's status over its attempts. Only a failed attempt gets a retry,
+ *  so the last attempt decides, and a pass after a failure is flaky. */
+export function runStatus(statuses) {
+  const last = statuses.at(-1);
+  if (last !== "pass") return last;
+  return statuses[0] === "pass" ? "pass" : "flaky";
+}
+
 function deps(dir) {
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
   return new Set(Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }));
@@ -134,8 +153,15 @@ export async function gradeRun({ brief, template, dir, control, port, browser, s
     .filter(([p, content]) => existsSync(join(dir, p)) && readFileSync(join(dir, p), "utf8") !== content)
     .map(([p]) => p);
   checks.push(check("untouched", edited.length === 0, edited.length ? `edited: ${edited.join(", ")}` : ""));
-  const otherFlavor = flavorLeak(dir, changed, brief.flavor);
-  if (otherFlavor) checks.at(-1).detail += `${checks.at(-1).detail ? "; " : ""}${otherFlavor}`;
+
+  // A Base UI project that ends up importing Radix (or the other way round)
+  // carries two primitive libraries, whatever else passes.
+  const sources = new Map(
+    changed.filter((p) => SOURCE.test(p) && existsSync(join(dir, p))).map((p) => [p, readFileSync(join(dir, p), "utf8")]),
+  );
+  const leaks = flavorLeaks(sources, brief.flavor, control.installed);
+  const otherName = brief.flavor === "base" ? "Radix" : "Base UI";
+  checks.push(check("flavor", leaks.length === 0, leaks.length ? `${otherName} imported in ${leaks.join(", ")}` : ""));
 
   const have = deps(dir);
   const missingDeps = control.addedDeps.filter((d) => !have.has(d));
@@ -167,13 +193,13 @@ export async function gradeRun({ brief, template, dir, control, port, browser, s
   return { checks, shot, changed };
 }
 
-/** Flags imports of the other flavor's primitives in files the run added. */
-function flavorLeak(dir, changed, flavor) {
-  const other = flavor === "base" ? /from ["'](@radix-ui\/|radix-ui["'])/ : /from ["']@base-ui\//;
-  const hits = changed.filter(
-    (p) => SOURCE.test(p) && existsSync(join(dir, p)) && other.test(readFileSync(join(dir, p), "utf8")),
-  );
-  return hits.length ? `other flavor imported in ${hits.join(", ")}` : "";
+/** Source files (path → content) that import the other flavor's primitives.
+ *  A file identical to the no-agent install is the payload's doing (a few
+ *  Radix payloads import Base UI on purpose), so only files the agent wrote
+ *  or edited count. */
+export function flavorLeaks(sources, flavor, installed) {
+  const other = flavor === "base" ? /from ["'](@radix-ui\/|radix-ui["'])/ : /from ["']@base-ui(-components)?\//;
+  return [...sources].filter(([p, text]) => installed.get(p) !== text && other.test(text)).map(([p]) => p);
 }
 
 /** Serves the production build and screenshots `/`. Fails on uncaught
@@ -261,8 +287,13 @@ const JUDGE_SCHEMA = {
 
 /** Asks Claude to compare the run's screenshot with the reference. The
  *  rubric separates "styled differently" (expected in a stock shadcn app)
- *  from "broken". */
+ *  from "broken". With a screenshot missing, or no verdict after one retry,
+ *  the check has no answer and the run shows as unverified. */
 export async function judge({ brief, shot, reference, referenceKind, model, cwd }) {
+  if (!shot || !reference) {
+    const missing = shot ? "no reference screenshot to compare with" : "no screenshot of the page";
+    return { check: check("looks", null, missing), costUsd: null };
+  }
   const name = (p) => p.split("/").pop();
   const refLine =
     referenceKind === "control"
@@ -276,43 +307,54 @@ export async function judge({ brief, shot, reference, referenceKind, model, cwd 
     "A static screenshot shows popups closed: a trigger alone is fine for menus, selects, dialogs, tooltips and command menus.",
     "Answer with the verdict, each problem as one short sentence, and a one-line note.",
   ].join("\n\n");
-  const res = await run(
-    "claude",
-    [
-      "-p",
-      prompt,
-      "--output-format",
-      "json",
-      "--json-schema",
-      JSON.stringify(JUDGE_SCHEMA),
-      "--allowedTools",
-      "Read",
-      "--permission-mode",
-      "dontAsk",
-      "--disable-slash-commands",
-      "--strict-mcp-config",
-      "--setting-sources",
-      "project",
-      "--no-session-persistence",
-      ...(model ? ["--model", model] : []),
-    ],
-    { cwd, timeoutMs: 5 * 60000 },
-  );
-  const line = res.out.split("\n").reverse().find((l) => l.startsWith("{"));
+  const args = [
+    "-p",
+    prompt,
+    "--output-format",
+    "json",
+    "--json-schema",
+    JSON.stringify(JUDGE_SCHEMA),
+    "--allowedTools",
+    "Read",
+    "--permission-mode",
+    "dontAsk",
+    "--disable-slash-commands",
+    "--strict-mcp-config",
+    "--setting-sources",
+    "project",
+    "--no-session-persistence",
+    ...(model ? ["--model", model] : []),
+  ];
+  // A timeout or a malformed answer is often a one-off, so ask twice before
+  // giving up. A usage limit fails both.
+  let res;
+  for (let i = 0; i < 2; i++) {
+    res = await run("claude", args, { cwd, timeoutMs: 5 * 60000 });
+    const verdict = readVerdict(res.out);
+    if (verdict) return verdict;
+  }
+  const why = res.timedOut ? "timed out" : tail(res.out, 300) || "no output";
+  return { check: check("looks", null, `judge gave no verdict: ${why}`), costUsd: null };
+}
+
+/** The `looks` check from `claude -p --output-format json` output, or null
+ *  when the output carries no pass/fail verdict. */
+export function readVerdict(out) {
+  const line = out.split("\n").reverse().find((l) => l.startsWith("{"));
   try {
     const result = JSON.parse(line);
     const verdict = result.structured_output;
-    if (!verdict?.verdict) throw new Error("no structured output");
+    if (verdict?.verdict !== "pass" && verdict?.verdict !== "fail") return null;
     return {
       check: check(
         "looks",
         verdict.verdict === "pass",
-        [verdict.problems.join(" "), verdict.notes].filter(Boolean).join(" | "),
+        [(verdict.problems ?? []).join(" "), verdict.notes].filter(Boolean).join(" | "),
       ),
       costUsd: result.total_cost_usd ?? null,
     };
   } catch {
-    return { check: check("looks", null, `judge gave no verdict: ${tail(res.out, 300)}`), costUsd: null };
+    return null;
   }
 }
 
