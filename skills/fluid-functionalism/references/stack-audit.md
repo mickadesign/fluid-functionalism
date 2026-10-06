@@ -65,7 +65,7 @@ that is how flavor mixing happens.
 ### 4. Inventory (context for suggestions, not warnings)
 
 - **Installed @fluid items**: presence of `lib/springs.ts`,
-  `hooks/use-fluid-hover.ts`, `components/ui/fluid-hover-highlight.tsx`,
+  `hooks/use-fluid-hover.ts`, `components/fluid-hover-highlight.tsx`,
   `lib/font-weight.ts`, `lib/icon-context.tsx`, and which `components/ui/*`
   files match registry items. The script lists them, and separates
   same-named files that are stock or local (diff those before any
