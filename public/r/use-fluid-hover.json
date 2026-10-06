@@ -7,6 +7,7 @@
     "framer-motion"
   ],
   "registryDependencies": [
+    "utils",
     "https://www.fluidfunctionalism.com/r/springs.json"
   ],
   "files": [

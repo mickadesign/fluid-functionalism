@@ -694,6 +694,7 @@
         "framer-motion"
       ],
       "registryDependencies": [
+        "utils",
         "https://www.fluidfunctionalism.com/r/springs.json"
       ],
       "files": [
@@ -1551,6 +1552,7 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -1591,6 +1593,7 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -2104,6 +2107,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -2136,6 +2141,8 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-context.json",
+        "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
