@@ -385,6 +385,98 @@ describe("shipped imports reach installers", () => {
   });
 });
 
+describe("shipped theme utilities reach installers", () => {
+  // The var() check above can't see Tailwind theme utilities. `bg-hover` reads
+  // `--color-hover` from the project's @theme, and where nothing defines it
+  // Tailwind emits no rule: the class compiles to nothing, the build passes,
+  // and the fill never shows. use-fluid-hover shipped that way (its
+  // FluidHoverHighlight paints bg-hover) until it listed `tokens`.
+  //
+  // Checked: every theme key a payload ships in cssVars.theme, every @utility
+  // its css adds, and every one the site's app/globals.css defines that a stock
+  // shadcn theme doesn't. A payload that paints with one needs it from its own
+  // cssVars/css or its registryDependencies chain. A site-only one has no item
+  // to depend on yet: ship it in one first.
+
+  // @theme colors a stock `shadcn init` writes, so they resolve anywhere.
+  const STOCK_THEME = new Set(
+    [
+      "background", "foreground", "card", "card-foreground", "popover",
+      "popover-foreground", "primary", "primary-foreground", "secondary",
+      "secondary-foreground", "muted", "muted-foreground", "accent",
+      "accent-foreground", "destructive", "border", "input", "ring",
+    ].map((name) => `color-${name}`)
+  );
+  // Shipped files that name theme utilities without painting with them.
+  const NOT_PAINTED = new Set([
+    "registry/default/lib/utils.ts", // the type-scale roles, for tailwind-merge's font-size group
+  ]);
+
+  // Requirement keys: a theme key (`color-hover`) or `@utility <name>`.
+  // Line-height companions (`text-body--line-height`) ride along with their
+  // size, so they are not keys of their own.
+  function payloadKeys(payload) {
+    const keys = Object.keys(payload.cssVars?.theme ?? {}).filter((k) => !k.includes("--"));
+    for (const k of Object.keys(payload.css ?? {})) if (k.startsWith("@utility ")) keys.push(k);
+    return keys;
+  }
+
+  const shippedBy = new Map(); // key → the flat item that ships it, for the hint
+  for (const [rel, payload] of payloads) {
+    if (rel.includes("/")) continue;
+    for (const key of payloadKeys(payload)) shippedBy.set(key, payload.name);
+  }
+  const siteCss = readFileSync(join(ROOT, "app/globals.css"), "utf-8");
+  const siteKeys = new Set();
+  for (const [, body] of siteCss.matchAll(/@theme\b[^{]*\{([^}]*)\}/g)) {
+    for (const [, key] of body.matchAll(/--((?:color|shadow|text)-[\w-]+?)\s*:/g)) {
+      if (!key.includes("--") && !STOCK_THEME.has(key)) siteKeys.add(key);
+    }
+  }
+  for (const [, name] of siteCss.matchAll(/@utility\s+([\w-]+)/g)) siteKeys.add(`@utility ${name}`);
+
+  // The class names a key produces: `color-hover` → bg-hover, text-hover,
+  // border-hover, ...; `shadow-surface-1` and `text-caption` → themselves.
+  // Variants (`hover:bg-hover`) and opacity modifiers (`bg-hover/50`) match.
+  const COLOR_PREFIXES =
+    "bg|text|border(?:-[xytrblse])?|ring|ring-offset|outline|fill|stroke|from|via|to|decoration|divide|accent|caret|shadow|inset-shadow|inset-ring|placeholder";
+  function utilityPattern(key) {
+    const name = key.startsWith("@utility ") ? key.slice("@utility ".length) : key;
+    const color = name.match(/^color-(.+)$/);
+    const classes = color ? `(?:${COLOR_PREFIXES})-${color[1]}` : name;
+    return new RegExp(`(?<![\\w-])${classes}(?![\\w-])`);
+  }
+  const checked = [...new Set([...shippedBy.keys(), ...siteKeys])].map((key) => ({
+    key,
+    pattern: utilityPattern(key),
+  }));
+
+  it.each([...payloads.keys()])("%s defines every theme utility its source paints with", (rel) => {
+    const defined = new Set();
+    for (const dep of reachable(rel)) {
+      const payload = payloads.get(dep);
+      if (payload) for (const key of payloadKeys(payload)) defined.add(key);
+    }
+
+    const missing = [];
+    for (const file of payloads.get(rel).files ?? []) {
+      if (NOT_PAINTED.has(file.path)) continue;
+      for (const { key, pattern } of checked) {
+        if (defined.has(key)) continue;
+        const used = (file.content ?? "").match(pattern)?.[0];
+        if (!used) continue;
+        const item = shippedBy.get(key);
+        missing.push(
+          item
+            ? `${file.path} paints with ${used}, which needs "${item}" in its registryDependencies`
+            : `${file.path} paints with ${used}, which only the site's app/globals.css defines`
+        );
+      }
+    }
+    expect(missing, rel).toEqual([]);
+  });
+});
+
 describe("fluid hover highlight", () => {
   // The hover overlay is one component, `FluidHoverHighlight`
   // (registry/default/fluid-hover-highlight.tsx). The 2026-09-07

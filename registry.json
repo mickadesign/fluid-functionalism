@@ -695,7 +695,8 @@
       ],
       "registryDependencies": [
         "utils",
-        "springs"
+        "springs",
+        "tokens"
       ],
       "files": [
         {
