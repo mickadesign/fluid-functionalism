@@ -106,6 +106,9 @@ export function ComponentPreview({
   const frame = (
     <div
       ref={frameRef}
+      // The Copy-prompt sweep screenshots this frame as its reference for
+      // what the component looks like (evals/copy-prompts/grade.mjs).
+      data-component-preview=""
       // `isolate` scopes the frame's internal z ladder (the z-[70] tab bar,
       // the inspect overlay's layers) to its own stacking context, so a
       // portalled dialog's z-50 overlay dims the WHOLE frame instead of

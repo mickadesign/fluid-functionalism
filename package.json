@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
+    "eval:copy-prompts": "node evals/copy-prompts/run.mjs",
     "type-scale": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-type-scale.mjs",
     "registry:build": "npm run type-scale && shadcn build && node scripts/postbuild-registry.mjs"
   },
@@ -66,7 +67,9 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
     "eslint-config-next": "^15.3.1",
+    "jiti": "^2.7.0",
     "jsdom": "^29.1.1",
+    "playwright-core": "^1.63.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
