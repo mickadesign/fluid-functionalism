@@ -84,7 +84,7 @@ export function buildInstallPrompt({ slug, installSlug, base }: BuildInstallProm
   }
   if (details?.flavorNote) about.push(details.flavorNote);
   about.push(
-    "Needs a shadcn-style project: Tailwind v4, the `@/` alias, and the Inter variable font loaded for the weight animations. Installed files land in components/ui, lib, and hooks. Compose with props and className rather than editing them.",
+    "Needs a shadcn-style project: Tailwind v4, the `@/` alias, and the Inter variable font loaded for the weight animations. Installed files land in components/ui, components, lib, and hooks. Compose with props and className rather than editing them.",
   );
   lines.push(about.join(" "));
   lines.push(`Docs: ${SITE}/docs/${slug}`);

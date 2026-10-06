@@ -2,8 +2,11 @@
  *  the craft notes the skill ships (references/craft.md).
  *  Keyed by doc page slug. `install-prompt.ts` derives the rest (install
  *  command, description, flavor, docs URL). Keep imports pointing at the
- *  installed paths (`@/components/ui/*`, `@/lib/*`, `@/hooks/*`), not the
- *  repo's registry paths. */
+ *  installed paths (`@/components/ui/*`, `@/lib/*`, `@/hooks/*`, and
+ *  `@/components/*` for `registry:component` files like
+ *  fluid-hover-highlight), not the repo's registry paths or its
+ *  `components/ui/` shims. tests/docs-snippets.test.mjs checks them against
+ *  registry.json. */
 export interface PromptEntry {
   /** Minimal composition, ~12 lines, imports from the installed path. */
   usage: string;
@@ -34,7 +37,7 @@ export const PROMPT_ENTRIES: Record<string, PromptEntry> = {
     ],
     usage: `import { useRef } from "react";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
-import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { FluidHoverHighlight } from "@/components/fluid-hover-highlight";
 
 function List({ rows }: { rows: string[] }) {
   const containerRef = useRef<HTMLDivElement>(null);

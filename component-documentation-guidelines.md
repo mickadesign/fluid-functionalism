@@ -28,6 +28,7 @@ Checklist and conventions for documenting every new component in this project. F
   import { useFluidHover } from "@/hooks/use-fluid-hover";
   import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
   ```
+  The `@/components/ui/fluid-hover-highlight` import is for registry sources only, through the in-repo shim. The file ships as `registry:component`, so it installs at `components/fluid-hover-highlight.tsx` and the shadcn CLI rewrites the import to match. Snippets people copy (doc pages, Copy prompts, the skill) use `@/components/fluid-hover-highlight`; `tests/docs-snippets.test.mjs` checks every documented import against where registry.json installs the file.
 
 ### 2. Registry Entry (`registry.json`)
 

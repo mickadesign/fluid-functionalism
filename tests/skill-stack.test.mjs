@@ -332,6 +332,12 @@ describe("readStack on a project", () => {
     expect(s.installed.builtOnFluid).not.toContain("helpers");
   });
 
+  it("finds the fluid hover highlight in components/, where use-fluid-hover installs it", () => {
+    const dir = ready();
+    writeFileSync(join(dir, "src/components/fluid-hover-highlight.tsx"), `import { motion } from "framer-motion";`);
+    expect(readStack(dir).installed.fluid).toContain("fluid-hover-highlight");
+  });
+
   it("finds the root layout of a JavaScript project", () => {
     const s = readStack(
       project({

@@ -73,7 +73,7 @@ const ROWS = ["Inbox", "Drafts", "Sent", "Archive", "Trash"];
 
 const FLUID_HOVER_CODE = `import { useRef } from "react";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
-import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { FluidHoverHighlight } from "@/components/fluid-hover-highlight";
 
 // One list, one highlight. The hook picks the row whose center is nearest
 // the cursor; the highlight springs to that row's rect on spring.fast.

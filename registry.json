@@ -694,6 +694,7 @@
         "framer-motion"
       ],
       "registryDependencies": [
+        "utils",
         "springs"
       ],
       "files": [
@@ -1551,6 +1552,7 @@
         "utils",
         "springs",
         "font-weight",
+        "shape-context",
         "icon-context",
         "use-fluid-hover",
         "size-context",
@@ -1591,6 +1593,7 @@
         "utils",
         "springs",
         "font-weight",
+        "shape-context",
         "icon-context",
         "use-fluid-hover",
         "size-context",
@@ -2104,6 +2107,8 @@
         "springs",
         "font-weight",
         "shape-context",
+        "surface-context",
+        "surface-classes",
         "icon-context",
         "use-fluid-hover",
         "size-context",
@@ -2136,6 +2141,8 @@
         "springs",
         "font-weight",
         "shape-context",
+        "surface-context",
+        "surface-classes",
         "icon-context",
         "use-fluid-hover",
         "size-context",

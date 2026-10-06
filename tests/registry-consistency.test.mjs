@@ -13,7 +13,7 @@
  * guards so a failure reads as "you forgot X", not "the test is wrong".
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DUAL_FLAVOR_SLUGS, FLAVORED_SINGLE_SOURCE_SLUGS } from "../lib/dual-flavor-slugs.mjs";
 import { BASE_URL, CUSTOM_ITEMS, FLAVORED_SINGLE_SOURCE } from "../scripts/postbuild-registry.mjs";
@@ -167,6 +167,31 @@ describe("committed build output (public/r)", () => {
   });
 });
 
+/** Every per-item payload in public/r, keyed by its public/r-relative path. */
+const payloads = new Map();
+(function collect(dir, prefix = "") {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      collect(join(dir, entry.name), `${prefix}${entry.name}/`);
+    } else if (entry.name.endsWith(".json")) {
+      const data = JSON.parse(readFileSync(join(dir, entry.name), "utf-8"));
+      if (!Array.isArray(data.items)) payloads.set(`${prefix}${entry.name}`, data);
+    }
+  }
+})(join(ROOT, "public/r"));
+
+/** Payload paths reachable from `rel` through registryDependencies URLs. */
+function reachable(rel, seen = new Set()) {
+  if (seen.has(rel)) return seen;
+  seen.add(rel);
+  const payload = payloads.get(rel);
+  for (const dep of payload?.registryDependencies ?? []) {
+    if (!dep.startsWith(BASE_URL)) continue; // "utils" etc. — shadcn default
+    reachable(dep.slice(BASE_URL.length + 1), seen);
+  }
+  return seen;
+}
+
 describe("shipped CSS variables reach installers", () => {
   // Every `var(--x)` a payload's embedded source references must resolve in an
   // installer project. Valid sources of a definition, in order of checking:
@@ -177,7 +202,6 @@ describe("shipped CSS variables reach installers", () => {
   //  4. the cssVars/css of any item reachable through its registryDependencies
   //     chain (following the rewritten fluidfunctionalism.com URLs).
   // Anything else is a variable that renders as `unset` in installer projects.
-  const outDir = join(ROOT, "public/r");
 
   // 1a. Tokens every shadcn/Tailwind v4 project defines in its own globals.css
   //     (the standard shadcn base theme), plus names Tailwind itself provides:
@@ -211,19 +235,6 @@ describe("shipped CSS variables reach installers", () => {
     /^--scroll-area-thumb-/, // Base UI ScrollArea thumb metrics
   ];
 
-  /** All payloads keyed by their public/r-relative path. */
-  const payloads = new Map();
-  (function collect(dir, prefix = "") {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        collect(join(dir, entry.name), `${prefix}${entry.name}/`);
-      } else if (entry.name.endsWith(".json")) {
-        const data = JSON.parse(readFileSync(join(dir, entry.name), "utf-8"));
-        if (!Array.isArray(data.items)) payloads.set(`${prefix}${entry.name}`, data);
-      }
-    }
-  })(outDir);
-
   /** Custom-property names defined by a payload's cssVars + css blocks. */
   function cssDefinedVars(payload) {
     const defined = new Set();
@@ -240,18 +251,6 @@ describe("shipped CSS variables reach installers", () => {
       }
     })(payload.css ?? {});
     return defined;
-  }
-
-  /** Payload paths reachable from `rel` through registryDependencies URLs. */
-  function reachable(rel, seen = new Set()) {
-    if (seen.has(rel)) return seen;
-    seen.add(rel);
-    const payload = payloads.get(rel);
-    for (const dep of payload?.registryDependencies ?? []) {
-      if (!dep.startsWith(BASE_URL)) continue; // "utils" etc. — shadcn default
-      reachable(dep.slice(BASE_URL.length + 1), seen);
-    }
-    return seen;
   }
 
   it.each([...payloads.keys()])("%s resolves every var(--x) its source references", (rel) => {
@@ -285,6 +284,104 @@ describe("shipped CSS variables reach installers", () => {
         ).toBe(true);
       }
     }
+  });
+});
+
+describe("shipped imports reach installers", () => {
+  // Every local import in a payload's shipped source must land on a file the
+  // install writes: the payload's own files plus everything its
+  // registryDependencies chain installs. Files the installer's project already
+  // has don't count (a stock components/ui/button.tsx would satisfy the import
+  // and quietly stand in for ours), except lib/utils.ts, which the plain
+  // "utils" dep installs from ui.shadcn.com.
+  //
+  // The shadcn CLI (4.21: resolveFilePath, transformImport,
+  // resolveModuleByProbablePath) resolves an import in three steps:
+  //  1. Install path: the file's `target`, else its type's folder plus the part
+  //     of its path after that folder's name (or just its basename).
+  //  2. Alias transform: `@/registry/<x>/lib/*` → `@/lib/*`, `.../hooks/*` →
+  //     `@/hooks/*`, any other `@/registry/<x>/<name>` → `@/components/<name>`.
+  //  3. The import resolves to a written file at that path (any extension, or
+  //     an index file); failing that, the CLI rewrites it to a written file
+  //     with the same basename. That rewrite is how every
+  //     `@/components/ui/fluid-hover-highlight` import finds the
+  //     registry:component at components/fluid-hover-highlight.tsx.
+  // Anything else is "Cannot find module" in the installer's tsc and build.
+  const EXTENSIONS = [".tsx", ".ts", ".js", ".jsx", ".css"];
+  const SHADCN_DEFAULT_FILES = { utils: ["lib/utils.ts"] };
+  const TYPE_DIRS = { "registry:ui": "components/ui", "registry:lib": "lib", "registry:hook": "hooks" };
+
+  function installPath(file) {
+    if (file.target) return file.target.replace(/^~\//, "");
+    const dir = TYPE_DIRS[file.type] ?? "components";
+    const segments = file.path.split("/");
+    const at = segments.indexOf(dir.split("/").pop());
+    return posix.join(dir, at === -1 ? segments.at(-1) : segments.slice(at + 1).join("/"));
+  }
+
+  function aliasTransform(spec) {
+    if (!spec.startsWith("@/registry/")) return spec;
+    if (/^@\/registry\/(.+)\/ui/.test(spec)) return spec.replace(/^@\/registry\/(.+)\/ui/, "@/components/ui");
+    if (/^@\/registry\/(.+)\/lib\/utils$/.test(spec)) return "@/lib/utils";
+    if (/^@\/registry\/(.+)\/components/.test(spec)) return spec.replace(/^@\/registry\/(.+)\/components/, "@/components");
+    if (/^@\/registry\/(.+)\/lib/.test(spec)) return spec.replace(/^@\/registry\/(.+)\/lib/, "@/lib");
+    if (/^@\/registry\/(.+)\/hooks/.test(spec)) return spec.replace(/^@\/registry\/(.+)\/hooks/, "@/hooks");
+    return spec.replace(/^@\/registry\/[^/]+/, "@/components");
+  }
+
+  /** Whether `probable` (a project-relative path, maybe extensionless) lands on a written file. */
+  function resolves(probable, written, { rewrite }) {
+    const ext = posix.extname(probable);
+    const stem = ext ? probable.slice(0, -ext.length) : probable;
+    const exts = ext ? [ext] : EXTENSIONS;
+    if (exts.some((e) => written.has(stem + e) || written.has(`${stem}/index${e}`))) return true;
+    const base = posix.basename(stem);
+    return rewrite && [...written].some((p) => exts.some((e) => p.endsWith(`/${base}${e}`)));
+  }
+
+  // Imports and re-exports that start a line (so JSDoc examples don't count),
+  // side-effect imports, and dynamic import().
+  const IMPORT =
+    /^\s*(?:import|export)\s[^;"']*?\bfrom\s*["']([^"']+)["']|^\s*import\s*["']([^"']+)["']|\bimport\(\s*["']([^"']+)["']\s*\)/gm;
+
+  // Install path (extensionless) → the item that ships it, for the hint.
+  const shippedBy = new Map();
+  for (const [rel, payload] of payloads) {
+    if (rel.includes("/")) continue; // flat payloads carry the plain item name
+    for (const file of payload.files ?? []) {
+      const path = installPath(file);
+      shippedBy.set(path.slice(0, path.length - posix.extname(path).length), payload.name);
+    }
+  }
+
+  it.each([...payloads.keys()])("%s installs every file its source imports", (rel) => {
+    const written = new Set();
+    for (const dep of reachable(rel)) {
+      const payload = payloads.get(dep);
+      if (!payload) continue; // dangling URLs are caught by the dep-URL test above
+      for (const file of payload.files ?? []) written.add(installPath(file));
+      for (const name of payload.registryDependencies ?? []) {
+        for (const path of SHADCN_DEFAULT_FILES[name] ?? []) written.add(path);
+      }
+    }
+
+    const missing = [];
+    for (const file of payloads.get(rel).files ?? []) {
+      const at = installPath(file);
+      for (const m of (file.content ?? "").matchAll(IMPORT)) {
+        const spec = m[1] ?? m[2] ?? m[3];
+        let probable;
+        // Only alias imports get the CLI's same-basename rewrite.
+        if (spec.startsWith("@/")) probable = aliasTransform(spec).slice(2);
+        else if (spec.startsWith(".")) probable = posix.join(posix.dirname(at), spec);
+        else continue; // packages: the item's `dependencies`
+        if (resolves(probable, written, { rewrite: spec.startsWith("@/") })) continue;
+        const item = shippedBy.get(probable);
+        const hint = item ? `; add "${item}" to its registryDependencies` : "";
+        missing.push(`${at} imports "${spec}", which nothing in its registryDependencies chain installs${hint}`);
+      }
+    }
+    expect(missing, rel).toEqual([]);
   });
 });
 

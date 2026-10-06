@@ -82,11 +82,13 @@ One highlight per list: `useFluidHover` picks the item whose center is nearest
 the cursor, and a single `bg-hover` overlay springs to its rect on
 `spring.fast`. The cursor in a gap still lights the nearest row, and never
 blinks off between rows. Install `@fluid/use-fluid-hover`; it ships the hook
-and the `FluidHoverHighlight` component.
+and the `FluidHoverHighlight` component. The component lands in
+`components/`, not `components/ui/`, so import it from
+`@/components/fluid-hover-highlight`.
 
 ```tsx
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
-import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { FluidHoverHighlight } from "@/components/fluid-hover-highlight";
 
 function List({ items }) {
   const containerRef = React.useRef<HTMLUListElement>(null);

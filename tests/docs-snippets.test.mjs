@@ -4,7 +4,8 @@
 // docs (or vice versa) fails here instead of shipping silently.
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import ts from "typescript";
 import { FLAVORED_SINGLE_SOURCE } from "../scripts/postbuild-registry.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -79,5 +80,84 @@ describe("emitted payloads embed only installable sources", () => {
         }
       }
     }
+  });
+});
+
+describe("documented imports match where the registry installs each file", () => {
+  // The repo resolves `@/components/ui/*` through shims, so a snippet can
+  // import a path that only exists here. fluid-hover-highlight ships as
+  // `registry:component` and installs at components/, not components/ui/: the
+  // Copy prompt and the skill taught the ui/ path, and an agent following
+  // them verbatim failed `next build` with TS2307. Every `from "@/…"` that
+  // names a registry file must use the path the shadcn CLI writes it to.
+  const DEFAULT_DIR = {
+    "registry:ui": "components/ui",
+    "registry:component": "components",
+    "registry:hook": "hooks",
+    "registry:lib": "lib",
+  };
+  const installed = new Map(); // basename → installed specifiers
+  for (const item of JSON.parse(read("registry.json")).items) {
+    for (const file of item.files ?? []) {
+      const dir = DEFAULT_DIR[file.type];
+      const path = file.target ?? (dir && `${dir}/${basename(file.path)}`);
+      if (!path) continue;
+      const spec = "@/" + path.replace(/\.[cm]?[jt]sx?$/, "");
+      const specs = installed.get(basename(spec)) ?? new Set();
+      installed.set(basename(spec), specs.add(spec));
+    }
+  }
+
+  function* walk(dir) {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = join(dir, entry.name);
+      if (entry.isDirectory()) yield* walk(rel);
+      else yield rel;
+    }
+  }
+
+  // Only string and template literals: a source file's own import
+  // declarations are repo code and may use the shims.
+  function snippets(rel) {
+    const text = read(rel);
+    if (rel.endsWith(".md")) return [text];
+    const out = [];
+    const visit = (node) => {
+      if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+        out.push(node.text);
+      else if (ts.isTemplateExpression(node))
+        out.push(node.head.text + node.templateSpans.map((s) => s.literal.text).join(""));
+      ts.forEachChild(node, visit);
+    };
+    const kind = rel.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+    visit(ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true, kind));
+    return out;
+  }
+
+  // lib/preset is left out: its generated installs carry their own targets.
+  const sources = [
+    ...walk("app"),
+    ...walk("lib/docs"),
+    ...walk("skills/fluid-functionalism"),
+  ].filter((rel) => /\.(tsx?|md)$/.test(rel));
+
+  it("every documented @/ import of a registry file uses its installed path", () => {
+    const wrong = [];
+    for (const rel of sources) {
+      for (const snippet of snippets(rel)) {
+        for (const [, spec] of snippet.matchAll(/\bfrom\s+["'](@\/[^"']+)["']/g)) {
+          const specs = installed.get(basename(spec));
+          if (specs && !specs.has(spec))
+            wrong.push(`${rel}: "${spec}" installs as ${[...specs].join(" or ")}`);
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("maps fluid-hover-highlight to components/, the case that shipped broken", () => {
+    expect(installed.get("fluid-hover-highlight")).toEqual(
+      new Set(["@/components/fluid-hover-highlight"])
+    );
   });
 });
