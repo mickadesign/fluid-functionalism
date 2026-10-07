@@ -583,6 +583,7 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
     >
       {/* Screenshots often end in white; an inset neutral hairline keeps the
           edge visible without changing the measured image or panel height. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- src is any caller URL; next/image needs that host in next.config and only works in Next */}
       <img
         src={src}
         alt={alt}
