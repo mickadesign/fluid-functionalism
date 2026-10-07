@@ -11,6 +11,9 @@
 // Compat rules (enforced by tests/preset-codec.test.mjs, per component):
 //   1. Never reorder existing value arrays — only append.
 //   2. Every field's default sits at index 0 (unknown/overflow decodes to it).
+//      A field missing from an older version's table decodes to that default
+//      too, unless `versionDefaults` pins the value it had then: needed when
+//      a new field defaults ON, or every older code would gain it.
 //   3. Only append new fields at the end; bump the component's version char
 //      when the LAYOUT changes incompatibly (bit widths, removals), keeping
 //      the old table registered so old codes still decode.
@@ -36,6 +39,10 @@ export interface PresetComponentDef {
   versions: Record<string, readonly PresetField[]>;
   currentVersion: string;
   defaults: Record<string, string | number | boolean>;
+  /** Version char → values for fields that version's table predates, when
+   *  they must not take today's default. A field added on by default would
+   *  otherwise switch itself on in every older code. */
+  versionDefaults?: Record<string, Record<string, string | number | boolean>>;
   /** False = share-link only; /r/preset refuses to generate an install. */
   installable: boolean;
 }
@@ -137,7 +144,7 @@ export function decodePreset(code: string): DecodeResult {
   if (bits < 0 || bits >= 2 ** totalBits(fields)) {
     return { ok: false, error: "Preset code is not valid base62 or out of range." };
   }
-  const preset = { ...def.defaults };
+  const preset = { ...def.defaults, ...def.versionDefaults?.[version] };
   let remaining = bits;
   for (const field of fields) {
     const idx = remaining % 2 ** field.bits;

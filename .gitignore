@@ -36,6 +36,9 @@ pnpm-debug.log*
 # claude code agent state (local-only)
 .claude/
 
+# copy-prompt sweep output (reports, screenshots, transcripts)
+/evals/copy-prompts/results/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

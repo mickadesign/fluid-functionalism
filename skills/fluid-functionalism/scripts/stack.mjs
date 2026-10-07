@@ -49,6 +49,7 @@ export const FF_PARTS = [
   "omit",
   "menu-item",
   "dropdown-search",
+  "dropdown-sub",
   "sidebar-core",
   "sidebar-menu",
   "sidebar-menu-grid",

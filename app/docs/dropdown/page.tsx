@@ -9,6 +9,9 @@ import {
   DropdownMenu,
   DropdownTrigger,
   DropdownContent,
+  DropdownSub,
+  DropdownSubTrigger,
+  DropdownSubContent,
   DropdownSearch,
   DropdownEmpty,
 } from "@/components/flavored/dropdown";
@@ -89,6 +92,39 @@ const [view, setView] = useState(0);
     ))}
   </DropdownContent>
 </DropdownMenu>`;
+
+const submenuCode = `import {
+  DropdownMenu, DropdownTrigger, DropdownContent,
+  DropdownSub, DropdownSubTrigger, DropdownSubContent,
+  MenuItem, Button,
+} from "./components";
+import { Folder, Link, Mail, Pencil } from "lucide-react";
+
+const FOLDERS = ["Inbox", "Design", "Engineering", "Marketing", "Archive"];
+
+<DropdownMenu>
+  <DropdownTrigger render={<Button variant="ghost">Q3 report.pdf</Button>} />
+  <DropdownContent>
+    <DropdownSub>
+      <DropdownSubTrigger index={0} icon={Folder} label="Move to" />
+      <DropdownSubContent>
+        {FOLDERS.map((folder, i) => (
+          <MenuItem key={folder} index={i} label={folder} onSelect={() => move(folder)} />
+        ))}
+      </DropdownSubContent>
+    </DropdownSub>
+    <DropdownSub>
+      <DropdownSubTrigger index={1} icon={Link} label="Share" />
+      <DropdownSubContent>
+        <MenuItem index={0} icon={Link} label="Copy link" onSelect={copyLink} />
+        <MenuItem index={1} icon={Mail} label="Email" onSelect={email} />
+      </DropdownSubContent>
+    </DropdownSub>
+    <MenuItem index={2} icon={Pencil} label="Rename" onSelect={rename} />
+  </DropdownContent>
+</DropdownMenu>`;
+
+const FOLDERS = ["Inbox", "Design", "Engineering", "Marketing", "Archive"];
 
 const searchableCode = `import {
   DropdownMenu, DropdownTrigger, DropdownContent,
@@ -334,6 +370,28 @@ const dropdownContentProps: PropDef[] = [
   { name: "sideOffset", type: "number", default: "6", description: "Gap to the trigger, in px." },
 ];
 
+const subProps: PropDef[] = [
+  { name: "children", type: "ReactNode", description: "A DropdownSubTrigger and its DropdownSubContent." },
+  { name: "open", type: "boolean", description: "Controlled open state." },
+  { name: "defaultOpen", type: "boolean", default: "false", description: "Initial open state." },
+  { name: "onOpenChange", type: "(open: boolean) => void", description: "Called when the submenu opens or closes." },
+];
+
+const subTriggerProps: PropDef[] = [
+  { name: "index", type: "number", description: "Position among the parent menu's rows." },
+  { name: "label", type: "string", description: "Row text." },
+  { name: "icon", type: "IconComponent", description: "Leading icon. A chevron always trails the row." },
+  { name: "disabled", type: "boolean", default: "false", description: "Disables the row and its submenu." },
+];
+
+const subContentProps: PropDef[] = [
+  { name: "children", type: "ReactNode", description: "MenuItem, DropdownLabel, DropdownSeparator, or another DropdownSub. Rows index from 0 again." },
+  { name: "checkedIndex", type: "number", description: "The checked row, as in DropdownContent." },
+  { name: "checkedIndices", type: "number[]", description: "Checked rows, as in DropdownContent." },
+  { name: "sideOffset", type: "number", default: "6", description: "Distance from the trigger row, in px. The default leaves a 2px gap past the menu's padding." },
+  { name: "alignOffset", type: "number", default: "-4", description: "Shift along the trigger row. The default lines the first row up with it." },
+];
+
 const searchProps: PropDef[] = [
   { name: "value", type: "string", description: "The query. Filter the rows you render against it; indices restart at 0." },
   { name: "onValueChange", type: "(value: string) => void", description: "Called on every keystroke, and with \"\" on close (see clearOnClose)." },
@@ -407,6 +465,9 @@ export default function DropdownDoc() {
   const Monitor = useIcon("monitor");
   const ChevronDown = useIcon("chevron-down");
   const Plus = useIcon("plus");
+  const Folder = useIcon("folder");
+  const Link = useIcon("link");
+  const Pencil = useIcon("pencil");
 
   const items = [
     { icon: SquareLibrary, label: "Teamspaces" },
@@ -509,6 +570,38 @@ export default function DropdownDoc() {
                   onSelect={() => setView(i)}
                 />
               ))}
+            </DropdownContent>
+          </DropdownMenu>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Submenus">
+        <p className="text-site-body text-muted-foreground">
+          Hover Move to, then cut across Share to its submenu: the highlight
+          stays on Move to until you stop on another row.
+        </p>
+        <ComponentPreview code={submenuCode} minHeightClass="min-h-[160px]">
+          <DropdownMenu>
+            <DropdownTrigger
+              render={<Button variant="ghost">Q3 report.pdf</Button>}
+            />
+            <DropdownContent>
+              <DropdownSub>
+                <DropdownSubTrigger index={0} icon={Folder} label="Move to" />
+                <DropdownSubContent>
+                  {FOLDERS.map((folder, i) => (
+                    <MenuItem key={folder} index={i} label={folder} onSelect={() => {}} />
+                  ))}
+                </DropdownSubContent>
+              </DropdownSub>
+              <DropdownSub>
+                <DropdownSubTrigger index={1} icon={Link} label="Share" />
+                <DropdownSubContent>
+                  <MenuItem index={0} icon={Link} label="Copy link" onSelect={() => {}} />
+                  <MenuItem index={1} icon={Mail} label="Email" onSelect={() => {}} />
+                </DropdownSubContent>
+              </DropdownSub>
+              <MenuItem index={2} icon={Pencil} label="Rename" onSelect={() => {}} />
             </DropdownContent>
           </DropdownMenu>
         </ComponentPreview>
@@ -685,6 +778,18 @@ export default function DropdownDoc() {
 
       <DocSection title="API Reference — DropdownContent">
         <PropsTable props={dropdownContentProps} />
+      </DocSection>
+
+      <DocSection title="API Reference — DropdownSub">
+        <PropsTable props={subProps} />
+      </DocSection>
+
+      <DocSection title="API Reference — DropdownSubTrigger">
+        <PropsTable props={subTriggerProps} />
+      </DocSection>
+
+      <DocSection title="API Reference — DropdownSubContent">
+        <PropsTable props={subContentProps} />
       </DocSection>
 
       <DocSection title="API Reference — DropdownSearch">

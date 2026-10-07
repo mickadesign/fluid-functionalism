@@ -16,8 +16,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "@base-ui/react/menu";
 import type { MenuTriggerProps } from "@base-ui/react/menu";
+import { useDirection } from "@base-ui/react/direction-provider";
 import {
   DropdownContext,
+  MenuItem,
+  useControllableOpen,
   useDropdown,
   useDropdownMaybe,
   type DropdownContextValue,
@@ -25,7 +28,7 @@ import {
 } from "@/components/ui/menu-item";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useFluidHover } from "@/hooks/use-fluid-hover";
+import { useFluidHover, isOwnEvent } from "@/hooks/use-fluid-hover";
 import {
   useMergeSplitBlocks,
   useSelectionRuns,
@@ -49,6 +52,14 @@ import {
   type DropdownSearchProps,
 } from "@/components/ui/dropdown-search";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import {
+  SUBMENU_SIDE_OFFSET,
+  SUBMENU_ALIGN_OFFSET,
+  useSubmenuHost,
+  useReportSubmenu,
+  SubmenuChevron,
+  type DropdownSubTriggerProps,
+} from "@/components/ui/dropdown-sub";
 
 // Dropdown opts out of the global pill/rounded shape context — popover surfaces
 // look cleaner with the smaller "rounded" radii regardless of how the rest of
@@ -261,6 +272,8 @@ interface DropdownMenuActions {
 interface DropdownMenuContextValue {
   open: boolean;
   actionsRef: React.RefObject<DropdownMenuActions | null>;
+  /** Set by DropdownSub: the content is a submenu. */
+  sub: boolean;
 }
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -294,19 +307,11 @@ function DropdownMenu({
   disabled = false,
   size,
 }: DropdownMenuProps) {
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const open = openProp !== undefined ? openProp : internalOpen;
+  const [open, handleOpenChange] = useControllableOpen(openProp, defaultOpen, onOpenChange);
   const actionsRef = useRef<DropdownMenuActions | null>(null);
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (openProp === undefined) setInternalOpen(next);
-      onOpenChange?.(next);
-    },
-    [openProp, onOpenChange]
-  );
 
-  const ctx = useMemo(() => ({ open, actionsRef }), [open]);
+  const ctx = useMemo(() => ({ open, actionsRef, sub: false }), [open]);
 
   // A size prop pins the whole compound (trigger content + portalled popup —
   // React context crosses portals) to one ladder step.
@@ -371,6 +376,8 @@ interface DropdownContentProps {
   side?: MenuPositionerProps["side"];
   align?: MenuPositionerProps["align"];
   sideOffset?: number;
+  /** Shift along the trigger edge, in px. */
+  alignOffset?: number;
 }
 
 const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
@@ -383,10 +390,11 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       side = "bottom",
       align = "start",
       sideOffset = 6,
+      alignOffset = 0,
     },
     ref
   ) => {
-    const { open, actionsRef } = useDropdownMenuContext();
+    const { open, actionsRef, sub } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
@@ -398,6 +406,10 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       registerItem,
       remeasure,
     } = hover;
+
+    // Submenus opened from these rows: their trigger stays lit while the
+    // pointer crosses to them (see dropdown-sub.tsx).
+    const submenus = useSubmenuHost(containerRef, hover, open);
 
     // An optional DropdownSearch child: typing on a focused row is
     // redirected into the field. (The field takes focus itself, a frame
@@ -412,9 +424,11 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
 
     // Open ready to act: focus the first enabled row (a mounted search field
     // takes focus itself instead). A frame after the primitive's own open
-    // autofocus, which lands on the popup for pointer opens.
+    // autofocus, which lands on the popup for pointer opens. Not for a
+    // submenu: hovering its trigger must leave focus in the parent, and a
+    // keyboard open already lands on its first row.
     useEffect(() => {
-      if (!open) return;
+      if (!open || sub) return;
       let inner: number | undefined;
       const outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => {
@@ -431,7 +445,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
         cancelAnimationFrame(outer);
         if (inner !== undefined) cancelAnimationFrame(inner);
       };
-    }, [open, hasSearch]);
+    }, [open, sub, hasSearch]);
 
     // Release Base UI's deferred unmount once the exit tween has played.
     // onAnimationComplete on the motion.div is the primary signal; this
@@ -549,8 +563,17 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
         checkedIndices,
         inMenu: true,
         renderMenuItem,
+        onSubmenuOpenChange: submenus.onSubmenuOpenChange,
       }),
-      [registerItem, activeIndex, checkedIndex, multiple, checkedIndices, renderMenuItem]
+      [
+        registerItem,
+        activeIndex,
+        checkedIndex,
+        multiple,
+        checkedIndices,
+        renderMenuItem,
+        submenus.onSubmenuOpenChange,
+      ]
     );
 
     return (
@@ -559,6 +582,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           side={side}
           align={align}
           sideOffset={sideOffset}
+          alignOffset={alignOffset}
           className="z-50 outline-none"
         >
           <motion.div
@@ -586,21 +610,33 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                     ref={ref}
                   />
                 }
+                // The handlers below skip events from an open submenu: it
+                // renders through a portal, so its events bubble here
+                // through React, and focus on a submenu row would light the
+                // parent row with the same index. The gap click already
+                // ignores them in the hook.
                 onKeyDownCapture={(e) => {
+                  if (!isOwnEvent(e)) return;
                   markLitBy("keyboard");
                   redirectTypingToSearch(e);
                 }}
-                onMouseEnter={() => {
+                onMouseEnter={(e) => {
+                  if (!isOwnEvent(e)) return;
                   markLitBy("pointer");
-                  handlers.onMouseEnter();
+                  submenus.onMouseEnter();
                 }}
                 onMouseMove={(e) => {
+                  if (!isOwnEvent(e)) return;
                   markLitBy("pointer");
-                  handlers.onMouseMove(e);
+                  submenus.onMouseMove(e);
                 }}
                 onClick={handlers.onClick}
-                onMouseLeave={handlers.onMouseLeave}
+                onMouseLeave={(e) => {
+                  if (!isOwnEvent(e)) return;
+                  submenus.onMouseLeave();
+                }}
                 onFocus={(e) => {
+                  if (!isOwnEvent(e)) return;
                   const indexAttr = (e.target as HTMLElement)
                     .closest("[data-fluid-hover-index]")
                     ?.getAttribute("data-fluid-hover-index");
@@ -622,16 +658,20 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                   }
                 }}
                 onBlur={(e) => {
+                  if (!isOwnEvent(e)) return;
                   // The popup itself takes focus when the pointer leaves a row; only a
                   // departure from the whole popup ends the hover session.
                   if (e.currentTarget.contains(e.relatedTarget as Node))
                     return;
+                  // Focus moving into an open submenu keeps its trigger lit.
+                  if (submenus.holding()) return;
                   setActiveIndex(null);
                 }}
                 className={cn(
                   // min-w tracks the trigger via the Positioner's
-                  // --anchor-width var.
-                  `flex flex-col w-72 max-w-full min-w-[var(--anchor-width)] max-h-[min(480px,var(--available-height))] overflow-hidden ${shape.container} select-none outline-none`,
+                  // --anchor-width var. A submenu's anchor is a row, so it
+                  // keeps its own narrower width instead.
+                  `flex flex-col ${sub ? "w-56" : "w-72 min-w-[var(--anchor-width)]"} max-w-full max-h-[min(480px,var(--available-height))] overflow-hidden ${shape.container} select-none outline-none`,
                   className
                 )}
               >
@@ -698,6 +738,125 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
 DropdownContent.displayName = "DropdownContent";
 
 // ---------------------------------------------------------------------------
+// DropdownSub, DropdownSubTrigger, DropdownSubContent (submenus)
+//
+//   <DropdownSub>
+//     <DropdownSubTrigger index={2} icon={Palette} label="Theme" />
+//     <DropdownSubContent checkedIndex={theme}>
+//       <MenuItem index={0} label="Light" checked={theme === 0} … />
+//     </DropdownSubContent>
+//   </DropdownSub>
+//
+// Base UI's SubmenuRoot owns hover-to-open, the safe area, →/← and Escape.
+// DropdownSub gives its content its own open state (and deferred unmount),
+// so DropdownSubContent is the same popup as DropdownContent, beside its
+// trigger row instead of below a trigger. The trigger is a MenuItem with a
+// trailing chevron, indexed among its parent's rows; the submenu's rows
+// index from 0 again.
+// ---------------------------------------------------------------------------
+
+interface DropdownSubProps {
+  children: ReactNode;
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+function DropdownSub({
+  children,
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
+}: DropdownSubProps) {
+  const [open, handleOpenChange] = useControllableOpen(openProp, defaultOpen, onOpenChange);
+  const actionsRef = useRef<DropdownMenuActions | null>(null);
+
+
+  const ctx = useMemo(() => ({ open, actionsRef, sub: true }), [open]);
+
+  return (
+    <DropdownMenuContext.Provider value={ctx}>
+      <Menu.SubmenuRoot
+        open={open}
+        onOpenChange={handleOpenChange}
+        actionsRef={actionsRef}
+      >
+        {children}
+      </Menu.SubmenuRoot>
+    </DropdownMenuContext.Provider>
+  );
+}
+
+DropdownSub.displayName = "DropdownSub";
+
+const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerProps>(
+  ({ index, ...props }, ref) => {
+    const parent = useDropdown();
+    const { open } = useDropdownMenuContext();
+    useReportSubmenu(parent.onSubmenuOpenChange, index, open);
+    const lit = parent.activeIndex === index;
+
+    // The row renders through the parent's MenuItem, wrapped in the submenu
+    // trigger primitive instead of a plain item.
+    const renderMenuItem = useCallback(
+      ({ disabled, label, onActivate, element, children }: MenuItemRenderOptions) => (
+        <Menu.SubmenuTrigger
+          disabled={disabled}
+          label={label}
+          onClick={onActivate}
+          render={element}
+        >
+          {children}
+          <SubmenuChevron lit={lit} />
+        </Menu.SubmenuTrigger>
+      ),
+      [lit]
+    );
+    const ctx = useMemo(() => ({ ...parent, renderMenuItem }), [parent, renderMenuItem]);
+
+    return (
+      <DropdownContext.Provider value={ctx}>
+        <MenuItem ref={ref} index={index} {...props} />
+      </DropdownContext.Provider>
+    );
+  }
+);
+
+DropdownSubTrigger.displayName = "DropdownSubTrigger";
+
+type DropdownSubContentProps = Omit<DropdownContentProps, "side" | "align">;
+
+/** The submenu popup: DropdownContent beside its trigger row, the first row
+ *  level with the trigger. It opens toward the reading direction's end,
+ *  read from Base UI's DirectionProvider like Radix reads its own. The side
+ *  stays physical (not `inline-end`) so the popup's enter choreography,
+ *  keyed on `data-side`, still applies. */
+const DropdownSubContent = forwardRef<HTMLDivElement, DropdownSubContentProps>(
+  (
+    {
+      sideOffset = SUBMENU_SIDE_OFFSET,
+      alignOffset = SUBMENU_ALIGN_OFFSET,
+      ...props
+    },
+    ref
+  ) => {
+    const direction = useDirection();
+    return (
+      <DropdownContent
+        ref={ref}
+        side={direction === "rtl" ? "left" : "right"}
+        align="start"
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        {...props}
+      />
+    );
+  }
+);
+
+DropdownSubContent.displayName = "DropdownSubContent";
+
+// ---------------------------------------------------------------------------
 // DropdownLabel
 // ---------------------------------------------------------------------------
 
@@ -746,6 +905,9 @@ export {
   DropdownMenu,
   DropdownTrigger,
   DropdownContent,
+  DropdownSub,
+  DropdownSubTrigger,
+  DropdownSubContent,
   DropdownSearch,
   DropdownEmpty,
 };
@@ -757,6 +919,9 @@ export type {
   DropdownMenuProps,
   DropdownTriggerProps,
   DropdownContentProps,
+  DropdownSubProps,
+  DropdownSubTriggerProps,
+  DropdownSubContentProps,
   DropdownSearchProps,
 };
 export default Dropdown;

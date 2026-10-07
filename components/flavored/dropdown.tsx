@@ -47,6 +47,22 @@ export const DropdownContent = flavored(
   "Flavored(DropdownContent)"
 );
 
+export const DropdownSub = flavored(
+  Base.DropdownSub,
+  Radix.DropdownSub,
+  "Flavored(DropdownSub)"
+);
+export const DropdownSubTrigger = flavored(
+  Base.DropdownSubTrigger,
+  Radix.DropdownSubTrigger,
+  "Flavored(DropdownSubTrigger)"
+);
+export const DropdownSubContent = flavored(
+  Base.DropdownSubContent,
+  Radix.DropdownSubContent,
+  "Flavored(DropdownSubContent)"
+);
+
 // Primitive-free parts live in the shared file; both flavors re-export
 // the same implementation.
 export { DropdownSearch, DropdownEmpty } from "@/registry/default/dropdown-search";
@@ -62,6 +78,9 @@ export type {
   DropdownProps,
   DropdownMenuProps,
   DropdownContentProps,
+  DropdownSubProps,
+  DropdownSubTriggerProps,
+  DropdownSubContentProps,
   DropdownContextValue,
   MenuItemRenderOptions,
 } from "@/registry/base/dropdown";

@@ -39,6 +39,8 @@ export interface DropdownPlayState {
   disabledRow: boolean;
   /** A last row that creates what was typed (needs search). */
   creatable: boolean;
+  /** The Theme row opens a submenu (menu mode only). */
+  submenu: boolean;
 }
 
 export type DropdownPreset = DropdownPlayState & PresetGlobals;
@@ -51,6 +53,7 @@ export const DEFAULT_DROPDOWN_STATE: DropdownPlayState = {
   groups: false,
   disabledRow: false,
   creatable: false,
+  submenu: true,
 };
 
 export const DEFAULT_DROPDOWN_PRESET: DropdownPreset = {
@@ -80,7 +83,7 @@ const DROPDOWN_PRESET_FIELDS_A: readonly PresetField[] = [
 
 /** Version "b" (2026-09-08): creatable, ahead of the globals so the tail
  *  keeps the sidebar's layout. A layout change, hence the bump. */
-export const DROPDOWN_PRESET_FIELDS: readonly PresetField[] = [
+const DROPDOWN_PRESET_FIELDS_B: readonly PresetField[] = [
   { key: "mode", values: ["menu", "inline"], bits: 2 },
   { key: "selection", values: ["single", "multiple", "none"], bits: 2 },
   { key: "search", values: [false, true], bits: 1 },
@@ -91,15 +94,35 @@ export const DROPDOWN_PRESET_FIELDS: readonly PresetField[] = [
   ...GLOBAL_FIELDS,
 ];
 
+/** Version "c" (2026-10-05): submenu, on by default, ahead of the globals
+ *  like creatable. Older codes decode with it off (versionDefaults). */
+export const DROPDOWN_PRESET_FIELDS: readonly PresetField[] = [
+  { key: "mode", values: ["menu", "inline"], bits: 2 },
+  { key: "selection", values: ["single", "multiple", "none"], bits: 2 },
+  { key: "search", values: [false, true], bits: 1 },
+  { key: "icons", values: [true, false], bits: 1 },
+  { key: "groups", values: [false, true], bits: 1 },
+  { key: "disabledRow", values: [false, true], bits: 1 },
+  { key: "creatable", values: [false, true], bits: 1 },
+  { key: "submenu", values: [true, false], bits: 1 },
+  ...GLOBAL_FIELDS,
+];
+
 // ── Registration (tag "d") ──────────────────────────────────────────────────
 
 export const DROPDOWN_PRESET_DEF: PresetComponentDef = {
   tag: "d",
   label: "Dropdown",
   docsPath: "/docs/dropdown",
-  versions: { a: DROPDOWN_PRESET_FIELDS_A, b: DROPDOWN_PRESET_FIELDS },
-  currentVersion: "b",
+  versions: {
+    a: DROPDOWN_PRESET_FIELDS_A,
+    b: DROPDOWN_PRESET_FIELDS_B,
+    c: DROPDOWN_PRESET_FIELDS,
+  },
+  currentVersion: "c",
   defaults: DEFAULT_DROPDOWN_PRESET as unknown as PresetComponentDef["defaults"],
+  // Codes from before the submenu existed keep the menu they described.
+  versionDefaults: { a: { submenu: false }, b: { submenu: false } },
   installable: true,
 };
 registerPresetComponent(DROPDOWN_PRESET_DEF);
@@ -130,12 +153,14 @@ export const DROPDOWN_DEFAULT_CODE = encodeDropdownPreset({});
 /** The playground's derived facts, shared by the preview and the generator:
  *  a search field only lives in the popup, and it replaces the groups (a
  *  filtered list re-indexes from 0, which labelled sections can't follow).
- *  The create row reads the query, so it needs the search. */
+ *  The create row reads the query, so it needs the search. A submenu is a
+ *  popup too, so the inline panel has none. */
 export function deriveDropdown(p: DropdownPlayState) {
   const search = p.mode === "menu" && p.search;
   const groups = !search && p.groups;
   const creatable = search && p.creatable;
-  return { search, groups, creatable };
+  const submenu = p.mode === "menu" && p.submenu;
+  return { search, groups, creatable, submenu };
 }
 
 /** A row the create row makes from the query: the plus icon marks it as
@@ -163,3 +188,13 @@ export const DROPDOWN_DISABLED_LABEL = "Privacy";
 /** Initial single selection / multiple selection. */
 export const DROPDOWN_DEFAULT_SELECTED = "Email";
 export const DROPDOWN_DEFAULT_PICKED = ["Email", "Notifications"] as const;
+
+/** The row that opens a submenu when `submenu` is on, and what it holds:
+ *  one theme picked out of three, a radio choice of its own. */
+export const DROPDOWN_SUBMENU_LABEL = "Theme";
+export const DROPDOWN_THEMES = [
+  { icon: "sun", label: "Light" },
+  { icon: "moon", label: "Dark" },
+  { icon: "monitor", label: "System" },
+] as const;
+export const DROPDOWN_DEFAULT_THEME = "System";

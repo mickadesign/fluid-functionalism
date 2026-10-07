@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import {
   useFluidHover,
   useRegisterFluidHoverItem,
@@ -70,6 +70,7 @@ function List({
   boxed,
   disabled,
   gapClick,
+  portal,
 }: {
   expose: (api: Api) => void;
   rows: Array<() => void>;
@@ -81,6 +82,8 @@ function List({
   boxed?: boolean;
   disabled?: (el: HTMLElement) => boolean;
   gapClick?: boolean | { maxDistance?: number };
+  /** A React child rendered through a portal, like a row's own dropdown. */
+  portal?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const api = useFluidHover(ref, { isItemDisabled: disabled, gapClick });
@@ -98,6 +101,7 @@ function List({
         <RowKind key={keys?.[i] ?? i} index={i} registerItem={api.registerItem} onClick={onClick} />
       ))}
       <span data-testid="gap">gap</span>
+      {portal && createPortal(<span data-testid="portal">layer</span>, document.body)}
     </div>
   );
 }
@@ -297,5 +301,30 @@ describe("useFluidHover: the highlighted row unregisters", () => {
     expect(getByTestId("list").hasAttribute(ACTIVE_INDEX_ATTR)).toBe(false);
     fireEvent.click(getByTestId("gap"));
     for (const c of clicks) expect(c).not.toHaveBeenCalled();
+  });
+});
+
+describe("useFluidHover: events from a portalled child", () => {
+  // React bubbles them through the list, but they happened in another layer
+  // (a dropdown opened from a row, a submenu): no routed click, no pick.
+  function setupPortal() {
+    const clicks = [vi.fn(), vi.fn(), vi.fn()];
+    let api!: Api;
+    const utils = render(<List expose={(a) => (api = a)} rows={clicks} portal />);
+    act(() => api.setActiveIndex(1));
+    return { ...utils, clicks, api: () => api };
+  }
+
+  it("a click in the portal is not routed to the highlighted row", () => {
+    const { getByTestId, clicks } = setupPortal();
+    fireEvent.click(getByTestId("portal"));
+    for (const c of clicks) expect(c).not.toHaveBeenCalled();
+  });
+
+  it("a move in the portal leaves the highlight where it is", async () => {
+    const { getByTestId, api } = setupPortal();
+    fireEvent.mouseMove(getByTestId("portal"), { clientX: 5, clientY: 500 });
+    await act(() => new Promise((r) => setTimeout(r, 32)));
+    expect(api().activeIndex).toBe(1);
   });
 });

@@ -689,6 +689,8 @@ import { Button } from "@/components/ui/button";
       "DropdownSearch: typing while a row is focused is redirected into the field (capture-phase keydown refocuses and appends the character; Backspace too; Space is left alone because on a row it activates). The field is one stop in the ring of rows: \u2193/\u2191 jump to the first/last row, arrowing off either end of the list returns to the field, and while the field has focus no row is highlighted (the field is the active stop, it just draws no background). Enter in the field picks nothing: only a row the user arrowed onto activates, so a searchable menu never selects a row nobody landed on. Without a search field the first row takes focus on open, so Enter picks it.",
       "The search field is sticky at the popup's top, bleeding into the 4px padding so its divider runs edge to edge and rows scroll underneath; the popup drops its scroll fade while a field is pinned there. The query resets on close (`clearOnClose` default true) so the menu reopens unfiltered.",
       "The popup opts out of the global pill/rounded shape and keeps the smaller \"rounded\" radii: heavy pill bubbling distorts perceived padding at this scale and produces corner-shadow asymmetry. Elevation is substrate + 2 with the shadow pinned to level 3, so a dropdown reads the same shadow on the page or inside a dialog. Width: min-w tracks the trigger, max-h is min(480px, available height).",
+      "Submenus: the primitive owns the safe area (the pointer can cut diagonally across other rows to an open submenu without closing it), but the fluid hover would still follow the pointer onto those rows. So while a submenu is open, the parent's highlight stays on its trigger and moves only with focus: both primitives move focus to another row only once the pointer leaves the safe area, and close the submenu as they do. The submenu renders through a portal yet is a React child of the parent, so the parent's handlers skip events from outside their own DOM; otherwise a click on a submenu row would also reach the parent's gap-click routing.",
+      "A submenu sits 2px off the parent menu (`sideOffset` 6 is measured from the trigger row, inside the menu's 4px padding) with its first row level with the trigger (`alignOffset` -4 cancels the padding), keeps its own `w-56` instead of tracking its anchor's width, and never takes focus on a hover open: only a keyboard open (→, Enter) lands on its first row.",
     ],
     usage: `import { DropdownMenu, DropdownTrigger, DropdownContent } from "@/components/ui/dropdown";
 import { MenuItem } from "@/components/ui/menu-item";
@@ -718,8 +720,11 @@ const [view, setView] = useState(0);
       "MenuItem label: string. Row text.",
       "MenuItem index: number. Position in the list.",
       "MenuItem checked: boolean (default false). Set it, even to false, for a radio or checkbox row; leave undefined for a plain action.",
+      "DropdownSub open: boolean. Controlled open state of one submenu; defaultOpen and onOpenChange also available. Wraps a DropdownSubTrigger and its DropdownSubContent.",
+      "DropdownSubTrigger index, label, icon, disabled: a MenuItem row among its parent's rows, with a trailing chevron. Hover, click or → opens the submenu.",
+      "DropdownSubContent: a DropdownContent beside its trigger row (checkedIndex, checkedIndices, sideOffset default 6, alignOffset default -4). Its rows index from 0 again.",
     ],
-    flavorNote: "Radix and Base UI flavors share the same API. Dropdown (inline panel without a trigger), DropdownLabel, DropdownSeparator, DropdownSearch and DropdownEmpty export from the same file; MenuItem installs alongside at @/components/ui/menu-item.",
+    flavorNote: "Radix and Base UI flavors share the same API. Dropdown (inline panel without a trigger), DropdownLabel, DropdownSeparator, DropdownSub, DropdownSubTrigger, DropdownSubContent, DropdownSearch and DropdownEmpty export from the same file; MenuItem installs alongside at @/components/ui/menu-item. Escape inside a submenu follows each primitive: Base UI closes just the submenu, Radix closes the whole menu.",
   },
   "input-copy": {
     craft: [

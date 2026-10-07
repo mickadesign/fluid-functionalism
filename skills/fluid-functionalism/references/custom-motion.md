@@ -82,7 +82,8 @@ One highlight per list: `useFluidHover` picks the item whose center is nearest
 the cursor, and a single `bg-hover` overlay springs to its rect on
 `spring.fast`. The cursor in a gap still lights the nearest row, and never
 blinks off between rows. Install `@fluid/use-fluid-hover`; it ships the hook
-and the `FluidHoverHighlight` component. The component lands in
+and the `FluidHoverHighlight` component, and pulls in `@fluid/tokens` for the
+`bg-hover` fill. The component lands in
 `components/`, not `components/ui/`, so import it from
 `@/components/fluid-hover-highlight`.
 
@@ -203,7 +204,7 @@ reader hears "Copied" from a visually hidden span in an
 ## State backgrounds and elevation
 
 - Hover and selection fills use the shared tokens `bg-hover` and `bg-active`
-  (installed with any component) — not ad-hoc grays — so they read correctly
+  (installed with any component and with `@fluid/use-fluid-hover`) — not ad-hoc grays — so they read correctly
   on every surface level in light and dark.
 - A custom popover or panel that floats above the page wraps itself in
   `Elevated` (`@fluid/elevated`): it reads the current substrate level and

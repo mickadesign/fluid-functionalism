@@ -8,6 +8,9 @@ import {
   DropdownMenu,
   DropdownTrigger,
   DropdownContent,
+  DropdownSub,
+  DropdownSubTrigger,
+  DropdownSubContent,
   DropdownSearch,
   DropdownEmpty,
 } from "@/components/flavored/dropdown";
@@ -32,6 +35,9 @@ import {
   DROPDOWN_DEFAULT_SELECTED,
   DROPDOWN_DEFAULT_PICKED,
   DROPDOWN_CREATED_ICON,
+  DROPDOWN_SUBMENU_LABEL,
+  DROPDOWN_THEMES,
+  DROPDOWN_DEFAULT_THEME,
   deriveDropdown,
   encodeDropdownPreset,
   decodeDropdownPreset,
@@ -61,6 +67,7 @@ function buildPlaygroundCode(o: {
   groups: boolean;
   disabledRow: boolean;
   creatable: boolean;
+  submenu: boolean;
 }) {
   const isMenu = o.mode === "menu";
   const row = (label: string, i: number, icon?: string) => {
@@ -78,18 +85,40 @@ function buildPlaygroundCode(o: {
     return `<MenuItem ${props.join(" ")} />`;
   };
   const iconOf = (k: string) => k.split("-").map((s) => s[0].toUpperCase() + s.slice(1)).join("");
+  // The Theme row opens a submenu; its rows index from 0 again.
+  const subRow = (i: number, icon: string) => [
+    "<DropdownSub>",
+    `  <DropdownSubTrigger index={${i}}${o.icons ? ` icon={${icon}}` : ""} label="${DROPDOWN_SUBMENU_LABEL}" />`,
+    "  <DropdownSubContent checkedIndex={THEMES.indexOf(theme)}>",
+    ...DROPDOWN_THEMES.map(
+      (t, j) =>
+        `    <MenuItem index={${j}}${o.icons ? ` icon={${iconOf(t.icon)}}` : ""} label="${t.label}" checked={theme === "${t.label}"} onSelect={() => setTheme("${t.label}")} />`
+    ),
+    "  </DropdownSubContent>",
+    "</DropdownSub>",
+  ];
+  const anyRow = (label: string, i: number, icon: string) =>
+    o.submenu && label === DROPDOWN_SUBMENU_LABEL ? subRow(i, icon) : [row(label, i, icon)];
+  const subAt = DROPDOWN_ITEMS.findIndex((it) => it.label === DROPDOWN_SUBMENU_LABEL);
   const rows = o.groups
     ? [
         "<DropdownLabel>Account</DropdownLabel>",
-        ...DROPDOWN_ITEMS.slice(0, 3).map((it, i) => row(it.label, i, iconOf(it.icon))),
+        ...DROPDOWN_ITEMS.slice(0, 3).flatMap((it, i) => anyRow(it.label, i, iconOf(it.icon))),
         "<DropdownSeparator />",
         "<DropdownLabel>Appearance</DropdownLabel>",
-        ...DROPDOWN_ITEMS.slice(3).map((it, i) => row(it.label, i + 3, iconOf(it.icon))),
+        ...DROPDOWN_ITEMS.slice(3).flatMap((it, i) => anyRow(it.label, i + 3, iconOf(it.icon))),
       ]
-    : [
-        ...DROPDOWN_ITEMS.slice(0, 3).map((it, i) => row(it.label, i, iconOf(it.icon))),
-        "{/* …three more */}",
-      ];
+    : o.submenu
+      ? [
+          // Rows up to the submenu, abridged, then the submenu and the rest.
+          ...DROPDOWN_ITEMS.slice(0, 2).map((it, i) => row(it.label, i, iconOf(it.icon))),
+          `{/* …${subAt - 2} more */}`,
+          ...DROPDOWN_ITEMS.slice(subAt).flatMap((it, i) => anyRow(it.label, subAt + i, iconOf(it.icon))),
+        ]
+      : [
+          ...DROPDOWN_ITEMS.slice(0, 3).map((it, i) => row(it.label, i, iconOf(it.icon))),
+          "{/* …3 more */}",
+        ];
   const container =
     o.selection === "single"
       ? " checkedIndex={checkedIndex === -1 ? undefined : checkedIndex}"
@@ -102,6 +131,9 @@ function buildPlaygroundCode(o: {
       : o.selection === "multiple"
         ? `const [picked, setPicked] = useState(["Email", "Notifications"]);\nconst checkedIndices = rows.flatMap((r, i) => (picked.includes(r.label) ? [i] : []));\n\n`
         : "";
+  const themeState = o.submenu
+    ? `const THEMES = [${DROPDOWN_THEMES.map((t) => `"${t.label}"`).join(", ")}];\nconst [theme, setTheme] = useState("${DROPDOWN_DEFAULT_THEME}");\n\n`
+    : "";
   // `rows` is what the JSX reads; without a search it is simply the seed list.
   // Creatable: the list is state, so a created row can join it.
   const search = o.search
@@ -145,7 +177,7 @@ function buildPlaygroundCode(o: {
       : o.selection === "multiple"
         ? "{`Filters · ${picked.length}`}"
         : "Open menu";
-  return `${search}${state}<DropdownMenu>
+  return `${search}${state}${themeState}<DropdownMenu>
   <DropdownTrigger render={<Button variant="ghost" trailingIcon={ChevronDown}>${trigger}</Button>} />
   <DropdownContent${container}>
 ${o.search ? indent('<DropdownSearch value={query} onValueChange={setQuery} placeholder="Search…" />', 4) + "\n" : ""}${[...rows, ...createRow, ...empty].map((r) => indent(r, 4)).join("\n")}
@@ -163,15 +195,17 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
   const [groups, setGroups] = useState(false);
   const [disabledRow, setDisabledRow] = useState(false);
   const [creatable, setCreatable] = useState(false);
+  const [submenu, setSubmenu] = useState(true);
 
   // Live selection state, by label so it survives filtering.
   const [selected, setSelected] = useState<string | null>(DROPDOWN_DEFAULT_SELECTED);
   const [picked, setPicked] = useState<string[]>([...DROPDOWN_DEFAULT_PICKED]);
   const [query, setQuery] = useState("");
+  const [theme, setTheme] = useState<string>(DROPDOWN_DEFAULT_THEME);
   // The rows are state so a created row can join them.
   const [items, setItems] = useState<readonly DropdownRow[]>(DROPDOWN_ITEMS);
 
-  const d = deriveDropdown({ mode, selection, search, icons: showIcons, groups, disabledRow, creatable });
+  const d = deriveDropdown({ mode, selection, search, icons: showIcons, groups, disabledRow, creatable, submenu });
 
   const code = buildPlaygroundCode({
     mode,
@@ -181,6 +215,7 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
     groups: d.groups,
     disabledRow,
     creatable: d.creatable,
+    submenu: d.submenu,
   });
 
   // ── Get code (presets) ─────────────────────────────────
@@ -196,6 +231,7 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
     groups,
     disabledRow,
     creatable,
+    submenu,
     ...globals,
   });
   usePresetUrlSync(presetCode, DROPDOWN_DEFAULT_CODE, (raw) => {
@@ -209,6 +245,7 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
       setGroups(p.groups);
       setDisabledRow(p.disabledRow);
       setCreatable(p.creatable);
+      setSubmenu(p.submenu);
     }
   });
 
@@ -222,6 +259,7 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
     setGroups(Math.random() > 0.6);
     setDisabledRow(Math.random() > 0.7);
     setCreatable(Math.random() > 0.6);
+    setSubmenu(Math.random() > 0.4);
     setQuery("");
     setItems(DROPDOWN_ITEMS);
   };
@@ -257,26 +295,49 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
     />
   );
 
-  const renderRow = (item: DropdownRow, index: number) => (
-    <MenuItem
-      key={item.label}
-      index={index}
-      icon={showIcons ? icons[item.icon] : undefined}
-      label={item.label}
-      disabled={disabledRow && item.label === DROPDOWN_DISABLED_LABEL}
-      checked={
-        selection === "single"
-          ? selected === item.label
-          : selection === "multiple"
-            ? picked.includes(item.label)
-            : undefined
-      }
-      onSelect={() => {
-        if (selection === "single") setSelected(item.label);
-        else if (selection === "multiple") toggle(item.label);
-      }}
-    />
-  );
+  const renderRow = (item: DropdownRow, index: number) =>
+    d.submenu && item.label === DROPDOWN_SUBMENU_LABEL ? (
+      <DropdownSub key={item.label}>
+        <DropdownSubTrigger
+          index={index}
+          icon={showIcons ? icons[item.icon] : undefined}
+          label={item.label}
+        />
+        <DropdownSubContent
+          checkedIndex={DROPDOWN_THEMES.findIndex((t) => t.label === theme)}
+        >
+          {DROPDOWN_THEMES.map((t, i) => (
+            <MenuItem
+              key={t.label}
+              index={i}
+              icon={showIcons ? icons[t.icon] : undefined}
+              label={t.label}
+              checked={theme === t.label}
+              onSelect={() => setTheme(t.label)}
+            />
+          ))}
+        </DropdownSubContent>
+      </DropdownSub>
+    ) : (
+      <MenuItem
+        key={item.label}
+        index={index}
+        icon={showIcons ? icons[item.icon] : undefined}
+        label={item.label}
+        disabled={disabledRow && item.label === DROPDOWN_DISABLED_LABEL}
+        checked={
+          selection === "single"
+            ? selected === item.label
+            : selection === "multiple"
+              ? picked.includes(item.label)
+              : undefined
+        }
+        onSelect={() => {
+          if (selection === "single") setSelected(item.label);
+          else if (selection === "multiple") toggle(item.label);
+        }}
+      />
+    );
 
   const content = (
     <>
@@ -397,6 +458,13 @@ export function DropdownPlayground({ children }: PlaygroundProps) {
           label="Disabled row"
           checked={disabledRow}
           onToggle={() => setDisabledRow((v) => !v)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Submenu"
+          checked={d.submenu}
+          onToggle={() => setSubmenu((v) => !v)}
+          disabled={mode !== "menu"}
           className={PLAY_SWITCH}
         />
       </div>

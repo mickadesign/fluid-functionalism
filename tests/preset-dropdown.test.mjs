@@ -112,11 +112,13 @@ describe("dropdown preset codec", () => {
     expect(back.preset.selection).toBe("multiple");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"dbBR"`);
+    expect(code).toMatchInlineSnapshot(`"dcJh"`);
   });
 
   // Version "a" codes were published before creatable joined the table;
-  // they must keep decoding, with the new field at its default.
+  // they must keep decoding, with the new field at its default. The
+  // submenu came later still, on by default: older codes decode with it
+  // off, so they keep the menu they described.
   it("a version-a code still decodes", () => {
     const back = decodeDropdownPreset("da7J");
     expect(back.ok).toBe(true);
@@ -128,7 +130,28 @@ describe("dropdown preset codec", () => {
       groups: true,
       disabledRow: true,
       flavor: "base",
+      submenu: false,
     });
+  });
+
+  // Version "b" (the previous golden) predates the submenu.
+  it("a version-b code still decodes, without a submenu", () => {
+    const back = decodeDropdownPreset("dbBR");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("b");
+    expect(back.preset).toEqual({
+      ...DEFAULT_DROPDOWN_PRESET,
+      mode: "inline",
+      selection: "multiple",
+      groups: true,
+      disabledRow: true,
+      flavor: "base",
+      submenu: false,
+    });
+    // The old all-defaults code is a menu with no submenu, unlike today's.
+    const oldDefault = decodeDropdownPreset("db0");
+    expect(oldDefault.ok).toBe(true);
+    expect(oldDefault.preset.submenu).toBe(false);
   });
 });
 
@@ -163,6 +186,11 @@ const MATRIX = [
   { selection: "none", search: true, creatable: true, disabledRow: true },
   { creatable: true }, // derived off: no search
   { mode: "inline", search: true, creatable: true }, // derived off: inline
+  { submenu: false },
+  { selection: "multiple", submenu: true, icons: false, disabledRow: true },
+  { selection: "none", submenu: true, groups: true },
+  { submenu: true, search: true, creatable: true },
+  { mode: "inline", submenu: true }, // derived off: inline
 ];
 
 describe("dropdown preset install generator", () => {

@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
 // Install-grade code generation for dropdown presets. Emits ONE compilable
 // component reproducing what the playground preview renders for the encoded
-// state — same rows, same derived constraints (search lives in the popup
-// only and replaces groups), same selection model. tests/preset-dropdown
-// .test.mjs compiles the output across the state space through a real
-// ts.createProgram over the project tsconfig.
+// state — same rows, same derived constraints (search and the submenu live
+// in the popup only, and search replaces groups), same selection model.
+// tests/preset-dropdown.test.mjs compiles the output across the state space
+// through a real ts.createProgram over the project tsconfig.
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
@@ -18,6 +18,9 @@ import {
   DROPDOWN_DEFAULT_SELECTED,
   DROPDOWN_DEFAULT_PICKED,
   DROPDOWN_CREATED_ICON,
+  DROPDOWN_SUBMENU_LABEL,
+  DROPDOWN_THEMES,
+  DROPDOWN_DEFAULT_THEME,
 } from "./dropdown-options";
 
 function dropdownDemoFile(p: DropdownPreset): string {
@@ -29,7 +32,7 @@ function dropdownDemoFile(p: DropdownPreset): string {
   l.push(``);
   const reactImports = [
     ...(d.groups ? ["Fragment"] : []),
-    ...(p.selection !== "none" || d.search ? ["useState"] : []),
+    ...(p.selection !== "none" || d.search || d.submenu ? ["useState"] : []),
   ];
   if (reactImports.length) l.push(`import { ${reactImports.join(", ")} } from "react";`);
   const parts = isMenu
@@ -37,6 +40,7 @@ function dropdownDemoFile(p: DropdownPreset): string {
     : ["Dropdown"];
   if (d.groups) parts.push("DropdownLabel", "DropdownSeparator");
   if (d.search) parts.push("DropdownSearch", "DropdownEmpty");
+  if (d.submenu) parts.push("DropdownSub", "DropdownSubTrigger", "DropdownSubContent");
   l.push(`import {`);
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`} from "@/components/ui/dropdown";`);
@@ -72,6 +76,18 @@ function dropdownDemoFile(p: DropdownPreset): string {
   }
   l.push(`];`);
   if (d.groups) l.push(`const GROUPS = ${JSON.stringify([...DROPDOWN_GROUPS])};`);
+  if (d.submenu) {
+    l.push(`// The ${DROPDOWN_SUBMENU_LABEL} row opens a submenu of these.`);
+    l.push(`const THEMES: { ${p.icons ? "icon: IconName; " : ""}label: string }[] = [`);
+    for (const t of DROPDOWN_THEMES) {
+      const fields = [
+        ...(p.icons ? [`icon: ${JSON.stringify(t.icon)}`] : []),
+        `label: ${JSON.stringify(t.label)}`,
+      ];
+      l.push(`  { ${fields.join(", ")} },`);
+    }
+    l.push(`];`);
+  }
   l.push(``);
 
   // ── Component ──
@@ -84,6 +100,9 @@ function dropdownDemoFile(p: DropdownPreset): string {
     l.push(`  const [picked, setPicked] = useState<string[]>(${JSON.stringify([...DROPDOWN_DEFAULT_PICKED])});`);
     l.push(`  const toggle = (label: string) =>`);
     l.push(`    setPicked((c) => (c.includes(label) ? c.filter((x) => x !== label) : [...c, label]));`);
+  }
+  if (d.submenu) {
+    l.push(`  const [theme, setTheme] = useState(${JSON.stringify(DROPDOWN_DEFAULT_THEME)});`);
   }
   if (d.search) {
     l.push(`  const [query, setQuery] = useState("");`);
@@ -108,24 +127,52 @@ function dropdownDemoFile(p: DropdownPreset): string {
     l.push(`  const checkedIndices = rows.flatMap((item, i) => (picked.includes(item.label) ? [i] : []));`);
   }
   l.push(``);
-  l.push(`  const renderRow = (item: (typeof ITEMS)[number], index: number) => (`);
-  l.push(`    <MenuItem`);
-  l.push(`      key={item.label}`);
-  l.push(`      index={index}`);
-  if (p.icons) l.push(`      icon={icons[item.icon]}`);
-  l.push(`      label={item.label}`);
-  if (p.disabledRow) l.push(`      disabled={item.disabled}`);
-  if (p.selection === "single") {
-    l.push(`      checked={selected === item.label}`);
-    l.push(`      onSelect={() => setSelected(item.label)}`);
-  } else if (p.selection === "multiple") {
-    l.push(`      checked={picked.includes(item.label)}`);
-    l.push(`      onSelect={() => toggle(item.label)}`);
+  // A submenu row opens the THEMES list; its rows index from 0 again.
+  const ind = d.submenu ? "  " : "";
+  l.push(`  const renderRow = (item: (typeof ITEMS)[number], index: number) =>`);
+  if (d.submenu) {
+    l.push(`    item.label === ${JSON.stringify(DROPDOWN_SUBMENU_LABEL)} ? (`);
+    l.push(`      <DropdownSub key={item.label}>`);
+    l.push(`        <DropdownSubTrigger`);
+    l.push(`          index={index}`);
+    if (p.icons) l.push(`          icon={icons[item.icon]}`);
+    l.push(`          label={item.label}`);
+    if (p.disabledRow) l.push(`          disabled={item.disabled}`);
+    l.push(`        />`);
+    l.push(`        <DropdownSubContent checkedIndex={THEMES.findIndex((t) => t.label === theme)}>`);
+    l.push(`          {THEMES.map((t, i) => (`);
+    l.push(`            <MenuItem`);
+    l.push(`              key={t.label}`);
+    l.push(`              index={i}`);
+    if (p.icons) l.push(`              icon={icons[t.icon]}`);
+    l.push(`              label={t.label}`);
+    l.push(`              checked={theme === t.label}`);
+    l.push(`              onSelect={() => setTheme(t.label)}`);
+    l.push(`            />`);
+    l.push(`          ))}`);
+    l.push(`        </DropdownSubContent>`);
+    l.push(`      </DropdownSub>`);
+    l.push(`    ) : (`);
   } else {
-    l.push(`      onSelect={() => console.log(item.label)}`);
+    l.push(`    (`);
   }
-  l.push(`    />`);
-  l.push(`  );`);
+  l.push(`${ind}    <MenuItem`);
+  l.push(`${ind}      key={item.label}`);
+  l.push(`${ind}      index={index}`);
+  if (p.icons) l.push(`${ind}      icon={icons[item.icon]}`);
+  l.push(`${ind}      label={item.label}`);
+  if (p.disabledRow) l.push(`${ind}      disabled={item.disabled}`);
+  if (p.selection === "single") {
+    l.push(`${ind}      checked={selected === item.label}`);
+    l.push(`${ind}      onSelect={() => setSelected(item.label)}`);
+  } else if (p.selection === "multiple") {
+    l.push(`${ind}      checked={picked.includes(item.label)}`);
+    l.push(`${ind}      onSelect={() => toggle(item.label)}`);
+  } else {
+    l.push(`${ind}      onSelect={() => console.log(item.label)}`);
+  }
+  l.push(`${ind}    />`);
+  l.push(`    );`);
   l.push(``);
 
   // Rows (grouped or flat) as one expression.
