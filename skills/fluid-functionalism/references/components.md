@@ -64,8 +64,9 @@ Other installable libs and hooks (usually arrive as dependencies):
 `icon-context` (named icon slots, Lucide defaults, `IconProvider` override),
 `shape-context` (pill or rounded), `surface-context` / `surface-classes` /
 `tokens` (elevation plumbing and `bg-hover`/`bg-active` state tokens),
-`popup` (shared popup chrome), `use-touch-primary`, `use-keyboard-nav-gate`,
-`use-merge-split` (the merged selected-background animation).
+`popup` (shared popup chrome), `omit` (drops props before a spread),
+`use-touch-primary`, `use-keyboard-nav-gate`, `use-merge-split` (the merged
+selected-background animation).
 
 ## Blocks
 

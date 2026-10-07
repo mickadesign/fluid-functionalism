@@ -12,6 +12,7 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { omit } from "@/lib/omit";
 import { useShape } from "@/lib/shape-context";
 import { useSizeVariant } from "@/lib/size-context";
 
@@ -148,7 +149,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       asChild = false,
       render,
-      nativeButton: _nativeButton,
       loading = false,
       leadingIcon: LeadingIcon,
       trailingIcon: TrailingIcon,
@@ -156,10 +156,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       children,
       style,
-      ...props
+      ...rest
     },
     ref
   ) => {
+    // nativeButton is accepted for Base UI parity and ignored (see its doc).
+    const props = omit(rest, ["nativeButton"]);
+
     // asChild: the user's element becomes the root while the button's internal
     // structure (bg layer, content wrapper, spinner, icons) survives as its
     // children — the element's own children become the label. We clone the

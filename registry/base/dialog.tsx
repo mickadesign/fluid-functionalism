@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useIcons } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { useShape } from "@/lib/shape-context";
 import { useSize, useSizeVariant, typeClass } from "@/lib/size-context";
 import { SurfaceProvider, useSurface } from "@/lib/surface-context";
@@ -143,16 +144,18 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
         <DialogPrimitive.Backdrop
           render={(backdropProps, state) => {
             const exiting = state.transitionStatus === "ending";
-            const {
-              style: _style,
-              onDrag: _onDrag,
-              onDragStart: _onDragStart,
-              onDragEnd: _onDragEnd,
-              onAnimationStart: _onAnimationStart,
-              onAnimationEnd: _onAnimationEnd,
-              onAnimationIteration: _onAnimationIteration,
-              ...rest
-            } = backdropProps as React.HTMLAttributes<HTMLDivElement>;
+            const rest = omit(
+              backdropProps as React.HTMLAttributes<HTMLDivElement>,
+              [
+                "style",
+                "onDrag",
+                "onDragStart",
+                "onDragEnd",
+                "onAnimationStart",
+                "onAnimationEnd",
+                "onAnimationIteration",
+              ]
+            );
             return (
               <motion.div
                 {...rest}
@@ -171,16 +174,16 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           ref={ref}
           render={(popupProps, state) => {
             const exiting = state.transitionStatus === "ending";
-            const {
-              style: baseStyle,
-              onDrag: _onDrag,
-              onDragStart: _onDragStart,
-              onDragEnd: _onDragEnd,
-              onAnimationStart: _onAnimationStart,
-              onAnimationEnd: _onAnimationEnd,
-              onAnimationIteration: _onAnimationIteration,
-              ...rest
-            } = popupProps as React.HTMLAttributes<HTMLDivElement>;
+            const { style: baseStyle, ...baseProps } =
+              popupProps as React.HTMLAttributes<HTMLDivElement>;
+            const rest = omit(baseProps, [
+              "onDrag",
+              "onDragStart",
+              "onDragEnd",
+              "onAnimationStart",
+              "onAnimationEnd",
+              "onAnimationIteration",
+            ]);
             return (
               <motion.div
                 // Base UI's props first (data attrs, refs, role, etc.)…

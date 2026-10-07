@@ -20,6 +20,7 @@ import { AnimatePresence, motion, Reorder, useReducedMotion } from "framer-motio
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { nestedRadius, useShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, fieldTouchClass, type SizeVariant } from "@/lib/size-context";
 import { useIcons } from "@/lib/icon-context";
@@ -511,12 +512,11 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     // clobber the composed handlers below, and className so it merges with
     // the field's own classes instead of replacing them.
     const {
-      onFocus: _textareaOnFocus,
-      onBlur: _textareaOnBlur,
       "aria-describedby": textareaDescribedBy,
       className: textareaClassName,
-      ...restTextareaProps
+      ...textareaRest
     } = textareaProps ?? {};
+    const restTextareaProps = omit(textareaRest, ["onFocus", "onBlur"]);
 
     const filesArr = useMemo(() => files ?? [], [files]);
     const supportsFiles = onFilesChange !== undefined;

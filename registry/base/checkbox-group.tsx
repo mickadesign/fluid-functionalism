@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import {
@@ -334,16 +335,18 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
               <CheckboxPrimitive.Indicator
                 keepMounted
                 render={(indicatorProps) => {
-                  const {
-                    style: _s,
-                    onDrag: _onDrag,
-                    onDragStart: _onDragStart,
-                    onDragEnd: _onDragEnd,
-                    onAnimationStart: _onAnimationStart,
-                    onAnimationEnd: _onAnimationEnd,
-                    onAnimationIteration: _onAnimationIteration,
-                    ...rest
-                  } = indicatorProps as React.HTMLAttributes<SVGSVGElement>;
+                  const rest = omit(
+                    indicatorProps as React.HTMLAttributes<SVGSVGElement>,
+                    [
+                      "style",
+                      "onDrag",
+                      "onDragStart",
+                      "onDragEnd",
+                      "onAnimationStart",
+                      "onAnimationEnd",
+                      "onAnimationIteration",
+                    ]
+                  );
                   return (
                     <motion.svg
                       {...rest}

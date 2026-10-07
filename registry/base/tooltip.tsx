@@ -11,6 +11,7 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { motion, useMotionValue } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 
@@ -188,18 +189,18 @@ function Tooltip({
             render={(props, state) => {
               const exiting = state.transitionStatus === "ending";
               const contentChildren = content;
-              const {
-                style: baseStyle,
-                // motion.div has incompatible drag/animation event signatures —
-                // strip the React-DOM versions so they don't fight motion's own.
-                onDrag: _onDrag,
-                onDragStart: _onDragStart,
-                onDragEnd: _onDragEnd,
-                onAnimationStart: _onAnimationStart,
-                onAnimationEnd: _onAnimationEnd,
-                onAnimationIteration: _onAnimationIteration,
-                ...rest
-              } = props as React.HTMLAttributes<HTMLDivElement>;
+              const { style: baseStyle, ...baseProps } =
+                props as React.HTMLAttributes<HTMLDivElement>;
+              // motion.div has incompatible drag/animation event signatures —
+              // strip the React-DOM versions so they don't fight motion's own.
+              const rest = omit(baseProps, [
+                "onDrag",
+                "onDragStart",
+                "onDragEnd",
+                "onAnimationStart",
+                "onAnimationEnd",
+                "onAnimationIteration",
+              ]);
               return (
                 // Outer wrapper carries Base UI's popup props plus the
                 // cursor-follow motion value; the inner box keeps the

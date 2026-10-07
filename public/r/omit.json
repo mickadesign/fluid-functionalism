@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "omit",
+  "title": "Omit",
+  "description": "Copies an object without the given keys. Components use it to drop props before spreading the rest onto an element, without leaving unused bindings behind.",
+  "files": [
+    {
+      "path": "registry/default/lib/omit.ts",
+      "content": "/**\n * A shallow copy of `object` without `keys`: the same own properties a\n * `{ key: _key, ...rest }` destructure keeps, without the unused binding.\n * Components use it to drop props before spreading the rest onto an\n * element (framer-motion's own onDrag/onAnimation* handlers, a primitive's\n * style, a prop the other flavor reads).\n */\nexport function omit<T extends object, K extends keyof T>(\n  object: T,\n  keys: readonly K[]\n): Omit<T, K> {\n  const rest = { ...object };\n  for (const key of keys) delete rest[key];\n  return rest;\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+  "categories": [
+    "lib"
+  ],
+  "type": "registry:lib"
+}

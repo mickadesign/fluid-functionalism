@@ -43,9 +43,10 @@ export const FF_MODULES = [
 /** Files that install under their own names beside the catalog items: parts
  *  of an item (dropdown brings menu-item, the sidebar blocks bring their
  *  pieces, one folder down) and shared modules too generic a name to
- *  fingerprint FF code by (popup). */
+ *  fingerprint FF code by (popup, omit). */
 export const FF_PARTS = [
   "popup",
+  "omit",
   "menu-item",
   "dropdown-search",
   "dropdown-sub",

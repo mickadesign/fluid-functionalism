@@ -206,4 +206,16 @@ export default [
     plugins: { "react-hooks": reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
+  // That app's no-unused-vars has no `^_` ignore, so a prop dropped with
+  // `{ key: _key, ...rest }` is a warning there. Registry code drops props
+  // with omit() from registry/default/lib/omit.ts instead. Both rules are
+  // errors here, so installs open with no warnings either and CI catches a
+  // new one. A plain <img> stays possible with a reasoned disable comment.
+  {
+    files: ["registry/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", {}],
+      "@next/next/no-img-element": "error",
+    },
+  },
 ];

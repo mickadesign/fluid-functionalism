@@ -22,6 +22,7 @@ const useIsoLayoutEffect =
 import { cn } from "@/lib/utils";
 import { useIcons } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { useShape } from "@/lib/shape-context";
@@ -271,14 +272,13 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       activeIndex !== null && !openItemRects.has(activeIndex);
     const shape = useShape();
 
-    const {
-      value: _value,
-      defaultValue: _defaultValue,
-      onValueChange: _onValueChange,
-      collapsible: _collapsible,
-      type: _type,
-      ...htmlProps
-    } = rest as Record<string, unknown>;
+    const htmlProps = omit(rest as Record<string, unknown>, [
+      "value",
+      "defaultValue",
+      "onValueChange",
+      "collapsible",
+      "type",
+    ]);
 
     // Translate FF API → Base UI Accordion API.
     // Base UI always uses `value: string[]` and a `multiple: boolean`. In
@@ -332,16 +332,18 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
           onValueChange={baseOnValueChange}
           multiple={type === "multiple"}
           render={(rootProps) => {
-            const {
-              style: _baseStyle,
-              onDrag: _onDrag,
-              onDragStart: _onDragStart,
-              onDragEnd: _onDragEnd,
-              onAnimationStart: _onAnimationStart,
-              onAnimationEnd: _onAnimationEnd,
-              onAnimationIteration: _onAnimationIteration,
-              ...restRoot
-            } = rootProps as React.HTMLAttributes<HTMLDivElement>;
+            const restRoot = omit(
+              rootProps as React.HTMLAttributes<HTMLDivElement>,
+              [
+                "style",
+                "onDrag",
+                "onDragStart",
+                "onDragEnd",
+                "onAnimationStart",
+                "onAnimationEnd",
+                "onAnimationIteration",
+              ]
+            );
             return (
               <div
                 {...restRoot}
@@ -580,7 +582,10 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
         onValueChange={baseOnValueChange}
         multiple={type === "multiple"}
         render={(rootProps) => {
-          const { style: _s, ...restRoot } = rootProps as React.HTMLAttributes<HTMLDivElement>;
+          const restRoot = omit(
+            rootProps as React.HTMLAttributes<HTMLDivElement>,
+            ["style"]
+          );
           return (
             <div
               {...restRoot}
@@ -658,7 +663,10 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(
           value={value}
           disabled={disabled}
           render={(itemProps) => {
-            const { style: _s, ...restItem } = itemProps as React.HTMLAttributes<HTMLDivElement>;
+            const restItem = omit(
+              itemProps as React.HTMLAttributes<HTMLDivElement>,
+              ["style"]
+            );
             return (
               <div
                 {...restItem}
@@ -923,18 +931,19 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
       <AccordionPrimitive.Panel
         keepMounted
         render={(panelProps) => {
-          const {
-            // Applied too early for our exit animation (see above); we
-            // control the attribute ourselves.
-            hidden: _baseHidden,
-            // Only carries the --accordion-panel-height/width vars, which
-            // stay 'auto' since Base UI never measures JS-driven animations;
-            // dropped for parity with the Root/Item render props above.
-            style: _baseStyle,
-            ...restPanel
-          } = panelProps as React.HTMLAttributes<HTMLDivElement> & {
-            hidden?: boolean;
-          };
+          const restPanel = omit(
+            panelProps as React.HTMLAttributes<HTMLDivElement>,
+            [
+              // Applied too early for our exit animation (see above); we
+              // control the attribute ourselves.
+              "hidden",
+              // Only carries the --accordion-panel-height/width vars, which
+              // stay 'auto' since Base UI never measures JS-driven
+              // animations; dropped for parity with the Root/Item render
+              // props above.
+              "style",
+            ]
+          );
           return (
             <div {...restPanel} hidden={!isOpen && exitComplete}>
               <motion.div
