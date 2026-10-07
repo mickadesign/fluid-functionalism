@@ -1063,9 +1063,11 @@ const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
       // scroll-divider draws the edges: the top hairline rides the header
       // line (pulled up 1px onto it) and strengthens once rows pass under
       // it; the bottom hairline stands while rows continue below and goes at
-      // the end, which is why the footer draws no line of its own.
+      // the end, which is why the footer draws no line of its own. With no
+      // footer the list is the panel's last child and that hairline would
+      // land on the panel's own bottom edge and double it, so it is dropped.
       <ScrollArea
-        className="scroll-divider flex min-h-0 flex-1 flex-col border-t border-border/60 [&::before]:!-top-px"
+        className="scroll-divider flex min-h-0 flex-1 flex-col border-t border-border/60 [&::before]:!-top-px [&:last-child::after]:!hidden"
         viewportClassName="min-h-0 flex-1 [&>div[style]]:!block [&>div[style]]:!min-w-0 [--scroll-fade-size:32px] scroll-fade"
       >
         <div
