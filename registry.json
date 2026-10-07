@@ -623,6 +623,22 @@
       ]
     },
     {
+      "name": "omit",
+      "type": "registry:lib",
+      "title": "Omit",
+      "description": "Copies an object without the given keys. Components use it to drop props before spreading the rest onto an element, without leaving unused bindings behind.",
+      "files": [
+        {
+          "path": "registry/default/lib/omit.ts",
+          "type": "registry:lib"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "lib"
+      ]
+    },
+    {
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
@@ -781,6 +797,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "icon-context",
@@ -813,6 +830,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "icon-context",
@@ -944,6 +962,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "omit",
         "font-weight",
         "shape-context",
         "icon-context",
@@ -991,6 +1010,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "omit",
         "font-weight",
         "shape-context",
         "icon-context",
@@ -1164,6 +1184,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "use-fluid-hover",
@@ -1289,6 +1310,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "shape-context",
         "surface-context",
         "surface-classes",
@@ -1346,6 +1368,7 @@
       ],
       "registryDependencies": [
         "springs",
+        "omit",
         "surface-context",
         "surface-classes"
       ],
@@ -1432,6 +1455,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "size-context",
@@ -1660,6 +1684,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "size-context",
         "tokens"
@@ -1821,6 +1846,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "size-context",
@@ -2044,6 +2070,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "size-context",
@@ -2074,6 +2101,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "size-context",
@@ -2213,6 +2241,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "omit",
         "shape-context",
         "use-touch-primary",
         "tokens"
@@ -2615,6 +2644,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "shape-context",
         "surface-context",
         "surface-classes",
@@ -2758,6 +2788,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "type-scale"
@@ -2838,6 +2869,7 @@
       "registryDependencies": [
         "utils",
         "springs",
+        "omit",
         "font-weight",
         "shape-context",
         "size-context",

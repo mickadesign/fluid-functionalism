@@ -14,6 +14,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -109,8 +110,10 @@ function SidebarSheet({ side, open, onClose, children }: SidebarSheetProps) {
             boosted to /80 in explicit dark mode. */}
         <DialogPrimitive.Backdrop
           render={(backdropProps) => {
-            const { style: _style, ...rest } =
-              backdropProps as React.HTMLAttributes<HTMLDivElement>;
+            const rest = omit(
+              backdropProps as React.HTMLAttributes<HTMLDivElement>,
+              ["style"]
+            );
             return (
               <motion.div
                 {...(rest as MotionSafeDivProps)}

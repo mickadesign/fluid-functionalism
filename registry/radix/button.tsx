@@ -12,6 +12,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { omit } from "@/lib/omit";
 import { useShape } from "@/lib/shape-context";
 import { useSizeVariant } from "@/lib/size-context";
 
@@ -147,7 +148,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       asChild = false,
       render,
-      nativeButton: _nativeButton,
       loading = false,
       leadingIcon: LeadingIcon,
       trailingIcon: TrailingIcon,
@@ -155,10 +155,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       children,
       style,
-      ...props
+      ...rest
     },
     ref
   ) => {
+    // nativeButton is accepted for Base UI parity and ignored (see its doc).
+    const props = omit(rest, ["nativeButton"]);
+
     // asChild: the user's element becomes the root, but the button's internal
     // structure (bg layer, content wrapper, spinner, icons) must survive. Slot
     // requires exactly one child, so instead of Slottable we clone the user's

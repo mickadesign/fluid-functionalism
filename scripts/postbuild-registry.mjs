@@ -63,6 +63,7 @@ export const CUSTOM_ITEMS = new Set([
   "use-touch-primary",
   "elevated",
   "popup",
+  "omit",
   "use-keyboard-nav-gate",
   // themes (cssVars/css-only items: the elevation surface ladder and the
   // shared interaction/focus tokens)
