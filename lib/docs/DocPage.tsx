@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useSizeVariant } from "@/lib/size-context";
@@ -11,6 +12,12 @@ import { useIcon } from "@/lib/icon-context";
 import { docOrder } from "@/lib/docs/components";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useBase, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
+import {
+  badgeForSection,
+  sectionId,
+  STATUS_DOT,
+  type UpdateKind,
+} from "@/lib/docs/updates";
 
 interface DocPageProps {
   title: string;
@@ -161,23 +168,38 @@ export function DocPage({
 
 interface DocSectionProps {
   title: string;
+  /** Override the changelog-derived New / Updated dot. Prefer an `updates` entry. */
+  badge?: UpdateKind;
   children: ReactNode;
 }
 
-export function DocSection({ title, children }: DocSectionProps) {
+export function DocSection({ title, badge, children }: DocSectionProps) {
+  const pathname = usePathname();
+  // Same source as the sidebar: an `updates` row with matching href + section.
+  const resolved = badge ?? badgeForSection(pathname, title);
+
   // Section headings are the title role of the type scale (see /docs/sizes).
   // The extra top padding (over the page's gap-8) lets each section breathe
   // and makes the title read as a fresh start rather than a caption for
   // whatever sat above it. The heading's negative margin tucks the
   // description against its title (8px) while the gap gives the content
   // below the description a fuller 16px.
+  //
+  // `id` matches `sectionId` in updates.ts so announcement links can land
+  // on the highlighted section (`/docs/dropdown#submenus`).
   return (
-    <div className="flex flex-col gap-4 pt-6">
+    <div id={sectionId(title)} className="flex flex-col gap-4 pt-6 scroll-mt-24">
       <h2
-        className="-mb-2 text-site-title text-foreground leading-none"
+        className="-mb-2 flex items-center gap-2 text-site-title text-foreground leading-none"
         style={{ fontVariationSettings: fontWeights.semibold }}
       >
         {title}
+        {resolved && (
+          <span
+            className={`inline-block size-1.5 shrink-0 rounded-full ${STATUS_DOT[resolved]}`}
+            aria-label={resolved}
+          />
+        )}
       </h2>
       {children}
     </div>

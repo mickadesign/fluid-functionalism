@@ -5,6 +5,7 @@ import type { ComponentEntry } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
 import { BentoCard, BentoTileContext } from "@/app/components/bento-card";
 import { cn } from "@/lib/utils";
+import { resolveNavKind } from "@/lib/docs/updates";
 
 /**
  * Band layout. At xl (3 cols) the grid reads as horizontal bands: each 2-wide
@@ -117,12 +118,14 @@ export function BentoGrid({ components }: BentoGridProps) {
       {ordered.map(({ entry: c, side }) => {
         const Preview = previewMap[c.slug];
         if (!Preview) return null;
+        const kind = resolveNavKind(c);
         return (
           <BentoCard
             key={c.slug}
             slug={c.slug}
             name={c.name}
-            isNew={c.isNew}
+            isNew={kind === "New"}
+            isUpdated={kind === "Updated"}
             gridSize={c.gridSize}
             className={side === "right" ? "xl:col-start-2" : undefined}
             // Tall previews spend less of the row on stage padding: a whole

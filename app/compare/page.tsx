@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { componentList } from "@/lib/docs/components";
+import { resolveNavKind } from "@/lib/docs/updates";
 import { previewMap } from "@/app/components/bento-previews";
 import { shadcnPreviewMap } from "@/app/components/shadcn-previews";
 import { compareFluidPreviewMap } from "@/app/components/compare-fluid-previews";
@@ -66,7 +67,13 @@ function ComparePageInner() {
       const c = componentMap.get(slug);
       if (!c) return null;
       if (!previewMap[slug] || !shadcnPreviewMap[slug]) return null;
-      return { slug, name: c.name, isNew: c.isNew };
+      const kind = resolveNavKind(c);
+      return {
+        slug,
+        name: c.name,
+        isNew: kind === "New",
+        isUpdated: kind === "Updated",
+      };
     })
     .filter((s): s is NonNullable<typeof s> => s != null);
 
@@ -205,6 +212,7 @@ function ComparePageInner() {
             slug={current.slug}
             name={current.name}
             isNew={current.isNew}
+            isUpdated={current.isUpdated}
             style={{ minHeight: 420 }}
           >
             <div className="flex flex-col items-center justify-center w-full max-w-[420px] mx-auto">

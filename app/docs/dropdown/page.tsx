@@ -22,7 +22,6 @@ import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
 import { DropdownPlayground } from "@/lib/docs/playgrounds/dropdown";
-
 const basicCode = `import { Dropdown, MenuItem } from "./components";
 import { SquareLibrary, Clock, Star, Users, Lock } from "lucide-react";
 import { useState } from "react";
