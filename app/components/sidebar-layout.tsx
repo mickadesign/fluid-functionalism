@@ -11,6 +11,7 @@ import {
   useSidebar,
 } from "@/components/flavored/sidebar";
 import { SiteSidebar } from "@/app/components/sidebar";
+import { SiteAnnouncement } from "@/app/components/site-announcement";
 import { SiteCommandMenu, SiteCommandMenuProvider } from "@/app/components/site-command-menu";
 import { RightPanel } from "@/app/components/right-panel";
 import { RightRailProvider } from "@/lib/right-rail";
@@ -20,6 +21,7 @@ import { systemNavList, componentList } from "@/lib/docs/components";
 const pageOrder = [
   "/",
   "/docs",
+  "/whats-new",
   ...systemNavList.map((s) => `/docs/${s.slug}`),
   ...componentList.map((c) => `/docs/${c.slug}`),
 ];
@@ -195,6 +197,7 @@ export function SidebarLayout({ children, defaultOpen = true }: SidebarLayoutPro
 
         {/* Main content */}
         <SidebarInset className="min-w-0">
+          <SiteAnnouncement />
           {children}
         </SidebarInset>
 

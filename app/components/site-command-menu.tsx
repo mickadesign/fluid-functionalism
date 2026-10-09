@@ -19,6 +19,7 @@ import {
   CommandMenuList,
   CommandMenuEmpty,
   CommandMenuFooter,
+  CommandMenuItem,
   useIsMac,
   type CommandMenuItemData,
 } from "@/registry/default/command-menu";
@@ -29,6 +30,15 @@ import {
   SidebarMenuBadge,
 } from "@/components/flavored/sidebar";
 import { componentList, systemNavList } from "@/lib/docs/components";
+import {
+  updates,
+  updateHref,
+  updateKind,
+  resolveNavKind,
+  latestActiveUpdate,
+  STATUS_DOT,
+  type UpdateKind,
+} from "@/lib/docs/updates";
 import { useIcons, type IconName } from "@/lib/icon-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useShapeContext, type ShapeVariant } from "@/lib/shape-context";
@@ -90,6 +100,7 @@ const TABS = [
 const PAGES: { href: string; label: string; icon: IconName; keywords: string[] }[] = [
   { href: "/", label: "Showcase", icon: "home", keywords: ["home", "bento", "gallery"] },
   { href: "/docs", label: "Introduction", icon: "square-library", keywords: ["docs", "getting started", "install"] },
+  { href: "/whats-new", label: "What's New", icon: "rocket", keywords: ["changelog", "updates", "release notes"] },
   { href: "/demo", label: "Demo", icon: "play", keywords: ["slides", "playground"] },
   { href: "/compare", label: "Compare with shadcn", icon: "scaling", keywords: ["shadcn", "side by side"] },
 ];
@@ -97,6 +108,7 @@ const PAGES: { href: string; label: string; icon: IconName; keywords: string[] }
 const PAGE_ORDER = [
   "/",
   "/docs",
+  "/whats-new",
   ...systemNavList.map((s) => `/docs/${s.slug}`),
   ...componentList.map((c) => `/docs/${c.slug}`),
 ];
@@ -192,6 +204,9 @@ export function SiteCommandMenu() {
 
   const items = useMemo<SiteItem[]>(() => {
     const current = (on: boolean) => (on ? "Current" : undefined);
+    // Latest active changelog kind — dots What's New; expired entries don't count.
+    const latest = latestActiveUpdate();
+    const latestKind = latest ? updateKind(latest) : undefined;
     const pages: SiteItem[] = [
       ...PAGES.map((p) => ({
         kind: "page" as const,
@@ -200,15 +215,41 @@ export function SiteCommandMenu() {
         action: `Open ${p.label}`,
         icon: icons[p.icon],
         keywords: p.keywords,
+        // Status dots ride in `description` as "New" / "Updated"; renderItem
+        // turns those into the same sidebar dots.
+        description:
+          p.href === "/whats-new" ? latestKind : undefined,
         group: "Pages",
         onSelect: () => go(p.href),
       })),
+      ...updates.map((entry) => {
+        const href = updateHref(entry);
+        const kind = updateKind(entry);
+        return {
+          kind: "page" as const,
+          value: `update:${entry.id}`,
+          label: entry.title,
+          action: `Open ${entry.title}`,
+          description: kind,
+          keywords: [
+            "update",
+            "changelog",
+            "whats new",
+            kind.toLowerCase(),
+            entry.id,
+            ...entry.description.split(/\W+/),
+            ...entry.title.split(/\W+/),
+          ],
+          group: "What's New",
+          onSelect: () => go(href),
+        };
+      }),
       ...systemNavList.map((s) => ({
         kind: "page" as const,
         value: `/docs/${s.slug}`,
         label: s.name,
         action: `Open ${s.name}`,
-        description: s.isNew ? "New" : undefined,
+        description: resolveNavKind(s),
         keywords: [s.slug, ...s.description.split(/\W+/)],
         group: "System",
         onSelect: () => go(`/docs/${s.slug}`),
@@ -218,7 +259,7 @@ export function SiteCommandMenu() {
         value: `/docs/${c.slug}`,
         label: c.name,
         action: `Open ${c.name}`,
-        description: c.isNew ? "New" : c.isUpdated ? "Updated" : undefined,
+        description: resolveNavKind(c),
         keywords: [c.slug, ...c.description.split(/\W+/)],
         group: "Components",
         onSelect: () => go(`/docs/${c.slug}`),
@@ -391,7 +432,35 @@ export function SiteCommandMenu() {
       <CommandMenu items={visible} suggestions={recent} suggestionsLabel="Recent">
         <CommandMenuInput placeholder="Go to a page, change a setting…" />
         <CommandMenuTabs tabs={TABS} value={tab} onValueChange={setTab} />
-        <CommandMenuList>
+        <CommandMenuList
+          renderItem={(item) => {
+            const kind =
+              item.description === "New" ||
+              item.description === "Updated" ||
+              item.description === "Breaking"
+                ? (item.description as UpdateKind)
+                : undefined;
+            return (
+              <CommandMenuItem value={item.value}>
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1">
+                    {item.label}
+                  </span>
+                  {kind ? (
+                    <span
+                      className={`inline-block size-1.5 shrink-0 rounded-full ${STATUS_DOT[kind]}`}
+                      aria-label={kind}
+                    />
+                  ) : item.description ? (
+                    <span className="min-w-0 truncate [text-box:trim-both_cap_alphabetic] py-1 -my-1 text-muted-foreground">
+                      {item.description}
+                    </span>
+                  ) : null}
+                </span>
+              </CommandMenuItem>
+            );
+          }}
+        >
           <CommandMenuEmpty>Nothing matches.</CommandMenuEmpty>
         </CommandMenuList>
         <CommandMenuFooter />

@@ -17,6 +17,7 @@ import {
 import { componentList, systemNavList } from "@/lib/docs/components";
 import { GitHubStarButton, SettingsContent } from "@/app/components/right-panel";
 import { SiteCommandMenuTrigger } from "@/app/components/site-command-menu";
+import { resolveNavKind, STATUS_DOT } from "@/lib/docs/updates";
 
 interface NavEntry {
   slug: string;
@@ -26,19 +27,18 @@ interface NavEntry {
   dotColor?: string;
 }
 
-/** The isNew/isUpdated dot, rendered as a trailing child inside the row's
- *  weight-animated label span (same markup the old NavItem used). */
+/** The isNew (yellow) / isUpdated (blue) dot — same colors as What's New. */
 function StatusDot({ entry }: { entry: NavEntry }) {
-  // Rendered as a flex sibling of the weight-animated label (the row's gap
-  // provides the spacing), matching the old NavItem dot's visual position.
-  if (entry.isUpdated || entry.isNew) {
-    return (
-      <span
-        className={`inline-block size-1.5 shrink-0 rounded-full ${entry.dotColor ?? "bg-blue-500"}`}
-      />
-    );
-  }
-  return null;
+  // Changelog wins; static flags cover items not yet in the update log.
+  const kind = resolveNavKind(entry);
+  if (!kind) return null;
+  const color = entry.dotColor ?? STATUS_DOT[kind];
+  return (
+    <span
+      className={`inline-block size-1.5 shrink-0 rounded-full ${color}`}
+      aria-label={kind}
+    />
+  );
 }
 
 function NavGroup({
@@ -105,6 +105,14 @@ export function SiteSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton render={<Link href="/docs" />} isActive={pathname === "/docs"}>
                 Introduction
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link href="/whats-new" />}
+                isActive={pathname === "/whats-new"}
+              >
+                What&apos;s New
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

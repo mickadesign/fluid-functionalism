@@ -23,6 +23,7 @@ interface BentoCardProps {
   slug: string;
   name: string;
   isNew?: boolean;
+  isUpdated?: boolean;
   gridSize?: string;
   /** Overrides the stage's padding for a preview that needs a taller window.
    *  Rows are pinned at 300px (`grid-auto-rows`), so a preview can only be
@@ -43,7 +44,7 @@ interface BentoCardProps {
   children: ReactNode;
 }
 
-export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout = false, action, className: extraClassName, previewClassName, style, children }: BentoCardProps) {
+export function BentoCard({ slug, name, isNew, isUpdated, gridSize = "small", animateLayout = false, action, className: extraClassName, previewClassName, style, children }: BentoCardProps) {
   // No click-to-focus wiring here. Previously a mousedown on empty space
   // inside the card routed focus to the preview's first interactive element
   // (so the user could keyboard-drive the demo afterwards). In practice it
@@ -67,11 +68,15 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout
       >
         {name}
       </span>
-      {isNew && (
-        <Badge variant="dot" color="blue" size="sm">
+      {isNew ? (
+        <Badge variant="dot" color="yellow" size="sm">
           New
         </Badge>
-      )}
+      ) : isUpdated ? (
+        <Badge variant="dot" color="blue" size="sm">
+          Updated
+        </Badge>
+      ) : null}
     </motion.div>
   );
 

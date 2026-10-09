@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { componentList } from "@/lib/docs/components";
+import { resolveNavKind } from "@/lib/docs/updates";
 import { previewMap } from "@/app/components/bento-previews";
 import { playgroundMap } from "@/lib/docs/playgrounds";
 import { BentoCard } from "@/app/components/bento-card";
@@ -91,7 +92,14 @@ function DemoPageInner() {
     // A slide needs either a static bento preview or a registered playground
     // (which brings its own state-driven preview + pen menu).
     if (!c || (!previewMap[c.slug] && !playgroundMap[c.slug])) return null;
-    return { slug: c.slug, name: c.name, isNew: c.isNew, type: "component" as const };
+    const kind = resolveNavKind(c);
+    return {
+      slug: c.slug,
+      name: c.name,
+      isNew: kind === "New",
+      isUpdated: kind === "Updated",
+      type: "component" as const,
+    };
   }).filter((s): s is NonNullable<typeof s> => s != null);
 
   const paramSlug = searchParams.get("c");
@@ -299,6 +307,7 @@ function DemoPageInner() {
                   slug={current.slug}
                   name={current.name}
                   isNew={"isNew" in current ? current.isNew : undefined}
+                  isUpdated={"isUpdated" in current ? current.isUpdated : undefined}
                   style={{ height: "100%" }}
                   // Anchors the playground overlay to the preview area,
                   // above the footer and outside the stage's scaling.
@@ -320,6 +329,7 @@ function DemoPageInner() {
               slug={current.slug}
               name={current.name}
               isNew={"isNew" in current ? current.isNew : undefined}
+              isUpdated={"isUpdated" in current ? current.isUpdated : undefined}
               style={{ height: "100%" }}
               action={cardActions()}
             >
