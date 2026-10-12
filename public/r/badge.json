@@ -4,7 +4,7 @@
   "title": "Badge",
   "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
   "dependencies": [
-    "class-variance-authority"
+    "class-variance-authority@^0.7.1"
   ],
   "registryDependencies": [
     "utils",

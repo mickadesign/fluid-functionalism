@@ -4,8 +4,8 @@
   "title": "Radio Group",
   "description": "Animated radio group with fluid hover, spring-animated selection dot, and optional Radix UI integration. Supports both controlled index and value-based APIs.",
   "dependencies": [
-    "motion",
-    "@radix-ui/react-radio-group"
+    "motion@^14.1.0",
+    "@radix-ui/react-radio-group@^1.5.0"
   ],
   "registryDependencies": [
     "utils",

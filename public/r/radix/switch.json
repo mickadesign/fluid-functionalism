@@ -4,8 +4,8 @@
   "title": "Switch",
   "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Built on Radix UI Switch.",
   "dependencies": [
-    "motion",
-    "@radix-ui/react-switch"
+    "motion@^14.1.0",
+    "@radix-ui/react-switch@^1.4.0"
   ],
   "registryDependencies": [
     "utils",

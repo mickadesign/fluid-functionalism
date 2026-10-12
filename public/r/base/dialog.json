@@ -4,7 +4,7 @@
   "title": "Dialog (Base UI)",
   "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Base UI flavor.",
   "dependencies": [
-    "motion",
+    "motion@^14.1.0",
     "@base-ui/react@^1.9.0",
     "lucide-react"
   ],
