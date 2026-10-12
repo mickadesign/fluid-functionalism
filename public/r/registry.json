@@ -672,7 +672,7 @@
       "title": "Icon Context",
       "description": "Named icon slots with a Lucide default set; swap any icon via IconProvider.",
       "dependencies": [
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "files": [
         {
@@ -737,7 +737,7 @@
       "dependencies": [
         "@hugeicons/react",
         "@hugeicons/core-free-icons",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "https://www.fluidfunctionalism.com/r/icon-context.json"
@@ -760,7 +760,7 @@
       "description": "Untitled UI glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Untitled UI.",
       "dependencies": [
         "@untitledui/icons",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "https://www.fluidfunctionalism.com/r/icon-context.json"
@@ -892,7 +892,7 @@
       "dependencies": [
         "motion",
         "@radix-ui/react-accordion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -924,7 +924,7 @@
       "dependencies": [
         "motion",
         "@base-ui/react@^1.9.0",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1056,7 +1056,7 @@
         "motion",
         "@radix-ui/react-slot",
         "class-variance-authority",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1103,7 +1103,7 @@
         "motion",
         "@base-ui/react@^1.9.0",
         "class-variance-authority",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1377,7 +1377,7 @@
       "dependencies": [
         "motion",
         "@radix-ui/react-dialog",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1410,7 +1410,7 @@
       "dependencies": [
         "motion",
         "@base-ui/react@^1.9.0",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1494,7 +1494,7 @@
       "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
       "dependencies": [
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1523,7 +1523,7 @@
       "title": "Input Group",
       "description": "Grouped input fields with fluid hover highlighting, animated label transitions, optional icons, and error states.",
       "dependencies": [
-        "lucide-react",
+        "lucide-react@^1.55.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1612,7 +1612,7 @@
       "description": "Sonner-style stack of queued composer messages: collapsed cards fan out on hover (tap on touch), drag to reorder, a gutter arrow counts the overflow, edit/remove per card, and a shared-layout morph into the sent message.",
       "dependencies": [
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "https://www.fluidfunctionalism.com/r/springs.json",
@@ -1672,7 +1672,7 @@
       "dependencies": [
         "@radix-ui/react-tabs",
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1713,7 +1713,7 @@
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1892,7 +1892,7 @@
       "dependencies": [
         "@radix-ui/react-dialog",
         "motion",
-        "lucide-react",
+        "lucide-react@^1.55.0",
         "class-variance-authority"
       ],
       "registryDependencies": [
@@ -1941,7 +1941,7 @@
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react",
+        "lucide-react@^1.55.0",
         "class-variance-authority"
       ],
       "registryDependencies": [
@@ -2226,7 +2226,7 @@
       "dependencies": [
         "motion",
         "@radix-ui/react-tabs",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2260,7 +2260,7 @@
       "dependencies": [
         "motion",
         "@base-ui/react@^1.9.0",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2658,7 +2658,7 @@
         "@radix-ui/react-select",
         "motion",
         "class-variance-authority",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2697,7 +2697,7 @@
         "@base-ui/react@^1.9.0",
         "motion",
         "class-variance-authority",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2736,7 +2736,7 @@
         "@radix-ui/react-popover",
         "motion",
         "class-variance-authority",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2776,7 +2776,7 @@
         "@base-ui/react@^1.9.0",
         "motion",
         "class-variance-authority",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2814,7 +2814,7 @@
       "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; subtle tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
       "dependencies": [
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2908,7 +2908,7 @@
       "dependencies": [
         "@radix-ui/react-collapsible",
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2959,7 +2959,7 @@
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react"
+        "lucide-react@^1.55.0"
       ],
       "registryDependencies": [
         "utils",
