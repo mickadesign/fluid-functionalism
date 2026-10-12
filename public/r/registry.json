@@ -1588,7 +1588,7 @@
       "title": "File Thumbnail",
       "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting.",
       "dependencies": [
-        "pdfjs-dist"
+        "pdfjs-dist@^6.4.299"
       ],
       "registryDependencies": [
         "utils",
