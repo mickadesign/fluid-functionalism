@@ -7,7 +7,7 @@
     "motion",
     "@base-ui/react@^1.9.0",
     "class-variance-authority",
-    "lucide-react"
+    "lucide-react@^1.55.0"
   ],
   "registryDependencies": [
     "utils",
