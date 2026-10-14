@@ -52,8 +52,8 @@
     "lucide-react": "^0.564.0",
     "mdast-util-from-markdown": "^2.1.0",
     "motion": "^14.1.0",
-    "next": "^15.5.27",
-    "pdfjs-dist": "^5.7.284",
+    "next": "^16.4.0",
+    "pdfjs-dist": "^6.2.108",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "shadcn": "^3.0.0",
@@ -78,6 +78,6 @@
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.4"
   }
 }
