@@ -5,7 +5,7 @@
   "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion"
+    "motion@^14.1.0"
   ],
   "registryDependencies": [
     "utils",

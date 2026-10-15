@@ -5,8 +5,8 @@
   "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion",
-    "class-variance-authority",
+    "motion@^14.1.0",
+    "class-variance-authority@^0.7.1",
     "lucide-react"
   ],
   "registryDependencies": [

@@ -4,8 +4,8 @@
   "title": "Thinking Steps",
   "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Radix flavor.",
   "dependencies": [
-    "@radix-ui/react-collapsible",
-    "motion",
+    "@radix-ui/react-collapsible@^1.2.0",
+    "motion@^14.1.0",
     "lucide-react"
   ],
   "registryDependencies": [
