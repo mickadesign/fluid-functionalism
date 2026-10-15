@@ -144,20 +144,20 @@ export default function DocsIndex() {
             <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-muted text-muted-foreground text-[11px] leading-3.5 shrink-0" style={{ fontVariationSettings: fontWeights.normal }}>1</span>
             Add the registry to your project:
           </p>
-          <InputCopy value="npx shadcn@latest registry add @fluid" align="left" className="w-fit" />
+          <InputCopy value="npx shadcn@latest registry add @fluid" align="left" className="w-fit max-w-full" />
         </div>
         <div className="flex flex-col gap-2 mt-2">
           <p className="text-site-body text-muted-foreground flex items-center gap-2 ml-1">
             <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-muted text-muted-foreground text-[11px] leading-3.5 shrink-0" style={{ fontVariationSettings: fontWeights.normal }}>2</span>
             Install any component:
           </p>
-          <InputCopy value="npx shadcn@latest add @fluid/button" align="left" className="w-fit" />
+          <InputCopy value="npx shadcn@latest add @fluid/button" align="left" className="w-fit max-w-full" />
         </div>
         <hr className="border-border/60 mt-4" />
         <p className="text-site-body text-muted-foreground">
           Or install directly without adding the registry:
         </p>
-        <InputCopy value="npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json" align="left" className="w-fit" />
+        <InputCopy value="npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json" align="left" className="w-fit max-w-full" />
         <p className="text-site-body text-muted-foreground">
           Dependencies and shared utilities are resolved automatically.
           Font weight animations require the Inter variable font.
