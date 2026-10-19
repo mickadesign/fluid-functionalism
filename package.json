@@ -57,7 +57,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "shadcn": "^3.0.0",
-    "shiki": "^3.22.0",
+    "shiki": "^4.5.0",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.4.0"
   },
