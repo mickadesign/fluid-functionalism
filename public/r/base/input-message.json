@@ -4,7 +4,7 @@
   "title": "Input Message",
   "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
   "dependencies": [
-    "motion@^14.1.0"
+    "motion@^14.4.0"
   ],
   "registryDependencies": [
     "utils",

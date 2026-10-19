@@ -4,7 +4,7 @@
   "title": "Checkbox Group (Base UI)",
   "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Base UI flavor.",
   "dependencies": [
-    "motion@^14.1.0",
+    "motion@^14.4.0",
     "@base-ui/react@^1.9.0"
   ],
   "registryDependencies": [

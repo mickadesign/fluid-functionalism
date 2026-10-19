@@ -4,8 +4,8 @@
   "title": "Tooltip",
   "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support.",
   "dependencies": [
-    "motion@^14.1.0",
-    "@radix-ui/react-tooltip@^1.4.0"
+    "motion@^14.4.0",
+    "@radix-ui/react-tooltip@^1.4.1"
   ],
   "registryDependencies": [
     "utils",

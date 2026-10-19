@@ -4,8 +4,8 @@
   "title": "Select",
   "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Radix flavor.",
   "dependencies": [
-    "@radix-ui/react-select@^2.4.0",
-    "motion@^14.1.0",
+    "@radix-ui/react-select@^2.4.1",
+    "motion@^14.4.0",
     "class-variance-authority@^0.7.1",
     "lucide-react"
   ],

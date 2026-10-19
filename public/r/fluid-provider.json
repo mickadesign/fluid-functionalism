@@ -4,7 +4,7 @@
   "title": "Fluid Provider",
   "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded or pill), the size step (default or compact), and the icon set.",
   "dependencies": [
-    "motion@^14.1.0"
+    "motion@^14.4.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/shape-context.json",

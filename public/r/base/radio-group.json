@@ -4,7 +4,7 @@
   "title": "Radio Group (Base UI)",
   "description": "Animated radio group with fluid hover, spring-animated selection dot. Base UI flavor.",
   "dependencies": [
-    "motion@^14.1.0",
+    "motion@^14.4.0",
     "@base-ui/react@^1.9.0"
   ],
   "registryDependencies": [

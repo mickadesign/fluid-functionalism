@@ -4,7 +4,7 @@
   "title": "Input Copy",
   "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
   "dependencies": [
-    "motion@^14.1.0",
+    "motion@^14.4.0",
     "lucide-react"
   ],
   "registryDependencies": [

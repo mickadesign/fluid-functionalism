@@ -5,7 +5,7 @@
   "description": "Type-to-filter combobox with single or multiple (chips, merged selection backgrounds) selection: a text field that filters a list as you type, with keyboard highlight, fluid hover, spring-animated popover, animated checkmark, and clear/chevron controls. Optional create-from-query row (onCreate) and hideSelected for chips fields. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion@^14.1.0",
+    "motion@^14.4.0",
     "class-variance-authority@^0.7.1",
     "lucide-react"
   ],

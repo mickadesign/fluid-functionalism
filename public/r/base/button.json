@@ -4,7 +4,7 @@
   "title": "Button (Base UI)",
   "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover. Base UI flavor.",
   "dependencies": [
-    "motion@^14.1.0",
+    "motion@^14.4.0",
     "@base-ui/react@^1.9.0",
     "class-variance-authority@^0.7.1",
     "lucide-react"

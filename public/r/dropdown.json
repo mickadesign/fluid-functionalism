@@ -4,8 +4,8 @@
   "title": "Dropdown",
   "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Radix flavor.",
   "dependencies": [
-    "@radix-ui/react-dropdown-menu@^2.2.0",
-    "motion@^14.1.0"
+    "@radix-ui/react-dropdown-menu@^2.2.1",
+    "motion@^14.4.0"
   ],
   "registryDependencies": [
     "utils",

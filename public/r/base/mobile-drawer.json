@@ -5,7 +5,7 @@
   "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion@^14.1.0"
+    "motion@^14.4.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/springs.json",
