@@ -24,8 +24,9 @@ import {
 } from "@/registry/default/table";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { FakeCursor } from "@/lib/docs/fake-cursor";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { scrollAreaProps } from "@/lib/docs/api/scrollbars";
 
 // ---------------------------------------------------------------------------
 // Demo data
@@ -179,31 +180,6 @@ import {
     </TableBody>
   </Table>
 </ScrollArea>`;
-
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
-const scrollAreaProps: PropDef[] = [
-  {
-    name: "orientation",
-    type: '"vertical" | "horizontal" | "both"',
-    default: '"vertical"',
-    description: "Which axes get scrollbars.",
-  },
-  {
-    name: "viewportClassName",
-    type: "string",
-    description:
-      "Classes for the inner scrolling viewport — where the scroll-fade utility goes.",
-  },
-  {
-    name: "className",
-    type: "string",
-    description:
-      "Classes for the outer container — set the height/width constraint here.",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Demos
@@ -485,8 +461,6 @@ export default function ScrollbarsDoc() {
     <DocPage
       title="Scrollbars"
       slug="scrollbars"
-      installSlug="scroll-area"
-      installNote="Installs the ScrollArea component with the shape-system scrollbar and the scroll-fade edge treatment."
       description="A scrollbar that stays out of the way but never disappears."
     >
       <DocSection title="The problem">

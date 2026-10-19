@@ -1,12 +1,8 @@
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { ScrollArea } from "@/registry/base/scroll-area";
+import type { PropDef } from "@/lib/docs/api/types";
 
-export interface PropDef {
-  name: string;
-  type: string;
-  default?: string;
-  description: string;
-}
+export type { PropDef };
 
 interface PropsTableProps {
   props: PropDef[];

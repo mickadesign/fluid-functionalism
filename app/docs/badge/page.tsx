@@ -2,8 +2,9 @@
 
 import { Badge, badgeColors, type BadgeColor } from "@/registry/default/badge";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { badgeProps } from "@/lib/docs/api/badge";
 
 const solidCode = `import { Badge } from "./components";
 
@@ -31,29 +32,6 @@ const colorsCode = `import { Badge } from "./components";
 <Badge color="blue">Blue</Badge>
 <Badge color="green">Green</Badge>
 {/* ... and more */}`;
-
-const badgeProps: PropDef[] = [
-  {
-    name: "variant",
-    type: '"solid" | "dot"',
-    default: '"solid"',
-    description: "Visual style. Solid uses a tinted background; dot shows a colored indicator.",
-  },
-  {
-    name: "size",
-    type: '"default" | "compact"',
-    default: "from SizeProvider",
-    description:
-      "Step on the size ladder (see /docs/sizes). Legacy sm/md/lg values resolve as aliases.",
-  },
-  {
-    name: "color",
-    type: "BadgeColor",
-    default: '"gray"',
-    description:
-      "Color from the Tailwind palette: gray, red, orange, amber, yellow, lime, green, emerald, teal, cyan, blue, indigo, violet, purple, fuchsia, pink, rose.",
-  },
-];
 
 export default function BadgeDoc() {
   return (

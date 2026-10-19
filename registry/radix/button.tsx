@@ -12,12 +12,16 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { omit } from "@/lib/omit";
 import { useShape } from "@/lib/shape-context";
 import { useSizeVariant } from "@/lib/size-context";
 
 const buttonVariants = cva(
   [
-    "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer select-none",
+    // whitespace-nowrap: a label never breaks onto 2 lines. It also makes
+    // the label the button's narrowest width, so a tight row moves the
+    // button (or overflows) instead of squeezing it.
+    "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer select-none whitespace-nowrap",
     "transition-colors duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -147,7 +151,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       asChild = false,
       render,
-      nativeButton: _nativeButton,
       loading = false,
       leadingIcon: LeadingIcon,
       trailingIcon: TrailingIcon,
@@ -155,10 +158,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       children,
       style,
-      ...props
+      ...rest
     },
     ref
   ) => {
+    // nativeButton is accepted for Base UI parity and ignored (see its doc).
+    const props = omit(rest, ["nativeButton"]);
+
     // asChild: the user's element becomes the root, but the button's internal
     // structure (bg layer, content wrapper, spinner, icons) must survive. Slot
     // requires exactly one child, so instead of Slottable we clone the user's

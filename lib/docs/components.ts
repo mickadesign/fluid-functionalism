@@ -2,10 +2,6 @@ export interface ComponentEntry {
   slug: string;
   name: string;
   description: string;
-  isNew?: boolean;
-  isUpdated?: boolean;
-  /** Tailwind bg class overriding the default blue `isNew` / `isUpdated` dot in the sidebar. */
-  dotColor?: string;
   gridSize?: "large" | "medium" | "small";
 }
 
@@ -13,34 +9,36 @@ export interface SystemEntry {
   slug: string;
   name: string;
   description: string;
-  isNew?: boolean;
-  isUpdated?: boolean;
-  /** Tailwind bg class overriding the default blue `isNew` / `isUpdated` dot in the sidebar. */
-  dotColor?: string;
+  /** Registry item the page's install advertises, when it isn't the slug
+   *  (the Motion page installs `springs`). */
+  installSlug?: string;
+  /** What the install adds, shown under the Installation title in place of
+   *  the flavor note, and in the page's Markdown. */
+  installNote?: string;
 }
 
 export const systemList: SystemEntry[] = [
-  { slug: "fluid-hover", name: "Fluid Hover", description: "Hover that never blinks and always follows your cursor to the nearest item.", isNew: true },
-  { slug: "motion", name: "Motion", description: "Spring tokens, faster exits, fluid hover, and reflow-free weight animation — the motion rules shared by every component." },
-  { slug: "scrollbars", name: "Scrollbars", description: "A scrollbar that stays out of the way but never disappears, over shadcn's scroll-fade baseline — restyled to the shape system, native scroll on touch." },
-  { slug: "sizes", name: "Sizes", description: "A two-step size ladder — a 36px default and a 28px compact — shared by buttons, inputs, selects, tabs, and rows." },
-  { slug: "surfaces", name: "Surfaces", description: "Eight-level surface and shadow ladder for elevation in light and dark mode." },
-  { slug: "typography", name: "Typography", description: "Bold rules that create consistency across the whole component library.", isNew: true, dotColor: "bg-[var(--warning)]" },
+  { slug: "fluid-hover", name: "Fluid Hover", description: "Hover that never blinks and always follows your cursor to the nearest item.", installSlug: "use-fluid-hover", installNote: "The useFluidHover hook and its highlight, already in every list and menu." },
+  { slug: "motion", name: "Motion", description: "Spring tokens, faster exits, fluid hover, and reflow-free weight animation — the motion rules shared by every component.", installSlug: "springs", installNote: "Installs the springs lib — the fast / moderate / slow spring presets every component animates with." },
+  { slug: "scrollbars", name: "Scrollbars", description: "A scrollbar that stays out of the way but never disappears, over shadcn's scroll-fade baseline — restyled to the shape system, native scroll on touch.", installSlug: "scroll-area", installNote: "Installs the ScrollArea component with the shape-system scrollbar and the scroll-fade edge treatment." },
+  { slug: "sizes", name: "Sizes", description: "A two-step size ladder — a 36px default and a 28px compact — shared by buttons, inputs, selects, tabs, and rows.", installSlug: "size-context", installNote: "Installs the size-context lib: SizeProvider, the useSize and useTypeScale hooks, the token maps behind both steps, and the type-scale tokens." },
+  { slug: "surfaces", name: "Surfaces", description: "Eight-level surface and shadow ladder for elevation in light and dark mode.", installSlug: "elevated", installNote: "Installs the Elevated primitive plus the surface-context and surface-classes libs — the elevation ladder as code." },
+  { slug: "typography", name: "Typography", description: "Bold rules that create consistency across the whole component library.", installSlug: "typography", installNote: "The 5 styles for any text, markdown included." },
 ];
 
 export const componentList: ComponentEntry[] = [
   { slug: "accordion", name: "Accordion", description: "Collapsible sections with animated expand/collapse and fluid hover in grouped mode.", gridSize: "medium" },
   { slug: "ask-user-questions", name: "AskUserQuestions", description: "Stepped question flow with single/multi-select, optional 'other' input, and skip.", gridSize: "large" },
   { slug: "badge", name: "Badge", description: "Compact label with solid and dot variants, Tailwind color palette, and the two-step size ladder.", gridSize: "small" },
-  { slug: "banner", name: "Banner", description: "Status message in 5 statuses and 2 contrasts: a status icon, a title, up to 3 actions, and a dismiss that collapses its height. Inline, or fixed full-bleed at the top of the page.", isNew: true, gridSize: "medium" },
+  { slug: "banner", name: "Banner", description: "Status message in 5 statuses and 2 contrasts: a status icon, a title, up to 3 actions, and a dismiss that collapses its height. Inline, or fixed full-bleed at the top of the page.", gridSize: "medium" },
   { slug: "button", name: "Button", description: "Versatile button with variants, sizes, loading state, and icon support.", gridSize: "small" },
   { slug: "card", name: "Card", description: "shadcn's compositional card, dressed in Fluid Functionalism — stacked, inline, and grid layouts, borderless dividers, and 2-D fluid hover.", gridSize: "medium" },
-  { slug: "carousel-dots", name: "CarouselDots", description: "Dots for a carousel, static or on autoplay: fluid-hover click areas, and a current pill that fills over each slide.", isNew: true, gridSize: "medium" },
+  { slug: "carousel-dots", name: "CarouselDots", description: "Dots for a carousel, static or on autoplay: fluid-hover click areas, and a current pill that fills over each slide.", gridSize: "medium" },
   { slug: "chat-message", name: "ChatMessage", description: "Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments.", gridSize: "small" },
   { slug: "checkbox-group", name: "CheckboxGroup", description: "Checkbox group with merged backgrounds for contiguous selections.", gridSize: "small" },
   { slug: "color-picker", name: "ColorPicker", description: "Color picker with HEX/RGB/HSL/OKLCH formats, alpha, swatches, and popover trigger.", gridSize: "large" },
-  { slug: "combobox", name: "Combobox", description: "Type-to-filter field with keyboard highlight, fluid hover, and a spring-animated list — items are data, rows are yours.", isNew: true, gridSize: "small" },
-  { slug: "command-menu", name: "CommandMenu", description: "Type to filter a list of actions, arrow through them, press Enter to run: rows with shortcut caps, groups, suggestions, and a dialog shell on a global shortcut.", isNew: true, gridSize: "large" },
+  { slug: "combobox", name: "Combobox", description: "Type-to-filter field with keyboard highlight, fluid hover, and a spring-animated list — items are data, rows are yours.", gridSize: "small" },
+  { slug: "command-menu", name: "CommandMenu", description: "Type to filter a list of actions, arrow through them, press Enter to run: rows with shortcut caps, groups, suggestions, and a dialog shell on a global shortcut.", gridSize: "large" },
   { slug: "dialog", name: "Dialog", description: "Modal dialog with smooth enter/exit animations and overlay — three widths, the largest a canvas for a sidebar.", gridSize: "small" },
   { slug: "dropdown", name: "Dropdown", description: "Menu-style dropdown with fluid hover, animated backgrounds, and an optional search field inside the popup.", gridSize: "small" },
   { slug: "input-copy", name: "InputCopy", description: "Read-only input with copy-to-clipboard button and animated feedback.", gridSize: "small" },
@@ -66,8 +64,6 @@ export const skillEntry: SystemEntry = {
   slug: "skill",
   name: "Skill",
   description: "Gives your coding agent the components and the craft behind them, then puts both to work on your project.",
-  isNew: true,
-  dotColor: "bg-[var(--warning)]",
 };
 
 /** The sidebar's System group, in its order: the systems plus the skill
@@ -78,7 +74,7 @@ export const systemNavList: SystemEntry[] = [...systemList, skillEntry].sort((a,
 
 /** Combined prev/next navigation order for doc pages.
  *  Used by DocPage's arrow nav. Keep in sync with the sidebar order in
- *  `app/components/sidebar.tsx` (Introduction → systemNavList → componentList). */
+ *  `app/components/sidebar.tsx` (Introduction → Changelog → systemNavList → componentList). */
 export const docOrder: Array<{ slug: string; name: string }> = [
   ...systemNavList.map((s) => ({ slug: s.slug, name: s.name })),
   ...componentList.map((c) => ({ slug: c.slug, name: c.name })),

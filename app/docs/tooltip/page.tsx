@@ -4,8 +4,9 @@ import { Tooltip } from "@/registry/radix/tooltip";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/components/ui/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { tooltipProps } from "@/lib/docs/api/tooltip";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -54,56 +55,6 @@ const followCursorCode = `// For tall or wide triggers, a centered tooltip sits 
 <Tooltip content="Following y" side="right" followCursor="y">
   <div className="h-40 w-12 …" />
 </Tooltip>`;
-
-// ---------------------------------------------------------------------------
-// Props table
-// ---------------------------------------------------------------------------
-
-const tooltipProps: PropDef[] = [
-  {
-    name: "content",
-    type: "ReactNode",
-    description: "The content displayed inside the tooltip.",
-  },
-  {
-    name: "children",
-    type: "ReactElement",
-    description: "The trigger element. Must accept a ref.",
-  },
-  {
-    name: "side",
-    type: '"top" | "right" | "bottom" | "left"',
-    default: '"top"',
-    description: "Preferred side of the trigger to render the tooltip.",
-  },
-  {
-    name: "sideOffset",
-    type: "number",
-    default: "8",
-    description: "Distance in pixels between the tooltip and the trigger.",
-  },
-  {
-    name: "delayDuration",
-    type: "number",
-    default: "200",
-    description: "Milliseconds to wait before showing the tooltip on hover.",
-  },
-  {
-    name: "followCursor",
-    type: '"x" | "y"',
-    description: "Track the cursor along one axis while hovering the trigger; the other axis stays anchored by side. Used by the Sidebar rail.",
-  },
-  {
-    name: "className",
-    type: "string",
-    description: "Additional classes applied to the tooltip content container.",
-  },
-  {
-    name: "contentClassName",
-    type: "string",
-    description: "Classes for the portalled content element — pass a z-index utility here to lift the whole tooltip above other fixed layers (defaults to z-50). The docs inspector uses it to clear the preview header.",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Page

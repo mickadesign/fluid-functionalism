@@ -43,9 +43,10 @@ export const FF_MODULES = [
 /** Files that install under their own names beside the catalog items: parts
  *  of an item (dropdown brings menu-item, the sidebar blocks bring their
  *  pieces, one folder down) and shared modules too generic a name to
- *  fingerprint FF code by (popup). */
+ *  fingerprint FF code by (popup, omit). */
 export const FF_PARTS = [
   "popup",
+  "omit",
   "menu-item",
   "dropdown-search",
   "dropdown-sub",
@@ -511,6 +512,28 @@ export function readStack(input = ".") {
       else if (kind === "ui") installed.other.push(name);
     }
   }
+
+  // Every installed FF file, for scripts/upgrade.mjs to compare with the
+  // registry: a list, since two folders can hold a file of the same name.
+  // `primitive` is the flavor the file's own imports show (null for a
+  // single-source file, or a shared one that imports Base UI under both).
+  installed.files = [...ffFiles].map(([path, imports]) => {
+    const name = basename(path, extname(path));
+    const primitive = SHARED_BASE_UI.includes(name)
+      ? null
+      : imports.some((s) => BASE_IMPORT.test(s))
+        ? "base"
+        : imports.some((s) => RADIX_IMPORT.test(s))
+          ? "radix"
+          : null;
+    return { name, path: rel(path), primitive };
+  });
+  // What the shadcn CLI rewrites in every file it installs, beyond import
+  // aliases and the "use client" line upgrade.mjs already sets aside.
+  installed.rewrites = [
+    shadcn?.tsx === false && "tsx: false (files converted to JavaScript)",
+    shadcn?.tailwind?.prefix && `tailwind.prefix "${shadcn.tailwind.prefix}"`,
+  ].filter(Boolean);
 
   // Primitive imports. Installed FF items are flavor evidence, minus the
   // shared ones that import Base UI under both flavors; every other file,

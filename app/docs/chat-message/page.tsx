@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { ChatMessage } from "@/registry/default/chat-message";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { useIcon } from "@/registry/default/lib/icon-context";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { cn } from "@/registry/default/lib/utils";
+import { chatMessageProps } from "@/lib/docs/api/chat-message";
 
 // Icon-only action buttons for the hover-revealed meta row. Assistant replies
 // get copy + regenerate; user messages get copy + edit. Illustrative only —
@@ -80,16 +81,6 @@ const attachmentsCode = `import { ChatMessage } from "./components";
 <ChatMessage from="user" files={files}>
   Can you use this as my new avatar?
 </ChatMessage>`;
-
-const chatMessageProps: PropDef[] = [
-  { name: "from", type: '"user" | "assistant"', description: "Who sent the message. `user` renders a right-aligned accent bubble; `assistant` renders left-aligned plain text with no background. Also sets the entrance transform-origin." },
-  { name: "children", type: "ReactNode", description: "Message body. For the user it renders inside the bubble; for the assistant it renders as plain text. When omitted (attachment-only message) the body is dropped and only the thumbnails show." },
-  { name: "time", type: "ReactNode", description: "Timestamp shown before the actions in the hover-revealed meta row. User-message only — ignored on assistant replies. Caller pre-formats it, e.g. \"Wednesday 6:08 PM\"." },
-  { name: "actions", type: "ReactNode", description: "Icon-only action buttons (copy, edit, regenerate, …) shown next to the timestamp in the hover-revealed meta row. The row's height is always reserved, so revealing it never shifts the layout." },
-  { name: "files", type: "File[]", description: "Optional attachments rendered as square thumbnails above the bubble. Images use object-cover; PDFs render their first page via pdfjs; a theme-aware inset outline keeps pale edges visible." },
-  { name: "thumbnailSize", type: "number", default: "64", description: "Side length (in pixels) of each attachment thumbnail." },
-  { name: "className", type: "string", description: "Merged onto the outer motion wrapper. Useful for tweaking max-width or spacing." },
-];
 
 export default function ChatMessageDoc() {
   // A real File so the attachments demo renders an actual thumbnail. Fetched

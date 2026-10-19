@@ -29,6 +29,7 @@ import {
   SidebarMenuBadge,
 } from "@/components/flavored/sidebar";
 import { componentList, systemNavList } from "@/lib/docs/components";
+import { useReleaseMarks } from "@/lib/changelog/marks";
 import { useIcons, type IconName } from "@/lib/icon-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useShapeContext, type ShapeVariant } from "@/lib/shape-context";
@@ -90,6 +91,7 @@ const TABS = [
 const PAGES: { href: string; label: string; icon: IconName; keywords: string[] }[] = [
   { href: "/", label: "Showcase", icon: "home", keywords: ["home", "bento", "gallery"] },
   { href: "/docs", label: "Introduction", icon: "square-library", keywords: ["docs", "getting started", "install"] },
+  { href: "/changelog", label: "Changelog", icon: "clock", keywords: ["releases", "what's new", "updates", "breaking"] },
   { href: "/demo", label: "Demo", icon: "play", keywords: ["slides", "playground"] },
   { href: "/compare", label: "Compare with shadcn", icon: "scaling", keywords: ["shadcn", "side by side"] },
 ];
@@ -97,6 +99,7 @@ const PAGES: { href: string; label: string; icon: IconName; keywords: string[] }
 const PAGE_ORDER = [
   "/",
   "/docs",
+  "/changelog",
   ...systemNavList.map((s) => `/docs/${s.slug}`),
   ...componentList.map((c) => `/docs/${c.slug}`),
 ];
@@ -189,8 +192,11 @@ export function SiteCommandMenu() {
 
   const currentComponent = componentList.find((c) => `/docs/${c.slug}` === pathname);
   const pageIndex = PAGE_ORDER.indexOf(pathname);
+  // New and Updated follow the latest changelog release, like the sidebar.
+  const { isNew, isUpdated } = useReleaseMarks();
 
   const items = useMemo<SiteItem[]>(() => {
+    const mark = (slug: string) => (isNew(slug) ? "New" : isUpdated(slug) ? "Updated" : undefined);
     const current = (on: boolean) => (on ? "Current" : undefined);
     const pages: SiteItem[] = [
       ...PAGES.map((p) => ({
@@ -208,7 +214,7 @@ export function SiteCommandMenu() {
         value: `/docs/${s.slug}`,
         label: s.name,
         action: `Open ${s.name}`,
-        description: s.isNew ? "New" : undefined,
+        description: mark(s.slug),
         keywords: [s.slug, ...s.description.split(/\W+/)],
         group: "System",
         onSelect: () => go(`/docs/${s.slug}`),
@@ -218,7 +224,7 @@ export function SiteCommandMenu() {
         value: `/docs/${c.slug}`,
         label: c.name,
         action: `Open ${c.name}`,
-        description: c.isNew ? "New" : c.isUpdated ? "Updated" : undefined,
+        description: mark(c.slug),
         keywords: [c.slug, ...c.description.split(/\W+/)],
         group: "Components",
         onSelect: () => go(`/docs/${c.slug}`),
@@ -374,6 +380,8 @@ export function SiteCommandMenu() {
     setBase,
     currentComponent,
     pageIndex,
+    isNew,
+    isUpdated,
   ]);
 
   const visible = useMemo(

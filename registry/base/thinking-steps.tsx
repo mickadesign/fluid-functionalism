@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useIcons } from "@/lib/icon-context";
 import type { IconName } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
@@ -203,17 +204,17 @@ function CollapsePanel({ open, children }: CollapsePanelProps) {
     <Collapsible.Panel
       keepMounted
       render={(panelProps) => {
-        const {
-          // Applied too early for our exit animation (see above); we
-          // control the attribute ourselves.
-          hidden: _baseHidden,
-          // Only carries the --collapsible-panel-height/width vars, which
-          // stay 'auto' since Base UI never measures JS-driven animations.
-          style: _baseStyle,
-          ...restPanel
-        } = panelProps as React.HTMLAttributes<HTMLDivElement> & {
-          hidden?: boolean;
-        };
+        const restPanel = omit(
+          panelProps as React.HTMLAttributes<HTMLDivElement>,
+          [
+            // Applied too early for our exit animation (see above); we
+            // control the attribute ourselves.
+            "hidden",
+            // Only carries the --collapsible-panel-height/width vars, which
+            // stay 'auto' since Base UI never measures JS-driven animations.
+            "style",
+          ]
+        );
         return (
           <div {...restPanel} hidden={!open && exitComplete}>
             <motion.div
@@ -583,6 +584,7 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
     >
       {/* Screenshots often end in white; an inset neutral hairline keeps the
           edge visible without changing the measured image or panel height. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- src is any caller URL; next/image needs that host in next.config and only works in Next */}
       <img
         src={src}
         alt={alt}

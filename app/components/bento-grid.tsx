@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ComponentEntry } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
+import { useReleaseMarks } from "@/lib/changelog/marks";
 import { BentoCard, BentoTileContext } from "@/app/components/bento-card";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +102,7 @@ export function BentoGrid({ components }: BentoGridProps) {
     return entry ? [{ entry, side }] : [];
   });
   const cols = useGridCols();
+  const { isNew } = useReleaseMarks();
 
   return (
     <div
@@ -122,7 +124,7 @@ export function BentoGrid({ components }: BentoGridProps) {
             key={c.slug}
             slug={c.slug}
             name={c.name}
-            isNew={c.isNew}
+            isNew={isNew(c.slug)}
             gridSize={c.gridSize}
             className={side === "right" ? "xl:col-start-2" : undefined}
             // Tall previews spend less of the row on stage padding: a whole
