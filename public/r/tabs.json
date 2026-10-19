@@ -6,7 +6,7 @@
   "dependencies": [
     "motion",
     "@radix-ui/react-tabs",
-    "lucide-react"
+    "lucide-react@^1.59.0"
   ],
   "registryDependencies": [
     "utils",

@@ -6,7 +6,7 @@
   "dependencies": [
     "@hugeicons/react",
     "@hugeicons/core-free-icons",
-    "lucide-react"
+    "lucide-react@^1.59.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/icon-context.json"
