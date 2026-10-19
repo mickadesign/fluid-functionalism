@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
 import { InputGroup, InputField } from "@/registry/default/input-group";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { groupProps, fieldProps } from "@/lib/docs/api/input-group";
 
 const basicCode = `import { InputGroup, InputField } from "./components";
 import { Search } from "lucide-react";
@@ -56,22 +57,6 @@ const errorCode = `<InputGroup>
     error="Please enter a valid email address."
   />
 </InputGroup>`;
-
-const groupProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "InputField children." },
-];
-
-const fieldProps: PropDef[] = [
-  { name: "label", type: "string", description: "Label text above the input." },
-  { name: "labelHidden", type: "boolean", default: "false", description: "Keep the label for assistive tech but don't render it — for inline fields (a toolbar search) where the placeholder carries the meaning." },
-  { name: "index", type: "number", description: "Position index within the group." },
-  { name: "value", type: "string", description: "Controlled input value." },
-  { name: "onChange", type: "(value: string) => void", description: "Called when the input value changes." },
-  { name: "placeholder", type: "string", description: "Placeholder text." },
-  { name: "icon", type: "IconComponent", description: "Leading icon inside the input." },
-  { name: "error", type: "string", description: "Error message shown below the input." },
-  { name: "disabled", type: "boolean", default: "false", description: "Disables the input." },
-];
 
 export default function InputGroupDoc() {
   const Search = useIcon("search");

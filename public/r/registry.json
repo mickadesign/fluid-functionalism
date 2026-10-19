@@ -623,6 +623,22 @@
       ]
     },
     {
+      "name": "omit",
+      "type": "registry:lib",
+      "title": "Omit",
+      "description": "Copies an object without the given keys. Components use it to drop props before spreading the rest onto an element, without leaving unused bindings behind.",
+      "files": [
+        {
+          "path": "registry/default/lib/omit.ts",
+          "type": "registry:lib"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "lib"
+      ]
+    },
+    {
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
@@ -897,6 +913,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
@@ -917,7 +934,7 @@
       ]
     },
     {
-      "name": "accordion-base",
+      "name": "base/accordion",
       "type": "registry:ui",
       "title": "Accordion (Base UI)",
       "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and fluid hover in grouped mode. Base UI flavor.",
@@ -929,6 +946,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
@@ -1060,6 +1078,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
@@ -1095,7 +1114,7 @@
       ]
     },
     {
-      "name": "button-base",
+      "name": "base/button",
       "type": "registry:ui",
       "title": "Button (Base UI)",
       "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover. Base UI flavor.",
@@ -1107,6 +1126,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
@@ -1195,7 +1215,7 @@
       ]
     },
     {
-      "name": "dropdown-base",
+      "name": "base/dropdown",
       "type": "registry:ui",
       "title": "Dropdown",
       "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Base UI flavor.",
@@ -1279,7 +1299,7 @@
       ]
     },
     {
-      "name": "checkbox-group-base",
+      "name": "base/checkbox-group",
       "type": "registry:ui",
       "title": "Checkbox Group (Base UI)",
       "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Base UI flavor.",
@@ -1290,6 +1310,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
@@ -1340,7 +1361,7 @@
       ]
     },
     {
-      "name": "radio-group-base",
+      "name": "base/radio-group",
       "type": "registry:ui",
       "title": "Radio Group (Base UI)",
       "description": "Animated radio group with fluid hover, spring-animated selection dot. Base UI flavor.",
@@ -1403,7 +1424,7 @@
       ]
     },
     {
-      "name": "dialog-base",
+      "name": "base/dialog",
       "type": "registry:ui",
       "title": "Dialog (Base UI)",
       "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Base UI flavor.",
@@ -1415,6 +1436,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
@@ -1462,7 +1484,7 @@
       ]
     },
     {
-      "name": "mobile-drawer-base",
+      "name": "base/mobile-drawer",
       "type": "registry:ui",
       "title": "Mobile Drawer",
       "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Base UI flavor.",
@@ -1472,6 +1494,7 @@
       ],
       "registryDependencies": [
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json"
       ],
@@ -1558,6 +1581,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -1706,7 +1730,7 @@
       ]
     },
     {
-      "name": "tabs-subtle-base",
+      "name": "base/tabs-subtle",
       "type": "registry:ui",
       "title": "Tabs Subtle",
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
@@ -1775,7 +1799,7 @@
       ]
     },
     {
-      "name": "switch-base",
+      "name": "base/switch",
       "type": "registry:ui",
       "title": "Switch (Base UI)",
       "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Base UI flavor.",
@@ -1786,6 +1810,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"
@@ -1934,7 +1959,7 @@
       ]
     },
     {
-      "name": "sidebar-base",
+      "name": "base/sidebar",
       "type": "registry:ui",
       "title": "Sidebar",
       "description": "Refined, composable app sidebar with offcanvas collapse, floating and inset variants, a mobile drawer, cookie-persisted state, keyboard shortcut, and fluid-hover menus with traveling selection, hover, and focus indicators. Base UI flavor.",
@@ -1947,6 +1972,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -2170,6 +2196,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -2189,7 +2216,7 @@
       ]
     },
     {
-      "name": "slider-base",
+      "name": "base/slider",
       "type": "registry:ui",
       "title": "Slider (Base UI)",
       "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Base UI flavor.",
@@ -2200,6 +2227,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
@@ -2253,7 +2281,7 @@
       ]
     },
     {
-      "name": "tabs-base",
+      "name": "base/tabs",
       "type": "registry:ui",
       "title": "Tabs (Base UI)",
       "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Base UI flavor.",
@@ -2339,6 +2367,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/use-touch-primary.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"
@@ -2490,7 +2519,7 @@
       ]
     },
     {
-      "name": "scroll-area-base",
+      "name": "base/scroll-area",
       "type": "registry:ui",
       "title": "Scroll Area (Base UI)",
       "description": "Scroll container with a restyled overlay scrollbar that stays discoverable on hover and follows the shape system. Falls back to native overflow scrolling on touch-primary devices. Base UI flavor; adapted from Lina (https://lina.sameer.sh).",
@@ -2689,7 +2718,7 @@
       ]
     },
     {
-      "name": "select-base",
+      "name": "base/select",
       "type": "registry:ui",
       "title": "Select",
       "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Base UI flavor.",
@@ -2741,6 +2770,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
@@ -2768,7 +2798,7 @@
       ]
     },
     {
-      "name": "combobox-base",
+      "name": "base/combobox",
       "type": "registry:ui",
       "title": "Combobox",
       "description": "Type-to-filter combobox with single or multiple (chips, merged selection backgrounds) selection: a text field that filters a list as you type, with keyboard highlight, fluid hover, spring-animated popover, animated checkmark, and clear/chevron controls. Optional create-from-query row (onCreate) and hideSelected for chips fields. Base UI flavor.",
@@ -2873,7 +2903,7 @@
       ]
     },
     {
-      "name": "tooltip-base",
+      "name": "base/tooltip",
       "type": "registry:ui",
       "title": "Tooltip (Base UI)",
       "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support. Base UI flavor.",
@@ -2884,6 +2914,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/type-scale.json"
@@ -2952,7 +2983,7 @@
       ]
     },
     {
-      "name": "thinking-steps-base",
+      "name": "base/thinking-steps",
       "type": "registry:ui",
       "title": "Thinking Steps",
       "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Base UI flavor.",
@@ -2964,6 +2995,7 @@
       "registryDependencies": [
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",

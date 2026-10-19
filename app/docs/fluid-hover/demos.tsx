@@ -279,7 +279,7 @@ function FluidHoverList({
   );
 }
 
-function PlainVsFluidPreview({ paused }: { paused: boolean }) {
+export function PlainVsFluidPreview({ paused }: { paused: boolean }) {
   const shape = useShape();
   const rootRef = useRef<HTMLDivElement>(null);
   const fluidRef = useRef<HTMLDivElement>(null);

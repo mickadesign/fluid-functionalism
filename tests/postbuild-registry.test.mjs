@@ -57,6 +57,7 @@ describe("neutralizeComponentImports", () => {
 describe("flavorForItem", () => {
   it("treats -base names as base flavour and everything else as flat", () => {
     expect(flavorForItem({ name: "dialog-base" })).toBe("base");
+    expect(flavorForItem({ name: "base/dialog" })).toBe("base");
     expect(flavorForItem({ name: "dialog" })).toBe("flat");
     expect(flavorForItem({ name: "badge" })).toBe("flat");
     expect(flavorForItem({})).toBe("flat");
@@ -192,11 +193,18 @@ describe("processRegistry pipeline", () => {
       `${BASE_URL}/badge.json`,
       "utils",
     ]);
-    expect(byName["dialog-base"].registryDependencies).toEqual([
+    expect(byName["base/dialog"].registryDependencies).toEqual([
       `${BASE_URL}/base/button.json`,
       `${BASE_URL}/badge.json`,
       "utils",
     ]);
+  });
+
+  it("names every index entry after the file it resolves to (/r/{name}.json)", async () => {
+    const index = await read("registry.json");
+    const names = index.items.map((i) => i.name);
+    expect(names).not.toContain("dialog-base");
+    for (const name of names) expect(await exists(`${name}.json`), name).toBe(true);
   });
 
   it("leaves already-rewritten URLs alone on a second pass over flat files", async () => {

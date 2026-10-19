@@ -8,8 +8,9 @@ import {
   TabsSubtlePanel,
 } from "@/components/flavored/tabs-subtle";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { tabProps, tabItemProps, tabPanelProps } from "@/lib/docs/api/tabs-subtle";
 
 const basicCode = `import { TabsSubtle, TabsSubtleItem, TabsSubtlePanel } from "./components";
 import { useState } from "react";
@@ -101,27 +102,6 @@ const [selected, setSelected] = useState(0);
     />
   ))}
 </TabsSubtle>`;
-
-const tabProps: PropDef[] = [
-  { name: "selectedIndex", type: "number", description: "Index of the currently selected tab." },
-  { name: "onSelect", type: "(index: number) => void", description: "Called when a tab is selected." },
-  { name: "idPrefix", type: "string", description: "Prefix for ARIA IDs linking tabs to panels." },
-  { name: "activeLabel", type: "boolean", default: "false", description: "When true, only the selected tab shows its text label. Requires icons on tabs." },
-  { name: "children", type: "ReactNode", description: "TabsSubtleItem children." },
-];
-
-const tabItemProps: PropDef[] = [
-  { name: "icon", type: "IconComponent", description: "Icon displayed in the tab.", default: "—" },
-  { name: "label", type: "string", description: "Text label for the tab." },
-  { name: "index", type: "number", description: "Position index within the tab list." },
-];
-
-const tabPanelProps: PropDef[] = [
-  { name: "index", type: "number", description: "Index of this panel." },
-  { name: "selectedIndex", type: "number", description: "Currently selected tab index." },
-  { name: "idPrefix", type: "string", description: "Must match the TabsSubtle idPrefix." },
-  { name: "children", type: "ReactNode", description: "Panel content, only rendered when selected." },
-];
 
 export default function TabsSubtleDoc() {
   const SquareLibrary = useIcon("square-library");

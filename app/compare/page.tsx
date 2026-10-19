@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { componentList } from "@/lib/docs/components";
+import { useReleaseMarks } from "@/lib/changelog/marks";
 import { previewMap } from "@/app/components/bento-previews";
 import { shadcnPreviewMap } from "@/app/components/shadcn-previews";
 import { compareFluidPreviewMap } from "@/app/components/compare-fluid-previews";
@@ -58,6 +59,7 @@ export default function ComparePage() {
 function ComparePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isNew } = useReleaseMarks();
 
   const componentMap = new Map(componentList.map((c) => [c.slug, c]));
 
@@ -66,7 +68,7 @@ function ComparePageInner() {
       const c = componentMap.get(slug);
       if (!c) return null;
       if (!previewMap[slug] || !shadcnPreviewMap[slug]) return null;
-      return { slug, name: c.name, isNew: c.isNew };
+      return { slug, name: c.name, isNew: isNew(slug) };
     })
     .filter((s): s is NonNullable<typeof s> => s != null);
 

@@ -16,6 +16,7 @@ import { SettingsPersistence } from "@/lib/docs/settings-persistence";
 import { readSettings } from "@/lib/docs/site-settings";
 import { BaseProvider } from "@/lib/base-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
+import { latestMarks } from "@/lib/changelog/load";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.fluidfunctionalism.com"),
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Fluid Functionalism",
     description: "Open Source UI components created by @micka_design",
-    images: [{ url: "/metadata/og.png", width: 1200, height: 630 }],
+    images: [{ url: "/metadata/og.png", width: 2400, height: 1260 }],
   },
   twitter: {
     card: "summary_large_image",
@@ -84,7 +85,11 @@ export default async function RootLayout({
                 <IconPlaygroundProvider defaultLibrary={settings.icons}>
                   <BaseProvider defaultBase={settings.base}>
                     <SettingsPersistence />
-                    <SidebarLayout defaultOpen={sidebarDefaultOpen}>{children}</SidebarLayout>
+                    {/* The sidebar's New dots: what the latest changelog
+                        release lists as New, read from content/changelog. */}
+                    <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={latestMarks()}>
+                      {children}
+                    </SidebarLayout>
                     <SettingsToast />
                     <Analytics />
                     <SpeedInsights />

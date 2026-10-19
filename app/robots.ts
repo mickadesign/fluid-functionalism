@@ -2,18 +2,19 @@ import type { MetadataRoute } from "next";
 
 const SITE_URL = "https://www.fluidfunctionalism.com";
 
-// Aggressive AI/scraper crawlers that ignore crawl-rate norms.
-// Well-behaved bots honor this; abusive ones won't — Vercel Firewall is the real enforcement.
+// Training and bulk-scraping crawlers. Well-behaved bots honor this; abusive
+// ones won't, so Vercel Firewall is the real enforcement.
+// Agents fetching a page because a person asked (ChatGPT-User, Claude-User,
+// Perplexity-User) and AI search indexes (OAI-SearchBot, Claude-SearchBot,
+// PerplexityBot) stay allowed: they are how people find and use the docs,
+// and /llms.txt exists for them.
 const BLOCKED_BOTS = [
   "GPTBot",
-  "OAI-SearchBot",
-  "ChatGPT-User",
   "ClaudeBot",
   "Claude-Web",
   "anthropic-ai",
   "CCBot",
   "Google-Extended",
-  "PerplexityBot",
   "Bytespider",
   "Amazonbot",
   "Applebot-Extended",

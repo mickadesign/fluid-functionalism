@@ -118,6 +118,7 @@ import {
 } from "@/lib/docs/command-menu-items";
 import { Elevated } from "@/lib/elevated";
 import { BentoTileContext } from "@/app/components/bento-card";
+import { usePreviewPlayback } from "@/lib/docs/preview-playback";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
 import { Slider } from "@/registry/radix/slider";
@@ -226,6 +227,7 @@ const CAROUSEL_SLIDES = ["Inbox", "Drafts", "Sent", "Archive"];
 function CarouselDotsPreview() {
   const { slide, direction, onValueChange, markByHand } = useSlideDirection();
   const [hovering, setHovering] = useState(false);
+  const playback = usePreviewPlayback();
   return (
     <div className="flex flex-col items-center gap-3">
       <div
@@ -252,7 +254,7 @@ function CarouselDotsPreview() {
           count={CAROUSEL_SLIDES.length}
           value={slide}
           onValueChange={onValueChange}
-          autoplay={{ duration: 2400, paused: hovering }}
+          autoplay={{ duration: 2400, paused: hovering || !playback }}
           getLabel={(i) => `Show ${CAROUSEL_SLIDES[i]}`}
         />
       </div>

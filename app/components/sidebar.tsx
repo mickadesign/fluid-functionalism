@@ -15,30 +15,26 @@ import {
   useSidebar,
 } from "@/components/flavored/sidebar";
 import { componentList, systemNavList } from "@/lib/docs/components";
+import { KIND_DOT } from "@/lib/changelog/kind-style";
+import { useReleaseMarks } from "@/lib/changelog/marks";
 import { GitHubStarButton, SettingsContent } from "@/app/components/right-panel";
 import { SiteCommandMenuTrigger } from "@/app/components/site-command-menu";
 
 interface NavEntry {
   slug: string;
   name: string;
-  isNew?: boolean;
-  isUpdated?: boolean;
-  dotColor?: string;
 }
 
-/** The isNew/isUpdated dot, rendered as a trailing child inside the row's
- *  weight-animated label span (same markup the old NavItem used). */
-function StatusDot({ entry }: { entry: NavEntry }) {
+/** The New dot, in the changelog's blue: on what the latest release lists as
+ *  New, so the dots move on with each month's release. */
+function NewDot() {
   // Rendered as a flex sibling of the weight-animated label (the row's gap
   // provides the spacing), matching the old NavItem dot's visual position.
-  if (entry.isUpdated || entry.isNew) {
-    return (
-      <span
-        className={`inline-block size-1.5 shrink-0 rounded-full ${entry.dotColor ?? "bg-blue-500"}`}
-      />
-    );
-  }
-  return null;
+  return (
+    <span className={`inline-block size-1.5 shrink-0 rounded-full ${KIND_DOT.new}`}>
+      <span className="sr-only">New</span>
+    </span>
+  );
 }
 
 function NavGroup({
@@ -52,10 +48,17 @@ function NavGroup({
   pathname: string;
   ariaLabel: string;
 }) {
+  // Release-only: pages listed ahead of the next release get their badge
+  // elsewhere, and their dot once the release lands.
+  const { isReleaseNew } = useReleaseMarks();
   return (
-    <SidebarGroup>
+    // A labelled group (System, Components) gets 16px above it instead of
+    // the group's 8px, so each section starts clear of the one before.
+    <SidebarGroup className={label ? "pt-4" : undefined}>
       {label && (
-        <SidebarGroupLabel>
+        // Foreground, not the component's muted default: on the site the
+        // group names are wayfinding, and the counts beside them stay muted.
+        <SidebarGroupLabel className="text-foreground">
           {label}
           {/* Styled like the "⌘K" badge in the Search row, so the counts line
               up in the same right-hand column. */}
@@ -64,6 +67,11 @@ function NavGroup({
           </span>
         </SidebarGroupLabel>
       )}
+      {/* A hairline under the label, from the name's first letter (the
+          label's 8px padding) to the count's last digit (12px in: the count
+          box's 4px padding on top), with 4px before the first row so its
+          hover fill clears the line. */}
+      {label && <div aria-hidden className="mb-1 ml-2 mr-3 h-px shrink-0 bg-border" />}
       <SidebarMenu aria-label={ariaLabel}>
         {entries.map((entry) => {
           const href = `/docs/${entry.slug}`;
@@ -71,7 +79,7 @@ function NavGroup({
             <SidebarMenuItem key={entry.slug}>
               <SidebarMenuButton render={<Link href={href} />} isActive={pathname === href}>
                 {entry.name}
-                <StatusDot entry={entry} />
+                {isReleaseNew(entry.slug) && <NewDot />}
               </SidebarMenuButton>
             </SidebarMenuItem>
           );
@@ -105,6 +113,14 @@ export function SiteSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton render={<Link href="/docs" />} isActive={pathname === "/docs"}>
                 Introduction
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<Link href="/changelog" />} isActive={pathname === "/changelog"}>
+                Changelog
+                {/* The page itself is new: dotted by hand, unlike the docs
+                    rows, which follow the latest release. */}
+                <NewDot />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
 import { Tabs, TabsList, TabItem, TabPanel } from "@/registry/radix/tabs";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { tabsProps, tabsListProps, tabItemProps, tabPanelProps } from "@/lib/docs/api/tabs";
 
 /* ────────── Code snippets ────────── */
 
@@ -55,33 +56,6 @@ const [value, setValue] = useState("library");
   <TabPanel value="recents">Recents content.</TabPanel>
   <TabPanel value="favorites">Favorites content.</TabPanel>
 </Tabs>`;
-
-/* ────────── Props data ────────── */
-
-const tabsProps: PropDef[] = [
-  { name: "value", type: "string", description: "Controlled active tab value. Takes precedence over selectedIndex." },
-  { name: "onValueChange", type: "(value: string) => void", description: "Called when the active tab changes." },
-  { name: "selectedIndex", type: "number", description: "Index-based controlled alternative." },
-  { name: "onSelect", type: "(index: number) => void", description: "Called with the new index when the active tab changes." },
-  { name: "defaultValue", type: "string", description: "Default active tab for uncontrolled usage." },
-  { name: "children", type: "ReactNode", description: "TabsList and TabPanel children." },
-];
-
-const tabsListProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "TabItem children." },
-  { name: "className", type: "string", description: "Additional CSS classes for the container." },
-];
-
-const tabItemProps: PropDef[] = [
-  { name: "value", type: "string", description: "Unique value identifying this tab." },
-  { name: "icon", type: "IconComponent", description: "Optional leading icon." },
-  { name: "label", type: "string", description: "Text label for the tab." },
-];
-
-const tabPanelProps: PropDef[] = [
-  { name: "value", type: "string", description: "Must match a TabItem value." },
-  { name: "children", type: "ReactNode", description: "Panel content, rendered when the matching tab is active." },
-];
 
 /* ────────── Page ────────── */
 

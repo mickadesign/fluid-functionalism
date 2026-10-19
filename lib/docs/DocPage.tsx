@@ -8,7 +8,7 @@ import { CopyPromptButton } from "@/lib/docs/copy-prompt-button";
 import { buildInstallPrompt } from "@/lib/docs/install-prompt";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
-import { docOrder } from "@/lib/docs/components";
+import { docOrder, systemList } from "@/lib/docs/components";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useBase, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
 
@@ -19,15 +19,16 @@ interface DocPageProps {
   intro?: ReactNode;
   /** Slug used for prev/next navigation (must match a `componentList` entry). */
   slug?: string;
-  /** Registry slug used for the auto-injected Installation snippet. Defaults to `slug`.
-   *  Set when the install advertises a bundled registry item different from the page slug
-   *  (e.g. `slug="surfaces"` but `installSlug="elevated"`). */
+  /** Registry slug used for the auto-injected Installation snippet. Defaults to
+   *  the page's `systemList` entry, then to `slug`. System pages set it there
+   *  (e.g. `surfaces` installs `elevated`), so their Markdown agrees. */
   installSlug?: string;
   /** Set to false to skip the auto-injected Installation block (when the page provides its own). */
   showInstall?: boolean;
   /** Replaces the flavor note under the install command with a short
    *  description of what the command actually adds — for system pages,
-   *  where "which primitive flavor" is the wrong question. */
+   *  where "which primitive flavor" is the wrong question. Defaults to the
+   *  page's `systemList` entry. */
   installNote?: string;
   /** Replaces the generated install brief, for a page whose install is not a
    *  registry item (the skill page installs an agent skill). */
@@ -42,13 +43,16 @@ export function DocPage({
   description,
   intro,
   slug,
-  installSlug,
+  installSlug: installSlugProp,
   showInstall = true,
-  installNote,
+  installNote: installNoteProp,
   installPrompt,
   onInstallCopy,
   children,
 }: DocPageProps) {
+  const system = systemList.find((s) => s.slug === slug);
+  const installSlug = installSlugProp ?? system?.installSlug;
+  const installNote = installNoteProp ?? system?.installNote;
   const ArrowRight = useIcon("arrow-right");
   const { base } = useBase();
   // Square buttons have no provider-following value, so the prev/next arrows
@@ -57,10 +61,12 @@ export function DocPage({
     useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
 
   const currentIndex = slug ? docOrder.findIndex((c) => c.slug === slug) : -1;
+  // The first doc page steps back to the Changelog, which sits between the
+  // Introduction and the systems in the sidebar.
   const prev = currentIndex > 0
-    ? docOrder[currentIndex - 1]
+    ? { href: `/docs/${docOrder[currentIndex - 1].slug}`, name: docOrder[currentIndex - 1].name }
     : currentIndex === 0
-      ? { slug: "", name: "Introduction" }
+      ? { href: "/changelog", name: "Changelog" }
       : null;
   const next = currentIndex >= 0 && currentIndex < docOrder.length - 1 ? docOrder[currentIndex + 1] : null;
 
@@ -86,7 +92,7 @@ export function DocPage({
               {prev ? (
                 <Tooltip content={<span>{prev.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
                   <Button asChild variant="ghost" size={iconSize}>
-                    <Link href={`/docs/${prev.slug}`} aria-label={`Previous: ${prev.name}`}>
+                    <Link href={prev.href} aria-label={`Previous: ${prev.name}`}>
                       <ArrowRight className="rotate-180" />
                     </Link>
                   </Button>

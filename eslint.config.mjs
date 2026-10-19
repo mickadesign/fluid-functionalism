@@ -76,6 +76,19 @@ const CASE_TRACKING_MESSAGE = "Hierarchy comes from size and weight: no uppercas
 const FADED_TEXT_REGEX = "(^|[\\s:!])text-(muted-foreground|foreground|background)\\x2F[0-9]";
 const FADED_TEXT_MESSAGE =
   "Text uses 2 colors: text-foreground or text-muted-foreground (text-background on dark fills), not an opacity step of them.";
+// 5 styles, from page titles to captions (/docs/typography): site chrome
+// takes the text-site-* roles, the registry the type scale. Tailwind's own
+// size ramp (text-xs to text-9xl) sits outside both. \x2F is the slash.
+const TW_SIZE_REGEX = "(^|[\\s:!])text-(xs|sm|base|lg|xl|[2-9]xl)($|[\\s!\\x2F])";
+const TW_SIZE_MESSAGE =
+  "Type comes from the 5 styles (/docs/typography): text-site-display / -title / -subtitle / -body / -caption on the site, typeClass(role) in the registry, not Tailwind's text-xs to text-9xl.";
+// 2 text colors: a text element is foreground or muted (text-background on
+// dark fills). Scoped to elements that hold text, so a colored icon (an svg,
+// a lucide component, a status glyph) keeps its hue.
+const TEXT_ELEMENT_REGEX = "^(p|span|h[1-6]|label|li|td|th|dt|dd|time|small|strong|em|blockquote|figcaption|kbd)$";
+const TEXT_COLOR_REGEX = `(^|[\\s:!])text-(${FOCUS_PALETTE}|white|black|\\[(#|rgb|hsl|oklch))`;
+const TEXT_COLOR_MESSAGE =
+  "Text uses 2 colors (/docs/typography): text-foreground or text-muted-foreground, text-background on dark fills. Color an icon, not the words.";
 const CLASS_SCOPES = [
   'JSXAttribute[name.name="className"]',
   "CallExpression[callee.name=/^(cn|cva|clsx)$/]",
@@ -91,6 +104,15 @@ const shadcnRestrictedRules = {
     "error",
     ...classRules(CASE_TRACKING_REGEX, CASE_TRACKING_MESSAGE),
     ...classRules(FADED_TEXT_REGEX, FADED_TEXT_MESSAGE),
+    ...classRules(TW_SIZE_REGEX, TW_SIZE_MESSAGE),
+    {
+      selector: `JSXOpeningElement[name.name=/${TEXT_ELEMENT_REGEX}/] > JSXAttribute[name.name="className"] Literal[value=/${TEXT_COLOR_REGEX}/]`,
+      message: TEXT_COLOR_MESSAGE,
+    },
+    {
+      selector: `JSXOpeningElement[name.name=/${TEXT_ELEMENT_REGEX}/] > JSXAttribute[name.name="className"] TemplateElement[value.raw=/${TEXT_COLOR_REGEX}/]`,
+      message: TEXT_COLOR_MESSAGE,
+    },
     { selector: `Literal[value=/${RAW_WGHT_REGEX}/]`, message: WEIGHT_MESSAGE },
     { selector: `TemplateElement[value.raw=/${RAW_WGHT_REGEX}/]`, message: WEIGHT_MESSAGE },
     { selector: `Literal[value=/${TW_WEIGHT_REGEX}/]`, message: WEIGHT_MESSAGE },
@@ -205,5 +227,17 @@ export default [
     files: ["registry/**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },
     rules: reactHooks.configs.recommended.rules,
+  },
+  // That app's no-unused-vars has no `^_` ignore, so a prop dropped with
+  // `{ key: _key, ...rest }` is a warning there. Registry code drops props
+  // with omit() from registry/default/lib/omit.ts instead. Both rules are
+  // errors here, so installs open with no warnings either and CI catches a
+  // new one. A plain <img> stays possible with a reasoned disable comment.
+  {
+    files: ["registry/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", {}],
+      "@next/next/no-img-element": "error",
+    },
   },
 ];
