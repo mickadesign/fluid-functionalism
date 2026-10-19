@@ -14,12 +14,14 @@ import { SiteSidebar } from "@/app/components/sidebar";
 import { SiteCommandMenu, SiteCommandMenuProvider } from "@/app/components/site-command-menu";
 import { RightPanel } from "@/app/components/right-panel";
 import { RightRailProvider } from "@/lib/right-rail";
+import { ReleaseMarksProvider, type ReleaseMarks } from "@/lib/changelog/marks";
 import { showShortcutToast } from "@/lib/docs/settings-toast";
 import { systemNavList, componentList } from "@/lib/docs/components";
 
 const pageOrder = [
   "/",
   "/docs",
+  "/changelog",
   ...systemNavList.map((s) => `/docs/${s.slug}`),
   ...componentList.map((c) => `/docs/${c.slug}`),
 ];
@@ -99,19 +101,25 @@ function CloseSheetOnNavigate() {
   return null;
 }
 
+const NO_MARKS: ReleaseMarks = { new: [], updated: [], ahead: [] };
+
 interface SidebarLayoutProps {
   children: ReactNode;
   /** Server-read sidebar_state cookie value (see app/layout.tsx). */
   defaultOpen?: boolean;
+  /** What the latest changelog release marks New and Updated (see
+   *  latestMarks in lib/changelog/load.ts), for every marker on the site. */
+  marks?: ReleaseMarks;
 }
 
-export function SidebarLayout({ children, defaultOpen = true }: SidebarLayoutProps) {
+export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }: SidebarLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isFullscreen =
     pathname === "/demo" ||
     pathname === "/compare" ||
     pathname === "/stars" ||
+    pathname === "/og" ||
     pathname.startsWith("/concepts");
 
   // Arrow key navigation between pages — ref-based so held keys keep advancing
@@ -163,16 +171,19 @@ export function SidebarLayout({ children, defaultOpen = true }: SidebarLayoutPro
 
   if (isFullscreen) {
     return (
+      <ReleaseMarksProvider marks={marks}>
       <SiteCommandMenuProvider>
         <SiteCommandMenu />
         <main className="min-h-screen">
           {children}
         </main>
       </SiteCommandMenuProvider>
+      </ReleaseMarksProvider>
     );
   }
 
   return (
+    <ReleaseMarksProvider marks={marks}>
     <SiteCommandMenuProvider>
     {/* ⌘K anywhere: every page and setting in one field. */}
     <SiteCommandMenu />
@@ -205,6 +216,7 @@ export function SidebarLayout({ children, defaultOpen = true }: SidebarLayoutPro
       </SidebarProvider>
     </RightRailProvider>
     </SiteCommandMenuProvider>
+    </ReleaseMarksProvider>
   );
 }
 

@@ -42,6 +42,11 @@ describe("Copy prompts", () => {
     }
     expect(value).toContain(skillInstall);
   });
+
+  // An agent that installed from a brief knows where to check for updates.
+  it.each(prompts)("points the $kind prompt at the Markdown changelog", ({ value }) => {
+    expect(value).toContain("https://www.fluidfunctionalism.com/changelog.md");
+  });
 });
 
 describe("the starter Copy prompt", () => {

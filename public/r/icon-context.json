@@ -4,7 +4,7 @@
   "title": "Icon Context",
   "description": "Named icon slots with a Lucide default set; swap any icon via IconProvider.",
   "dependencies": [
-    "lucide-react@^1.55.0"
+    "lucide-react@^1.59.0"
   ],
   "files": [
     {

@@ -400,7 +400,9 @@ const questions: AskUserQuestion[] = [
       "Size ladder: default h-9 (36px) px-4 13px text, compact h-7 (28px) px-3 12px text; unset size follows the surrounding SizeProvider, legacy sm/md/lg resolve as aliases. asChild clones the user's element with the button's internals as children and drops `disabled` on non-button roots.",
       "`render` is accepted as a second spelling of `asChild` (and `nativeButton` is accepted and ignored), on the same clone path, so a link stays a plain link with no `role=\"button\"`. The shadcn CLI rewrites `asChild` into `render` plus `nativeButton={false}` when it installs into a Base UI project, so components that hand Button a link keep working there.",
     ],
-    usage: `import { Button } from "@/components/ui/button";
+    usage: `"use client";
+
+import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
 
 <Button variant="primary">Primary</Button>
@@ -432,7 +434,9 @@ import { Plus, ArrowRight } from "lucide-react";
       "An inline card with a CardImage reflows its text + actions into a centred column beside the image (footer drops below the text in natural order); CardImage keeps a fixed 2px corner radius in every state rather than inheriting a frame's larger clip \u2014 a 16:9 banner stacked, a 160px square inline.",
       "CardImage and CardMedia logos paint a 1px inset image outline over their outermost pixels (pure black at 10% in light mode, pure white at 10% in dark), so pale image edges keep their shape without a border changing the box size.",
     ],
-    usage: `import {
+    usage: `"use client";
+
+import {
   Card, CardGroup, CardHeader, CardMedia,
   CardTitle, CardDescription, CardFooter, CardButton,
 } from "@/components/ui/card";
@@ -762,7 +766,9 @@ const [view, setView] = useState(0);
       "The input container uses a fixed ladder control height (rather than py-2 around the line box) so the field sits exactly on the 36px / 28px size steps. On touch screens the text steps up to 16px inside that same height, so iOS Safari never zooms the page on focus and the row doesn't move.",
       "Base UI Field wires the a11y plumbing: label htmlFor, error id landing in aria-describedby, `invalid` driving aria-invalid; `Field.Error match` pins the message visible while the controlled `error` prop stands, and `labelHidden` renders sr-only so inline fields keep their accessible name.",
     ],
-    usage: `import { useState } from "react";
+    usage: `"use client";
+
+import { useState } from "react";
 import { Search } from "lucide-react";
 import { InputGroup, InputField } from "@/components/ui/input-group";
 
@@ -905,7 +911,9 @@ const [value, setValue] = useState("");
       "There is deliberately no icon-rail collapsed mode (`collapsible` is only \"offcanvas\" | \"none\"): the docs argue icon rails make \"every destination take a hover, a beat, a tooltip\" and section labels collapse to a divider \u2014 collapsed means gone, and `peek=\"hover\"` floats the REAL sidebar, labels and all, instead.",
       "The avatar remains a consumer-owned ReactNode, but image examples apply a 1px inset pure-black/pure-white 10% outline; at 20px this is the difference between a pale portrait reading as a circle and dissolving into the row surface.",
     ],
-    usage: `import { Home, Inbox } from "lucide-react";
+    usage: `"use client";
+
+import { Home, Inbox } from "lucide-react";
 import {
   SidebarProvider, Sidebar, SidebarContent, SidebarInset, SidebarTrigger,
   SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton,

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type ReactNode, type RefObject, type SyntheticEvent } from "react";
 import { animate, motion, useInView, useMotionValue, useReducedMotion, type MotionValue } from "motion/react";
 import { cn } from "@/registry/default/lib/utils";
+import { usePreviewPlayback } from "@/lib/docs/preview-playback";
 import { useShape } from "@/registry/default/lib/shape-context";
 
 /** Height of every example's frame, so switching tabs never moves the page.
@@ -23,6 +24,7 @@ export function usePlayback() {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { amount: 0.35 });
   const reduced = useReducedMotion();
+  const playback = usePreviewPlayback();
   const [pointerInside, setPointerInside] = useState(false);
   const [keyboardInside, setKeyboardInside] = useState(false);
   const bind = {
@@ -35,7 +37,7 @@ export function usePlayback() {
       if (!rootRef.current?.contains(e.relatedTarget)) setKeyboardInside(false);
     },
   };
-  return { rootRef, playing: inView && !reduced && !pointerInside && !keyboardInside, bind };
+  return { rootRef, playing: playback && inView && !reduced && !pointerInside && !keyboardInside, bind };
 }
 
 export type Side = "generic" | "skill";

@@ -178,7 +178,7 @@ function PrimitiveToggle() {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border">
-      <div className="text-sm" style={{ fontVariationSettings: fontWeights.semibold }}>
+      <div className="text-site-subtitle text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
         {label}
       </div>
       {children}
@@ -190,7 +190,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function SingleRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border">
-      <div className="text-sm" style={{ fontVariationSettings: fontWeights.semibold }}>
+      <div className="text-site-subtitle text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
         {label}
       </div>
       <div className="col-span-2">{children}</div>
@@ -235,18 +235,27 @@ export default function CompareBasesPage() {
         onMouseLeave={() => setHeroHovered(false)}
       >
         <h1
+          // The 60px hero is a marketing stage outside the 5 styles on
+          // purpose; this internal page stays off the sitemap.
+          // eslint-disable-next-line no-restricted-syntax
           className="text-6xl leading-[1.1] text-foreground"
           style={{ fontVariationSettings: fontWeights.bold }}
         >
           Fluid Functionalism
         </h1>
         <p
+          // The 60px hero is a marketing stage outside the 5 styles on
+          // purpose; this internal page stays off the sitemap.
+          // eslint-disable-next-line no-restricted-syntax
           className="text-6xl leading-[1.1] text-muted-foreground"
           style={{ fontVariationSettings: fontWeights.bold }}
         >
           built on Radix
         </p>
         <motion.p
+          // The 60px hero is a marketing stage outside the 5 styles on
+          // purpose; this internal page stays off the sitemap.
+          // eslint-disable-next-line no-restricted-syntax
           className="text-6xl leading-[1.1] text-foreground mb-8"
           style={{ fontVariationSettings: fontWeights.bold }}
           initial={false}
@@ -272,10 +281,10 @@ export default function CompareBasesPage() {
 
       <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-end pb-2">
         <div />
-        <div className="text-xs text-muted-foreground">
+        <div className="text-site-caption text-muted-foreground">
           Radix
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-site-caption text-muted-foreground">
           Base UI
         </div>
       </div>
@@ -372,9 +381,9 @@ export default function CompareBasesPage() {
             <RadixTabItem value="two" label="Two" />
             <RadixTabItem value="three" label="Three" />
           </RadixTabsList>
-          <RadixTabPanel value="one" className="pt-3 text-sm text-muted-foreground">First panel</RadixTabPanel>
-          <RadixTabPanel value="two" className="pt-3 text-sm text-muted-foreground">Second panel</RadixTabPanel>
-          <RadixTabPanel value="three" className="pt-3 text-sm text-muted-foreground">Third panel</RadixTabPanel>
+          <RadixTabPanel value="one" className="pt-3 text-site-body text-muted-foreground">First panel</RadixTabPanel>
+          <RadixTabPanel value="two" className="pt-3 text-site-body text-muted-foreground">Second panel</RadixTabPanel>
+          <RadixTabPanel value="three" className="pt-3 text-site-body text-muted-foreground">Third panel</RadixTabPanel>
         </RadixTabs>
         <BaseTabs defaultValue="one">
           <BaseTabsList>
@@ -382,9 +391,9 @@ export default function CompareBasesPage() {
             <BaseTabItem value="two" label="Two" />
             <BaseTabItem value="three" label="Three" />
           </BaseTabsList>
-          <BaseTabPanel value="one" className="pt-3 text-sm text-muted-foreground">First panel</BaseTabPanel>
-          <BaseTabPanel value="two" className="pt-3 text-sm text-muted-foreground">Second panel</BaseTabPanel>
-          <BaseTabPanel value="three" className="pt-3 text-sm text-muted-foreground">Third panel</BaseTabPanel>
+          <BaseTabPanel value="one" className="pt-3 text-site-body text-muted-foreground">First panel</BaseTabPanel>
+          <BaseTabPanel value="two" className="pt-3 text-site-body text-muted-foreground">Second panel</BaseTabPanel>
+          <BaseTabPanel value="three" className="pt-3 text-site-body text-muted-foreground">Third panel</BaseTabPanel>
         </BaseTabs>
       </Row>
 
@@ -509,12 +518,12 @@ export default function CompareBasesPage() {
       {/* ── Single-source components ─────────────────────────────────── */}
       <section className="pt-24 pb-4">
         <h2
-          className="text-2xl text-foreground"
+          className="text-site-title text-foreground"
           style={{ fontVariationSettings: fontWeights.semibold }}
         >
           Built on Base UI
         </h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-[560px]">
+        <p className="text-site-body text-muted-foreground mt-2 max-w-[560px]">
           These components ship as a single source sitting on Base UI
           primitives — Popover, Menu, NumberField, Field, and the
           Radio/Checkbox Groups — and are used as-is under either flavor.

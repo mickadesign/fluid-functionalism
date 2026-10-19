@@ -413,8 +413,6 @@ export default function MotionDoc() {
     <DocPage
       title="Motion"
       slug="motion"
-      installSlug="springs"
-      installNote="Installs the springs lib — the fast / moderate / slow spring presets every component animates with."
       description="Three spring speeds, exits a little faster than entrances, and one fluid hover shared by every list. Pick a speed, wire it in — every component follows the same pattern."
     >
       <DocSection title="Three speeds">

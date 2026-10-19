@@ -13,7 +13,8 @@
     "registry:build": "npm run type-scale && shadcn build && node scripts/postbuild-registry.mjs",
     "deps:inventory": "node scripts/deps-watch/inventory.mjs",
     "deps:popups": "node scripts/deps-watch/verify-popups.mjs",
-    "deps:install": "node scripts/deps-watch/install-check.mjs"
+    "deps:install": "node scripts/deps-watch/install-check.mjs",
+    "og": "node scripts/og-export.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -48,7 +49,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dialkit": "^1.1.0",
-    "lucide-react": "^1.55.0",
+    "lucide-react": "^1.59.0",
+    "mdast-util-from-markdown": "^2.1.0",
     "motion": "^14.1.0",
     "next": "^15.5.27",
     "pdfjs-dist": "^5.7.284",

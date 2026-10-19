@@ -57,12 +57,12 @@ export default function NotFound() {
         </div>
         <h1
           id="not-found-title"
-          className="text-xl"
-          style={{ fontVariationSettings: fontWeights.semibold }}
+          className="text-site-display text-foreground"
+          style={{ fontVariationSettings: fontWeights.bold }}
         >
           <span className="sr-only">404. </span>A little out of place.
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-site-body text-muted-foreground">
           We couldn’t find this page.
         </p>
         <Button asChild variant="tertiary" trailingIcon={ArrowUpRight} className="mt-7">

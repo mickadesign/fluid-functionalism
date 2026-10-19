@@ -1282,3 +1282,37 @@ html.transitioning *::after {
   color: light-dark(var(--shiki-light), var(--shiki-dark)) !important;
   background-color: transparent !important;
 }
+
+/* Changelog migration diffs (app/changelog): shiki's TSX colors per line,
+   tinted green or red by the line's +/- marker, which moves into a gutter.
+   The selectors outrank `.shiki span`'s transparent background above. */
+.changelog-diff pre {
+  margin: 0;
+  padding: 8px 0;
+}
+.changelog-diff pre code {
+  display: grid;
+}
+.changelog-diff .shiki .line {
+  position: relative;
+  padding: 0 12px 0 28px;
+  min-height: 1lh;
+}
+.changelog-diff .shiki .line.diff::before {
+  position: absolute;
+  left: 12px;
+}
+.changelog-diff .shiki .line.diff.add {
+  background-color: color-mix(in oklab, var(--success) 14%, transparent) !important;
+}
+.changelog-diff .shiki .line.diff.add::before {
+  content: "+";
+  color: var(--success);
+}
+.changelog-diff .shiki .line.diff.remove {
+  background-color: color-mix(in oklab, var(--destructive) 14%, transparent) !important;
+}
+.changelog-diff .shiki .line.diff.remove::before {
+  content: "-";
+  color: var(--destructive);
+}

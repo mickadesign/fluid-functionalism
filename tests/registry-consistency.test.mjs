@@ -165,6 +165,15 @@ describe("committed build output (public/r)", () => {
     const strays = readdirSync(outDir).filter((f) => f.endsWith("-base.json"));
     expect(strays).toEqual([]);
   });
+
+  it("every name in the served index resolves to a payload (/r/{name}.json)", () => {
+    // The @fluid namespace URL template, the shadcn MCP server and the public
+    // registry's health check all fetch index names this way.
+    const index = JSON.parse(readFileSync(join(outDir, "registry.json"), "utf-8"));
+    for (const { name } of index.items) {
+      expect(existsSync(join(outDir, `${name}.json`)), `public/r/${name}.json`).toBe(true);
+    }
+  });
 });
 
 /** Every per-item payload in public/r, keyed by its public/r-relative path. */

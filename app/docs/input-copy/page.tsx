@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { InputCopy } from "@/registry/default/input-copy";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { inputCopyProps } from "@/lib/docs/api/input-copy";
 
 const basicCode = `import { InputCopy } from "./components";
 
@@ -56,15 +57,6 @@ const [copyCount, setCopyCount] = useState(0);
 />
 
 <p>Copied {copyCount} times</p>`;
-
-const inputCopyProps: PropDef[] = [
-  { name: "value", type: "string", description: "The text value to display and copy to clipboard." },
-  { name: "label", type: "string", description: "Optional label displayed above the input." },
-  { name: "variant", type: '"icon" | "button"', default: '"icon"', description: "Icon-only with tooltip, or button with visible label." },
-  { name: "align", type: '"right" | "left"', default: '"right"', description: "Position of the copy action relative to the value." },
-  { name: "onCopy", type: "() => void", description: "Callback fired after the value is successfully copied." },
-  { name: "disabled", type: "boolean", default: "false", description: "Disables the input and copy button." },
-];
 
 export default function InputCopyDoc() {
   const [copyCount, setCopyCount] = useState(0);

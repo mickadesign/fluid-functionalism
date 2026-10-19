@@ -5,7 +5,7 @@
   "description": "Sonner-style stack of queued composer messages: collapsed cards fan out on hover (tap on touch), drag to reorder, a gutter arrow counts the overflow, edit/remove per card, and a shared-layout morph into the sent message.",
   "dependencies": [
     "motion",
-    "lucide-react@^1.55.0"
+    "lucide-react@^1.59.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/springs.json",

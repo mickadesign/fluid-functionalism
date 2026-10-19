@@ -93,6 +93,8 @@ With `next/font/google`, ask for the axis: `Inter({ subsets: ["latin"], axes: ["
 
 Every doc page and playground has a **Copy prompt** button. The prompt is a self-contained brief: the install command, a usage snippet, the props, the built-in behaviors to compose around, and the docs URL. Paste it into your agent and it wires the component in without fetching anything.
 
+An agent that reads the docs on its own gets Markdown. [llms.txt](https://www.fluidfunctionalism.com/llms.txt) lists every page, and any docs URL with `.md` added (or fetched with `Accept: text/markdown`) returns the install commands for both flavors, a usage snippet, and the full props tables. [llms-full.txt](https://www.fluidfunctionalism.com/llms-full.txt) is every page in one file.
+
 For a whole project rather than one component, install the [/fluid-functionalism skill](https://www.fluidfunctionalism.com/docs/skill):
 
 ```bash

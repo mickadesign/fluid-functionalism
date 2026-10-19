@@ -104,8 +104,6 @@ export default function TypographyDoc() {
     <DocPage
       title="Typography"
       slug="typography"
-      installSlug="typography"
-      installNote="The 5 styles for any text, markdown included."
       description="Bold rules that create consistency across the whole component library."
       intro="Typography is hard. Every style you add makes it clunkier, so building this page was mostly cutting and refactoring until only the essential rules remained. Those rules power every component in the library, and each one is simple. Defining them and applying them on every surface is what makes it hard. Good rules hold every kind of component, and every component holds to them. Enjoy!"
     >

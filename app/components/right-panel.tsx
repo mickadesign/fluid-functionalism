@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
 import { fontWeights } from "@/registry/default/lib/font-weight";
@@ -321,6 +322,12 @@ export function RightPanel() {
   }, []);
 
   const PanelRightIcon = useIcon("panel-right");
+  // The rail's cards take the shape's container radius, so they round with
+  // the pill and rounded settings like the items inside them.
+  const shape = useShape();
+  // The changelog's rail holds its Releases index alone: nothing on that
+  // page reacts to the settings, which stay a ⌘K or a shortcut away.
+  const showSettings = usePathname() !== "/changelog";
 
   return (
     <>
@@ -365,28 +372,29 @@ export function RightPanel() {
           </motion.div>
         )}
       </AnimatePresence>
-    {/* max-xl:fixed — during the xl-fade-block fade-out the panel keeps
-        display:block for the transition (allow-discrete), which would hold its
-        264px of flex space and make the content reflow a second time when
-        display finally flips to none. Fixed positioning below xl removes it
-        from flow at the breakpoint (single reflow) while it fades in place:
-        top-0/right-0 + mt-4 and the animated 16px marginRight land on the
-        same 16px inset as the pinned sticky state. The wrapper carries the fade/sticky so pages can stack a
-        second panel (RightRailTarget) below the settings.
+    {/* Below xl the panel fades out where it stands: xl-fade-block keeps
+        display:block through the fade (allow-discrete), so the panel holds
+        its space and never covers the page, and the content widens into it
+        once the fade ends. (Fixed positioning during the fade saved that
+        second reflow, but left the panel over the content as the left
+        sidebar collapsed under it.) The wrapper carries the fade/sticky so
+        pages can stack a second panel (RightRailTarget) below the settings.
         xl-fade-block sets display:block at ≥xl, so the flex column lives on an
         inner wrapper (else it would override `flex` and drop the gap).
         The "]" toggle animates width/margin (the sidebar-shell technique: the
         outer collapses while the inner keeps its true width) so the page
-        content reflows into the space instead of snapping. */}
+        content reflows into the space instead of snapping. Its fade runs on
+        the inner wrapper: an inline opacity on the outer one would outrank
+        xl-fade-block's, and the panel would pop out below xl at full
+        opacity instead of fading. */}
     <motion.div
-      className="shrink-0 overflow-hidden sticky top-4 self-start mt-4 xl-fade-block max-xl:fixed max-xl:top-0 max-xl:right-0 max-xl:z-40 max-xl:pointer-events-none"
+      className="shrink-0 overflow-hidden sticky top-4 self-start mt-4 xl-fade-block max-xl:pointer-events-none"
       initial={false}
       animate={{
         width: open ? 256 : 0,
         // 16px on the right, matching the 16px top (sticky top-4) and the
         // 16px the max-h calc leaves at the bottom — one even inset.
         marginRight: open ? 16 : 0,
-        opacity: open ? 1 : 0,
       }}
       transition={
         reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit
@@ -396,7 +404,14 @@ export function RightPanel() {
       // inert every control inside would stay tabbable and announced.
       inert={open ? undefined : true}
     >
-      <div className="w-64">
+      <motion.div
+        className="w-64"
+        initial={false}
+        animate={{ opacity: open ? 1 : 0 }}
+        transition={
+          reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit
+        }
+      >
       {/* Taller stacks (settings + playground controls) scroll within the
           viewport instead of running past it — the house ScrollArea (quiet
           thumb on the overlay ramp), scroll-fade dissolving the clipped
@@ -405,7 +420,8 @@ export function RightPanel() {
           under the mask, never outside pushing the gradient down. */}
       <ScrollArea viewportClassName="scroll-fade max-h-[calc(100svh-2rem)]">
       <div className="flex flex-col gap-3">
-        <aside className="p-4 rounded-lg bg-muted">
+        {showSettings && (
+        <aside className={`p-4 ${shape.container} bg-muted`}>
           <SurfaceProvider value={2}>
             <div className="flex items-center justify-between pt-2 pb-2">
               <h2
@@ -419,12 +435,13 @@ export function RightPanel() {
             <SettingsContent tooltipSide="left" />
           </SurfaceProvider>
         </aside>
+        )}
 
         {/* Page-owned slot — e.g. the Card doc's Playground controls. */}
         <RightRailTarget />
       </div>
       </ScrollArea>
-      </div>
+      </motion.div>
     </motion.div>
     </>
   );

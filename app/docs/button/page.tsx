@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useIcon } from "@/lib/icon-context";
 import { Button } from "@/registry/radix/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
 import { ButtonPlayground } from "@/lib/docs/playgrounds/button";
+import { buttonProps } from "@/lib/docs/api/button";
 
 const variantsCode = `import { Button } from "./components";
 
@@ -43,18 +44,6 @@ import { Loader } from "lucide-react";
 <Button loading>Loading</Button>
 <Button variant="secondary" loading leadingIcon={Loader}>Saving</Button>
 <Button disabled>Disabled</Button>`;
-
-const buttonProps: PropDef[] = [
-  { name: "variant", type: '"primary" | "secondary" | "tertiary" | "ghost"', default: '"primary"', description: "Visual style of the button." },
-  { name: "size", type: '"default" | "compact" | "icon" | "icon-compact"', default: "from SizeProvider", description: "Step on the size ladder (36px default, 28px compact — see /docs/sizes). Legacy sm/md/lg values resolve as aliases." },
-  { name: "loading", type: "boolean", default: "false", description: "Shows a spinner and disables the button." },
-  { name: "active", type: "boolean", default: "false", description: "Forces the pressed/held visual — e.g. while a dropdown or popover the button opened is showing." },
-  { name: "leadingIcon", type: "IconComponent", description: "Icon displayed before the label." },
-  { name: "trailingIcon", type: "IconComponent", description: "Icon displayed after the label." },
-  { name: "asChild", type: "boolean", default: "false", description: "Merge props onto the child element instead of rendering a <button>." },
-  { name: "render", type: "ReactElement", description: "Base UI's spelling of asChild: renders as this element, with the children as its label. Also what the shadcn CLI writes in Base UI projects." },
-  { name: "disabled", type: "boolean", default: "false", description: "Disables the button." },
-];
 
 // ── Playground ───────────────────────────────────────────
 // The state + controls live in the shared module (lib/docs/playgrounds) so

@@ -5,7 +5,7 @@
   "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
   "dependencies": [
     "motion",
-    "lucide-react@^1.55.0"
+    "lucide-react@^1.59.0"
   ],
   "registryDependencies": [
     "utils",
