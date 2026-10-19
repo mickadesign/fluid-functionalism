@@ -4,7 +4,7 @@
   "title": "Slider (Base UI)",
   "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Base UI flavor.",
   "dependencies": [
-    "motion",
+    "motion@^14.4.0",
     "@base-ui/react@^1.9.0"
   ],
   "registryDependencies": [

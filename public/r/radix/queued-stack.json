@@ -4,7 +4,7 @@
   "title": "Queued message stack",
   "description": "Sonner-style stack of queued composer messages: collapsed cards fan out on hover (tap on touch), drag to reorder, a gutter arrow counts the overflow, edit/remove per card, and a shared-layout morph into the sent message.",
   "dependencies": [
-    "motion",
+    "motion@^14.4.0",
     "lucide-react"
   ],
   "registryDependencies": [

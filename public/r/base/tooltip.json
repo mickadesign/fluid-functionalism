@@ -4,7 +4,7 @@
   "title": "Tooltip (Base UI)",
   "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support. Base UI flavor.",
   "dependencies": [
-    "motion",
+    "motion@^14.4.0",
     "@base-ui/react@^1.9.0"
   ],
   "registryDependencies": [

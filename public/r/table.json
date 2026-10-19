@@ -4,7 +4,7 @@
   "title": "Table",
   "description": "Animated table with fluid hover row highlighting and fluid border transitions. Includes TableHeader, TableBody, TableRow, TableHead, and TableCell sub-components.",
   "dependencies": [
-    "motion"
+    "motion@^14.4.0"
   ],
   "registryDependencies": [
     "utils",
