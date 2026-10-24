@@ -93,7 +93,7 @@ With `next/font/google`, ask for the axis: `Inter({ subsets: ["latin"], axes: ["
 
 Every doc page and playground has a **Copy prompt** button. The prompt is a self-contained brief: the install command, a usage snippet, the props, the built-in behaviors to compose around, and the docs URL. Paste it into your agent and it wires the component in without fetching anything.
 
-An agent that reads the docs on its own gets Markdown. [llms.txt](https://www.fluidfunctionalism.com/llms.txt) lists every page, and any docs URL with `.md` added (or fetched with `Accept: text/markdown`) returns the install commands for both flavors, a usage snippet, and the full props tables. [llms-full.txt](https://www.fluidfunctionalism.com/llms-full.txt) is every page in one file.
+An agent that reads the docs on its own gets Markdown. [llms.txt](https://www.fluidfunctionalism.com/llms.txt) lists every page, and any docs URL with `.md` added (or fetched with `Accept: text/markdown`) returns the install commands for both flavors, a usage snippet, and the full props tables. [llms-full.txt](https://www.fluidfunctionalism.com/llms-full.txt) is every page in one file. Every brief also links the [changelog](https://www.fluidfunctionalism.com/changelog.md), so an agent that returns later can check what changed.
 
 For a whole project rather than one component, install the [/fluid-functionalism skill](https://www.fluidfunctionalism.com/docs/skill):
 
@@ -101,7 +101,7 @@ For a whole project rather than one component, install the [/fluid-functionalism
 npx skills add mickadesign/fluid-functionalism
 ```
 
-The source lives in [skills/fluid-functionalism](skills/fluid-functionalism). It reads the stack fresh on every run with a bundled script, so it installs the right flavor and leaves no audit file in your project. Alongside it sit the component catalog, the interaction-design decisions built into each component, and the rules for writing custom motion next to them.
+The source lives in [skills/fluid-functionalism](skills/fluid-functionalism). It reads the stack fresh on every run with a bundled script, so it installs the right flavor, updates components already installed, and leaves no audit file in your project. Alongside it sit the component catalog, the interaction-design decisions built into each component, and the rules for writing custom motion next to them.
 
 ## Components
 
@@ -217,7 +217,7 @@ node scripts/build-skill-craft.mjs   # writes the skill's craft reference
 
 Sources live in `registry/`: `radix/` and `base/` hold the two flavors, `default/` the single-source components, hooks, and libs, `blocks/` the compositions. `public/r` is the built output users install from, and it is committed. CI rebuilds it and fails when it drifts from the sources, so run `npm run registry:build` and commit the result with any registry change. The skill's craft reference works the same way: it is generated from the prompt entries in `lib/docs/prompt-entries.ts`, and a test fails when the committed copy has drifted.
 
-Guides in the repo: [motion-guidelines.md](motion-guidelines.md), [component-documentation-guidelines.md](component-documentation-guidelines.md), [preset-guidelines.md](preset-guidelines.md), [tone-of-voice.md](tone-of-voice.md), and [README-guidelines.md](README-guidelines.md) for what this file carries and what it defers.
+Guides in the repo: [motion-guidelines.md](motion-guidelines.md), [component-documentation-guidelines.md](component-documentation-guidelines.md), [preset-guidelines.md](preset-guidelines.md), [changelog-guidelines.md](changelog-guidelines.md), [tone-of-voice.md](tone-of-voice.md), and [README-guidelines.md](README-guidelines.md) for what this file carries and what it defers.
 
 ## Contributing
 
