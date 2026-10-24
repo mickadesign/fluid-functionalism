@@ -32,8 +32,14 @@ import { showShortcutToast } from "@/lib/docs/settings-toast";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBase, type Base } from "@/lib/base-context";
+import { StarterPromptButton } from "@/app/components/starter-install";
+import { useHeadingFont, headingFontLabel, HeadingWeightSelect } from "@/lib/docs/heading-font";
+import type { HeadingFont } from "@/lib/docs/site-settings";
 
 const REPO = "mickadesign/fluid-functionalism";
+
+/** The heading font select's action row: opens the Google Fonts picker. */
+const BROWSE = "__browse";
 
 function formatStars(n: number): string {
   if (n >= 1000) {
@@ -126,6 +132,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
   const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
+  const { font, fonts, custom, setFont, browse } = useHeadingFont();
 
   const MonitorIcon = useIcon("monitor");
   const SunIcon = useIcon("sun");
@@ -135,6 +142,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
   const PaletteIcon = useIcon("palette");
   const RadixIcon = useIcon("circle");
   const BaseUiIcon = useIcon("square-library");
+  const SearchIcon = useIcon("search");
 
   const themeOptions = [
     { label: "System", value: "system" as Theme, icon: MonitorIcon },
@@ -241,6 +249,39 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
             </Select>
           </div>
         </Tooltip>
+        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">F</kbd>&ensp; to cycle</span>} side={tooltipSide}>
+          <div className="flex items-center justify-between">
+            <span className="text-site-body text-muted-foreground">Heading font</span>
+            {/* The last row is an action, not a value: it opens the
+                Google Fonts picker and leaves the selection alone. */}
+            <Select
+              value={font}
+              onValueChange={(v) => (v === BROWSE ? browse() : setFont(v as HeadingFont))}
+            >
+              <SelectTrigger
+                variant="borderless"
+                className="min-w-0 w-auto h-7 px-2 text-site-body"
+              />
+              <SelectContent>
+                {fonts.map((f, i) => (
+                  <SelectItem key={f} value={f} index={i}>
+                    {headingFontLabel(f, custom)}
+                  </SelectItem>
+                ))}
+                <SelectItem value={BROWSE} index={fonts.length} icon={SearchIcon}>
+                  Browse Google Fonts…
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </Tooltip>
+        {/* Only while a custom Google Fonts family is the heading font. */}
+        {font === "custom" && custom && (
+          <div className="flex items-center justify-between">
+            <span className="text-site-body text-muted-foreground">Heading weight</span>
+            <HeadingWeightSelect triggerClassName="min-w-0 w-auto h-7 px-2 text-site-body" />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-site-body text-muted-foreground">Primitive</span>
           <Select value={base} onValueChange={(v) => setBase(v as Base)}>
@@ -258,6 +299,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
           </Select>
         </div>
       </div>
+
+      {/* The home page's install prompt, carrying everything set above.
+          mb-3: with the column's gap-2, 20px to the credit, the same as the
+          rows' py-3 + gap-2 above it. */}
+      <StarterPromptButton size="sm" className="mb-3 w-full" />
 
       {/* Credit */}
       <div className="flex items-center gap-2">

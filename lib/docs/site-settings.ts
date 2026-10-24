@@ -76,3 +76,61 @@ export function readSettings(get: (name: string) => string | undefined): SiteSet
 export function settingCookie<K extends keyof SiteSettings>(key: K, value: SiteSettings[K]): string {
   return `${SETTINGS_COOKIES[key]}=${value}; path=/; max-age=${MAX_AGE}; samesite=lax`;
 }
+
+// ---------------------------------------------------------------------------
+// The heading font: site-only, so it sits outside SiteSettings and never
+// travels in a starter slug. Same cookie recipe, read by the root layout into
+// <html data-font> so a saved serif paints on the first frame.
+// ---------------------------------------------------------------------------
+
+export type HeadingFont = "inter" | "source-serif" | "custom";
+
+export const HEADING_FONTS = ["inter", "source-serif", "custom"] as const satisfies readonly HeadingFont[];
+
+export const DEFAULT_HEADING_FONT: HeadingFont = "inter";
+
+export const HEADING_FONT_COOKIE = "ff_font";
+
+/** The Google Fonts family behind "custom", URI-encoded. */
+export const CUSTOM_FONT_COOKIE = "ff_font_custom";
+
+/** The weight every heading takes in the custom family, when the visitor
+ *  picked one over Auto (the role weights). */
+export const CUSTOM_WEIGHT_COOKIE = "ff_font_weight";
+
+/** The saved heading font, custom family name and custom weight. The caller
+ *  checks family and weight against the catalog, falling back to Inter and
+ *  Auto when they are unknown. */
+export function readHeadingFont(get: (name: string) => string | undefined): {
+  font: HeadingFont;
+  customFamily: string | null;
+  customWeight: number | null;
+} {
+  const raw = get(HEADING_FONT_COOKIE);
+  const font = (HEADING_FONTS as readonly string[]).includes(raw ?? "") ? (raw as HeadingFont) : DEFAULT_HEADING_FONT;
+  let customFamily: string | null = null;
+  try {
+    const encoded = get(CUSTOM_FONT_COOKIE);
+    customFamily = encoded ? decodeURIComponent(encoded) : null;
+  } catch {
+    // A malformed cookie is no family.
+  }
+  const weight = Number(get(CUSTOM_WEIGHT_COOKIE));
+  const customWeight = Number.isInteger(weight) && weight >= 1 && weight <= 1000 ? weight : null;
+  return { font, customFamily, customWeight };
+}
+
+export function headingFontCookie(value: HeadingFont): string {
+  return `${HEADING_FONT_COOKIE}=${value}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+export function customFontCookie(family: string): string {
+  return `${CUSTOM_FONT_COOKIE}=${encodeURIComponent(family)}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+/** Stores the custom weight; `null` (Auto) clears the cookie. */
+export function customWeightCookie(weight: number | null): string {
+  return weight === null
+    ? `${CUSTOM_WEIGHT_COOKIE}=; path=/; max-age=0; samesite=lax`
+    : `${CUSTOM_WEIGHT_COOKIE}=${weight}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}

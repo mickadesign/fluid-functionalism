@@ -11,6 +11,7 @@
     "eval:copy-prompts": "node evals/copy-prompts/run.mjs",
     "type-scale": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-type-scale.mjs",
     "reveal-css": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-reveal.mjs",
+    "google-fonts": "node scripts/generate-google-fonts.mjs",
     "registry:build": "npm run type-scale && npm run reveal-css && shadcn build && node scripts/postbuild-registry.mjs",
     "deps:inventory": "node scripts/deps-watch/inventory.mjs",
     "deps:popups": "node scripts/deps-watch/verify-popups.mjs",

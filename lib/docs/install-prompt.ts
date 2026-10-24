@@ -5,6 +5,8 @@ import { decodePreset, type PresetComponentDef } from "@/lib/preset/components";
 import { PRESET_GENERATORS } from "@/lib/preset/generators";
 import { SETTING_LABELS, describeSettings } from "@/lib/starter/install";
 import { starterSlug, type StarterSettings } from "@/lib/starter/settings";
+import type { HeadingFont } from "@/lib/docs/site-settings";
+import { googleFontWeights, nearestGoogleFontWeight, type GoogleFont } from "@/lib/docs/google-fonts";
 import {
   SITE,
   OVERWRITE_NOTE,
@@ -164,15 +166,77 @@ export function starterCommand(settings: StarterSettings): string {
   return `npx shadcn@latest create -n my-app -t next ${SITE}/r/starter/${starterSlug(settings)}.json`;
 }
 
+/** The heading font the visitor picked on the site (right panel > Heading
+ *  font). Not a starter setting: the starter always ships Inter, so the
+ *  brief carries it as a step for the agent. */
+export interface StarterHeading {
+  font: HeadingFont;
+  /** The Google Fonts family, when `font` is "custom". */
+  custom: GoogleFont | null;
+  /** The custom family's one heading weight; `null` keeps the role
+   *  weights (550, display 700). */
+  weight: number | null;
+}
+
+/** The family a heading choice names, or null for Inter (nothing to do). */
+function headingFamily(heading: StarterHeading | undefined): string | null {
+  if (!heading || heading.font === "inter") return null;
+  if (heading.font === "source-serif") return "Source Serif 4";
+  return heading.custom?.n ?? null;
+}
+
+/** next/font/google's export for a family: spaces become underscores. */
+const nextFontExport = (family: string) => family.replace(/[^A-Za-z0-9]+/g, "_");
+
+/** The step that sets the headings' font, as the site renders it. */
+function headingLines(heading: StarterHeading): string[] {
+  const css = "app/globals.css";
+  if (heading.font === "source-serif") {
+    return [
+      "Either way, set the headings in Source Serif 4, as picked on the site (body text and components stay Inter):",
+      `- app/layout.tsx: import { Source_Serif_4 } from "next/font/google", load it with { subsets: ["latin"], axes: ["opsz"], variable: "--font-heading" } and add its .variable class to <html> next to Inter's.`,
+      // eslint-disable-next-line no-restricted-syntax -- prompt text for the agent's CSS, not a style here
+      `- ${css}: h1, h2, h3 { font-family: var(--font-heading), Georgia, serif; font-variation-settings: 'wght' 450, 'opsz' 18 !important; } and h1 { font-variation-settings: 'wght' 450, 'opsz' 25 !important; }. One weight, 450, for every heading: the serif carries its own contrast. !important because component titles set their weight inline.`,
+      `- Also in ${css}, the display role runs 4px larger for the serif: :root { --fs-display: 32px; --lh-display: 38px; --fs-display-compact: 28px; --lh-display-compact: 34px; } after the type scale.`,
+    ];
+  }
+  const font = heading.custom!;
+  const variable = !!font.a?.wght;
+  const title = heading.weight ?? 550;
+  const display = heading.weight ?? 700;
+  // Static families load named cuts only: the ones the headings use.
+  const cuts = [...new Set([title, display].map((w) => nearestGoogleFontWeight(font, w)))].sort((a, b) => a - b);
+  const load = variable
+    ? `{ subsets: ["latin"],${font.a?.opsz ? ` axes: ["opsz"],` : ""} variable: "--font-heading" }`
+    : `{ subsets: ["latin"], weight: [${cuts.map((w) => `"${w}"`).join(", ")}], variable: "--font-heading" }`;
+  const weights =
+    heading.weight === null
+      ? `font-weight: 550 !important; } and h1 { font-weight: 700 !important; }`
+      : `font-weight: ${heading.weight} !important; }`;
+  const available = googleFontWeights(font);
+  return [
+    `Either way, set the headings in ${font.n} (Google Fonts), as picked on the site (body text and components stay Inter):`,
+    `- app/layout.tsx: import { ${nextFontExport(font.n)} } from "next/font/google", load it with ${load} and add its .variable class to <html> next to Inter's.`,
+    `- ${css}: h1, h2, h3 { font-family: var(--font-heading), sans-serif; font-variation-settings: normal !important; font-synthesis-weight: none; ${weights} (!important because component titles set Inter's weight axis inline.)`,
+    heading.weight === null
+      ? `- Headings keep Inter's role weights, 550 and 700 for h1${variable ? "" : `; ${font.n} draws the nearest of its weights (${available.join(", ")})`}.`
+      : `- One weight, ${heading.weight}, for every heading, as picked on the site.`,
+  ];
+}
+
 /** Builds the home page's "Copy prompt": a brief that has an agent start a
  *  new app from the starter with the visitor's "Make them yours" settings,
  *  or, in a folder that already holds an app, install the same components
- *  and settings into it. */
-export function buildStarterPrompt(settings: StarterSettings): string {
+ *  and settings into it. A heading font other than Inter adds a step that
+ *  sets it up the way the site draws it. */
+export function buildStarterPrompt(settings: StarterSettings, heading?: StarterHeading): string {
   const slug = starterSlug(settings);
   const flavor = settings.base === "base" ? "Base UI" : "Radix";
+  const family = headingFamily(heading);
   const lines: string[] = [];
-  lines.push(`Start a new React app with Fluid Functionalism: every component installed, every system wired, set to ${describeSettings(settings)}.`);
+  lines.push(
+    `Start a new React app with Fluid Functionalism: every component installed, every system wired, set to ${describeSettings(settings)}${family ? `, ${family} headings` : ""}.`,
+  );
   lines.push("");
   lines.push("Run (shadcn CLI, Next.js template, asks nothing):");
   lines.push(starterCommand(settings));
@@ -198,6 +262,10 @@ export function buildStarterPrompt(settings: StarterSettings): string {
     `Then wrap the root layout's children in <FluidRoot> from components/fluid-root.tsx (inside the theme provider, if any), load Inter with axes: ["opsz"], and default the theme to ${settings.theme}.`,
   );
   lines.push("");
+  if (family && heading) {
+    lines.push(...headingLines(heading));
+    lines.push("");
+  }
   lines.push(SKILL_LINE);
   lines.push(`Docs: ${SITE}/docs`);
   lines.push(CHANGELOG_LINE);

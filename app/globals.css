@@ -482,6 +482,87 @@ html[data-size="compact"] {
 }
 /* </generated:type-scale> */
 
+/* ── Heading font ─────────────────────────────────────────────────────────
+   Right panel > Heading font, or F (cookie ff_font, mirrored on
+   <html data-font>). Inter needs nothing; every other mode sets the vars
+   below and one pair of rules applies them. A site heading is an h1-h3 on a
+   site role, so component titles (type-scale vars) and the fake products in
+   demos (literal sizes) keep Inter; the typography page's samples opt in
+   with .font-heading / .font-heading-display, and its Markdown sample
+   through .typeset. The typography specimen reads sizes and weights back
+   from the DOM, so nothing here is mirrored in JS. */
+
+/* Source Serif 4 (next/font, app/layout.tsx): every role at 450, as the
+   serif carries its own contrast and heavier weights read loud, each with
+   Inter's opsz for that role. The display role also runs 4px larger (and 4px
+   more leading) at every step, as its smaller x-height reads small at
+   Inter's size. The [data-size] rules out-rank the base one on purpose. */
+:root[data-font="source-serif"] {
+  --heading-family: var(--font-source-serif), Georgia, serif;
+  --heading-fvs: 'wght' 450, 'opsz' 18;
+  --heading-display-fvs: 'wght' 450, 'opsz' 25;
+  --fs-display: 32px;
+  --lh-display: 38px;
+  --fs-display-compact: 28px;
+  --lh-display-compact: 34px;
+  --fs-site-display: 26px;
+  --lh-site-display: 32px;
+}
+@media (min-width: 640px) {
+  :root[data-font="source-serif"] {
+    --fs-site-display: 32px;
+    --lh-site-display: 38px;
+  }
+}
+:root[data-font="source-serif"][data-size="compact"] {
+  --fs-site-display: 24px;
+  --lh-site-display: 30px;
+}
+@media (min-width: 640px) {
+  :root[data-font="source-serif"][data-size="compact"] {
+    --fs-site-display: 28px;
+    --lh-site-display: 34px;
+  }
+}
+
+/* A custom Google Fonts family (--font-custom on <html>, stylesheet from
+   HeadingFontProvider): any family, so it keeps Inter's sizes and role
+   weights (550, display 700) through font-weight, which static families
+   round to their nearest cut, unless the visitor picked one weight for every
+   role (--font-custom-weight, Heading weight in the right panel). Variation
+   settings go back to normal so the inline Inter values never pin a
+   variable family. */
+:root[data-font="custom"] {
+  --heading-family: var(--font-custom), var(--font-sans);
+  --heading-fvs: normal;
+  --heading-display-fvs: normal;
+  --heading-weight: var(--font-custom-weight, 550);
+  --heading-display-weight: var(--font-custom-weight, 700);
+}
+
+/* !important: site headings set their weight inline from fontWeights, and
+   a mode has to win over it. No faux bold: a single-weight face stays as
+   drawn. The display rule has the same specificity and wins by order. */
+:root:is([data-font="source-serif"], [data-font="custom"]) :is(
+  :is(h1, h2, h3):is(.text-site-display, .text-site-title, .text-site-subtitle),
+  .font-heading,
+  .font-heading-display,
+  .typeset :is(h1, h2, h3)
+) {
+  font-family: var(--heading-family);
+  font-variation-settings: var(--heading-fvs) !important;
+  font-weight: var(--heading-weight, 400);
+  font-synthesis-weight: none;
+}
+:root:is([data-font="source-serif"], [data-font="custom"]) :is(
+  :is(h1, h2, h3).text-site-display,
+  .font-heading-display,
+  .typeset h1
+) {
+  font-variation-settings: var(--heading-display-fvs) !important;
+  font-weight: var(--heading-display-weight, 400);
+}
+
 /* ── Typeset ──────────────────────────────────────────────────────────────
    The prose sheet (.typeset), same as the `typography` registry item.
    Generated from lib/typeset/generate.ts: edit it there. */

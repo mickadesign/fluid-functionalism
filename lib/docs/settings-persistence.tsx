@@ -14,7 +14,7 @@ const LEGACY_BASE_KEY = "ff:base";
 
 /**
  * Docs-site-only: writes each "Make them yours" setting to its cookie when it
- * changes, whether from the panel, a keyboard shortcut (T, R, S, I), or the
+ * changes, whether from the panel, a keyboard shortcut (T, R, S, I; F has its own writer in heading-font.tsx), or the
  * /demo settings slide. The root layout reads the cookies back on the next
  * request (see site-settings.ts). Mount once inside every settings provider.
  */
