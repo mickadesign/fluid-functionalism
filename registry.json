@@ -3051,6 +3051,131 @@
       ]
     },
     {
+      "name": "calendar",
+      "type": "registry:ui",
+      "title": "Calendar",
+      "description": "Month grid on DayPicker v10 for a single day or a range: one fluid hover highlight across one or two months that follows keyboard focus, a range band that previews the end under the pointer, booked (struck through) and unavailable days, ISO week numbers, a cellSize prop and fill mode, and a direction-aware month slide.",
+      "dependencies": [
+        "@daypicker/react@~10.0.2",
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "omit",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "icon-context",
+        "popup",
+        "use-keyboard-nav-gate",
+        "use-fluid-hover",
+        "button",
+        "tooltip",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/calendar.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/calendar. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#calendar.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "date-picker",
+      "type": "registry:ui",
+      "title": "Date Picker",
+      "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Radix flavor.",
+      "dependencies": [
+        "@radix-ui/react-popover",
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "calendar",
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "surface-context",
+        "surface-classes",
+        "icon-context",
+        "elevated",
+        "popup",
+        "use-fluid-hover",
+        "scroll-area",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/date-picker.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker.tsx"
+        },
+        {
+          "path": "registry/default/date-picker-core.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker-core.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/date-picker. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#date-picker.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "date-picker-base",
+      "type": "registry:ui",
+      "title": "Date Picker",
+      "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Base UI flavor.",
+      "dependencies": [
+        "@base-ui/react@^1.9.0",
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "calendar",
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "surface-context",
+        "surface-classes",
+        "icon-context",
+        "elevated",
+        "popup",
+        "use-fluid-hover",
+        "scroll-area",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/base/date-picker.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker.tsx"
+        },
+        {
+          "path": "registry/default/date-picker-core.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker-core.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/date-picker. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#date-picker.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "tooltip",
       "type": "registry:ui",
       "title": "Tooltip",

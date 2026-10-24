@@ -15,11 +15,12 @@ import { cn } from "@/lib/utils";
  * backfills column 1 with the neighboring smalls, so the wide card alternates
  * left/right band by band.
  *
- * The size mix is balanced so the grid fills with NO holes at both md and xl:
- * smalls needed = 2·(larges) + 1·(mediums) = 2·5 + 6 = 16 = smalls available
- * (and an even small count keeps md's half-width pairs complete). Adding a
- * card or changing a gridSize breaks that equation — rebalance before
- * shipping or the bottom rows develop holes again.
+ * The size mix is balanced so the grid fills with NO holes at xl:
+ * smalls needed = 2·(larges) + 1·(mediums) = 2·5 + 7 = 17 = smalls available.
+ * At md (2 cols) only smalls take one column, so an odd small count leaves a
+ * half row: the last small then spans the full row there (and goes back to
+ * one column at xl). Adding a card or changing a gridSize breaks the xl
+ * equation — rebalance before shipping or the bottom rows develop holes.
  */
 const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "input-message" },                  // band 1 · medium left
@@ -49,6 +50,8 @@ const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "color-picker" },                   // band 11 · large left
   { slug: "tooltip" },
   { slug: "badge" },
+  { slug: "calendar", side: "right" },        // band 12 · medium right
+  { slug: "date-picker" },
 ];
 
 /** Stage padding overrides, by slug (the default is px-6 py-16). */
@@ -57,6 +60,7 @@ const STAGE_PADDING: Record<string, string> = {
   table: "px-6 py-6",
   card: "px-6 py-5",
   "command-menu": "px-6 py-8",
+  calendar: "px-4 py-2",
 };
 
 /**
@@ -111,6 +115,9 @@ export function BentoGrid({ components }: BentoGridProps) {
   });
   const cols = useGridCols();
   const { isNew } = useReleaseMarks();
+  // An odd number of smalls leaves a half row at md: the last one fills it.
+  const smalls = ordered.filter(({ entry }) => (entry.gridSize ?? "small") === "small");
+  const wideAtMd = smalls.length % 2 === 1 ? smalls[smalls.length - 1]?.entry.slug : undefined;
 
   return (
     <div
@@ -136,7 +143,8 @@ export function BentoGrid({ components }: BentoGridProps) {
             className={cn(
               "reveal-scroll flex",
               sizeClasses[c.gridSize ?? "small"],
-              side === "right" && "xl:col-start-2"
+              side === "right" && "xl:col-start-2",
+              c.slug === wideAtMd && "md:col-span-2 xl:col-span-1"
             )}
           >
             <BentoCard

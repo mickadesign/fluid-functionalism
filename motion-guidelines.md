@@ -232,7 +232,7 @@ Keep this table and that array identical.
 
 | fast (0.08s) | moderate (0.16s, no bounce) | slow (0.24s) |
 |---|---|---|
-| Fluid hover, Focus rings, Checkbox, Radio, Table rows, Card grid, Tooltip, Input copy, Slider, Select / Combobox / Color picker open, Command menu, Accordion | Dropdown / Select highlight, Tabs indicator, Carousel dots, Banner dismiss, Switch thumb, Chat & message bubbles, Mobile drawer, Sidebar, Selection merge / split, Reveal (product) | Dialog, Ask-user questions, Thinking steps, Reveal (landing) |
+| Fluid hover, Focus rings, Checkbox, Radio, Table rows, Card grid, Tooltip, Input copy, Slider, Select / Combobox / Color picker / Date picker open, Command menu, Accordion | Dropdown / Select highlight, Tabs indicator, Carousel dots, Calendar month, Banner dismiss, Switch thumb, Chat & message bubbles, Mobile drawer, Sidebar, Selection merge / split, Reveal (product) | Dialog, Ask-user questions, Thinking steps, Reveal (landing) |
 
 Most components *also* use `fast` for their hover and focus states on top of
 their headline tier — the table lists each component once, by its headline

@@ -7,6 +7,7 @@ import { apiReference as askUserQuestionsApi } from "@/lib/docs/api/ask-user-que
 import { apiReference as badgeApi } from "@/lib/docs/api/badge";
 import { apiReference as bannerApi } from "@/lib/docs/api/banner";
 import { apiReference as buttonApi } from "@/lib/docs/api/button";
+import { apiReference as calendarApi } from "@/lib/docs/api/calendar";
 import { apiReference as cardApi } from "@/lib/docs/api/card";
 import { apiReference as carouselDotsApi } from "@/lib/docs/api/carousel-dots";
 import { apiReference as chatMessageApi } from "@/lib/docs/api/chat-message";
@@ -14,6 +15,7 @@ import { apiReference as checkboxGroupApi } from "@/lib/docs/api/checkbox-group"
 import { apiReference as colorPickerApi } from "@/lib/docs/api/color-picker";
 import { apiReference as comboboxApi } from "@/lib/docs/api/combobox";
 import { apiReference as commandMenuApi } from "@/lib/docs/api/command-menu";
+import { apiReference as datePickerApi } from "@/lib/docs/api/date-picker";
 import { apiReference as dialogApi } from "@/lib/docs/api/dialog";
 import { apiReference as dropdownApi } from "@/lib/docs/api/dropdown";
 import { apiReference as fluidHoverApi } from "@/lib/docs/api/fluid-hover";
@@ -41,6 +43,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   badge: badgeApi,
   banner: bannerApi,
   button: buttonApi,
+  calendar: calendarApi,
   card: cardApi,
   "carousel-dots": carouselDotsApi,
   "chat-message": chatMessageApi,
@@ -48,6 +51,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   "color-picker": colorPickerApi,
   combobox: comboboxApi,
   "command-menu": commandMenuApi,
+  "date-picker": datePickerApi,
   dialog: dialogApi,
   dropdown: dropdownApi,
   "fluid-hover": fluidHoverApi,

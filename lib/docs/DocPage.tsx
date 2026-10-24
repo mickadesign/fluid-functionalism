@@ -189,3 +189,15 @@ export function DocSection({ title, children }: DocSectionProps) {
     </div>
   );
 }
+
+/** A group heading inside a section, such as one API table among several. */
+export function DocSubheading({ title }: { title: string }) {
+  return (
+    <h3
+      className="mt-2 text-site-subtitle text-foreground"
+      style={{ fontVariationSettings: fontWeights.semibold }}
+    >
+      {title}
+    </h3>
+  );
+}
