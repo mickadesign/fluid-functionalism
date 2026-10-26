@@ -798,7 +798,7 @@
       "title": "Fluid Provider",
       "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded or pill), the size step (default or compact), and the icon set.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "shape-context",
@@ -822,7 +822,7 @@
       "title": "useFluidHover + FluidHoverHighlight",
       "description": "Fluid hover: the hook that tracks the item nearest the cursor within a container, and the one highlight component that springs between the rects it measures.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -906,7 +906,7 @@
       "title": "Accordion",
       "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and fluid hover in grouped mode. Built on Radix UI Accordion.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-accordion@^1.3.1",
         "lucide-react"
       ],
@@ -939,7 +939,7 @@
       "title": "Accordion (Base UI)",
       "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and fluid hover in grouped mode. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0",
         "lucide-react"
       ],
@@ -972,7 +972,7 @@
       "title": "Ask User Questions",
       "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, fluid hover, and multi-question navigation. Auto-advances on selection in single-select.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1030,7 +1030,7 @@
       "title": "Banner",
       "description": "Status message built from parts (Banner, BannerTitle, BannerDescription, BannerActions, BannerAction): 5 statuses (filled glyphs for info, success, warning and error; the icon set's outline info icon for default), low or high contrast, primary, secondary and ghost actions (the library Button) that trail a one-line banner (primary at the edge) and drop under a description (primary first), a dismiss that collapses its height, and a fixed variant that sticks full-bleed to the top of the page.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1071,7 +1071,7 @@
       "title": "Button",
       "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-slot@^1.5.0",
         "class-variance-authority@^0.7.1",
         "lucide-react"
@@ -1119,7 +1119,7 @@
       "title": "Button (Base UI)",
       "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0",
         "class-variance-authority@^0.7.1",
         "lucide-react"
@@ -1168,7 +1168,7 @@
       "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-dropdown-menu@^2.2.1",
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1221,7 +1221,7 @@
       "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1273,7 +1273,7 @@
       "title": "Checkbox Group",
       "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Built on Radix UI Checkbox.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-checkbox@^1.4.1"
       ],
       "registryDependencies": [
@@ -1304,7 +1304,7 @@
       "title": "Checkbox Group (Base UI)",
       "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1336,7 +1336,7 @@
       "title": "Radio Group",
       "description": "Animated radio group with fluid hover, spring-animated selection dot, and optional Radix UI integration. Supports both controlled index and value-based APIs.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-radio-group@^1.5.1"
       ],
       "registryDependencies": [
@@ -1366,7 +1366,7 @@
       "title": "Radio Group (Base UI)",
       "description": "Animated radio group with fluid hover, spring-animated selection dot. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1396,7 +1396,7 @@
       "title": "Dialog",
       "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Built on Radix UI Dialog with overlay, header, footer, title, and description sub-components.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-dialog@^1.3.1",
         "lucide-react"
       ],
@@ -1429,7 +1429,7 @@
       "title": "Dialog (Base UI)",
       "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0",
         "lucide-react"
       ],
@@ -1464,7 +1464,7 @@
       "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-dialog@^1.3.1",
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "springs",
@@ -1490,7 +1490,7 @@
       "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "springs",
@@ -1516,7 +1516,7 @@
       "title": "Input Copy",
       "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -1576,7 +1576,7 @@
       "title": "Input Message",
       "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1635,7 +1635,7 @@
       "title": "Queued message stack",
       "description": "Sonner-style stack of queued composer messages: collapsed cards fan out on hover (tap on touch), drag to reorder, a gutter arrow counts the overflow, edit/remove per card, and a shared-layout morph into the sent message.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -1666,7 +1666,7 @@
       "title": "Chat Message",
       "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1695,7 +1695,7 @@
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-tabs@^1.2.1",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -1736,7 +1736,7 @@
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -1776,7 +1776,7 @@
       "title": "Switch",
       "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Built on Radix UI Switch.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-switch@^1.4.1"
       ],
       "registryDependencies": [
@@ -1804,7 +1804,7 @@
       "title": "Switch (Base UI)",
       "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1833,7 +1833,7 @@
       "title": "Carousel Dots",
       "description": "Carousel dots, static or on autoplay: fluid-hover click areas, and a current pill that fills over each slide's duration.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1858,7 +1858,7 @@
       "title": "Table",
       "description": "Animated table with fluid hover row highlighting and fluid border transitions. Includes TableHeader, TableBody, TableRow, TableHead, and TableCell sub-components.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1885,7 +1885,7 @@
       "title": "Card",
       "description": "shadcn's compositional card (Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter) with the Fluid Functionalism layer: transparent substrate, weight-animated title, media/logo/feature/image slots, and a CardGroup that owns stacked, inline, and grid layouts plus 2-D fluid-hover highlighting.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1916,7 +1916,7 @@
       "description": "Refined, composable app sidebar with offcanvas collapse, floating and inset variants, a mobile drawer, cookie-persisted state, keyboard shortcut, and fluid-hover menus with traveling selection, hover, and focus indicators. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-dialog@^1.3.1",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react",
         "class-variance-authority@^0.7.1"
       ],
@@ -1965,7 +1965,7 @@
       "description": "Refined, composable app sidebar with offcanvas collapse, floating and inset variants, a mobile drawer, cookie-persisted state, keyboard shortcut, and fluid-hover menus with traveling selection, hover, and focus indicators. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react",
         "class-variance-authority@^0.7.1"
       ],
@@ -2190,7 +2190,7 @@
       "title": "Slider",
       "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Built on Radix UI Slider.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-slider@^1.6.1"
       ],
       "registryDependencies": [
@@ -2221,7 +2221,7 @@
       "title": "Slider (Base UI)",
       "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -2252,7 +2252,7 @@
       "title": "Tabs",
       "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Built on Radix UI Tabs.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-tabs@^1.2.1",
         "lucide-react"
       ],
@@ -2286,7 +2286,7 @@
       "title": "Tabs (Base UI)",
       "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0",
         "lucide-react"
       ],
@@ -2320,7 +2320,7 @@
       "title": "Thinking Indicator",
       "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through customizable status words.",
       "dependencies": [
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2355,6 +2355,182 @@
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/thinking-indicator. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#thinking-indicator.",
       "categories": [
         "components"
+      ]
+    },
+    {
+      "name": "reveal",
+      "type": "registry:item",
+      "title": "Reveal",
+      "description": "Page reveals in 1 class, on the existing spring tiers: slow for landing, moderate for product. .reveal-landing for a page read once: the hero rises and scales in on load, later sections do on scroll, and every section leaves the same way at the top; .reveal-scroll makes a deeper element, like a grid card, a section of its own. .reveal-product for the app: blocks fade in on load, nothing on scroll. Each has a -subtle step. For slow data, .reveal-swap crossfades shadcn's Skeleton into the real block and .reveal-items brings rows in one by one. Pure CSS; reduced motion keeps the fades and drops the rest.",
+      "registryDependencies": [
+        "skeleton"
+      ],
+      "css": {
+        "@keyframes reveal-preset": {
+          "from": {
+            "opacity": "0",
+            "transform": "translateY(var(--reveal-distance, 0px)) scale(var(--reveal-scale, 1))"
+          }
+        },
+        ".reveal-landing": {
+          "--reveal-motion": "250ms linear(0, 0.3878, 0.7777, 0.9458, 0.9946, 1.0029, 1.0021, 1)",
+          "--reveal-distance": "12px",
+          "--reveal-scale": "0.94",
+          "--reveal-step": "0.1s",
+          "--reveal-scroll-start": "12px",
+          "--reveal-scroll": "120px"
+        },
+        ".reveal-landing-subtle": {
+          "--reveal-motion": "250ms linear(0, 0.3878, 0.7777, 0.9458, 0.9946, 1.0029, 1.0021, 1)",
+          "--reveal-distance": "8px",
+          "--reveal-scale": "0.98",
+          "--reveal-step": "0.06s",
+          "--reveal-scroll-start": "8px",
+          "--reveal-scroll": "60px"
+        },
+        ".reveal-product": {
+          "--reveal-motion": "200ms linear(0, 0.5729, 0.8966, 0.9789, 0.996, 1, 1)",
+          "--reveal-step": "0.06s"
+        },
+        ".reveal-product-subtle": {
+          "--reveal-motion": "200ms linear(0, 0.5729, 0.8966, 0.9789, 0.996, 1, 1)",
+          "--reveal-step": "0.04s"
+        },
+        ":is(.reveal-landing, .reveal-landing-subtle) > :first-child > *, :is(.reveal-product, .reveal-product-subtle) > *, .reveal-items > *, .reveal-swap > :last-child:not(:first-child)": {
+          "animation": "reveal-preset var(--reveal-motion, 200ms linear(0, 0.5729, 0.8966, 0.9789, 0.996, 1, 1)) both"
+        },
+        ":is(.reveal-landing, .reveal-landing-subtle) > :first-child > :nth-child(2), :is(.reveal-product, .reveal-product-subtle) > :nth-child(2)": {
+          "animation-delay": "var(--reveal-step)"
+        },
+        ":is(.reveal-landing, .reveal-landing-subtle) > :first-child > :nth-child(3), :is(.reveal-product, .reveal-product-subtle) > :nth-child(3)": {
+          "animation-delay": "calc(var(--reveal-step) * 2)"
+        },
+        ":is(.reveal-landing, .reveal-landing-subtle) > :first-child > :nth-child(n + 4), :is(.reveal-product, .reveal-product-subtle) > :nth-child(n + 4)": {
+          "animation-delay": "calc(var(--reveal-step) * 3)"
+        },
+        ":is(.reveal-product, .reveal-product-subtle) > .reveal-items": {
+          "animation": "none"
+        },
+        ".reveal-items > :nth-child(2)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 1)"
+        },
+        ".reveal-items > :nth-child(3)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 2)"
+        },
+        ".reveal-items > :nth-child(4)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 3)"
+        },
+        ".reveal-items > :nth-child(5)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 4)"
+        },
+        ".reveal-items > :nth-child(6)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 5)"
+        },
+        ".reveal-items > :nth-child(7)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 6)"
+        },
+        ".reveal-items > :nth-child(n + 8)": {
+          "animation-delay": "calc(var(--reveal-step, 0.06s) * 7)"
+        },
+        "@keyframes reveal-out": {
+          "to": {
+            "opacity": "0"
+          }
+        },
+        ".reveal-swap": {
+          "display": "grid"
+        },
+        ".reveal-swap > *": {
+          "grid-area": "1 / 1",
+          "min-width": "0"
+        },
+        ".reveal-swap > :first-child:not(:last-child)": {
+          "pointer-events": "none",
+          "animation": "reveal-out var(--reveal-motion, 200ms linear(0, 0.5729, 0.8966, 0.9789, 0.996, 1, 1)) forwards"
+        },
+        ".reveal-swap > .reveal-items:not(:only-child)": {
+          "animation": "none"
+        },
+        ".reveal-swap > .reveal-items:first-child:not(:last-child) > *": {
+          "animation-name": "reveal-out",
+          "animation-fill-mode": "forwards"
+        },
+        "@keyframes reveal-skeleton-in": {
+          "from": {
+            "opacity": "0"
+          }
+        },
+        "@keyframes reveal-pulse": {
+          "50%": {
+            "opacity": "0.5"
+          }
+        },
+        ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
+          "animation": "reveal-skeleton-in 250ms ease-in-out both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 250ms infinite"
+        },
+        ".reveal-swap > :first-child:not(:last-child) [data-slot=\"skeleton\"]": {
+          "animation": "none"
+        },
+        "@keyframes reveal-leave": {
+          "to": {
+            "opacity": "0",
+            "transform": "translateY(calc(var(--reveal-distance, 0px) * -1)) scale(var(--reveal-scale, 1))"
+          }
+        },
+        "@supports (animation-timeline: view())": {
+          ":is(.reveal-landing, .reveal-landing-subtle) > :first-child": {
+            "animation": "reveal-leave 1ms linear both",
+            "animation-timeline": "view()",
+            "animation-range": "exit calc(100% - var(--reveal-scroll)) exit calc(100% - var(--reveal-scroll-start))"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) > :not(:first-child), :is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll": {
+            "--reveal-load-delay": "calc(var(--reveal-step) * 4)",
+            "animation": "reveal-preset 1ms linear both, reveal-leave 1ms linear both, reveal-preset var(--reveal-motion, 200ms linear(0, 0.5729, 0.8966, 0.9789, 0.996, 1, 1)) backwards",
+            "animation-timeline": "view(), view(), auto",
+            "animation-range": "entry var(--reveal-scroll-start) entry var(--reveal-scroll), exit calc(100% - var(--reveal-scroll)) exit calc(100% - var(--reveal-scroll-start)), normal",
+            "animation-delay": "0s, 0s, var(--reveal-load-delay)"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll:nth-child(2)": {
+            "--reveal-load-delay": "calc(var(--reveal-step) * 5)"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll:nth-child(3)": {
+            "--reveal-load-delay": "calc(var(--reveal-step) * 6)"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll:nth-child(n + 4)": {
+            "--reveal-load-delay": "calc(var(--reveal-step) * 7)"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) > :not(:first-child):has(.reveal-scroll)": {
+            "animation": "none"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll .reveal-scroll": {
+            "--reveal-load-delay": "inherit",
+            "animation-range": "entry calc(var(--reveal-scroll-start) + var(--reveal-scroll) / 2) entry calc(var(--reveal-scroll) * 1.5), exit calc(100% - var(--reveal-scroll) * 1.5) exit calc(100% - var(--reveal-scroll-start) - var(--reveal-scroll) / 2), normal",
+            "animation-delay": "0s, 0s, calc(var(--reveal-load-delay) + var(--reveal-step))"
+          }
+        },
+        "@media (prefers-reduced-motion: reduce)": {
+          ":is(.reveal-landing, .reveal-landing-subtle)": {
+            "--reveal-distance": "0px",
+            "--reveal-scale": "1"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) > :first-child, :is(.reveal-landing, .reveal-landing-subtle) > :not(:first-child):has(.reveal-scroll)": {
+            "animation": "none"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) > :not(:first-child), :is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll": {
+            "animation": "reveal-preset var(--reveal-motion, 200ms linear(0, 0.5729, 0.8966, 0.9789, 0.996, 1, 1)) backwards",
+            "animation-delay": "var(--reveal-load-delay, 0s)"
+          },
+          ":is(.reveal-landing, .reveal-landing-subtle) .reveal-scroll .reveal-scroll": {
+            "animation-delay": "calc(var(--reveal-load-delay, 0s) + var(--reveal-step))"
+          },
+          ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
+            "animation": "reveal-skeleton-in 250ms ease-in-out both"
+          }
+        }
+      },
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/reveal. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#reveal.",
+      "categories": [
+        "theme"
       ]
     },
     {
@@ -2685,7 +2861,7 @@
       "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-select@^2.4.1",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "class-variance-authority@^0.7.1",
         "lucide-react"
       ],
@@ -2724,7 +2900,7 @@
       "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "class-variance-authority@^0.7.1",
         "lucide-react"
       ],
@@ -2763,7 +2939,7 @@
       "description": "Type-to-filter combobox with single or multiple (chips, merged selection backgrounds) selection: a text field that filters a list as you type, with keyboard highlight, fluid hover, spring-animated popover, animated checkmark, and clear/chevron controls. Optional create-from-query row (onCreate) and hideSelected for chips fields. Radix flavor (Popover + hand-rolled listbox).",
       "dependencies": [
         "@radix-ui/react-popover@^1.3.1",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "class-variance-authority@^0.7.1",
         "lucide-react"
       ],
@@ -2804,7 +2980,7 @@
       "description": "Type-to-filter combobox with single or multiple (chips, merged selection backgrounds) selection: a text field that filters a list as you type, with keyboard highlight, fluid hover, spring-animated popover, animated checkmark, and clear/chevron controls. Optional create-from-query row (onCreate) and hideSelected for chips fields. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "class-variance-authority@^0.7.1",
         "lucide-react"
       ],
@@ -2843,7 +3019,7 @@
       "title": "Command Menu",
       "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; subtle tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -2875,12 +3051,137 @@
       ]
     },
     {
+      "name": "calendar",
+      "type": "registry:ui",
+      "title": "Calendar",
+      "description": "Month grid on DayPicker v10 for a single day or a range: one fluid hover highlight across one or two months that follows keyboard focus, a range band that previews the end under the pointer, booked (struck through) and unavailable days, ISO week numbers, a cellSize prop and fill mode, and a direction-aware month slide.",
+      "dependencies": [
+        "@daypicker/react@~10.0.2",
+        "motion@^14.6.0",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "omit",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "icon-context",
+        "popup",
+        "use-keyboard-nav-gate",
+        "use-fluid-hover",
+        "button",
+        "tooltip",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/calendar.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/calendar. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#calendar.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "date-picker",
+      "type": "registry:ui",
+      "title": "Date Picker",
+      "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Radix flavor.",
+      "dependencies": [
+        "@radix-ui/react-popover@^1.3.1",
+        "motion@^14.6.0",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "calendar",
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "surface-context",
+        "surface-classes",
+        "icon-context",
+        "elevated",
+        "popup",
+        "use-fluid-hover",
+        "scroll-area",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/date-picker.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker.tsx"
+        },
+        {
+          "path": "registry/default/date-picker-core.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker-core.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/date-picker. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#date-picker.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "date-picker-base",
+      "type": "registry:ui",
+      "title": "Date Picker",
+      "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Base UI flavor.",
+      "dependencies": [
+        "@base-ui/react@^1.9.0",
+        "motion@^14.6.0",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "calendar",
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "surface-context",
+        "surface-classes",
+        "icon-context",
+        "elevated",
+        "popup",
+        "use-fluid-hover",
+        "scroll-area",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/base/date-picker.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker.tsx"
+        },
+        {
+          "path": "registry/default/date-picker-core.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker-core.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/date-picker. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#date-picker.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "tooltip",
       "type": "registry:ui",
       "title": "Tooltip",
       "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@radix-ui/react-tooltip@^1.4.1"
       ],
       "registryDependencies": [
@@ -2908,7 +3209,7 @@
       "title": "Tooltip (Base UI)",
       "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support. Base UI flavor.",
       "dependencies": [
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -2938,7 +3239,7 @@
       "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-collapsible@^1.2.1",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -2989,7 +3290,7 @@
       "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0",
+        "motion@^14.6.0",
         "lucide-react"
       ],
       "registryDependencies": [
@@ -3041,7 +3342,7 @@
       "description": "Color picker with HEX, RGB, HSL, and OKLCH formats, alpha channel, optional swatches, and a popover trigger. Built on Base UI's Popover, Menu, and NumberField primitives with native EyeDropper support.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.4.0"
+        "motion@^14.6.0"
       ],
       "registryDependencies": [
         "utils",

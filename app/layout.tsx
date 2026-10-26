@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { Source_Serif_4 } from "next/font/google";
 import { MotionConfig } from "motion/react";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ShapeProvider } from "@/registry/default/lib/shape-context";
+import { OG_IMAGES, OG_VIDEOS } from "@/lib/og-media";
 import { SizeProvider } from "@/registry/default/lib/size-context";
 import { ThemeProvider } from "@/registry/default/lib/theme-context";
 import { IconPlaygroundProvider } from "@/lib/docs/icon-playground";
@@ -13,10 +15,24 @@ import { SizeShortcut } from "@/lib/docs/size-shortcut";
 import { SizeAttribute } from "@/lib/docs/size-attribute";
 import { SettingsToast } from "@/lib/docs/settings-toast";
 import { SettingsPersistence } from "@/lib/docs/settings-persistence";
-import { readSettings } from "@/lib/docs/site-settings";
+import { readHeadingFont, readSettings } from "@/lib/docs/site-settings";
+import { HeadingFontProvider, HeadingFontShortcut } from "@/lib/docs/heading-font";
+import googleFonts from "@/lib/docs/google-fonts.json";
+import { customHeadingVars, googleFontWeights, type GoogleFont } from "@/lib/docs/google-fonts";
 import { BaseProvider } from "@/lib/base-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
 import { latestMarks } from "@/lib/changelog/load";
+
+// The optional serif for headings (right panel > Heading font, or F). Variable on both
+// wght and opsz, like Inter 4.0, so the fontWeights tokens drive it the same
+// way. Not preloaded: only visitors who pick it download it.
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  axes: ["opsz"],
+  display: "swap",
+  preload: false,
+  variable: "--font-source-serif",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.fluidfunctionalism.com"),
@@ -36,7 +52,8 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Fluid Functionalism",
     description: "Open Source UI components created by @micka_design",
-    images: [{ url: "/metadata/og.png", width: 2400, height: 1260 }],
+    images: OG_IMAGES,
+    videos: OG_VIDEOS,
   },
   twitter: {
     card: "summary_large_image",
@@ -60,14 +77,28 @@ export default async function RootLayout({
   // SettingsPersistence: rendering them here means a reload paints the
   // visitor's theme, radius, size, icons and primitive from the first frame.
   const settings = readSettings((name) => cookieStore.get(name)?.value);
+  // The heading font, and the Google Fonts family behind "custom": unknown
+  // to the catalog, it falls back to Inter.
+  const saved = readHeadingFont((name) => cookieStore.get(name)?.value);
+  const customFont = saved.customFamily
+    ? ((googleFonts as GoogleFont[]).find((f) => f.n === saved.customFamily) ?? null)
+    : null;
+  const headingFont = saved.font === "custom" && !customFont ? "inter" : saved.font;
+  // A saved weight the family doesn't have reads as Auto.
+  const customWeight =
+    customFont && saved.customWeight !== null && googleFontWeights(customFont).includes(saved.customWeight)
+      ? saved.customWeight
+      : null;
 
   return (
     <html
       lang="en"
       // Mirrors what ThemeProvider and SizeAttribute apply on the client, so
       // a saved dark theme or compact size never paints the default first.
-      className={settings.theme === "system" ? undefined : settings.theme}
+      className={settings.theme === "system" ? sourceSerif.variable : `${settings.theme} ${sourceSerif.variable}`}
       data-size={settings.size}
+      data-font={headingFont}
+      style={customFont ? (customHeadingVars(customFont, customWeight) as React.CSSProperties) : undefined}
     >
       {/* Font smoothing (antialiased/grayscale) is set globally in globals.css */}
       <body>
@@ -84,15 +115,18 @@ export default async function RootLayout({
               <ThemeProvider defaultTheme={settings.theme}>
                 <IconPlaygroundProvider defaultLibrary={settings.icons}>
                   <BaseProvider defaultBase={settings.base}>
-                    <SettingsPersistence />
-                    {/* The sidebar's New dots: what the latest changelog
-                        release lists as New, read from content/changelog. */}
-                    <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={latestMarks()}>
-                      {children}
-                    </SidebarLayout>
-                    <SettingsToast />
-                    <Analytics />
-                    <SpeedInsights />
+                    <HeadingFontProvider defaultFont={headingFont} defaultCustom={customFont} defaultWeight={customWeight}>
+                      <HeadingFontShortcut />
+                      <SettingsPersistence />
+                      {/* The sidebar's New dots: what the latest changelog
+                          release lists as New, read from content/changelog. */}
+                      <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={latestMarks()}>
+                        {children}
+                      </SidebarLayout>
+                      <SettingsToast />
+                      <Analytics />
+                      <SpeedInsights />
+                    </HeadingFontProvider>
                   </BaseProvider>
                 </IconPlaygroundProvider>
               </ThemeProvider>

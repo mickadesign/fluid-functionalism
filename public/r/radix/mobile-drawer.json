@@ -5,7 +5,7 @@
   "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Radix flavor.",
   "dependencies": [
     "@radix-ui/react-dialog@^1.3.1",
-    "motion@^14.4.0"
+    "motion@^14.6.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/springs.json",

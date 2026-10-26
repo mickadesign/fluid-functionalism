@@ -4,7 +4,7 @@
   "title": "Checkbox Group",
   "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Built on Radix UI Checkbox.",
   "dependencies": [
-    "motion@^14.4.0",
+    "motion@^14.6.0",
     "@radix-ui/react-checkbox@^1.4.1"
   ],
   "registryDependencies": [

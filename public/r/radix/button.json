@@ -4,7 +4,7 @@
   "title": "Button",
   "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover.",
   "dependencies": [
-    "motion@^14.4.0",
+    "motion@^14.6.0",
     "@radix-ui/react-slot@^1.5.0",
     "class-variance-authority@^0.7.1",
     "lucide-react"

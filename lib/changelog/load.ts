@@ -33,10 +33,10 @@ export interface AheadOfRelease {
 /** Docs pages that landed after the latest release, badged New ahead of the
  *  release that will list them. An entry lapses on its own once a release
  *  for its month exists, so nothing needs undoing on release day. The
- *  sidebar's dots stay release-only. */
+ *  sidebar dots them too, so a new page is marked from the day it lands. */
 export const AHEAD_OF_RELEASE: AheadOfRelease[] = [
   // Merged in October 2026; the October release ships Friday 2026-11-06.
-  { month: "2026-10", slugs: ["banner", "typography"] },
+  { month: "2026-10", slugs: ["banner", "typography", "reveal", "calendar", "date-picker"] },
 ];
 
 let marksCache: ReleaseMarks | null = null;

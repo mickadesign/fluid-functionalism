@@ -76,6 +76,7 @@ export const CUSTOM_ITEMS = new Set([
   "tokens",
   "type-scale",
   "typography",
+  "reveal",
   // primitive-touching components (have both Radix and Base flavours)
   ...DUAL_FLAVOR_SLUGS,
   // blocks (single-source compositions over flavoured components)
@@ -87,6 +88,7 @@ export const CUSTOM_ITEMS = new Set([
   // primitive-agnostic UI components (single source under @fluid)
   "badge",
   "banner",
+  "calendar",
   "carousel-dots",
   "chat-message",
   "color-picker",

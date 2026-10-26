@@ -4,7 +4,7 @@
   "title": "Tabs (Base UI)",
   "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Base UI flavor.",
   "dependencies": [
-    "motion@^14.4.0",
+    "motion@^14.6.0",
     "@base-ui/react@^1.9.0",
     "lucide-react"
   ],

@@ -5,7 +5,7 @@
   "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion@^14.4.0",
+    "motion@^14.6.0",
     "lucide-react"
   ],
   "registryDependencies": [

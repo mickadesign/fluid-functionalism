@@ -4,7 +4,7 @@
   "title": "Slider",
   "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Built on Radix UI Slider.",
   "dependencies": [
-    "motion@^14.4.0",
+    "motion@^14.6.0",
     "@radix-ui/react-slider@^1.6.1"
   ],
   "registryDependencies": [

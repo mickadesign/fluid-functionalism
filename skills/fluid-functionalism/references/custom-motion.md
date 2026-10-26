@@ -4,8 +4,9 @@ Installed components already follow these rules. Read this before writing any
 custom animation, hover treatment, or state-change styling in a project that
 uses @fluid components — the point is that your bespoke list moves at the same
 magnitudes as the installed dropdown next to it. Live, interactive versions:
-<https://www.fluidfunctionalism.com/docs/motion> and
-<https://www.fluidfunctionalism.com/docs/fluid-hover>.
+<https://www.fluidfunctionalism.com/docs/motion>,
+<https://www.fluidfunctionalism.com/docs/fluid-hover>, and
+<https://www.fluidfunctionalism.com/docs/reveal>.
 
 ## Spring tokens (`@/lib/springs`)
 
@@ -221,3 +222,124 @@ when **it** toggles. When the measured height changes because a *child*
 collapsed, snap (`{ duration: 0 }`) — otherwise the outer wrapper chases a
 moving target every frame, lags its own child, and lands ~100ms late; each
 nesting level multiplies the sludge.
+
+## Page reveals (`@fluid/reveal`)
+
+Appear and scroll animation for whole pages: 2 presets for the page, each
+with a `-subtle` step, and 2 helpers for slow data (`reveal-swap`,
+`reveal-items`). Install `@fluid/reveal` and put 1 class on the page's
+container, the way you add shadcn's `scroll-fade`.
+Live version: <https://www.fluidfunctionalism.com/docs/reveal>.
+
+### Pick by context
+
+| Class | For | On load | On scroll |
+|---|---|---|---|
+| `reveal-landing` | A page read once: a launch, pricing, a case study | 1st child is the hero; its children rise 12px and scale in from 0.94, 0.1s apart | Every later child does the same with the scroll, from its top edge 12px inside the viewport to 120px; every section leaves the same way at the top |
+| `reveal-landing-subtle` | Same, quieter | 8px and 0.98, 0.06s apart | From 8px to 60px |
+| `reveal-product` | The app people come back to | Every child fades in, 0.06s apart, no rise | Nothing |
+| `reveal-product-subtle` | Same, quieter | Fade, 0.04s apart | Nothing |
+
+Scroll reveals in an app are noise by the 10th visit: an app screen should
+feel like it was already there.
+
+### What moves
+
+- Groups, not elements: a hero, a product shot, a row of cards, a quote.
+  Never every line, and never a `whileInView` fade on each element.
+- Everything on screen at first paint goes in the hero (the 1st child),
+  product shot included: a later section that starts on screen sits half
+  revealed, waiting for a scroll, instead of playing on load.
+- For a grid, put `reveal-scroll` on each card: every card becomes a
+  scroll section with the same values, and the section holding them stays
+  still. Wrap a card that already animates `transform` (a framer layout
+  node) and put the class on the wrapper: the CSS animation would override
+  its transform.
+- Every scroll section and `reveal-scroll` also plays a load step after the
+  hero, a step apart, so cards already on screen at first paint arrive with
+  the page instead of sitting there; off screen, the step plays unseen and
+  the scroll takes over. A section cut by the bottom edge still settles half
+  revealed, which is why first-paint content belongs in the hero.
+- Nest a second `reveal-scroll` inside a card for its content: it follows
+  half a range later on the way in and leaves half a range sooner, so the
+  card frame arrives first and its content settles into it.
+- A view timeline binds to the nearest scroll container, and
+  `overflow: hidden` makes one even if it never scrolls. Clip a revealed
+  element's ancestors with `overflow: clip` instead, or its animation never
+  moves.
+- Keep chrome still: put the header, nav, sidebar, and footer outside the
+  container. Backgrounds and dividers never move.
+- Never animate a parent and its children both. Pick 1 level.
+- Product reveals play once and have no exit. Landing sections follow the
+  scroll on purpose, both ways: in at the bottom, and out at the top as a
+  mirror of the way in (fade, lift, scale down).
+
+### Timing
+
+- No new token: landing steps ride `spring.slow` (0.24s, bounce 0.12), the
+  tier for large surfaces, so pages move at the pace of dialogs. Product
+  steps ride `spring.moderate` (0.16s, no bounce): app blocks are panels,
+  and a fade has no travel for a bounce to act on. Both are written in CSS
+  as `linear()`; scroll steps follow the scroll.
+- Stagger siblings only, 0.04 to 0.1s apart, and cap it: the 4th step (8th
+  for data rows) carries everything after it, so a list never queues.
+- Travel stays small: 12px and a 0.94 scale at most on a landing page,
+  none in the app. No blur, no rotation, no sideways travel.
+
+### Bulletproof by default
+
+- Pure CSS: no JavaScript, no hydration flash. The server renders
+  everything visible; on-load steps start on first paint.
+- Scroll-linked motion uses CSS view timelines. Browsers without them show
+  the content still.
+- Keep the LCP element (hero image, main headline) out of any reveal:
+  Chrome does not count a paint at opacity 0.
+- Animate `transform` and `opacity` only, so layout never shifts.
+- A revealed landing section keeps a `transform`, which pins any
+  `position: fixed` child to the section: keep fixed elements outside.
+
+### Loading data in the app
+
+Slow data waits on shadcn's Skeleton (installed with `@fluid/reveal`).
+
+```tsx
+import { Skeleton } from "@/components/ui/skeleton";
+
+<main className="reveal-product">
+  <Header />
+  <div className="reveal-swap">
+    <ThreadsSkeleton className="reveal-items" aria-hidden />
+    {threads && <Threads className="reveal-items" rows={threads} />}
+  </div>
+</main>
+```
+
+- Build each skeleton the exact size of its real block (same paddings,
+  line heights, avatar sizes) and measure both: the swap must not shift
+  layout.
+- Never replace a skeleton with data on the same frame: the data starts at
+  opacity 0 and the space blinks empty. `reveal-swap` stacks both in 1 cell;
+  render the skeleton, add the real block after it, and the skeleton fades
+  out as the block fades in.
+- `reveal-items` on both brings rows and metrics in one by one, each
+  skeleton row handing over to its own real row. It works beside a preset
+  too, for a sidebar.
+- Load blocks independently: each request lands on its own time and in any
+  order. Never fake a tidy sequence; give each metric its own swap.
+- Skeletons fade in over 250ms before shadcn's pulse starts, so they arrive
+  instead of popping in. Keep Skeletons inside a block: a Skeleton that is
+  itself an animated child loses its pulse.
+
+### Accessibility
+
+- Reduced motion keeps the fades, drops all travel and scale, turns scroll-linked
+  motion off, and stops the skeleton pulse.
+- Mark skeleton blocks `aria-hidden`.
+
+### When you demo it
+
+- Show real content edge to edge, not grey boxes in a small frame.
+- Put the controls where the eye is (intensity tabs, a primary Replay) and
+  show the live values under the demo.
+- Start a demo only once it is on screen, so people see it play instead of
+  its end state.

@@ -4,7 +4,7 @@
   "title": "Thinking Indicator",
   "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through customizable status words.",
   "dependencies": [
-    "motion@^14.4.0"
+    "motion@^14.6.0"
   ],
   "registryDependencies": [
     "utils",

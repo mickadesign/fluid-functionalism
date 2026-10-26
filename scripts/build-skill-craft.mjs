@@ -16,7 +16,7 @@ const OUT =
         new URL("../skills/fluid-functionalism/references/craft.md", import.meta.url),
       );
 
-// Section order: the six systems first (one adopted system lifts every
+// Section order: the seven systems first (one adopted system lifts every
 // surface), then components alphabetically. Display names match the docs.
 export const SYSTEMS = [
   ["motion", "Motion (springs)"],
@@ -25,6 +25,7 @@ export const SYSTEMS = [
   ["sizes", "Sizes (size-context)"],
   ["typography", "Typography (type-scale, typography)"],
   ["scrollbars", "Scrollbars (scroll-area)"],
+  ["reveal", "Reveal (reveal)"],
 ];
 export const COMPONENTS = [
   ["accordion", "Accordion"],
@@ -32,6 +33,7 @@ export const COMPONENTS = [
   ["badge", "Badge"],
   ["banner", "Banner"],
   ["button", "Button"],
+  ["calendar", "Calendar"],
   ["card", "Card"],
   ["carousel-dots", "CarouselDots"],
   ["chat-message", "ChatMessage"],
@@ -39,6 +41,7 @@ export const COMPONENTS = [
   ["color-picker", "ColorPicker"],
   ["combobox", "Combobox"],
   ["command-menu", "CommandMenu"],
+  ["date-picker", "DatePicker"],
   ["dialog", "Dialog"],
   ["dropdown", "Dropdown"],
   ["input-copy", "InputCopy"],

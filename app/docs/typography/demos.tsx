@@ -24,6 +24,11 @@ import { typeStyles, type TypeScaleRole } from "@/registry/default/lib/type-scal
 import { ScrollArea } from "@/registry/base/scroll-area";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { FakeCursor } from "@/lib/docs/fake-cursor";
+import { HeadingWeightSelect, headingFontLabel, useHeadingFont } from "@/lib/docs/heading-font";
+import { HEADING_FONTS } from "@/lib/docs/site-settings";
+import { nearestGoogleFontWeight } from "@/lib/docs/google-fonts";
+import { Button } from "@/components/ui/button";
+import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
 
 /** One side of a before/after: a framed specimen with its verdict under it,
  *  as on the fluid hover page. */
@@ -76,12 +81,56 @@ const axes = (fvs: string) => ({
   opsz: /'opsz' (\d+)/.exec(fvs)?.[1],
 });
 
+const HEADING_ROLES = new Set<TypeScaleRole>(["display", "title", "subtitle"]);
+
+/** What a sample renders at, as the numbers columns show it. */
+interface Measured {
+  size: number;
+  leading: number;
+  wght: string;
+  opsz: string;
+}
+
+/** Reads a sample's rendered size and weight. The heading font modes in
+ *  globals.css restyle the heading roles (size, weight, optical size), so
+ *  the specimen reports what the page actually draws rather than mirroring
+ *  those values. A family without variation settings reports its
+ *  font-weight and automatic optical size. */
+function measure(el: HTMLElement): Measured {
+  const cs = getComputedStyle(el);
+  const fvs = cs.fontVariationSettings;
+  return {
+    size: Math.round(parseFloat(cs.fontSize)),
+    leading: Math.round(parseFloat(cs.lineHeight)),
+    wght: /"wght" ([\d.]+)/.exec(fvs)?.[1] ?? cs.fontWeight,
+    opsz: /"opsz" ([\d.]+)/.exec(fvs)?.[1] ?? "auto",
+  };
+}
+
 /** The 5 styles as a spec sheet: the name, a live sample, and the font size,
  *  line height, and weight (with its optical size), all at the page's size
  *  step, so S switches every number. */
 export function TypeScaleSpecimen() {
   const shape = useShape();
   const step = useSizeVariant() === "compact" ? "compact" : "default";
+  const { font, custom, weight } = useHeadingFont();
+  // The rendered values, read back after every change that can restyle the
+  // samples; the tokens stand in until then (server render, first paint).
+  const sampleRefs = useRef(new Map<TypeScaleRole, HTMLElement>());
+  const [measured, setMeasured] = useState<Partial<Record<TypeScaleRole, Measured>>>({});
+  useLayoutEffect(() => {
+    const next: Partial<Record<TypeScaleRole, Measured>> = {};
+    for (const [role, el] of sampleRefs.current) {
+      const m = measure(el);
+      // A custom family draws its nearest cut: with no faux bold, a static
+      // family asked for 700 shows its heaviest weight, so report that.
+      if (font === "custom" && custom && m.opsz === "auto") {
+        m.wght = String(nearestGoogleFontWeight(custom, Number(m.wght)));
+      }
+      next[role] = m;
+    }
+    setMeasured(next);
+  }, [step, font, custom, weight]);
   const cols = "grid grid-cols-[80px_minmax(0,1fr)_64px_72px_56px] items-center gap-x-4 px-5";
   const num = "font-mono text-site-caption tabular-nums";
   return (
@@ -99,16 +148,27 @@ export function TypeScaleSpecimen() {
           <span>Weight</span>
         </div>
         {SPEC.map(({ role, name, sample, weight, muted }) => {
-          const { wght, opsz } = axes(fontWeights[weight]);
-          const { size, leading } = typeStyles[role][step];
+          const tokens = axes(fontWeights[weight]);
+          const { size, leading, wght, opsz } = measured[role] ?? {
+            ...typeStyles[role][step],
+            wght: tokens.wght,
+            opsz: tokens.opsz,
+          };
           return (
             <div key={role} className={cn(cols, "border-b border-border/40 py-4 last:border-b-0")}>
               <span className="text-site-body text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
                 {name}
               </span>
               <span
-                className={cn("min-w-0 truncate", typeClass(role, step), muted ? "text-muted-foreground" : "text-foreground")}
+                // The heading roles follow the heading font (right panel > Heading font, or F).
+                // One class each: tailwind-merge reads font-heading and
+                // font-heading-display as rival font utilities and keeps one.
+                className={cn("min-w-0 truncate", typeClass(role, step), muted ? "text-muted-foreground" : "text-foreground", role === "display" ? "font-heading-display" : HEADING_ROLES.has(role) && "font-heading")}
                 style={{ fontVariationSettings: fontWeights[weight] }}
+                ref={(el) => {
+                  if (el) sampleRefs.current.set(role, el);
+                  else sampleRefs.current.delete(role);
+                }}
               >
                 {sample}
               </span>
@@ -703,6 +763,49 @@ export function PrettyDemo() {
         <Specimen good className="px-4 py-5" caption={<><code>pretty</code> brings a word down to join it</>}>
           {paragraph("[text-wrap:pretty]")}
         </Specimen>
+      </div>
+    </ComponentPreview>
+  );
+}
+
+/** The heading font switch: the same global setting as the right panel, so
+ *  picking here also restyles every heading on the page. The third tab is
+ *  the custom Google Fonts family: picked once through Browse, it stays,
+ *  with its heading weight beside Browse. */
+export function HeadingFontDemo() {
+  const { font, custom, setFont, browse } = useHeadingFont();
+  return (
+    <ComponentPreview hideHeader inspectable={false}>
+      <div className="flex w-full flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <TabsSubtle
+            selectedIndex={HEADING_FONTS.indexOf(font)}
+            onSelect={(i) => setFont(HEADING_FONTS[i])}
+            idPrefix="heading-font-tabs"
+            aria-label="Heading font"
+          >
+            {HEADING_FONTS.map((f, i) => (
+              <TabsSubtleItem key={f} index={i} label={headingFontLabel(f, custom)} />
+            ))}
+          </TabsSubtle>
+          <div className="flex items-center gap-1">
+            <HeadingWeightSelect triggerClassName="min-w-0 w-auto" />
+            <Button variant="secondary" size="sm" onClick={browse}>
+              Browse Google Fonts
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <h3 className="text-site-display text-foreground" style={{ fontVariationSettings: fontWeights.bold }}>
+            Getting started
+          </h3>
+          <h3 className="text-site-title text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
+            Install the components you need
+          </h3>
+          <p className="text-site-body text-muted-foreground">
+            Body text stays in Inter, so only the hierarchy changes voice.
+          </p>
+        </div>
       </div>
     </ComponentPreview>
   );

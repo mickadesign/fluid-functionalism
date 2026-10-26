@@ -4,7 +4,7 @@
   "title": "Command Menu",
   "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; subtle tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
   "dependencies": [
-    "motion@^14.4.0",
+    "motion@^14.6.0",
     "lucide-react"
   ],
   "registryDependencies": [
