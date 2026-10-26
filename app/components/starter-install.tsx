@@ -10,6 +10,7 @@ import { useSizeContext } from "@/lib/size-context";
 import { useIconLibrary } from "@/lib/docs/icon-playground";
 import { useBase } from "@/lib/base-context";
 import type { StarterSettings } from "@/lib/starter/settings";
+import { useHeadingFont } from "@/lib/docs/heading-font";
 
 /** The current "Make them yours" settings, as the starter spells them. */
 function useStarterSettings(): StarterSettings {
@@ -24,17 +25,19 @@ function useStarterSettings(): StarterSettings {
 /**
  * Home page "Copy install prompt": a brief that has a coding agent start a
  * new app from the starter, with every component and the visitor's "Make
- * them yours" settings. The prompt follows the settings live (panel or T,
- * R, S, I).
+ * them yours" settings and heading font. The prompt follows the settings
+ * live (panel or T, R, S, I, F). On the home page and in the right panel.
  */
-export function StarterPromptButton({ size }: { size?: ButtonSize }) {
+export function StarterPromptButton({ size, className }: { size?: ButtonSize; className?: string }) {
   const settings = useStarterSettings();
+  const { font, custom, weight } = useHeadingFont();
   return (
     <CopyPromptButton
       label="Copy install prompt"
-      prompt={buildStarterPrompt(settings)}
+      prompt={buildStarterPrompt(settings, { font, custom, weight })}
       size={size}
-      onCopy={() => track("Starter prompt copied", { base: settings.base })}
+      className={className}
+      onCopy={() => track("Starter prompt copied", { base: settings.base, headingFont: font })}
     />
   );
 }

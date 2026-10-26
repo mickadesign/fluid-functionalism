@@ -80,3 +80,47 @@ describe("the starter Copy prompt", () => {
     expect(prompt).not.toContain("\u2014");
   });
 });
+
+describe("the starter Copy prompt's heading font", () => {
+  const settings = STARTER_DEFAULTS;
+
+  it("adds nothing for Inter", () => {
+    expect(buildStarterPrompt(settings, { font: "inter", custom: null, weight: null })).toBe(buildStarterPrompt(settings));
+  });
+
+  it("sets up Source Serif 4 the way the site draws it", () => {
+    const prompt = buildStarterPrompt(settings, { font: "source-serif", custom: null, weight: null });
+    expect(prompt).toContain(", Source Serif 4 headings.");
+    expect(prompt).toContain('import { Source_Serif_4 } from "next/font/google"');
+    // eslint-disable-next-line no-restricted-syntax -- prompt text for the agent's CSS, not a style here
+    expect(prompt).toContain(`'wght' 450, 'opsz' 25 !important`);
+    expect(prompt).toContain("--fs-display: 32px");
+    // The starter itself is unchanged: same command, same slug.
+    expect(prompt).toContain(starterCommand(settings));
+  });
+
+  it("loads a variable Google family with its axes and the picked weight", () => {
+    const prompt = buildStarterPrompt(settings, {
+      font: "custom",
+      custom: { n: "Fraunces", a: { opsz: [9, 144], wght: [100, 900] } },
+      weight: 600,
+    });
+    expect(prompt).toContain(", Fraunces headings.");
+    expect(prompt).toContain('{ subsets: ["latin"], axes: ["opsz"], variable: "--font-heading" }');
+    expect(prompt).toContain("font-weight: 600 !important; }");
+    expect(prompt).not.toContain("h1 { font-weight: 700");
+  });
+
+  it("loads only the cuts a static family needs, with Auto's role weights", () => {
+    const prompt = buildStarterPrompt(settings, {
+      font: "custom",
+      custom: { n: "DM Mono", w: [300, 400, 500] },
+      weight: null,
+    });
+    expect(prompt).toContain('import { DM_Mono } from "next/font/google"');
+    expect(prompt).toContain('weight: ["500"]');
+    expect(prompt).toContain("font-weight: 550 !important; } and h1 { font-weight: 700 !important; }");
+    expect(prompt).toContain("DM Mono draws the nearest of its weights (300, 400, 500)");
+    expect(prompt).not.toContain("\u2014");
+  });
+});

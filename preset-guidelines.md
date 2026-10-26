@@ -27,7 +27,8 @@ lookup, decodable forever.
 | `lib/registry-urls.mjs` | bundler-safe twin of the postbuild's `depUrl` (parity-tested) |
 
 Registered tags: `s` sidebar · `c` card · `m` input-message ·
-`q` ask-user-questions · `d` dropdown · `b` combobox — all installable. (`q` began share-only; its
+`q` ask-user-questions · `d` dropdown · `b` combobox · `k` command-menu ·
+`n` calendar · `p` date-picker — all installable. (`q` began share-only; its
 globals fields were APPENDED when it became installable — the worked
 example of the append rule: pre-existing `q` codes still decode, with
 default globals.)

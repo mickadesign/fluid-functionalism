@@ -117,6 +117,8 @@ import {
   useCommandMenuItems,
 } from "@/lib/docs/command-menu-items";
 import { Elevated } from "@/lib/elevated";
+import { Calendar, type DateRange } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
 import { BentoTileContext } from "@/app/components/bento-card";
 import { usePreviewPlayback } from "@/lib/docs/preview-playback";
 import { cn } from "@/lib/utils";
@@ -412,6 +414,40 @@ function SelectPreview() {
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+// A stay already picked across the month break, so the band shows from the
+// first frame; 2 months side by side once the tile is wide enough. Cells
+// shrink to 30px so a 6-week month fits the 300px row.
+function CalendarPreview() {
+  const narrow = useNarrowFrame();
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const today = new Date();
+    return { from: addDays(today, 3), to: addDays(today, 8) };
+  });
+  return (
+    <Calendar
+      mode="range"
+      numberOfMonths={narrow ? 1 : 2}
+      orientation="horizontal"
+      cellSize={30}
+      selected={range}
+      onSelect={setRange}
+    />
+  );
+}
+
+function DatePickerPreview() {
+  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  return (
+    <div className="flex w-full max-w-[280px] justify-center">
+      <DatePicker value={date} onValueChange={setDate} />
     </div>
   );
 }
@@ -897,10 +933,12 @@ export const previewMap: Record<string, React.FC> = {
   badge: BadgePreview,
   "carousel-dots": CarouselDotsPreview,
   button: ButtonPreview,
+  calendar: CalendarPreview,
   "checkbox-group": CheckboxPreview,
   "color-picker": ColorPickerPreview,
   combobox: ComboboxPreview,
   "command-menu": CommandMenuPreview,
+  "date-picker": DatePickerPreview,
   dialog: DialogPreview,
   dropdown: DropdownPreview,
   "input-copy": InputCopyPreview,

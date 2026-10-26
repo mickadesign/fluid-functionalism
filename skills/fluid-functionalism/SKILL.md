@@ -6,15 +6,15 @@ description: >-
   hover highlight that glides to the item nearest the cursor, labels that
   change weight without layout shift. Use whenever the user mentions Fluid
   Functionalism, @fluid, or fluidfunctionalism.com, asks for UI with
-  satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or
-  Base UI project, builds any interface (settings dialogs, sidebars, command
-  menus, chat UIs, forms, lists, tables) in a project with @fluid components
+  satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or Base
+  UI project, builds any interface (settings dialogs, sidebars, command menus,
+  chat UIs, forms, lists, tables) in a project with @fluid components
   installed, asks to review/audit existing UI motion against the system, or
   asks to update installed @fluid components or what changed in a release.
   Also use before hand-writing animation code (hover highlights, icon swaps,
-  weight changes, enter/exit transitions) there, so custom code follows the
-  system instead of inventing timings. Bundled scripts read the stack fresh
-  each run (deps, flavor, MotionConfig, Inter opsz) and write nothing.
+  weight changes, enter/exit transitions, page reveals, skeleton loading)
+  there, so custom code follows the system instead of inventing timings.
+  Bundled scripts read the stack fresh each run and write nothing.
 ---
 
 # Fluid Functionalism
@@ -264,6 +264,14 @@ system:
   that moves, the slower the spring. Never hand-write a `duration` — import
   the token, and use its paired `.exit` tween for dismissals so exits read
   crisp instead of replaying the entrance backwards.
+- **Page reveals are 1 class.** Install `@fluid/reveal`, then put 1 class
+  on the page's container: `reveal-landing` for a page read once,
+  `reveal-product` for the app, `-subtle` for less. Slow data in the app
+  shows shadcn's Skeleton in a `reveal-swap`, which crossfades it into the
+  real block; `reveal-items` on both hands rows over one by one. Never
+  hand-roll a `whileInView` fade on every element, and keep the hero image
+  and headline out of any reveal. Rules and recipe:
+  [references/custom-motion.md](references/custom-motion.md#page-reveals-fluidreveal).
 - **One hover highlight per list.** Any custom list, menu, strip, or grid with
   hover uses `useFluidHover` + `<FluidHoverHighlight />` (install
   `@fluid/use-fluid-hover`) — never a per-row `:hover` background next to

@@ -15,11 +15,12 @@ import { cn } from "@/lib/utils";
  * backfills column 1 with the neighboring smalls, so the wide card alternates
  * left/right band by band.
  *
- * The size mix is balanced so the grid fills with NO holes at both md and xl:
- * smalls needed = 2·(larges) + 1·(mediums) = 2·5 + 6 = 16 = smalls available
- * (and an even small count keeps md's half-width pairs complete). Adding a
- * card or changing a gridSize breaks that equation — rebalance before
- * shipping or the bottom rows develop holes again.
+ * The size mix is balanced so the grid fills with NO holes at xl:
+ * smalls needed = 2·(larges) + 1·(mediums) = 2·5 + 7 = 17 = smalls available.
+ * At md (2 cols) only smalls take one column, so an odd small count leaves a
+ * half row: the last small then spans the full row there (and goes back to
+ * one column at xl). Adding a card or changing a gridSize breaks the xl
+ * equation — rebalance before shipping or the bottom rows develop holes.
  */
 const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "input-message" },                  // band 1 · medium left
@@ -49,6 +50,8 @@ const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "color-picker" },                   // band 11 · large left
   { slug: "tooltip" },
   { slug: "badge" },
+  { slug: "calendar", side: "right" },        // band 12 · medium right
+  { slug: "date-picker" },
 ];
 
 /** Stage padding overrides, by slug (the default is px-6 py-16). */
@@ -57,6 +60,7 @@ const STAGE_PADDING: Record<string, string> = {
   table: "px-6 py-6",
   card: "px-6 py-5",
   "command-menu": "px-6 py-8",
+  calendar: "px-4 py-2",
 };
 
 /**
@@ -95,6 +99,14 @@ interface BentoGridProps {
   components: ComponentEntry[];
 }
 
+/** Grid footprint per card size. The reveal-scroll wrapper is the grid
+ *  item, so it carries the span; the card inside fills it. */
+const sizeClasses: Record<string, string> = {
+  large: "md:col-span-2 md:row-span-2",
+  medium: "md:col-span-2",
+  small: "col-span-1",
+};
+
 export function BentoGrid({ components }: BentoGridProps) {
   const componentMap = new Map(components.map((c) => [c.slug, c]));
   const ordered = displayOrder.flatMap(({ slug, side }) => {
@@ -103,6 +115,9 @@ export function BentoGrid({ components }: BentoGridProps) {
   });
   const cols = useGridCols();
   const { isNew } = useReleaseMarks();
+  // An odd number of smalls leaves a half row at md: the last one fills it.
+  const smalls = ordered.filter(({ entry }) => (entry.gridSize ?? "small") === "small");
+  const wideAtMd = smalls.length % 2 === 1 ? smalls[smalls.length - 1]?.entry.slug : undefined;
 
   return (
     <div
@@ -119,24 +134,40 @@ export function BentoGrid({ components }: BentoGridProps) {
       {ordered.map(({ entry: c, side }) => {
         const Preview = previewMap[c.slug];
         if (!Preview) return null;
+        // The wrapper is the grid item and the reveal-scroll section. The
+        // card inside keeps its framer layout transform, which a CSS
+        // animation on the same element would override.
         return (
-          <BentoCard
+          <div
             key={c.slug}
-            slug={c.slug}
-            name={c.name}
-            isNew={isNew(c.slug)}
-            gridSize={c.gridSize}
-            className={side === "right" ? "xl:col-start-2" : undefined}
-            // Tall previews spend less of the row on stage padding: a whole
-            // app shell, the command menu's panel, and the two medium tiles
-            // that show a list (a 4-row table, 4 inline cards).
-            previewClassName={STAGE_PADDING[c.slug]}
-            animateLayout
+            className={cn(
+              "reveal-scroll flex",
+              sizeClasses[c.gridSize ?? "small"],
+              side === "right" && "xl:col-start-2",
+              c.slug === wideAtMd && "md:col-span-2 xl:col-span-1"
+            )}
           >
-            <BentoTileContext.Provider value={true}>
-              <Preview />
-            </BentoTileContext.Provider>
-          </BentoCard>
+            <BentoCard
+              slug={c.slug}
+              name={c.name}
+              isNew={isNew(c.slug)}
+              className="min-w-0 flex-1"
+              // Tall previews spend less of the row on stage padding: a whole
+              // app shell, the command menu's panel, and the two medium tiles
+              // that show a list (a 4-row table, 4 inline cards).
+              previewClassName={STAGE_PADDING[c.slug]}
+              animateLayout
+            >
+              <BentoTileContext.Provider value={true}>
+                {/* The component follows its card in (a nested
+                    reveal-scroll runs half a range behind). It fills the
+                    stage and re-centers, so previews lay out as before. */}
+                <div className="reveal-scroll flex size-full min-h-0 items-center justify-center">
+                  <Preview />
+                </div>
+              </BentoTileContext.Provider>
+            </BentoCard>
+          </div>
         );
       })}
     </div>

@@ -2,9 +2,11 @@ import { AccordionPlayground } from "./accordion";
 import { AskUserQuestionsPlayground } from "./ask-user-questions";
 import { BannerPlayground } from "./banner";
 import { ButtonPlayground } from "./button";
+import { CalendarPlayground } from "./calendar";
 import { CardPlayground } from "./card";
 import { ComboboxPlayground } from "./combobox";
 import { CommandMenuPlayground } from "./command-menu";
+import { DatePickerPlayground } from "./date-picker";
 import { DropdownPlayground } from "./dropdown";
 import { InputMessagePlayground } from "./input-message";
 import { SidebarPlayground } from "./sidebar";
@@ -28,9 +30,11 @@ export const playgroundMap: Record<string, PlaygroundComponent> = {
   "ask-user-questions": AskUserQuestionsPlayground,
   banner: BannerPlayground,
   button: ButtonPlayground,
+  calendar: CalendarPlayground,
   card: CardPlayground,
   combobox: ComboboxPlayground,
   "command-menu": CommandMenuPlayground,
+  "date-picker": DatePickerPlayground,
   dropdown: DropdownPlayground,
   "input-message": InputMessagePlayground,
   sidebar: SidebarPlayground,

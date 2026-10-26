@@ -8,6 +8,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { cn } from "@/lib/utils";
 import {
   BalanceDemo,
+  HeadingFontDemo,
   NumbersDemo,
   PrettyDemo,
   TrimDemo,
@@ -114,7 +115,10 @@ export default function TypographyDoc() {
           <Rule>2 text colors: foreground and muted.</Rule>
           <Rule>
             1 font family:{" "}
-            <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>.
+            <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>. Headings
+            can switch to{" "}
+            <ExternalLink href="https://fonts.google.com/specimen/Source+Serif+4">Source Serif 4</ExternalLink>{" "}
+            or any Google Fonts family.
           </Rule>
           <Rule>1 paragraph style.</Rule>
         </ul>
@@ -135,6 +139,14 @@ export default function TypographyDoc() {
           5 styles, each a size and a line height. Press<Code>S</Code>for compact.
         </P>
         <TypeScaleSpecimen />
+      </DocSection>
+
+      <DocSection title="Heading font">
+        <P>
+          3 choices for headings: Inter, Source Serif 4, or any Google Fonts family. Source Serif 4
+          has the same weight and optical size axes as Inter. Press<Code>F</Code>to cycle.
+        </P>
+        <HeadingFontDemo />
       </DocSection>
 
       <DocSection title="Markdown">

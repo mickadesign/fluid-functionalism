@@ -51,6 +51,7 @@ export const FF_PARTS = [
   "dropdown-search",
   "dropdown-sub",
   "sidebar-core",
+  "date-picker-core",
   "sidebar-menu",
   "sidebar-menu-grid",
   "workspace-header",

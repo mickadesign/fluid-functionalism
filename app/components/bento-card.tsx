@@ -8,12 +8,6 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { Badge } from "@/registry/default/badge";
 
-const sizeClasses: Record<string, string> = {
-  large: "md:col-span-2 md:row-span-2",
-  medium: "md:col-span-2",
-  small: "col-span-1",
-};
-
 /** True inside a home Showcase tile (a 300px grid row). Previews that
  *  also serve the full /demo stage and the /compare pairs read it to trim
  *  themselves for the tile alone. */
@@ -23,7 +17,6 @@ interface BentoCardProps {
   slug: string;
   name: string;
   isNew?: boolean;
-  gridSize?: string;
   /** Overrides the stage's padding for a preview that needs a taller window.
    *  Rows are pinned at 300px (`grid-auto-rows`), so a preview can only be
    *  shown more fully by spending less of that height on padding. */
@@ -43,7 +36,7 @@ interface BentoCardProps {
   children: ReactNode;
 }
 
-export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout = false, action, className: extraClassName, previewClassName, style, children }: BentoCardProps) {
+export function BentoCard({ slug, name, isNew, animateLayout = false, action, className: extraClassName, previewClassName, style, children }: BentoCardProps) {
   // No click-to-focus wiring here. Previously a mousedown on empty space
   // inside the card routed focus to the preview's first interactive element
   // (so the user could keyboard-drive the demo afterwards). In practice it
@@ -87,8 +80,10 @@ export function BentoCard({ slug, name, isNew, gridSize = "small", animateLayout
         // would fire every inner button's hover state at once whenever the
         // card itself was hovered. The footer link below uses a NAMED
         // `group/link`, which is properly scoped.
-        "relative flex flex-col rounded-xl border overflow-hidden outline-none transition-[shadow,border-color] duration-80 bento-card-border",
-        sizeClasses[gridSize],
+        // overflow-clip, not -hidden: hidden makes the card a scroll
+        // container, which would capture the view() timeline of the
+        // reveal-scroll content inside it on the Showcase.
+        "relative flex flex-col rounded-xl border overflow-clip outline-none transition-[shadow,border-color] duration-80 bento-card-border",
         extraClassName,
       )}
       style={style}

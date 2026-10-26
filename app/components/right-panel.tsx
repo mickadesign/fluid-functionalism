@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
@@ -32,8 +32,28 @@ import { showShortcutToast } from "@/lib/docs/settings-toast";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBase, type Base } from "@/lib/base-context";
+import { StarterPromptButton } from "@/app/components/starter-install";
+import { useHeadingFont, headingFontLabel, HeadingWeightSelect } from "@/lib/docs/heading-font";
+import type { HeadingFont } from "@/lib/docs/site-settings";
 
 const REPO = "mickadesign/fluid-functionalism";
+
+/** The heading font select's action row: opens the Google Fonts picker. */
+const BROWSE = "__browse";
+
+const stop = (e: SyntheticEvent) => e.stopPropagation();
+
+/** Wraps a select's popup inside a row that carries a shortcut tooltip.
+ *  React events bubble through portals, so without it, hovering or focusing
+ *  the open list reaches the tooltip's trigger and shows "Press X to cycle"
+ *  over the options. `contents` keeps the wrapper out of the row's layout. */
+function TooltipPopupGuard({ children }: { children: ReactNode }) {
+  return (
+    <div className="contents" onPointerMove={stop} onPointerDown={stop} onFocus={stop}>
+      {children}
+    </div>
+  );
+}
 
 function formatStars(n: number): string {
   if (n >= 1000) {
@@ -126,6 +146,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
   const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
+  const { font, fonts, custom, setFont, browse } = useHeadingFont();
 
   const MonitorIcon = useIcon("monitor");
   const SunIcon = useIcon("sun");
@@ -176,13 +197,15 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
                 className="min-w-0 w-auto h-7 px-2 text-site-body"
                 icon={themeOptions.find((o) => o.value === theme)?.icon}
               />
-              <SelectContent>
-                {themeOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <TooltipPopupGuard>
+                <SelectContent>
+                  {themeOptions.map((o, i) => (
+                    <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </TooltipPopupGuard>
             </Select>
           </div>
         </Tooltip>
@@ -195,13 +218,15 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
                 className="min-w-0 w-auto h-7 px-2 text-site-body"
                 icon={shapeOptions.find((o) => o.value === shape)?.icon}
               />
-              <SelectContent>
-                {shapeOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <TooltipPopupGuard>
+                <SelectContent>
+                  {shapeOptions.map((o, i) => (
+                    <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </TooltipPopupGuard>
             </Select>
           </div>
         </Tooltip>
@@ -213,13 +238,15 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
                 variant="borderless"
                 className="min-w-0 w-auto h-7 px-2 text-site-body"
               />
-              <SelectContent>
-                {sizeOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <TooltipPopupGuard>
+                <SelectContent>
+                  {sizeOptions.map((o, i) => (
+                    <SelectItem key={o.value} value={o.value} index={i}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </TooltipPopupGuard>
             </Select>
           </div>
         </Tooltip>
@@ -231,16 +258,53 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
                 variant="borderless"
                 className="min-w-0 w-auto h-7 px-2 text-site-body"
               />
-              <SelectContent>
-                {iconOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <TooltipPopupGuard>
+                <SelectContent>
+                  {iconOptions.map((o, i) => (
+                    <SelectItem key={o.value} value={o.value} index={i}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </TooltipPopupGuard>
             </Select>
           </div>
         </Tooltip>
+        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">F</kbd>&ensp; to cycle</span>} side={tooltipSide}>
+          <div className="flex items-center justify-between">
+            <span className="text-site-body text-muted-foreground">Heading font</span>
+            {/* The last row is an action, not a value: it opens the
+                Google Fonts picker and leaves the selection alone. */}
+            <Select
+              value={font}
+              onValueChange={(v) => (v === BROWSE ? browse() : setFont(v as HeadingFont))}
+            >
+              <SelectTrigger
+                variant="borderless"
+                className="min-w-0 w-auto h-7 px-2 text-site-body"
+              />
+              <TooltipPopupGuard>
+                <SelectContent>
+                  {fonts.map((f, i) => (
+                    <SelectItem key={f} value={f} index={i}>
+                      {headingFontLabel(f, custom)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={BROWSE} index={fonts.length}>
+                    Browse Google Fonts…
+                  </SelectItem>
+                </SelectContent>
+              </TooltipPopupGuard>
+            </Select>
+          </div>
+        </Tooltip>
+        {/* Only while a custom Google Fonts family is the heading font. */}
+        {font === "custom" && custom && (
+          <div className="flex items-center justify-between">
+            <span className="text-site-body text-muted-foreground">Heading weight</span>
+            <HeadingWeightSelect triggerClassName="min-w-0 w-auto h-7 px-2 text-site-body" />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-site-body text-muted-foreground">Primitive</span>
           <Select value={base} onValueChange={(v) => setBase(v as Base)}>
@@ -258,6 +322,11 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
           </Select>
         </div>
       </div>
+
+      {/* The home page's install prompt, carrying everything set above.
+          mb-3: with the column's gap-2, 20px to the credit, the same as the
+          rows' py-3 + gap-2 above it. */}
+      <StarterPromptButton size="sm" className="mb-3 w-full" />
 
       {/* Credit */}
       <div className="flex items-center gap-2">

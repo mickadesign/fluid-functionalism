@@ -26,7 +26,8 @@ interface NavEntry {
 }
 
 /** The New dot, in the changelog's blue: on what the latest release lists as
- *  New, so the dots move on with each month's release. */
+ *  New and on pages landed since (AHEAD_OF_RELEASE), so the dots move on
+ *  with each month's release. */
 function NewDot() {
   // Rendered as a flex sibling of the weight-animated label (the row's gap
   // provides the spacing), matching the old NavItem dot's visual position.
@@ -48,9 +49,8 @@ function NavGroup({
   pathname: string;
   ariaLabel: string;
 }) {
-  // Release-only: pages listed ahead of the next release get their badge
-  // elsewhere, and their dot once the release lands.
-  const { isReleaseNew } = useReleaseMarks();
+  // New in the latest release, or landed since and listed ahead of the next.
+  const { isNew } = useReleaseMarks();
   return (
     // A labelled group (System, Components) gets 16px above it instead of
     // the group's 8px, so each section starts clear of the one before.
@@ -79,7 +79,7 @@ function NavGroup({
             <SidebarMenuItem key={entry.slug}>
               <SidebarMenuButton render={<Link href={href} />} isActive={pathname === href}>
                 {entry.name}
-                {isReleaseNew(entry.slug) && <NewDot />}
+                {isNew(entry.slug) && <NewDot />}
               </SidebarMenuButton>
             </SidebarMenuItem>
           );
