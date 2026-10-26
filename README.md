@@ -114,7 +114,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | `badge` | Compact label with solid and dot variants, the Tailwind color palette, and 2 sizes |
 | [Banner](https://www.fluidfunctionalism.com/docs/banner) | `banner` · `base/banner` | Status message in 5 statuses and 2 contrasts with a status icon, up to 3 actions, a dismiss that collapses its height, and a fixed full-bleed variant |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | `button` · `base/button` | Variants, sizes, loading state, icon slots, and a weight shift on hover |
-| [Calendar](https://www.fluidfunctionalism.com/docs/calendar) | `calendar` · `base/calendar` | Month grid for a day or a range with one fluid hover across 2 months, a range band that follows the pointer, booked days, and ISO week numbers |
+| [Calendar](https://www.fluidfunctionalism.com/docs/calendar) | `calendar` · `base/calendar` | Month grid for a day or a range with one fluid hover across 2 months, a range band that follows the pointer, booked and unavailable days, and ISO week numbers |
 | [Card](https://www.fluidfunctionalism.com/docs/card) | `card` | shadcn's compositional card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, and 2-D fluid hover |
 | [CarouselDots](https://www.fluidfunctionalism.com/docs/carousel-dots) | `carousel-dots` | Carousel dots, static or on autoplay, with fluid-hover click areas and a current pill that fills over each slide |
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments |
@@ -166,7 +166,7 @@ Compositions that install as one item each, with every component they use.
 
 ## Presets
 
-The Sidebar, Card, InputMessage, AskUserQuestions, Dropdown, Combobox, and CommandMenu playgrounds encode the configuration you build in the rail into a short code. Nothing is stored: the code is the configuration itself. Install it as one block that composes the component with the options you picked:
+The Sidebar, Card, InputMessage, AskUserQuestions, Dropdown, Combobox, CommandMenu, Calendar, and DatePicker playgrounds encode the configuration you build in the rail into a short code. Nothing is stored: the code is the configuration itself. Install it as one block that composes the component with the options you picked:
 
 ```bash
 npx shadcn@latest add https://www.fluidfunctionalism.com/r/preset/<code>.json
