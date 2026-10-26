@@ -6,7 +6,7 @@
   "dependencies": [
     "@radix-ui/react-dialog",
     "motion",
-    "lucide-react",
+    "lucide-react@^1.61.0",
     "class-variance-authority"
   ],
   "registryDependencies": [

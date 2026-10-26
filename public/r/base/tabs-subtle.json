@@ -6,7 +6,7 @@
   "dependencies": [
     "@base-ui/react@^1.9.0",
     "motion",
-    "lucide-react"
+    "lucide-react@^1.61.0"
   ],
   "registryDependencies": [
     "utils",
