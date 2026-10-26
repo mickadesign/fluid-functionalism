@@ -4,7 +4,7 @@
   "title": "Banner",
   "description": "Status message built from parts (Banner, BannerTitle, BannerDescription, BannerActions, BannerAction): 5 statuses (filled glyphs for info, success, warning and error; the icon set's outline info icon for default), low or high contrast, primary, secondary and ghost actions (the library Button) that trail a one-line banner (primary at the edge) and drop under a description (primary first), a dismiss that collapses its height, and a fixed variant that sticks full-bleed to the top of the page.",
   "dependencies": [
-    "motion"
+    "motion@^14.6.0"
   ],
   "registryDependencies": [
     "utils",

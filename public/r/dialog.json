@@ -4,8 +4,8 @@
   "title": "Dialog",
   "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Built on Radix UI Dialog with overlay, header, footer, title, and description sub-components.",
   "dependencies": [
-    "motion",
-    "@radix-ui/react-dialog",
+    "motion@^14.6.0",
+    "@radix-ui/react-dialog@^1.3.1",
     "lucide-react"
   ],
   "registryDependencies": [

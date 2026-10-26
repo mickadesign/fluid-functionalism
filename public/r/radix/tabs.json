@@ -4,8 +4,8 @@
   "title": "Tabs",
   "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Built on Radix UI Tabs.",
   "dependencies": [
-    "motion",
-    "@radix-ui/react-tabs",
+    "motion@^14.6.0",
+    "@radix-ui/react-tabs@^1.2.1",
     "lucide-react"
   ],
   "registryDependencies": [

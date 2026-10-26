@@ -4,7 +4,7 @@
   "title": "Ask User Questions",
   "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, fluid hover, and multi-question navigation. Auto-advances on selection in single-select.",
   "dependencies": [
-    "motion",
+    "motion@^14.6.0",
     "@base-ui/react@^1.9.0"
   ],
   "registryDependencies": [

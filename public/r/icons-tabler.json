@@ -4,7 +4,7 @@
   "title": "Tabler Icon Set",
   "description": "Tabler glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Tabler.",
   "dependencies": [
-    "@tabler/icons-react"
+    "@tabler/icons-react@^3.49.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/icon-context.json"

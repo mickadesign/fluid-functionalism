@@ -4,8 +4,8 @@
   "title": "Date Picker",
   "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Radix flavor.",
   "dependencies": [
-    "@radix-ui/react-popover",
-    "motion",
+    "@radix-ui/react-popover@^1.3.1",
+    "motion@^14.6.0",
     "lucide-react"
   ],
   "registryDependencies": [

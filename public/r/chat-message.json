@@ -4,7 +4,7 @@
   "title": "Chat Message",
   "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
   "dependencies": [
-    "motion"
+    "motion@^14.6.0"
   ],
   "registryDependencies": [
     "utils",

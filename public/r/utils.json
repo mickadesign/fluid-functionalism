@@ -4,8 +4,8 @@
   "title": "Utilities",
   "description": "Utility function for merging Tailwind CSS classes with clsx and tailwind-merge.",
   "dependencies": [
-    "clsx",
-    "tailwind-merge"
+    "clsx@^2.1.1",
+    "tailwind-merge@^3.7.0"
   ],
   "files": [
     {

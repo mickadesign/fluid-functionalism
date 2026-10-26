@@ -5,7 +5,7 @@
   "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion",
+    "motion@^14.6.0",
     "lucide-react"
   ],
   "registryDependencies": [

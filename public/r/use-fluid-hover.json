@@ -4,7 +4,7 @@
   "title": "useFluidHover + FluidHoverHighlight",
   "description": "Fluid hover: the hook that tracks the item nearest the cursor within a container, and the one highlight component that springs between the rects it measures.",
   "dependencies": [
-    "motion"
+    "motion@^14.6.0"
   ],
   "registryDependencies": [
     "utils",

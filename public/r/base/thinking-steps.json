@@ -5,7 +5,7 @@
   "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion",
+    "motion@^14.6.0",
     "lucide-react"
   ],
   "registryDependencies": [
