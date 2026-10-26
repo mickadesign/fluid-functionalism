@@ -14,14 +14,13 @@ export interface ReleaseMarks {
 }
 
 interface MarkLookup {
-  /** New in the latest release, or landed since: the New badges. */
+  /** New in the latest release, or landed since: the New badges and the
+   *  sidebar's dots. */
   isNew: (slug: string) => boolean;
-  /** New in the latest release only: the sidebar's dots. */
-  isReleaseNew: (slug: string) => boolean;
   isUpdated: (slug: string) => boolean;
 }
 
-const NONE: MarkLookup = { isNew: () => false, isReleaseNew: () => false, isUpdated: () => false };
+const NONE: MarkLookup = { isNew: () => false, isUpdated: () => false };
 
 const ReleaseMarksContext = createContext<MarkLookup>(NONE);
 
@@ -32,7 +31,6 @@ export function ReleaseMarksProvider({ marks, children }: { marks: ReleaseMarks;
     const updated = new Set(marks.updated);
     return {
       isNew: (slug) => added.has(slug) || ahead.has(slug),
-      isReleaseNew: (slug) => added.has(slug),
       isUpdated: (slug) => updated.has(slug),
     };
   }, [marks]);

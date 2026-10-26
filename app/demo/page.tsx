@@ -63,6 +63,8 @@ function DemoPageInner() {
     "button",
     "dropdown",
     "combobox",
+    "calendar",
+    "date-picker",
     "command-menu",
     "color-picker",
     "input-group",

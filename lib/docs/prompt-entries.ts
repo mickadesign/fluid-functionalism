@@ -34,6 +34,8 @@ export const PROMPT_ENTRIES: Record<string, PromptEntry> = {
       "Reduced motion is handled inside the component itself via `useReducedMotion()`: travel snaps, the 0.08s opacity fade stays \u2014 so an installed copy behaves correctly without the consumer wrapping their app in `MotionConfig`.",
       "Only click targets register: a card without `href` or `onClick` does not join the highlight, because lighting it would promise a click with nowhere to land. One list per group of alternatives \u2014 children ride in the parent's list, a divider between different kinds of rows means a new container and a new hook.",
       "The docs' skip-list is explicit UX judgment: skip fluid hover when a wrong click would hurt, when only some items are clickable, when there is a lot of empty space around items, or when rows change place as you scroll.",
+      "Overlays are placed from `offsetTop`/`offsetLeft`, which round to whole pixels (they ignore transforms on purpose, so a scaling popup measures right). Keep the layout above the items on whole pixels: a fractional height higher up (a row at 80% of a 36px cell, 28.8px) sets the highlight and any ring a fraction off every item below. Round the height (CSS `round()`, with a `calc()` fallback) rather than changing how the hook measures.",
+      "A wrapper with a mask, a clip-path or a filter makes its own stacking layer: everything inside it paints as one block, above or below the highlight but never between. When items live in such a wrapper, render the highlight (and any ring or focus overlay) inside it too; the wrapper isn't a containing block, so the same rects still position them.",
     ],
     usage: `import { useRef } from "react";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
@@ -91,6 +93,49 @@ import { spring } from "@/lib/springs";
       "spring.slow: { type: \"spring\", duration: 0.24, bounce: 0.12, exit: { duration: 0.16 } }. Dialogs, drawers, large surfaces.",
       "spring.<tier>.exit: tween config. Pass as the transition of an exit prop; never reuse the enter spring for a dismissal.",
       "exitFallbackMs(tier): number. Exit duration in ms plus a 100ms buffer, for deferred-unmount timers that guard an exit tween.",
+    ],
+  },
+  reveal: {
+    craft: [
+      "1 class on a page's container, like shadcn's `scroll-fade`. Pure CSS: no JavaScript, no hydration, nothing hidden on the server.",
+      "`reveal-landing` is for a page read once. The 1st child is the hero: its children rise 12px and scale in from 0.94 on first paint, 0.1s apart for 4 steps (the 5th onward arrives with the 4th). Every later child rises and scales in the same way with the scroll on a view() timeline, from when its top edge is 12px inside the viewport to 120px, so nothing starts moving at the very edge. Everything on screen at first paint belongs in the hero, product shot included: a later section that starts on screen sits half revealed, waiting for a scroll, instead of playing on load. For a grid, `reveal-scroll` on each card makes every card a scroll section of its own with the same values, while the section holding them stays still; wrap a card that already animates `transform` (a framer layout node), since the CSS animation would override it. A `reveal-scroll` nested in another follows it half a range later on the way in (72px to 180px by default) and leaves half a range sooner, so a card arrives and then its content; the Showcase wraps each tile and each tile's component this way. Every scroll section and `reveal-scroll` also plays a load step after the hero (from the 4th step, then a step per sibling for 4 steps, and a step later for nested content), so one already on screen at first paint arrives with the page; off screen, the step plays unseen and the scroll takes over. A view() timeline binds to the nearest scroll container and `overflow: hidden` makes one even if it never scrolls, so clip a revealed element's ancestors with `overflow: clip` or its animation never moves. Leaving at the top mirrors it: from when a section's bottom edge is 120px from the top of the viewport to 12px, it fades out, lifts 12px, and scales to 0.94 (the hero too). Product reveals have no exit.",
+      "`reveal-product` is for the app people come back to: every child fades in on first paint, 0.06s apart, with no rise, and nothing moves on scroll: an app's layout should feel like it was already there. Scroll reveals in an app are noise on the 10th visit.",
+      "Slow data in `reveal-product` waits on shadcn's Skeleton (installed with the item). Never swap a skeleton out and the data in on the same frame: the data starts at opacity 0, so the space blinks empty. `reveal-swap` stacks both in 1 grid cell: render the skeleton, then add the real block after it when the data lands, and the skeleton fades out as the block fades in. With `reveal-items` on both, each skeleton row hands over to its real row a step apart. Build the skeleton the size of the real block so nothing shifts, and keep Skeletons inside a block: a Skeleton that is itself an animated child loses its pulse. Skeletons in a preset, a `reveal-items` block, or a `reveal-swap` fade in over 250ms on an even ease-in-out curve before shadcn's pulse starts, so a placeholder arrives instead of popping in. Reduced motion keeps that fade and stops the pulse.",
+      "`reveal-items` on a block keeps the block still and brings its children in one by one, a step apart, for 8 steps: table rows, metrics, and a sidebar's items fill in in order when their data lands instead of all at once. Inside a preset it takes the preset's travel and step; outside one (a sidebar beside the preset) it fades like the product, 0.06s apart.",
+      "`-subtle` tones the gesture down: landing 8px and 0.98 scale, 0.06s steps, 8px to 60px of scroll; product 0.04s steps.",
+      "No new token: landing steps ride `spring.slow` (0.24s, bounce 0.12), the tier for large surfaces; product steps ride `spring.moderate` (0.16s, no bounce), since app blocks are panels and a fade has no travel for a bounce to act on. Both are written as CSS `linear()` in `--reveal-motion`, and only the `from` keyframe is set, so each block lands on its own styles.",
+      "The header, sidebar, and footer stay outside the container, so they never move. A revealed landing section keeps a `transform`, so a `position: fixed` element inside one pins to the section: keep fixed elements outside too.",
+      "Browsers without view() timelines show landing sections still; the on-load steps play everywhere. Reduced motion drops the travel, keeps the on-load fade, and turns the scroll off.",
+    ],
+    usage: `// A page read once: the 1st child is the hero, later children rise on scroll.
+<Header />
+<main className="reveal-landing">
+  <Hero />
+  <ProductShot />
+  <Features />
+</main>
+<Footer />
+
+// The app itself: every child steps in on load, nothing on scroll.
+// Slow data shows a Skeleton block, then swaps in and plays its step.
+import { Skeleton } from "@/components/ui/skeleton";
+
+<Sidebar />
+<main className="reveal-product">
+  <Header />
+  <div className="reveal-swap">
+    <ThreadsSkeleton className="reveal-items" />
+    {threads && <Threads className="reveal-items" rows={threads} />}
+  </div>
+</main>`,
+    props: [
+      ".reveal-landing: class. A page read once: the hero plays on load, every later section rises on scroll, and each leaves the same way at the top. 12px rise, 0.94 scale, 0.1s steps, from 12px to 120px of scroll.",
+      ".reveal-landing-subtle: class. 8px rise, 0.98 scale, 0.06s steps, from 8px to 60px of scroll.",
+      ".reveal-scroll: class. Inside a landing preset, makes a deeper element (a grid card) a scroll section of its own; nested in another, it follows half a range later.",
+      ".reveal-product: class. The app: every block fades in on load, 0.06s apart. Nothing moves on scroll.",
+      ".reveal-product-subtle: class. 0.04s steps.",
+      ".reveal-swap: class. Stacks a skeleton and its real block; add the block when the data lands and one crossfades into the other.",
+      ".reveal-items: class. Children arrive one by one, 8 steps at most, inside a preset or beside it.",
     ],
   },
   scrollbars: {
@@ -170,6 +215,7 @@ function Toolbar() {
       "The prose sheet sits in `@layer components` with every selector inside `:where()`, so it has zero specificity and any utility on an element wins without `!important`. Each selector is scoped whole to `.typeset`, so a list or a `.not-typeset` around the prose changes nothing inside it. `.not-typeset` skips a subtree but keeps its outer spacing, so a component dropped into prose still sits in the rhythm, and plain divs take no rhythm at all, so an embedded component spaces itself.",
       "It styles editors as well as rendered markdown: GFM task lists (remark-gfm classes) and Tiptap's markup (a `li[data-type=taskItem]` with a checkbox label and a content div, tables in `.tableWrapper`) both work as is. A to-do's checkbox is drawn like the library's CheckboxItem: a 16px outline (14px compact) with 5px corners that steps aside for the tick alone when checked, never a filled box. Hovered, the outline darkens, and on a checked box it comes back around the tick. It centers on its first line and sits 8px from its text (4px compact), CheckboxItem's row gap. Every list puts its text 24px in (18px compact): disc bullets and numbers sit in the indent with 4px before their text, like the site's own lists. Sub-items step in 20px (16px compact), whatever the marker. A checked item strikes through, as in Notion; its nested sub-tasks keep their own state.",
       "Space only goes above an element (no `:last-child`, no `:has()`, no `margin-bottom`) and lines wrap plainly (no `text-wrap: pretty` or `balance`, which re-wrap earlier lines as words arrive), so text streamed in at the end of a chat reply never moves what is already on screen. The root also resets `white-space`, so markdown's newlines between blocks don't turn into blank lines inside a pre-wrap chat bubble.",
+      "Trim the invisible copies too: a label that reserves its width with a hidden copy in the same grid cell (the semibold copy behind a weight change, the longest value behind a fixed-width field) needs the same `text-box` trim as the visible text. An untrimmed copy keeps the full line height, the cell grows, and the trimmed label sits at its top instead of centered. Trim a flex row's parts, not the flex container: `text-box` skips flex containers.",
     ],
     usage: `import { typeClass } from "@/lib/type-scale"; // no "use client", fine in server components
 import { useSize } from "@/lib/size-context";
@@ -422,6 +468,57 @@ import { Plus, ArrowRight } from "lucide-react";
       "disabled: boolean (default false). Disables the button.",
     ],
   },
+  calendar: {
+    craft: [
+      "DayPicker v10 (`@daypicker/react`) owns the date math, the roving tabindex, the grid keys and the locale; every part it renders is swapped for a div with the matching ARIA role (`grid`, `row`, `gridcell`), so the grid lays out with flex and one fluid hover scope can span 2 months. DayPicker's own `animate` stays off.",
+      "One `useFluidHover` with `axis: \"xy\"` over every month on screen, rows stacked gap-0, so the highlight glides from Oct 31 to Nov 1 across the gap between the grids. Captions, the weekday row, week numbers and unavailable days are inert: the highlight leaves while the pointer crosses them and fades back in on the next day.",
+      "The highlight follows keyboard focus. A month change re-registers every day under new indices, so the highlight and the focus ring snap to the newly focused cell (`transition={false}`) instead of gliding from the old grid's geometry.",
+      "Selected days and range ends are a solid `bg-foreground text-background` fill, at the regular weight: selection never changes a day's weight. Today is semibold with a 4px dot under the number that turns `text-background` when today is picked. The palette stays neutral: no brand color, no colored today.",
+      "The range is one `--hover` band per week row (a long band reads heavier than a small fill; the highlight over it stacks a step up), drawn as each cell's slice: from the start cell's center to its far edge, full width in the middle, to the end cell's center. Where a row ends, or a month ends while outside days are hidden, the band gets 2px corners, and square ones where the row above or below continues the band at that edge, so stacked rows read as one block.",
+      "While the end is being picked, the band follows the hovered or focused day across both months; the proposed end is the fluid hover highlight itself, restyled as a solid cell with a 1px background-colored ring 1px inside it (radius concentric with the cell: 7px in an 8px cell, round in pill), so it glides to the pointer on the same spring as single select. Cells under it only swap their number to the background color, over 80ms to match the highlight's arrival. The click that commits the end fills the cell in the same frame, with no fade. The highlight sits under filled days, so a second fluid hover layer above the cells carries the same inner ring at 40%, gliding on the same rect and spring and shown only while the lit day is a filled start, end or single selection. A preview that would cross a booked day is not drawn, matching `excludeDisabled`, which resets a range that spans one.",
+      "Range picks use `resetOnSelect`: the first click starts a new range, the second sets the end (either side of the start). Escape before the second pick restores the range that was there before.",
+      "Booked days are disabled, muted, struck through, and announced with a \", booked\" suffix on the day's label. Days outside `available`, `disabled` days and the past are disabled and muted without the line-through.",
+      "`cellSize` writes `--cell-size` (36px, 32px compact); cells, the weekday row, the week number column, the nav buttons (78% of the cell) and the today dot derive from it, while the numbers stay on the body type role. `fill` stretches the columns and caps the row height at `cellSize`. `dayDetail` stacks a caption-size line under the number, 8px below it (both trimmed, so the gap is exactly that), muted; on a selected day everything in it takes the fill's text color, overriding any color the caller gave it, so a colored price never vanishes on the fill. It drops today's dot in favor of the weight, describes the day (aria-describedby) so any node reads after the date, and is memoized per day so pointer moves while picking don't rerun it.",
+      "The weekday row's height (80% of the cell) is rounded down to whole pixels with CSS `round()`, a plain `calc()` kept as the fallback: the hover layers are placed from `offsetTop`, which rounds, so a fractional row (36 x 0.8 = 28.8) would set them a fraction of a pixel off every day below and show as an uneven inner ring.",
+      "A month change slides the month out while the next one comes in from the other side, on `spring.moderate`, panels stacked in one grid cell so the incoming days are measured where they land; one month travels a third of its width (plus the gap) and crossfades where the two meet, the title fading out before the chevron pair and each panel carrying its weekday row as the grid's column headers; side by side months travel a full month width plus the gap, each with its own weekday row in the sliding panel (labels move with their days) and at the taller month's height (nothing resizes mid-slide), inside a strip whose mask fades 8px at the outer edges (the strip reaches 8px past the months, so nothing is dimmed at rest); the month leaving one slot and the same month entering the next share a path and read as one strip (the outgoing copy of a month still on screen hides, so its translucent band never stacks into a darker blink); side by side captions fade out on their chevron's side through a mask (clear under the chevron, then a 24px ramp, the scroll-fade recipe), so a title never slides under it; the grid box springs between 5- and 6-week heights from a measured `offsetHeight`, never `\"auto\"`. Reduced motion keeps the crossfade only.",
+      "2 months hide outside days so no date renders twice. `orientation=\"auto\"` compares the container's width with what 2 months need at the current `cellSize`; stacked months share one sticky weekday row, page up and down (the chevrons turn to point up and down) and slide like the side-by-side strip, vertically: every grid travels the distance between the two month slots, measured on the layout the change starts from; a mask fades them out over 16px under the sticky weekday row (following it as the months scroll), and the chevrons float outside the strip over the first caption row, where the mask cuts a soft hole (16px fade on its left, 8px at its bottom), so a sliding month goes under both instead of showing through. With week numbers, month titles start at the Monday column (centered over the 7 days side by side). Titles are centered only side by side and left-aligned elsewhere, so a shorter title never sits centered in the cell the outgoing one widened and then jumps left; the single-month title isn't clipped (it is trimmed to cap height, so a clip would shave its ascenders). The stacked strip's mask makes its own stacking layer, so the hover highlight, its ring layer and the focus ring draw inside the strip there, keeping the numbers above the solid preview end. Week numbers are ISO 8601 with a Monday start unless `weekStartsOn` says Sunday.",
+    ],
+    usage: `"use client";
+
+import { useState } from "react";
+import { Calendar, type DateRange } from "@/components/ui/calendar";
+
+export function Stay() {
+  const [range, setRange] = useState<DateRange | undefined>();
+  return (
+    <Calendar
+      mode="range"
+      numberOfMonths={2}
+      selected={range}
+      onSelect={setRange}
+      booked={[new Date(2026, 10, 12)]}
+      disabled={{ before: new Date() }}
+    />
+  );
+}`,
+    props: [
+      "mode: \"single\" | \"range\" (default \"single\"). One day, or a start and an end.",
+      "selected: Date | DateRange. With onSelect it is controlled; without, it seeds the calendar's own state.",
+      "onSelect: (value) => void. Called on every pick; in range mode the first pick returns a range with no `to`.",
+      "booked: Matcher | Matcher[]. Unavailable, struck through, announced as booked.",
+      "available: Matcher | Matcher[]. When set, every day it does not match is unavailable.",
+      "disabled: Matcher | Matcher[]. Days that can't be picked, e.g. { before: new Date() }.",
+      "numberOfMonths: 1 | 2 (default 1). Two months share one fluid hover and hide outside days.",
+      "orientation: \"auto\" | \"horizontal\" | \"vertical\" (default \"auto\"). auto: side by side when the container fits both months.",
+      "cellSize: number (default 36, 32 compact). Cell size in px.",
+      "dayDetail: (date: Date) => ReactNode. A line under each day's number (a price); null for none. Needs a taller cellSize (56+). A pure function of the date: results are memoized per day until the function changes.",
+      "required: boolean (default false). Keeps a selection: picking the selected day again doesn't clear it.",
+      "fill: boolean (default false). Columns stretch to the container; cellSize caps the row height.",
+      "showWeekNumber: boolean (default false). Muted ISO week column.",
+      "size: \"default\" | \"compact\". Step on the size ladder.",
+      "Every other DayPicker prop (weekStartsOn, locale, timeZone, month, onMonthChange, min, max) passes through.",
+    ],
+  },
   "card": {
     craft: [
       "Cards are transparent and borderless by default, unlike stock shadcn: they inherit the parent substrate and lean on hairline dividers plus the fluid hover highlight instead of a drawn frame.",
@@ -639,6 +736,57 @@ const [value, setValue] = useState("");
       "disabled: boolean (default false). Disables the field and the popup.",
       'size: "default" | "compact". Pins field and popup to one size step; otherwise follows the SizeProvider.',
       'ComboboxInput variant: "bordered" | "borderless" (default "bordered"). Also takes icon, placeholder, error, clearable.',
+    ],
+  },
+  "date-picker": {
+    craft: [
+      "The outline trigger (the default `variant`) matches Select: the control height, the shape's input radius, a 1px border, and the focus ring. Its parts (the date, each time, the clear button) sit 2px inside the border and share one fluid hover scope along `x`, with corners nested in the field's radius (5px rounded, 17px pill). `variant=\"ghost\"` drops the border for inline use.",
+      "Labels come from `Intl`, no date library: `Wed Oct 21`, the year added outside the current one; ranges read `Oct 21 → Oct 24`. Times follow the locale's 12 or 24 hour clock unless `hourCycle` says otherwise.",
+      "The date popover opens on the selected day (or today) with focus on it; Escape closes it and focus returns to the trigger. A single pick holds the popover 200ms so the fill is seen landing, then closes. A range closes once its end is picked, and only complete ranges reach `onValueChange`: the half-picked one lives in the picker, and closing mid-pick drops it.",
+      "Escape mid-pick restores the previous range and keeps the popover open; the next Escape closes it. Range mode shows 2 months, side by side when the viewport has room, stacked and scrolling under one weekday row when it doesn't.",
+      "Presets are a fluid hover list beside the calendar, or below it when the months stack, so the calendar stays first in reading and tab order. Picking one sets the range and moves the calendar to its first month.",
+      "Each time is an editable field that anchors its own popover, separate from the date's: type `1130`, `11:30` or `11:30am`, and the nearest slot lights and scrolls to the middle of the list; Enter commits the typed time, arrows walk the slots. Focus never leaves the field: the list is a listbox driven by `aria-activedescendant`, and pressing a row doesn't blur the field.",
+      "Slot lists are Dropdown rows: one fluid hover scope, gap-0, `step` minutes apart (15 by default), opening scrolled to the value, or to now. The end list starts one step after the start and shows each row's duration (`15min`, `1h`, `1h 45min`) right after the time with a 6px gap, a step quieter (muted at 60%); every row's time is as wide as the list's longest label (laid out invisibly, with its AM/PM twin), so the durations form one column; the time fields do the same (left-aligned text, the longest time laid out invisibly), so picking 1:00 or 12:30 never moves what follows; the date does too: its label lays out its widest form invisibly, part by part from the locale's own format (every weekday name stacked in one cell, every month in another, a two-digit tabular day), plus the placeholder; the label's invisible width sizer carries the same text-box trim, so time and duration share one centered line. In the field, the end's duration turns invisible while the time is edited, keeping its width. Moving the start keeps the duration; times stay on the same day.",
+      "Time fields keep one width: invisible copies of the field's text and of the list's longest time (with its AM/PM twin) share the input's grid cell, the input takes `size={1}` so its intrinsic ~20ch width doesn't win, and the text is left-aligned, so picking 1:00 or 12:30 never moves what follows. The date label does the same part by part from the locale's format (every weekday name stacked in one cell, every month in another, a two-digit tabular day) plus the placeholder. Fields take `useSize().field`: 16px on touch screens, where iOS zooms into anything smaller; the input has no radius, so the text selection isn't clipped by the shape's corners.",
+      "The start time leads with a clock icon and the end time with an arrow icon, both inside their field so they share its hover and click target, drawn like the date's calendar icon with Button's icon gap (6px, 4px compact). The duration sits inside the end field after the time as a muted note, and turns invisible (keeping its width) while the end is being edited.",
+      "The popup's inner layers paint the popup's color, so their corners are concentric with it: the full-size wrapper inherits the 12px, the layers 4px inside take 8px. The clear button joins the trigger's fluid hover scope through a callback ref, since it mounts only once there is a value. Time lists open centered on the shown time (or the slot nearest now) every open, retrying each frame until the row is laid out in its viewport.",
+      "The 2 flavors share everything but the popover: Radix keeps its content mounted with `forceMount` until the exit spring ends; Base UI calls `preventUnmountOnClose()` on every close and releases the unmount from the frame's animation callback, with an exit-length timeout as a fallback.",
+    ],
+    usage: `"use client";
+
+import { useState } from "react";
+import { DatePicker, type TimeRange } from "@/components/ui/date-picker";
+
+export function EventWhen() {
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [time, setTime] = useState<TimeRange | null>({ start: "11:00", end: "12:45" });
+  return (
+    <DatePicker
+      variant="ghost"
+      value={date}
+      onValueChange={setDate}
+      timeRange={time}
+      onTimeRangeChange={setTime}
+    />
+  );
+}`,
+    props: [
+      "mode: \"single\" | \"range\" (default \"single\"). One date, or a start and an end.",
+      "value / defaultValue: Date | DateRange. A range reaches onValueChange only once both ends are set.",
+      "onValueChange: (value) => void. Called on a pick, a complete range, or a clear.",
+      "variant: \"outline\" | \"ghost\" (default \"outline\"). A bordered field like Select, or inline text with a hover fill.",
+      "placeholder: string (default \"Pick a date\" / \"Pick dates\").",
+      "presets: { label, range }[]. Range mode: ranges listed beside the calendar.",
+      "time / defaultTime / onTimeChange: string | null. One \"HH:mm\" time on the same day.",
+      "timeRange / defaultTimeRange / onTimeRangeChange: { start, end } | null. A start and an end with the duration shown.",
+      "step: number (default 15). Minutes between slots.",
+      "hourCycle: 12 | 24 (default from the locale).",
+      "locale: string. BCP 47 locale for labels and times.",
+      "numberOfMonths: 1 | 2 (default 1 single, 2 range). orientation: \"auto\" | \"horizontal\" | \"vertical\".",
+      "calendarProps: Partial<CalendarProps>. booked, available, disabled, cellSize, showWeekNumber, weekStartsOn, locale.",
+      "clearable: boolean (default true). Outline variant: clear button once a value is set.",
+      "open / defaultOpen / onOpenChange: the date popover. disabled: boolean. size: \"default\" | \"compact\".",
+      "name: string. Submits the value with a native form (hidden input, ISO 8601 local: 2026-10-21, 2026-10-21T11:00, or two joined by / for a range or a time range). id: the date trigger's id, for <label htmlFor>. aria-label: names the group, read before the date. className: classes on the group.",
     ],
   },
   "dialog": {

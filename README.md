@@ -60,7 +60,7 @@ Every component that touches a primitive has both a Radix and a Base UI flavor. 
 npx shadcn@latest add @fluid/base/button
 ```
 
-The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, ColorPicker, CommandMenu, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
+The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Calendar, ColorPicker, CommandMenu, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
 
 ### Overwrite the stock files
 
@@ -114,6 +114,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | `badge` | Compact label with solid and dot variants, the Tailwind color palette, and 2 sizes |
 | [Banner](https://www.fluidfunctionalism.com/docs/banner) | `banner` · `base/banner` | Status message in 5 statuses and 2 contrasts with a status icon, up to 3 actions, a dismiss that collapses its height, and a fixed full-bleed variant |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | `button` · `base/button` | Variants, sizes, loading state, icon slots, and a weight shift on hover |
+| [Calendar](https://www.fluidfunctionalism.com/docs/calendar) | `calendar` · `base/calendar` | Month grid for a day or a range with one fluid hover across 2 months, a range band that follows the pointer, booked days, and ISO week numbers |
 | [Card](https://www.fluidfunctionalism.com/docs/card) | `card` | shadcn's compositional card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, and 2-D fluid hover |
 | [CarouselDots](https://www.fluidfunctionalism.com/docs/carousel-dots) | `carousel-dots` | Carousel dots, static or on autoplay, with fluid-hover click areas and a current pill that fills over each slide |
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments |
@@ -121,6 +122,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | `color-picker` · `base/color-picker` | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper, inline or in a popover |
 | [Combobox](https://www.fluidfunctionalism.com/docs/combobox) | `combobox` · `base/combobox` | Type-to-filter field with keyboard highlight, fluid hover, chips for multiple selection, and a create-from-query row |
 | [CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu) | `command-menu` · `base/command-menu` | Type to filter a list of actions, arrow through them, press Enter: groups, shortcut caps, suggestions, and a dialog shell on ⌘K |
+| [DatePicker](https://www.fluidfunctionalism.com/docs/date-picker) | `date-picker` · `base/date-picker` | Outline or ghost trigger for a date, a range, or a date and a time, with range presets and time slot lists that show each duration |
 | [Dialog](https://www.fluidfunctionalism.com/docs/dialog) | `dialog` · `base/dialog` | Modal with spring enter/exit and overlay in 3 widths, the largest a canvas for a sidebar |
 | [Dropdown](https://www.fluidfunctionalism.com/docs/dropdown) | `dropdown` · `base/dropdown` | Menu-style dropdown with fluid hover, animated selection, submenus that hold their row across the safe area, and an optional search field in the popup |
 | [InputCopy](https://www.fluidfunctionalism.com/docs/input-copy) | `input-copy` · `base/input-copy` | Read-only input with copy-to-clipboard and animated feedback |
@@ -146,6 +148,7 @@ The systems every component shares. Each installs as code, the same way.
 |---|---|---|
 | [Fluid Hover](https://www.fluidfunctionalism.com/docs/fluid-hover) | `use-fluid-hover` | One hook and one highlight per list. The highlight glides to the item nearest your cursor and never blinks off between rows |
 | [Motion](https://www.fluidfunctionalism.com/docs/motion) | `springs` | 3 spring speeds, fast, moderate, and slow, each with an exit one tier quicker than its entrance |
+| [Reveal](https://www.fluidfunctionalism.com/docs/reveal) | `reveal` | 1 class reveals a whole page, on load and on scroll |
 | [Scrollbars](https://www.fluidfunctionalism.com/docs/scrollbars) | `scroll-area` · `base/scroll-area` | A scrollbar that stays out of the way but never disappears, with native scroll on touch |
 | [Sizes](https://www.fluidfunctionalism.com/docs/sizes) | `size-context` | 2 sizes, a 36px default and a 28px compact, shared by buttons, inputs, selects, tabs, and rows |
 | [Surfaces](https://www.fluidfunctionalism.com/docs/surfaces) | `elevated` | 8 elevation levels so popovers, dropdowns, and dialogs stay visible at any depth, in light and dark |

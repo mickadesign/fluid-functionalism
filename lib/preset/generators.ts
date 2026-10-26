@@ -18,6 +18,8 @@ import { AUQ_PRESET_GENERATOR } from "./ask-user-questions-install";
 import { DROPDOWN_PRESET_GENERATOR } from "./dropdown-install";
 import { COMBOBOX_PRESET_GENERATOR } from "./combobox-install";
 import { COMMAND_MENU_PRESET_GENERATOR } from "./command-menu-install";
+import { CALENDAR_PRESET_GENERATOR } from "./calendar-install";
+import { DATE_PICKER_PRESET_GENERATOR } from "./date-picker-install";
 
 export interface PresetGenerator {
   title: string;
@@ -42,4 +44,6 @@ export const PRESET_GENERATORS: Record<string, PresetGenerator> = {
   d: DROPDOWN_PRESET_GENERATOR,
   b: COMBOBOX_PRESET_GENERATOR,
   k: COMMAND_MENU_PRESET_GENERATOR,
+  n: CALENDAR_PRESET_GENERATOR,
+  p: DATE_PICKER_PRESET_GENERATOR,
 };

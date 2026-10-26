@@ -3,6 +3,7 @@ import { entryInstall } from "@/lib/changelog/install";
 import { loadReleases } from "@/lib/changelog/load";
 import { highlightDiff } from "@/lib/docs/highlight";
 import { ChangelogView, type ReleaseView } from "@/app/changelog/changelog-view";
+import { OG_IMAGES, OG_VIDEOS } from "@/lib/og-media";
 
 const DESCRIPTION = "Every change to Fluid Functionalism, month by month. A release lands on the first Friday.";
 
@@ -11,7 +12,13 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   // Agents find the Markdown version from the page's <head>.
   alternates: { canonical: "/changelog", types: { "text/markdown": "/changelog.md" } },
-  openGraph: { title: "Changelog · Fluid Functionalism", description: DESCRIPTION },
+  // Replaced wholesale, not merged, over the root layout's: repeat the card.
+  openGraph: {
+    title: "Changelog · Fluid Functionalism",
+    description: DESCRIPTION,
+    images: OG_IMAGES,
+    videos: OG_VIDEOS,
+  },
 };
 
 export default async function ChangelogPage() {
