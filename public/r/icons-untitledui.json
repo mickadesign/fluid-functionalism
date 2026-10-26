@@ -5,7 +5,7 @@
   "description": "Untitled UI glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Untitled UI.",
   "dependencies": [
     "@untitledui/icons",
-    "lucide-react@^1.59.0"
+    "lucide-react@^1.61.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/icon-context.json"
