@@ -22,6 +22,7 @@ import {
 import { InputCopy } from "@/registry/default/input-copy";
 import { CopyPromptButton } from "@/lib/docs/copy-prompt-button";
 import { buildPresetPrompt } from "@/lib/docs/install-prompt";
+import { useHoverMode } from "@/lib/docs/hover-mode";
 import type { PresetGlobals } from "@/lib/preset/sidebar-options";
 import type { PresetComponentDef } from "@/lib/preset/codec";
 
@@ -92,10 +93,11 @@ export function GetCodeDialog({
   code: string;
 }) {
   const { base } = useBase();
+  const hover = useHoverMode();
   if (def.installable) {
     return (
       <CopyPromptButton
-        prompt={buildPresetPrompt({ def, code, base })}
+        prompt={buildPresetPrompt({ def, code, base, hover })}
         size="sm"
         // Full width only in the desktop rail; inline under the preview
         // (below xl) it hugs its label and sits left.

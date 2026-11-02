@@ -41,6 +41,8 @@ import {
   type IconLibrary,
 } from "@/lib/docs/icon-playground";
 import { useBase, installUrl, type Base } from "@/lib/base-context";
+import { HOVER_MODE_LABELS, useHoverModeSetting } from "@/lib/docs/hover-mode";
+import { HOVER_MODES } from "@/lib/docs/site-settings";
 import { useAccent } from "@/lib/docs/accent";
 import { ACCENT_ORDER, ACCENT_PRESETS, accentCss } from "@/lib/accent";
 
@@ -205,6 +207,7 @@ export function SiteCommandMenu() {
   const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
+  const { mode: hover, setMode: setHover } = useHoverModeSetting();
   const { preset: accent, custom: customAccent, setPreset: setAccent } = useAccent();
   const [tab, setTab] = useState("all");
   const [recent, setRecent] = useState<string[]>([]);
@@ -354,6 +357,20 @@ export function SiteCommandMenu() {
           showSuccessToast(`Primitive set to ${b.label}`);
         },
       })),
+      ...HOVER_MODES.map((m) => ({
+        kind: "setting" as const,
+        value: `hover:${m}`,
+        label: `Hover: ${HOVER_MODE_LABELS[m]}`,
+        action: `Set hover to ${HOVER_MODE_LABELS[m]}`,
+        description: current(hover === m),
+        icon: icons.settings,
+        keywords: ["hover", "fluid", "standard", "highlight", m],
+        group: "Settings",
+        onSelect: () => {
+          setHover(m);
+          showSuccessToast(`Hover set to ${HOVER_MODE_LABELS[m]}`);
+        },
+      })),
     ];
     const actions: SiteItem[] = [
       ...(currentComponent
@@ -367,7 +384,7 @@ export function SiteCommandMenu() {
               keywords: ["npx", "shadcn", "add", "registry"],
               group: "Actions",
               onSelect: () => {
-                const cmd = `npx shadcn@latest add ${installUrl(currentComponent.slug, base)}`;
+                const cmd = `npx shadcn@latest add ${installUrl(currentComponent.slug, base, hover)}`;
                 // The toast follows the write: no clipboard (an insecure
                 // context) or a refused write must not announce a copy.
                 navigator.clipboard
@@ -431,6 +448,8 @@ export function SiteCommandMenu() {
     setIconLibrary,
     base,
     setBase,
+    hover,
+    setHover,
     accent,
     customAccent,
     setAccent,

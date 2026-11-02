@@ -15,10 +15,11 @@ import { SizeShortcut } from "@/lib/docs/size-shortcut";
 import { SizeAttribute } from "@/lib/docs/size-attribute";
 import { SettingsToast } from "@/lib/docs/settings-toast";
 import { SettingsPersistence } from "@/lib/docs/settings-persistence";
-import { readCustomAccent, readHeadingFont, readSettings } from "@/lib/docs/site-settings";
+import { readCustomAccent, readHeadingFont, readHoverMode, readSettings } from "@/lib/docs/site-settings";
 import { AccentProvider, AccentShortcut } from "@/lib/docs/accent";
 import { accentCss } from "@/lib/accent";
 import { HeadingFontProvider, HeadingFontShortcut } from "@/lib/docs/heading-font";
+import { HoverModeProvider, HoverModeShortcut } from "@/lib/docs/hover-mode";
 import googleFonts from "@/lib/docs/google-fonts.json";
 import { customHeadingVars, googleFontWeights, type GoogleFont } from "@/lib/docs/google-fonts";
 import { BaseProvider } from "@/lib/base-context";
@@ -96,6 +97,8 @@ export default async function RootLayout({
     ? ((googleFonts as GoogleFont[]).find((f) => f.n === saved.customFamily) ?? null)
     : null;
   const headingFont = saved.font === "custom" && !customFont ? "inter" : saved.font;
+  // Fluid or standard hover, for every list on the site.
+  const hoverMode = readHoverMode((name) => cookieStore.get(name)?.value);
   // A saved weight the family doesn't have reads as Auto.
   const customWeight =
     customFont && saved.customWeight !== null && googleFontWeights(customFont).includes(saved.customWeight)
@@ -136,6 +139,8 @@ export default async function RootLayout({
                       <AccentShortcut />
                       <HeadingFontProvider defaultFont={headingFont} defaultCustom={customFont} defaultWeight={customWeight}>
                         <HeadingFontShortcut />
+                        <HoverModeProvider defaultMode={hoverMode}>
+                        <HoverModeShortcut />
                         <SettingsPersistence />
                         {/* The sidebar's New dots: what the latest changelog
                             release lists as New, read from content/changelog. */}
@@ -147,6 +152,7 @@ export default async function RootLayout({
                         <SettingsToast />
                         <Analytics />
                         <SpeedInsights />
+                        </HoverModeProvider>
                       </HeadingFontProvider>
                     </AccentProvider>
                   </BaseProvider>
