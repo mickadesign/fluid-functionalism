@@ -17,13 +17,14 @@ import {
   TableCell,
 } from "@/registry/default/table";
 import {
-  TabsSubtle,
-  TabsSubtleItem,
-  TabsSubtlePanel,
-} from "@/components/flavored/tabs-subtle";
+  Tabs,
+  TabsItem,
+  TabsPanel,
+} from "@/components/flavored/tabs";
 import { Dropdown, DropdownLabel } from "@/components/flavored/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
 import { ChatMessage } from "@/registry/default/chat-message";
+import { AnimatePresence } from "motion/react";
 import { InputMessage } from "@/registry/default/input-message";
 import {
   ThinkingSteps,
@@ -285,34 +286,37 @@ export default function QuillPage() {
             Dana Kim · edited just now
           </div>
 
-          <TabsSubtle idPrefix="quill" selectedIndex={tab} onSelect={setTab}>
-            <TabsSubtleItem index={0} icon={Doc} label="Document" />
-            <TabsSubtleItem index={1} icon={Comment} label="Comments" />
-            <TabsSubtleItem index={2} icon={Activity} label="Activity" />
-          </TabsSubtle>
+          <Tabs idPrefix="quill" selectedIndex={tab} onSelect={setTab}>
+            <TabsItem index={0} icon={Doc} label="Document" />
+            <TabsItem index={1} icon={Comment} label="Comments" />
+            <TabsItem index={2} icon={Activity} label="Activity" />
+          </Tabs>
 
           <div className="mt-6">
-            <TabsSubtlePanel index={0} selectedIndex={tab} idPrefix="quill">
+            <TabsPanel index={0} selectedIndex={tab} idPrefix="quill">
               <DocumentBody />
-            </TabsSubtlePanel>
+            </TabsPanel>
 
-            <TabsSubtlePanel index={1} selectedIndex={tab} idPrefix="quill">
+            <TabsPanel index={1} selectedIndex={tab} idPrefix="quill">
               <div className="flex flex-col gap-4">
-                {COMMENTS.map((c) => (
-                  <ChatMessage key={c.id} from={c.from} className="max-w-full">
-                    {c.text}
-                  </ChatMessage>
-                ))}
+                {/* Already sent: initial={false} skips their entrance. */}
+                <AnimatePresence initial={false}>
+                  {COMMENTS.map((c) => (
+                    <ChatMessage key={c.id} from={c.from} className="max-w-full">
+                      {c.text}
+                    </ChatMessage>
+                  ))}
+                </AnimatePresence>
               </div>
-            </TabsSubtlePanel>
+            </TabsPanel>
 
-            <TabsSubtlePanel index={2} selectedIndex={tab} idPrefix="quill">
+            <TabsPanel index={2} selectedIndex={tab} idPrefix="quill">
               <ul className="flex flex-col gap-3 text-site-body text-muted-foreground">
                 <li>Dana added the Initiatives table · 2h ago</li>
                 <li>Mara changed Billing v2 to “At risk” · 5h ago</li>
                 <li>Sam created this page · yesterday</li>
               </ul>
-            </TabsSubtlePanel>
+            </TabsPanel>
           </div>
         </div>
       </div>

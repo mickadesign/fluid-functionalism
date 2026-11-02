@@ -51,7 +51,7 @@ export const DEFAULT_DATE_PICKER_STATE: DatePickerPlayState = {
   time: "timeRange",
   presets: false,
   months: "2",
-  orientation: "horizontal",
+  orientation: "auto",
   step: "15",
   clock: "locale",
   weekNumbers: false,
@@ -68,7 +68,7 @@ export const DEFAULT_DATE_PICKER_PRESET: DatePickerPreset = {
 
 // Value arrays are ordered DEFAULT-FIRST. The three site-global fields stay
 // LAST, mirroring SIDEBAR_PRESET_FIELDS exactly.
-export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
+const DATE_PICKER_PRESET_FIELDS_A: readonly PresetField[] = [
   { key: "variant", values: ["ghost", "outline"], bits: 2 },
   { key: "mode", values: ["single", "range"], bits: 2 },
   { key: "time", values: ["timeRange", "none", "time"], bits: 2 },
@@ -87,14 +87,35 @@ export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
+/** Version "b": orientation defaults to "auto", the component's own, so 2
+ *  months stack on a phone. The values lead with it. */
+export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
+  { key: "variant", values: ["ghost", "outline"], bits: 2 },
+  { key: "mode", values: ["single", "range"], bits: 2 },
+  { key: "time", values: ["timeRange", "none", "time"], bits: 2 },
+  { key: "step", values: ["15", "30", "60"], bits: 3 },
+  { key: "clock", values: ["locale", "12", "24"], bits: 2 },
+  { key: "presets", values: [false, true], bits: 1 },
+  { key: "months", values: ["2", "1"], bits: 2 },
+  { key: "orientation", values: ["auto", "horizontal", "vertical"], bits: 2 },
+  { key: "days", values: ["all", "booked"], bits: 2 },
+  { key: "weekNumbers", values: [false, true], bits: 1 },
+  { key: "pickerSize", values: ["site", "default", "compact"], bits: 2 },
+  { key: "clearable", values: [true, false], bits: 1 },
+  { key: "disabled", values: [false, true], bits: 1 },
+  { key: "flavor", values: ["radix", "base"], bits: 3 },
+  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "size", values: ["default", "compact"], bits: 2 },
+];
+
 // ── Registration (tag "p") ──────────────────────────────────────────────────
 
 export const DATE_PICKER_PRESET_DEF: PresetComponentDef = {
   tag: "p",
   label: "Date Picker",
   docsPath: "/docs/date-picker",
-  versions: { a: DATE_PICKER_PRESET_FIELDS },
-  currentVersion: "a",
+  versions: { a: DATE_PICKER_PRESET_FIELDS_A, b: DATE_PICKER_PRESET_FIELDS },
+  currentVersion: "b",
   defaults: DEFAULT_DATE_PICKER_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };

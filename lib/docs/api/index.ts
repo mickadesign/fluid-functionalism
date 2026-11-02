@@ -32,7 +32,6 @@ import { apiReference as sliderApi } from "@/lib/docs/api/slider";
 import { apiReference as switchApi } from "@/lib/docs/api/switch";
 import { apiReference as tableApi } from "@/lib/docs/api/table";
 import { apiReference as tabsApi } from "@/lib/docs/api/tabs";
-import { apiReference as tabsSubtleApi } from "@/lib/docs/api/tabs-subtle";
 import { apiReference as thinkingIndicatorApi } from "@/lib/docs/api/thinking-indicator";
 import { apiReference as thinkingStepsApi } from "@/lib/docs/api/thinking-steps";
 import { apiReference as tooltipApi } from "@/lib/docs/api/tooltip";
@@ -67,8 +66,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   slider: sliderApi,
   switch: switchApi,
   table: tableApi,
-  tabs: tabsApi,
-  "tabs-subtle": tabsSubtleApi,
+  "tabs": tabsApi,
   "thinking-indicator": thinkingIndicatorApi,
   "thinking-steps": thinkingStepsApi,
   tooltip: tooltipApi,

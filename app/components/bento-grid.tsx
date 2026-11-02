@@ -25,31 +25,31 @@ import { cn } from "@/lib/utils";
 const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "input-message" },                  // band 1 · medium left
   { slug: "thinking-indicator" },
-  { slug: "command-menu", side: "right" },    // band 2 · large right
-  { slug: "combobox" },
+  { slug: "color-picker", side: "right" },    // band 2 · large right
   { slug: "switch" },
-  { slug: "sidebar" },                        // band 3 · large left
-  { slug: "radio-group" },
-  { slug: "chat-message" },
-  { slug: "card", side: "right" },            // band 4 · medium right
+  { slug: "combobox" },
+  { slug: "card" },                           // band 3 · medium left
   { slug: "select" },
-  { slug: "thinking-steps" },                 // band 5 · large left
-  { slug: "tabs-subtle" },
-  { slug: "checkbox-group" },
-  { slug: "ask-user-questions", side: "right" }, // band 6 · large right
-  { slug: "slider" },
-  { slug: "dropdown" },
-  { slug: "tabs" },                           // band 7 · medium left
-  { slug: "input-copy" },
-  { slug: "accordion", side: "right" },       // band 8 · medium right
-  { slug: "input-group" },
-  { slug: "carousel-dots" },                // band 9 · medium left
-  { slug: "button" },
-  { slug: "table", side: "right" },           // band 10 · medium right
-  { slug: "dialog" },
-  { slug: "color-picker" },                   // band 11 · large left
+  { slug: "command-menu", side: "right" },    // band 4 · large right
   { slug: "tooltip" },
   { slug: "badge" },
+  { slug: "sidebar" },                        // band 5 · large left
+  { slug: "radio-group" },
+  { slug: "chat-message" },
+  { slug: "thinking-steps", side: "right" },  // band 6 · large right
+  { slug: "tabs" },
+  { slug: "checkbox-group" },
+  { slug: "ask-user-questions" },             // band 7 · large left
+  { slug: "slider" },
+  { slug: "dropdown" },
+  { slug: "banner", side: "right" },          // band 8 · medium right
+  { slug: "input-copy" },
+  { slug: "accordion" },                      // band 9 · medium left
+  { slug: "input-group" },
+  { slug: "carousel-dots", side: "right" },   // band 10 · medium right
+  { slug: "button" },
+  { slug: "table" },                          // band 11 · medium left
+  { slug: "dialog" },
   { slug: "calendar", side: "right" },        // band 12 · medium right
   { slug: "date-picker" },
 ];

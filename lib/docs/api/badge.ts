@@ -21,7 +21,7 @@ export const badgeProps: PropDef[] = [
     type: "BadgeColor",
     default: '"gray"',
     description:
-      "Color from the Tailwind palette: gray, red, orange, amber, yellow, lime, green, emerald, teal, cyan, blue, indigo, violet, purple, fuchsia, pink, rose.",
+      "accent (the app's --fluid-accent), or a Tailwind palette name: gray, red, orange, amber, yellow, lime, green, emerald, teal, cyan, blue, indigo, violet, purple, fuchsia, pink, rose.",
   },
 ];
 

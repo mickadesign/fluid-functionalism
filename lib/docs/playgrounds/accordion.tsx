@@ -130,7 +130,7 @@ export function AccordionPlayground({ children }: PlaygroundProps) {
   );
 
   return children({
-    preview: <div className="flex w-full justify-center px-6 py-10">{group}</div>,
+    preview: <div className="flex w-full justify-center px-4 py-10 sm:px-6">{group}</div>,
     demoPreview: <div className="w-full max-w-[320px]">{group}</div>,
     controls,
     code: buildAccordionPlaygroundCode(state),

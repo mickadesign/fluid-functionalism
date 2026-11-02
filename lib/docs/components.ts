@@ -18,7 +18,7 @@ export interface SystemEntry {
 }
 
 export const systemList: SystemEntry[] = [
-  { slug: "fluid-hover", name: "Fluid Hover", description: "Hover that never blinks and always follows your cursor to the nearest item.", installSlug: "use-fluid-hover", installNote: "The useFluidHover hook and its highlight, already in every list and menu." },
+  { slug: "fluid-hover", name: "Fluid Hover", description: "Hover that glides from item to item under your cursor instead of blinking between them.", installSlug: "use-fluid-hover", installNote: "The useFluidHover hook and its highlight, already in every list and menu." },
   { slug: "motion", name: "Motion", description: "Spring tokens, faster exits, fluid hover, and reflow-free weight animation — the motion rules shared by every component.", installSlug: "springs", installNote: "Installs the springs lib — the fast / moderate / slow spring presets every component animates with." },
   { slug: "reveal", name: "Reveal", description: "1 class reveals a whole page, on load and on scroll.", installNote: "Installs the 4 preset classes, reveal-landing, reveal-product, and their -subtle steps, plus shadcn's Skeleton for slow data." },
   { slug: "scrollbars", name: "Scrollbars", description: "A scrollbar that stays out of the way but never disappears, over shadcn's scroll-fade baseline — restyled to the shape system, native scroll on touch.", installSlug: "scroll-area", installNote: "Installs the ScrollArea component with the shape-system scrollbar and the scroll-fade edge treatment." },
@@ -53,8 +53,7 @@ export const componentList: ComponentEntry[] = [
   { slug: "slider", name: "Slider", description: "One slider, two ladder steps: the default pip/scrubber design and the compact design with range mode and value display.", gridSize: "small" },
   { slug: "switch", name: "Switch", description: "Toggle switch with animated thumb and label.", gridSize: "small" },
   { slug: "table", name: "Table", description: "Data table with row hover effects and semantic markup.", gridSize: "medium" },
-  { slug: "tabs", name: "Tabs", description: "Segmented control with sliding indicator and fluid hover.", gridSize: "medium" },
-  { slug: "tabs-subtle", name: "TabsSubtle", description: "Tab navigation with smooth pill animations.", gridSize: "small" },
+  { slug: "tabs", name: "Tabs", description: "Tab navigation with smooth pill animations.", gridSize: "small" },
   { slug: "thinking-indicator", name: "ThinkingIndicator", description: "Animated status indicator with morphing SVG and cycling text.", gridSize: "small" },
   { slug: "thinking-steps", name: "ThinkingSteps", description: "Chain-of-thought display with sequential animation and collapsible steps.", gridSize: "large" },
   { slug: "tooltip", name: "Tooltip", description: "Floating tooltip with spring-based animations and configurable placement.", gridSize: "small" },

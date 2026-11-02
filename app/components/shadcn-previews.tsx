@@ -75,8 +75,6 @@ import {
   SWITCH_ITEMS,
   TABLE_COLUMNS,
   TABLE_ROWS,
-  TABS_DEFAULT,
-  TABS_ITEMS,
   TOOLTIP_COPY,
 } from "@/app/components/demo-data";
 
@@ -359,23 +357,6 @@ function TablePreview() {
 }
 
 function TabsPreview() {
-  const [tab, setTab] = useState<string>(TABS_DEFAULT);
-  return (
-    <div className="w-full max-w-[360px] mx-auto flex justify-center">
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          {TABS_ITEMS.map((item) => (
-            <TabsTrigger key={item.value} value={item.value}>
-              {item.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-    </div>
-  );
-}
-
-function TabsSubtlePreview() {
   const [tab, setTab] = useState("library");
   return (
     <div className="w-full max-w-[360px] mx-auto flex justify-center">
@@ -420,7 +401,6 @@ export const shadcnPreviewMap: Record<string, React.FC> = {
   slider: SliderPreview,
   switch: SwitchPreview,
   table: TablePreview,
-  tabs: TabsPreview,
-  "tabs-subtle": TabsSubtlePreview,
+  "tabs": TabsPreview,
   tooltip: TooltipPreview,
 };

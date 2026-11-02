@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { ChatMessage } from "@/registry/default/chat-message";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable } from "@/lib/docs/PropsTable";
@@ -37,7 +38,8 @@ function MessageActions({ from }: { from: "user" | "assistant" }) {
   );
 }
 
-const conversationCode = `import { ChatMessage } from "./components";
+const conversationCode = `import { AnimatePresence } from "motion/react";
+import { ChatMessage } from "./components";
 import { Copy, RotateCcw } from "lucide-react";
 
 // Timestamp + icon buttons are revealed on hover; their height is always
@@ -50,29 +52,36 @@ const actions = (
   </>
 );
 
+// initial={false}: messages already there when the transcript first renders
+// are already sent, so they skip the entrance. Messages added later animate in.
 <div className="flex flex-col gap-2">
-  <ChatMessage from="user" time="Wednesday 6:06 PM" actions={actions}>
-    What does "good design" actually mean? Everyone says it, no one defines it.
-  </ChatMessage>
-  <ChatMessage from="assistant" actions={actions}>
-    Good design is mostly invisible — you only notice it when it's missing. It's less about how something looks and more about how effortlessly it lets you do what you came to do.
-  </ChatMessage>
-  <ChatMessage from="user" time="Wednesday 6:07 PM" actions={actions}>
-    So function over form?
-  </ChatMessage>
-  <ChatMessage from="assistant" actions={actions}>
-    Not quite. Form is part of function — something that feels good to use is, in a real sense, working better. The split between the two is mostly a myth.
-  </ChatMessage>
-  <ChatMessage from="user" time="Wednesday 6:08 PM" actions={actions}>
-    That reframes it completely.
-  </ChatMessage>
+  <AnimatePresence initial={false}>
+    <ChatMessage key="m1" from="user" time="Wednesday 6:06 PM" actions={actions}>
+      What does "good design" actually mean? Everyone says it, no one defines it.
+    </ChatMessage>
+    <ChatMessage key="m2" from="assistant" actions={actions}>
+      Good design is mostly invisible — you only notice it when it's missing. It's less about how something looks and more about how effortlessly it lets you do what you came to do.
+    </ChatMessage>
+    <ChatMessage key="m3" from="user" time="Wednesday 6:07 PM" actions={actions}>
+      So function over form?
+    </ChatMessage>
+    <ChatMessage key="m4" from="assistant" actions={actions}>
+      Not quite. Form is part of function — something that feels good to use is, in a real sense, working better. The split between the two is mostly a myth.
+    </ChatMessage>
+    <ChatMessage key="m5" from="user" time="Wednesday 6:08 PM" actions={actions}>
+      That reframes it completely.
+    </ChatMessage>
+  </AnimatePresence>
 </div>`;
 
-const rolesCode = `import { ChatMessage } from "./components";
+const rolesCode = `import { AnimatePresence } from "motion/react";
+import { ChatMessage } from "./components";
 
 <div className="flex flex-col gap-2">
-  <ChatMessage from="user">Right-aligned accent bubble.</ChatMessage>
-  <ChatMessage from="assistant">Left-aligned, no background.</ChatMessage>
+  <AnimatePresence initial={false}>
+    <ChatMessage key="user" from="user">Right-aligned accent bubble.</ChatMessage>
+    <ChatMessage key="assistant" from="assistant">Left-aligned, no background.</ChatMessage>
+  </AnimatePresence>
 </div>`;
 
 const attachmentsCode = `import { ChatMessage } from "./components";
@@ -111,7 +120,9 @@ export default function ChatMessageDoc() {
       <DocSection title="Conversation">
         <ComponentPreview code={conversationCode} minHeightClass="min-h-[220px]">
           <div className="w-full max-w-xl flex flex-col gap-2">
+            <AnimatePresence initial={false}>
             <ChatMessage
+              key="m1"
               from="user"
               time="Wednesday 6:06 PM"
               actions={<MessageActions from="user" />}
@@ -120,6 +131,7 @@ export default function ChatMessageDoc() {
               it, no one defines it.
             </ChatMessage>
             <ChatMessage
+              key="m2"
               from="assistant"
               actions={<MessageActions from="assistant" />}
             >
@@ -128,6 +140,7 @@ export default function ChatMessageDoc() {
               how effortlessly it lets you do what you came to do.
             </ChatMessage>
             <ChatMessage
+              key="m3"
               from="user"
               time="Wednesday 6:07 PM"
               actions={<MessageActions from="user" />}
@@ -135,6 +148,7 @@ export default function ChatMessageDoc() {
               So function over form?
             </ChatMessage>
             <ChatMessage
+              key="m4"
               from="assistant"
               actions={<MessageActions from="assistant" />}
             >
@@ -143,12 +157,14 @@ export default function ChatMessageDoc() {
               is mostly a myth.
             </ChatMessage>
             <ChatMessage
+              key="m5"
               from="user"
               time="Wednesday 6:08 PM"
               actions={<MessageActions from="user" />}
             >
               That reframes it completely.
             </ChatMessage>
+            </AnimatePresence>
           </div>
         </ComponentPreview>
       </DocSection>
@@ -156,8 +172,10 @@ export default function ChatMessageDoc() {
       <DocSection title="Roles">
         <ComponentPreview code={rolesCode} minHeightClass="min-h-[160px]">
           <div className="w-full max-w-xl flex flex-col gap-2">
-            <ChatMessage from="user">Right-aligned accent bubble.</ChatMessage>
-            <ChatMessage from="assistant">Left-aligned, no background.</ChatMessage>
+            <AnimatePresence initial={false}>
+              <ChatMessage key="user" from="user">Right-aligned accent bubble.</ChatMessage>
+              <ChatMessage key="assistant" from="assistant">Left-aligned, no background.</ChatMessage>
+            </AnimatePresence>
           </div>
         </ComponentPreview>
       </DocSection>
@@ -165,12 +183,14 @@ export default function ChatMessageDoc() {
       <DocSection title="Attachments">
         <ComponentPreview code={attachmentsCode} minHeightClass="min-h-[200px]">
           <div className="w-full max-w-xl flex flex-col gap-2">
-            <ChatMessage from="user" files={sampleFiles}>
-              Can you use this as my new avatar?
-            </ChatMessage>
-            <ChatMessage from="assistant">
-              Looks great — it&apos;ll crop cleanly into the circle.
-            </ChatMessage>
+            <AnimatePresence initial={false}>
+              <ChatMessage key="user" from="user" files={sampleFiles}>
+                Can you use this as my new avatar?
+              </ChatMessage>
+              <ChatMessage key="assistant" from="assistant">
+                Looks great — it&apos;ll crop cleanly into the circle.
+              </ChatMessage>
+            </AnimatePresence>
           </div>
         </ComponentPreview>
       </DocSection>

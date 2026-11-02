@@ -50,7 +50,7 @@ describe("Copy prompts", () => {
 });
 
 describe("the starter Copy prompt", () => {
-  const settings = { base: "radix", shape: "pill", size: "compact", icons: "phosphor", theme: "dark" } as const;
+  const settings = { base: "radix", shape: "pill", size: "compact", icons: "phosphor", theme: "dark", accent: "blue" } as const;
   const prompt = buildStarterPrompt(settings);
 
   it("leads with the one command, carrying every setting in its slug", () => {
@@ -88,15 +88,13 @@ describe("the starter Copy prompt's heading font", () => {
     expect(buildStarterPrompt(settings, { font: "inter", custom: null, weight: null })).toBe(buildStarterPrompt(settings));
   });
 
-  it("sets up Source Serif 4 the way the site draws it", () => {
-    const prompt = buildStarterPrompt(settings, { font: "source-serif", custom: null, weight: null });
-    expect(prompt).toContain(", Source Serif 4 headings.");
-    expect(prompt).toContain('import { Source_Serif_4 } from "next/font/google"');
-    // eslint-disable-next-line no-restricted-syntax -- prompt text for the agent's CSS, not a style here
-    expect(prompt).toContain(`'wght' 450, 'opsz' 25 !important`);
+  it("sets up Geist Serif from the geist package", () => {
+    const prompt = buildStarterPrompt(settings, { font: "geist-serif", custom: null, weight: null });
+    expect(prompt).toContain(", Geist Serif headings.");
+    expect(prompt).toContain('import { GeistSerifRegular } from "geist/font/serif/regular"');
+    expect(prompt).toContain("font-weight: 400 !important");
     expect(prompt).toContain("--fs-display: 32px");
-    // The starter itself is unchanged: same command, same slug.
-    expect(prompt).toContain(starterCommand(settings));
+    expect(prompt).not.toContain("\u2014");
   });
 
   it("loads a variable Google family with its axes and the picked weight", () => {
