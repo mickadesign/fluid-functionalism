@@ -100,7 +100,7 @@ export const CUSTOM_ITEMS = new Set([
   "input-message",
   "select",
   "table",
-  "tabs-subtle",
+  "tabs",
   "thinking-indicator",
   "thinking-steps",
 ]);

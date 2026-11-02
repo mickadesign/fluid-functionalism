@@ -44,7 +44,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { TabsSubtle, TabsSubtleItem } from "@/components/ui/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/ui/tabs";
 
 // ---------------------------------------------------------------------------
 // Command menu
@@ -888,7 +888,7 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
 CommandMenuInput.displayName = "CommandMenuInput";
 
 // ---------------------------------------------------------------------------
-// CommandMenuTabs — subtle tabs under the field. The tabs are state you own:
+// CommandMenuTabs — tabs under the field. The tabs are state you own:
 // derive `items` from the value so the list follows.
 // ---------------------------------------------------------------------------
 
@@ -951,13 +951,13 @@ const CommandMenuTabs = forwardRef<HTMLDivElement, CommandMenuTabsProps>(
         <div
           // A pointer pick must not take focus from the field (the tabs are
           // buttons); keyboard users still reach them with Tab. No overflow
-          // clip here: TabsSubtle scrolls itself and keeps 4px of room around
+          // clip here: Tabs scrolls itself and keeps 4px of room around
           // the tabs for the 2px-outset focus ring, which a second scroll
           // container this tight would crop.
           onMouseDown={(e) => e.preventDefault()}
           className="flex min-w-0 flex-1 items-center"
         >
-          <TabsSubtle
+          <Tabs
             size="compact"
             selectedIndex={selectedIndex}
             onSelect={(index) => {
@@ -967,9 +967,9 @@ const CommandMenuTabs = forwardRef<HTMLDivElement, CommandMenuTabsProps>(
             aria-label="Filter results"
           >
             {tabs.map((tab, index) => (
-              <TabsSubtleItem key={tab.value} index={index} label={tab.label} icon={tab.icon} />
+              <TabsItem key={tab.value} index={index} label={tab.label} icon={tab.icon} />
             ))}
-          </TabsSubtle>
+          </Tabs>
         </div>
         {children && (
           <TabsRowContext.Provider value={true}>

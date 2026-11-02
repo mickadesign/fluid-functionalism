@@ -230,7 +230,8 @@ const triggerVariants = cva(
     "group inline-flex items-center justify-between outline-none cursor-pointer",
     "transition-all duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
-    "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+    // data-pointer-focus: focus handed back after a pick with the pointer.
+    "focus-visible:not-data-[pointer-focus]:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
   ],
   {
     variants: {
@@ -351,6 +352,9 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     const { open, value, unmount } = useSelectContext();
     const shape = popupShape;
     const containerRef = useRef<HTMLDivElement>(null);
+    // The popup's id, which the trigger points at with aria-controls. Read
+    // while mounted: by the time focus goes back, the popup is gone.
+    const contentId = useRef<string | undefined>(undefined);
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
@@ -464,11 +468,36 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     return (
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
+          ref={(node: HTMLDivElement | null) => {
+            if (node) contentId.current = node.id;
+          }}
           position="popper"
           side="bottom"
           align="start"
           sideOffset={6}
           className="z-50"
+          // Radix hands focus back to the trigger with focus(), which the
+          // browser may report as :focus-visible even after a pick with the
+          // pointer. Without keyboard navigation in the popup, the trigger
+          // takes focus marked, and its ring waits for the next key.
+          onCloseAutoFocus={(e) => {
+            if (keyboardNavRef.current) return;
+            const id = contentId.current;
+            const trigger = id
+              ? document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(id)}"]`)
+              : null;
+            if (!trigger) return;
+            e.preventDefault();
+            trigger.dataset.pointerFocus = "";
+            const clear = () => {
+              delete trigger.dataset.pointerFocus;
+              trigger.removeEventListener("keydown", clear);
+              trigger.removeEventListener("blur", clear);
+            };
+            trigger.addEventListener("keydown", clear);
+            trigger.addEventListener("blur", clear);
+            trigger.focus({ preventScroll: true });
+          }}
         >
           <motion.div
             className={popupMotionClass}

@@ -5,10 +5,11 @@ import { SizeProvider, sizeMap, type SizeVariant } from "@/registry/default/lib/
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/registry/radix/button";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/flavored/select";
-import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/flavored/tabs";
 import { InputGroup, InputField } from "@/registry/default/input-group";
 import { cn } from "@/registry/default/lib/utils";
 import { ListFilter, Plus, Search, SquareKanban, Table2 } from "lucide-react";
+import { ACCENT_VAR } from "@/lib/accent";
 
 // ---------------------------------------------------------------------------
 // The toolbar demo: the same toolbar line at each step of the ladder. Lives
@@ -42,12 +43,12 @@ function SearchField() {
   );
 }
 
-/** Spec-sheet height guides for a toolbar row: a blue line along the row's
+/** Spec-sheet height guides for a toolbar row: an accent line along the row's
  *  top and bottom edges, and a double-headed arrow with the height on the
  *  right. Desktop-only decoration — on phones it would collide with the
  *  wrapped controls. */
 function HeightGuides({ height }: { height: number }) {
-  const line = { backgroundColor: "#6B97FF", opacity: 0.5 };
+  const line = { backgroundColor: ACCENT_VAR, opacity: 0.5 };
   return (
     <div aria-hidden className="pointer-events-none hidden sm:block">
       <div className="absolute inset-x-0 top-0 h-px" style={line} />
@@ -58,23 +59,24 @@ function HeightGuides({ height }: { height: number }) {
           height={height}
           viewBox={`0 0 8 ${height}`}
           fill="none"
+          style={{ color: ACCENT_VAR }}
         >
           <path
             d={`M4,1.5 V${height - 1.5}`}
-            stroke="#6B97FF"
+            stroke="currentColor"
             strokeWidth={1.25}
             strokeLinecap="round"
           />
           <path
             d={`M1.5,5 L4,1.5 L6.5,5`}
-            stroke="#6B97FF"
+            stroke="currentColor"
             strokeWidth={1.25}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d={`M1.5,${height - 5} L4,${height - 1.5} L6.5,${height - 5}`}
-            stroke="#6B97FF"
+            stroke="currentColor"
             strokeWidth={1.25}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -109,10 +111,10 @@ function ToolbarRow({ variant }: { variant: SizeVariant }) {
           <div
             className={cn("flex w-full flex-wrap items-center sm:pr-[44px]", gap)}
           >
-            <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
-              <TabsSubtleItem index={0} icon={Table2} label="Table" />
-              <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
-            </TabsSubtle>
+            <Tabs activeLabel selectedIndex={view} onSelect={setView}>
+              <TabsItem index={0} icon={Table2} label="Table" />
+              <TabsItem index={1} icon={SquareKanban} label="Board" />
+            </Tabs>
             <div className={cn("ml-auto flex items-center", gap)}>
               {/* Mobile shows the trimmed toolbar — tabs, filter, primary
                   action; search and sort return at sm. display:contents keeps

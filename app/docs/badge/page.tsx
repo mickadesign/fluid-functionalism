@@ -26,7 +26,8 @@ const allColors = Object.keys(badgeColors) as BadgeColor[];
 
 const colorsCode = `import { Badge } from "./components";
 
-{/* All available Tailwind colors */}
+{/* The app accent, then the Tailwind colors */}
+<Badge color="accent">Accent</Badge>
 <Badge color="gray">Gray</Badge>
 <Badge color="red">Red</Badge>
 <Badge color="blue">Blue</Badge>

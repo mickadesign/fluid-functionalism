@@ -6,7 +6,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
  *  latestMarks() in lib/changelog/load.ts. The one source for every New and
  *  Updated marker on the site. */
 export interface ReleaseMarks {
-  new: string[];
+  /** Updated or Breaking in the latest release, minus what it lists as New. */
   updated: string[];
   /** Landed after the latest release: badged New until the release that
    *  lists them (AHEAD_OF_RELEASE in lib/changelog/load.ts). */
@@ -14,8 +14,9 @@ export interface ReleaseMarks {
 }
 
 interface MarkLookup {
-  /** New in the latest release, or landed since: the New badges and the
-   *  sidebar's dots. */
+  /** Landed since the latest release (the ahead list), not the release's
+   *  own New entries, so the New badges and the sidebar's dots only mark
+   *  what is new this month. */
   isNew: (slug: string) => boolean;
   isUpdated: (slug: string) => boolean;
 }
@@ -26,11 +27,10 @@ const ReleaseMarksContext = createContext<MarkLookup>(NONE);
 
 export function ReleaseMarksProvider({ marks, children }: { marks: ReleaseMarks; children: ReactNode }) {
   const lookup = useMemo<MarkLookup>(() => {
-    const added = new Set(marks.new);
     const ahead = new Set(marks.ahead);
     const updated = new Set(marks.updated);
     return {
-      isNew: (slug) => added.has(slug) || ahead.has(slug),
+      isNew: (slug) => ahead.has(slug),
       isUpdated: (slug) => updated.has(slug),
     };
   }, [marks]);

@@ -3,9 +3,10 @@
 import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 
 export const hookOptions: PropDef[] = [
-  { name: "axis", type: '"y" | "x" | "xy"', default: '"y"', description: "Which way the list runs: y for lists, x for strips, xy for grids." },
+  { name: "nearest", type: "boolean", default: "false", description: "Lights the item nearest the pointer, so gaps and padding never go dark. Off, only the item under the pointer lights and empty space puts the highlight out." },
+  { name: "axis", type: '"y" | "x" | "xy"', default: '"y"', description: "With nearest, which way the list runs: y for lists, x for strips, xy for grids." },
   { name: "isItemDisabled", type: "(el: HTMLElement) => boolean", description: "Skips an item: never lit, never clicked. Runs on every move, so keep it cheap." },
-  { name: "gapClick", type: "boolean | { maxDistance?: number }", default: "true", description: "A click between items goes to the lit one. false turns it off. maxDistance limits it to clicks within that many px." },
+  { name: "gapClick", type: "boolean | { maxDistance?: number }", default: "true", description: "With nearest, a click between items goes to the lit one. false turns it off. maxDistance limits it to clicks within that many px." },
 ];
 
 export const hookReturn: PropDef[] = [
@@ -23,6 +24,7 @@ export const highlightProps: PropDef[] = [
   { name: "hover", type: "ReturnType<typeof useFluidHover>", description: "The hook. The highlight reads what it needs from it." },
   { name: "hidden", type: "boolean", default: "false", description: "Show nothing, keep the state. A closed popup." },
   { name: "from", type: "ItemRect | null", description: "Where a fresh entry fades in from. Dropdowns pass the checked row when the pointer enters." },
+  { name: "fadeIn", type: "boolean", default: "true", description: "false starts a fresh entry opaque. For a `from` under a filled item, so the highlight slides out of it." },
   { name: "className", type: "string", description: "Radius and z-index. The container must be position: relative." },
   { name: "transition", type: "Transition | false", default: "spring.fast", description: "The travel. false snaps in place after a reflow." },
 ];

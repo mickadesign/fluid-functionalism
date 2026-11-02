@@ -8,8 +8,8 @@ import { OgStage, OG_STILL } from "./og-stage";
 // The checkbox row shown mid-hover, so the fluid highlight is in the shot.
 const HOVER_ROW = "Janky animations";
 
-// Parks a synthetic cursor on HOVER_ROW: the hook picks the row nearest the
-// pointer, so a mousemove at the row's center lights it up. The stage ignores
+// Parks a synthetic cursor on HOVER_ROW: the hook lights the row under the
+// pointer, so a mousemove on the row, at its center, lights it up. The stage ignores
 // the real pointer, so the state holds while you look at it.
 function useParkedHover() {
   useEffect(() => {

@@ -67,7 +67,7 @@ export const itemProps: PropDef[] = [
 ];
 
 export const tabsProps: PropDef[] = [
-  { name: "tabs", type: "{ value: string; label: string; icon?: IconComponent }[]", description: "1 subtle tab each." },
+  { name: "tabs", type: "{ value: string; label: string; icon?: IconComponent }[]", description: "1 tab each." },
   { name: "value", type: "string", description: "The selected tab's value." },
   { name: "onValueChange", type: "(value: string) => void", description: "Called on a pick. Derive items from the value." },
 ];
