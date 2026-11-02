@@ -54,7 +54,6 @@ export const COMPONENTS = [
   ["switch", "Switch"],
   ["table", "Table"],
   ["tabs", "Tabs"],
-  ["tabs-subtle", "TabsSubtle"],
   ["thinking-indicator", "ThinkingIndicator"],
   ["thinking-steps", "ThinkingSteps"],
   ["tooltip", "Tooltip"],

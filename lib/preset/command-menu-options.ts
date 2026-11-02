@@ -45,7 +45,7 @@ export interface CommandMenuPlayState {
   shortcuts: boolean;
   /** Suggested rows listed first while nothing is typed. */
   suggestions: boolean;
-  /** Subtle tabs under the field. */
+  /** Tabs under the field. */
   tabs: boolean;
   /** Borderless filter bar under the field (inside the tab row when both). */
   filters: boolean;

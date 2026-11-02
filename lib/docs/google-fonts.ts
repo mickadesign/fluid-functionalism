@@ -15,6 +15,9 @@ export interface GoogleFont {
   a?: { wght?: [number, number]; opsz?: [number, number] };
   /** 1 when the family only ships italics. */
   i?: 1;
+  /** Google's category: s serif, a sans serif, d display, h handwriting,
+   *  m monospace. Missing when Google's feed doesn't list the family. */
+  c?: "s" | "a" | "d" | "h" | "m";
 }
 
 /** Shown before anything is typed: families people reach for in headings. */

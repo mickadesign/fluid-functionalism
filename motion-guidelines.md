@@ -140,20 +140,22 @@ measures it live). The full pattern and rules live in
 
 ## Fluid hover (`registry/default/hooks/use-fluid-hover.ts`)
 
-One highlight per list. `useFluidHover` picks the item whose center is
-nearest the cursor, and a single absolutely positioned `bg-hover` overlay springs
-to that item's rect on `spring.fast`. Every menu, table, strip, and grid in the
+One highlight per list. `useFluidHover` lights the item under the cursor, and a
+single absolutely positioned `bg-hover` overlay springs to that item's rect on
+`spring.fast`; empty space (padding, a gap, the end of a grid row) puts it out.
+`nearest: true` lights the item whose center is nearest instead, so nothing
+goes dark between items. Every menu, table, strip, and grid in the
 library hovers this way, so the mechanism is documented once, on its own system
 page (`app/docs/fluid-hover/page.tsx`, served at `/docs/fluid-hover`; demos in
 `demos.tsx` beside it), with three demos:
 
-1. **Blink or glide.** Plain `:hover` next to fluid hover on the same 5
-   rows with 4px gaps. Plain `:hover` lights nothing between rows; fluid hover
-   lights the nearest row and travels to it instead of blinking.
-2. **Show the math.** A switch reveals each row's center, the midpoint between
+1. **Blink or glide.** Plain `:hover` next to fluid hover (`nearest: true`) on
+   the same 5 rows with 4px gaps. Plain `:hover` lights nothing between rows;
+   fluid hover lights the nearest row and travels to it instead of blinking.
+2. **Show the math.** The `nearest` rule. A switch reveals each row's center, the midpoint between
    neighbouring centers (where the highlight flips), and the distance from the
    cursor to the winning center.
-3. **3 axes.** `y` (default) for lists, `x` for strips, `xy` for grids, on real
+3. **3 axes.** How `nearest` measures: `y` (default) for lists, `x` for strips, `xy` for grids, on real
    components stacked vertically: Tabs, an inline Dropdown, and a 2-column CardGroup.
 4. **When to split a list.** A sidebar with a parent and its children, a disabled
    row, and a second group behind a divider: one `SidebarMenu` is one list
@@ -165,14 +167,17 @@ page (`app/docs/fluid-hover/page.tsx`, served at `/docs/fluid-hover`; demos in
 
 Rules the hook enforces, worth knowing when you consume it:
 
-- **A containing item always wins; otherwise the nearest center does.** The
+- **The item under the pointer lights; empty space lights nothing** (default,
+  2026-10-27 user call). The highlight glides between touching items and fades
+  in fresh on the next item after empty space. With `nearest: true`, a
+  containing item still wins and otherwise the nearest center does, so the
   cursor in a gap, in the container padding, or past the last row still lands.
 - **One overlay, and it is one component.** Render
   `<FluidHoverHighlight hover={hover} />` (`registry/default/fluid-hover-highlight.tsx`,
   shipped with the hook) instead of a `motion.div`. It reads the highlighted
   index, the measured rects, readiness, and the pointer session off the hook
   (the session steps when the pointer, having entered, first moves the
-  highlight, so it fades in at the nearest row instead of sliding over from
+  highlight, so it fades in at the row it lands on instead of sliding over from
   where it was last). `hidden` keeps
   the list's state but shows nothing (a closed popup). Optional `from` is where
   a fresh entry starts (dropdowns pass the checked row, the sidebar its level's
@@ -220,8 +225,8 @@ transform, and the component reads `useReducedMotion()` itself so an installed
 copy drops the travel and keeps the fade without any wrapper (see
 [Reduced motion](#reduced-motion)).
 
-Deliberately not on the component: `tabs` / `tabs-subtle` (the hover pill
-fades in from, and on leave back to, the selected pill at 0.4 opacity on
+Deliberately not on the component: `tabs` (the hover pill fades in
+from, and on leave back to, the selected pill at 0.4 opacity on
 `spring.moderate`) and `thinking-steps` (a single trigger with an inset fade).
 
 ## Where each speed shows up
@@ -293,7 +298,7 @@ fix:
 > the compositor.
 
 Known stragglers that still animate layout properties (so they aren't yet
-auto-reduced): the hover pill in `tabs` / `tabs-subtle`, the selected
+auto-reduced): the hover pill in `tabs` / `tabs`, the selected
 backgrounds (`bg-active`, the merged selection blocks), and the travelling
 focus rings. Re-expressing those as `transform` (or gating them on
 `useReducedMotion()`) is the remaining work. The hover highlight is done:

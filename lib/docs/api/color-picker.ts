@@ -9,7 +9,7 @@ export const colorPickerProps: PropDef[] = [
   { name: "format", type: '"hex" | "rgb" | "hsl" | "oklch"', description: "Controlled format selection." },
   { name: "defaultFormat", type: '"hex" | "rgb" | "hsl" | "oklch"', default: '"hex"', description: "Initial format when uncontrolled." },
   { name: "onFormatChange", type: "(format) => void", description: "Fired when the user switches format." },
-  { name: "swatches", type: "string[]", description: "Optional preset swatches. When omitted, the strip is hidden." },
+  { name: "swatches", type: "(string | { color: string; label?: string })[]", description: "Optional preset swatches. A label names the color in a tooltip and to screen readers. When omitted, the strip is hidden." },
   { name: "hideEyedropper", type: "boolean", default: "false", description: "Force-hide the eyedropper button (it is automatically hidden in unsupported browsers)." },
 ];
 

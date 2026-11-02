@@ -190,6 +190,9 @@ interface GridContextValue {
   /** The day a range end was just committed on: it takes the gliding
    *  highlight's fill in the same frame, with no fade. */
   committedEnd: number | null;
+  /** A committed range a new pick just replaced: its band and ends fade
+   *  out instead of vanishing. `id` restarts the fade for each one. */
+  ghost: { from: number; to: number; id: number } | null;
 }
 
 const GridContext = createContext<GridContextValue | null>(null);
@@ -254,25 +257,41 @@ function slideVariants(
     }),
   };
 }
+/** One day column: the cell size, or the measured column when the months
+ *  fill their container (see the grid). The chevrons take one each. */
+const COL = "var(--calendar-col, var(--cell-size))";
+/** The week-number column: narrower than a day, so the numbers sit close
+ *  to the days instead of floating in a full cell. */
+export const WEEK_COL_RATIO = 0.75;
+const WEEK_COL = "calc(var(--cell-size) * 0.75)";
+
 /**
- * The stacked strip's mask, the scroll-fade recipe twice over: content fades
- * out over 16px under the sticky weekday row, and a soft hole sits where the
- * chevrons float (16px fade on its left, 8px at the bottom of the caption
- * row, which it never passes), so a month sliding up
- * goes under both instead of showing through. The hole is the left-fade and
- * bottom-fade gradients intersected, subtracted from the top fade.
+ * The stacked strip's mask, the scroll-fade recipe twice over. Top: nothing
+ * shows above the first caption row (the strip reaches up through the 16px
+ * gap to the weekday row, which stays empty), then content fades in over a
+ * quarter cell, ending just above the title's cap height. Bottom: content
+ * fades over the 24px the strip reaches past the last week (only padding at
+ * rest, so nothing on screen dims). A month sliding out either way dissolves
+ * there instead of being cut. The chevrons sit in a hole that hides
+ * everything from their left edge (16px fade beyond it) down to the 4px
+ * margin under their row (faded across it, so the first week stays whole),
+ * so a month sliding up goes under them instead of showing through. The hole
+ * is the left-fade and bottom-fade gradients intersected, subtracted from
+ * the fade.
  */
-const STACKED_NAV_WIDTH = "calc(var(--cell-size) * 1.56 + 4px)";
+const STACKED_NAV_WIDTH = `calc(${COL} * 2)`;
 const stackedStripMask: CSSProperties = (() => {
-  const fade = "linear-gradient(to bottom, transparent var(--strip-clip-top), #000 calc(var(--strip-clip-top) + 16px))";
+  const fade =
+    "linear-gradient(to bottom, transparent calc(var(--strip-clip-top) + 16px), #000 calc(var(--strip-clip-top) + 16px + var(--cell-size) / 4), #000 calc(100% - 24px), transparent)";
   const holeLeft = "linear-gradient(to left, #000 calc(100% - 16px), transparent)";
-  const holeBottom = "linear-gradient(to bottom, #000 calc(100% - 8px), transparent)";
+  const holeBottom = "linear-gradient(to bottom, #000 calc(100% - 4px), transparent)";
   // The caption row and its 4px margin: the first week below stays whole.
   const holeSize = `calc(${STACKED_NAV_WIDTH} + 16px) calc(var(--cell-size) + 4px)`;
   return {
     maskImage: `${fade}, ${holeLeft}, ${holeBottom}`,
     maskSize: `100% 100%, ${holeSize}, ${holeSize}`,
-    maskPosition: "0 0, right 4px top 0, right 4px top 0",
+    // The hole starts at the first caption row, below the strip's 16px reach.
+    maskPosition: "0 0, right 4px top 16px, right 4px top 16px",
     maskRepeat: "no-repeat",
     maskComposite: "subtract, intersect",
   };
@@ -414,6 +433,33 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
     return () => ro.disconnect();
   }, [sideways, stacked]);
 
+  // Filling their container, the day columns outgrow the cell size, so the
+  // chevrons (one column each) read the measured column instead. Read off a
+  // live cell each time: a month change swaps the cells out.
+  useIsoLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (!cal.fill) {
+      container.style.setProperty("--calendar-col", "var(--cell-size)");
+      return;
+    }
+    const measure = () => {
+      const cell = container.querySelector<HTMLElement>('[role="gridcell"]');
+      if (!cell) return;
+      // Fractional (offsetWidth rounds, which drifts across columns), in
+      // layout pixels: the container's own ratio undoes a scaled ancestor.
+      const box = container.getBoundingClientRect().width;
+      const scale = box ? container.offsetWidth / box : 1;
+      container.style.setProperty("--calendar-col", `${cell.getBoundingClientRect().width * scale}px`);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+    // Week numbers and the month layout change the columns, not the box.
+  }, [cal.fill, cal.showWeekNumber, cal.numberOfMonths, cal.orientation]);
+
   // While a range end is being picked, the band follows the lit day.
   const previewDate =
     cal.picking && activeIndex !== null && firstDay ? addDays(firstDay, activeIndex) : null;
@@ -440,6 +486,13 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
 
   const previewGlides =
     previewEnd !== null && !!cal.range?.from && previewEnd !== dayNumber(cal.range.from);
+  // Picking an end, a fresh hover session (the pointer coming back in) starts
+  // the solid end opaque under the range start, so it slides out of the
+  // first pick instead of fading in wherever the pointer lands.
+  const pickStart =
+    previewGlides && cal.range?.from && isMeasured
+      ? (itemRects[dayNumber(cal.range.from) - gridStart] ?? null)
+      : null;
   // Whether the lit day is a filled one (the selected day, or a range end).
   const litDay = activeIndex !== null ? gridStart + activeIndex : null;
   const litFilled =
@@ -463,6 +516,34 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
     setPickTrack({ picking: cal.picking, end: cal.picking ? previewEnd : null });
   }
   const clearCommittedEnd = useCallback(() => setCommittedEnd(null), []);
+  // A new pick replacing a committed range leaves the old one as a ghost
+  // that fades out on the moderate exit. Tracked during render, compared by
+  // day numbers (the range's dates are new objects each render).
+  const committed =
+    cal.mode === "range" && !cal.picking && cal.range?.from && cal.range.to
+      ? { from: dayNumber(cal.range.from), to: dayNumber(cal.range.to) }
+      : null;
+  const [lastCommitted, setLastCommitted] = useState(committed);
+  const [ghost, setGhost] = useState<GridContextValue["ghost"]>(null);
+  if (committed?.from !== lastCommitted?.from || committed?.to !== lastCommitted?.to) {
+    if (lastCommitted && !committed) setGhost({ ...lastCommitted, id: (ghost?.id ?? 0) + 1 });
+    setLastCommitted(committed);
+  }
+  useEffect(() => {
+    if (!ghost) return;
+    const id = setTimeout(() => setGhost(null), exitFallbackMs(spring.moderate));
+    return () => clearTimeout(id);
+  }, [ghost]);
+  // Held down on a filled day, its ring goes solid; on an empty one, the
+  // hover fill presses like a ghost Button. The press reads before the
+  // click commits. The window listener catches a release outside the grid.
+  const [pressed, setPressed] = useState(false);
+  useEffect(() => {
+    if (!pressed) return;
+    const release = () => setPressed(false);
+    window.addEventListener("mouseup", release);
+    return () => window.removeEventListener("mouseup", release);
+  }, [pressed]);
   // The cell's usual color fades come back after the moment has passed.
   useEffect(() => {
     if (committedEnd === null) return;
@@ -478,8 +559,8 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
     const row = weekdayRowRef.current;
     const strip = stripRef.current;
     if (!stacked || !row || !strip) return;
-    // Not clamped: at rest the row's edge sits above the strip (negative),
-    // so the fade happens in the gap and the first title stays whole.
+    // Not clamped: at rest the row's edge meets the strip's top (0), and the
+    // mask hides the 16px gap below it down to the first caption row.
     const measure = () => {
       frame = 0;
       const top = row.getBoundingClientRect().bottom - strip.getBoundingClientRect().top;
@@ -515,6 +596,7 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       stacked,
       sharedRows,
       committedEnd,
+      ghost,
     }),
     // band is rebuilt each render; compare its parts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -530,6 +612,7 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       stacked,
       sharedRows,
       committedEnd,
+      ghost,
     ]
   );
 
@@ -548,22 +631,30 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
             "z-[1]",
             cellRadius,
             // Picking a range end, the highlight is the proposed end: the solid
-            // fill and its inset ring (1px in, radius concentric with the
-            // cell's) glide to the pointer like the single-select highlight
-            // instead of jumping from cell to cell.
-            previewGlides &&
-              cn(
-                "bg-foreground before:pointer-events-none before:absolute before:inset-px before:border before:border-background",
-                cal.pill ? "before:rounded-full" : "before:rounded-[7px]"
-              )
+            // fill glides to the pointer like the single-select highlight
+            // instead of jumping from cell to cell. Its ring is the overlay's.
+            previewGlides
+              ? "bg-foreground"
+              : cn(
+                  // Otherwise it's the hover fill, pressed like a ghost
+                  // Button: a surface 1px in with a same-color 1px spread at
+                  // rest, the spread collapsing on press so the fill shrinks
+                  // 1px per side and steps to the active token.
+                  "bg-transparent before:pointer-events-none before:absolute before:inset-px before:rounded-[inherit] before:bg-[var(--day-press)] before:transition-[box-shadow,background-color] before:[transition-duration:180ms,80ms] before:[transition-timing-function:cubic-bezier(0.23,1,0.32,1),ease]",
+                  pressed && !litFilled
+                    ? "[--day-press:var(--active)] before:shadow-[0_0_0_0px_var(--day-press)] before:[transition-duration:80ms,80ms]"
+                    : "[--day-press:var(--hover)] before:shadow-[0_0_0_1px_var(--day-press)]"
+                )
           )}
+          from={pickStart}
+          fadeIn={!pickStart}
           transition={snap ? false : undefined}
         />
         {/* The highlight sits under a filled start or end, so it brings an
-            inner ring on top: the end ring's geometry (1px in, concentric
-            radius) at 40%, gliding on the same rect and spring, shown only
-            while the lit day is filled. Picking an end, the highlight already
-            is the solid end with its ring, so this one stays out. */}
+            inner ring on top (1px in, concentric radius) at 40%, gliding on
+            the same rect and spring, shown while the lit day is filled. The
+            proposed end is a lit filled day too, so the ring stays as it is
+            when the click commits it. Pressed, it goes solid. */}
         <FluidHoverHighlight
           hover={hover}
           className={cn(
@@ -571,8 +662,14 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
             cellRadius,
             "before:pointer-events-none before:absolute before:inset-px before:border before:border-background before:transition-opacity before:duration-80",
             cal.pill ? "before:rounded-full" : "before:rounded-[7px]",
-            litFilled && !previewGlides ? "before:opacity-40" : "before:opacity-0"
+            !(litFilled || previewGlides)
+              ? "before:opacity-0"
+              : pressed
+                ? "before:opacity-100"
+                : "before:opacity-40"
           )}
+          from={pickStart}
+          fadeIn={!pickStart}
           transition={snap ? false : undefined}
         />
         <AnimatePresence>
@@ -615,20 +712,25 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       data-orientation={cal.numberOfMonths > 1 ? cal.orientation : undefined}
       className={cn(
         "relative isolate flex",
-        stacked ? "flex-col gap-4" : "flex-row flex-wrap gap-x-6 gap-y-4",
+        // Stacked, the surface carries on to the sticky weekday row, which
+        // must hide what scrolls under it.
+        stacked ? "flex-col gap-4 bg-inherit" : "flex-row flex-wrap gap-x-6 gap-y-4",
         // With 2 months, the months sit in a masked strip (below): soft
         // edges side by side, a fade under the weekday row when stacked.
         cal.fill && "w-full",
         className
       )}
-      style={style}
+      // Seeded at the cell size; filling, the effect above measures it.
+      style={{ "--calendar-col": "var(--cell-size)", ...style } as CSSProperties}
       onKeyDownCapture={(e) => {
         if (POPUP_NAV_KEYS.includes(e.key)) trackKeyboardNav(e);
       }}
-      onMouseDown={() => {
+      onMouseDown={(e) => {
         keyboardNavRef.current = false;
         setFocusedIndex(null);
+        if (e.button === 0) setPressed(true);
       }}
+      onMouseUp={() => setPressed(false)}
       onMouseEnter={() => {
         inertRef.current = false;
         onMouseEnter();
@@ -653,7 +755,7 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
           {...{ [INERT_ATTR]: "" }}
           className="sticky top-0 z-[4] flex bg-inherit"
         >
-          {cal.showWeekNumber && <span className="w-[var(--cell-size)] shrink-0" />}
+          {cal.showWeekNumber && <span className="w-[calc(var(--cell-size)*0.75)] shrink-0" />}
           {months[0].weeks[0].days.map((day) => (
             <WeekdayCell key={day.isoDate}>
               {formatters.formatWeekdayName(day.date, day.dateLib.options, day.dateLib)}
@@ -664,11 +766,12 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       )}
       {stacked && !cal.navHidden && (
         // Stacked, the chevrons float over the first caption row, outside the
-        // masked strip (whose hole fades the sliding months under them).
+        // masked strip (whose hole fades the sliding months under them), and
+        // pass under the sticky weekday row when a short popup scrolls.
         <div
           {...{ [INERT_ATTR]: "" }}
           // Same rounded row height as the weekday row, with the same fallback.
-          className="absolute right-0 top-[calc(var(--cell-size)*0.8_+_16px)] z-[5] flex h-[var(--cell-size)] items-center supports-[width:round(1px,1px)]:top-[calc(round(down,var(--cell-size)*0.8,1px)_+_16px)]"
+          className="absolute right-0 top-[calc(var(--cell-size)*0.8_+_16px)] z-[3] flex h-[var(--cell-size)] items-center supports-[width:round(1px,1px)]:top-[calc(round(down,var(--cell-size)*0.8,1px)_+_16px)]"
         >
           <NavGroup buttons={["previous", "next"]} />
         </div>
@@ -679,9 +782,12 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
           // month sliding up leaves at its edge instead of passing behind it.
           <div
             ref={stripRef}
-            // The box reaches 4px past the sides and 8px past the bottom
-            // (margins undone by padding), so the mask never cuts a focus ring.
-            className="-mx-1 -mb-2 flex flex-col gap-4 px-1 pb-2"
+            // The box reaches 4px past the sides (so the mask never cuts a
+            // focus ring), up through the gap to the weekday row and 24px
+            // past the bottom for the fades, margins undone by padding. Only
+            // the months take the pointer: the reach never covers what sits
+            // below the calendar.
+            className="pointer-events-none -mx-1 -mb-6 -mt-4 flex flex-col gap-4 px-1 pb-6 pt-4 [&>[data-slot=calendar-month]]:pointer-events-auto"
             style={
               {
                 // Seeded here; the effect above keeps it on the weekday row's
@@ -761,9 +867,11 @@ function NavButton({ direction }: { direction: "previous" | "next" }) {
           if (direction === "previous") dayPickerProps.onPrevClick?.(target);
           else dayPickerProps.onNextClick?.(target);
         }}
-        // The pair shares one fluid hover highlight, so each button's own
-        // hover fill stays off; the press feedback is kept.
-        className="relative z-[1] !size-[calc(var(--cell-size)*0.78)] group-hover:[&>span:first-child]:!bg-transparent group-hover:[&>span:first-child]:!shadow-none"
+        // A day's size (a filled column caps at the cell size, like the days),
+        // so the chevrons line up with the dates in every configuration. The
+        // pair shares one fluid hover highlight, so each button's own hover
+        // fill stays off; the press feedback is kept.
+        className="relative z-[1] !size-[min(var(--calendar-col,var(--cell-size)),var(--cell-size))] group-hover:[&>span:first-child]:!bg-transparent group-hover:[&>span:first-child]:!shadow-none"
       >
         <Chevron
           size={16}
@@ -818,9 +926,13 @@ function NavSlot({
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   useRegisterFluidHoverItem(registerItem, index, ref);
+  // One day column wide, the button centered in it like a day in its cell;
+  // the highlight measures the button's box, not the column.
   return (
-    <span ref={ref} className="relative flex">
-      {children}
+    <span className="flex w-[var(--calendar-col,var(--cell-size))] justify-center">
+      <span ref={ref} className="relative flex">
+        {children}
+      </span>
     </span>
   );
 }
@@ -873,16 +985,17 @@ function CaptionText({
 }
 
 /** Mask for a side-by-side caption layer: transparent under the chevron
- *  (78% of a cell), then a 24px ramp to opaque, toward `to`. */
-function captionFade(to: "left" | "right") {
-  const nav = "calc(var(--cell-size) * 0.78)";
+ *  (one day column, after the week numbers on the left), then a 24px ramp to
+ *  opaque, toward `to`. */
+function captionFade(to: "left" | "right", weekNumbers: boolean) {
+  const nav = to === "right" && weekNumbers ? `calc(${WEEK_COL} + ${COL})` : COL;
   return `linear-gradient(to ${to}, transparent ${nav}, #000 calc(${nav} + 24px))`;
 }
 
 /** The single-month caption layer's mask: clear past the right edge and
- *  under the chevron pair (2 buttons, 78% of a cell each), then a 24px ramp. */
+ *  under the chevron pair (a day column each), then a 24px ramp. */
 function oneUpCaptionFade(stride: number, noNav: boolean) {
-  const clear = noNav ? `${stride}px` : `calc(${stride}px + var(--cell-size) * 1.56)`;
+  const clear = noNav ? `${stride}px` : `calc(${stride}px + ${COL} * 2)`;
   return `linear-gradient(to left, transparent ${clear}, #000 calc(${clear} + 24px))`;
 }
 
@@ -946,7 +1059,7 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
         // With week numbers, the title belongs to the days: it starts at the
         // Monday column (centered over the 7 days, side by side).
         cal.showWeekNumber &&
-          (twoUp ? "pl-[var(--cell-size)]" : "pl-[calc(var(--cell-size)+0.5rem)]"),
+          (twoUp ? "pl-[calc(var(--cell-size)*0.75)]" : "pl-[calc(var(--cell-size)*0.75+0.5rem)]"),
         "mb-1",
         className
       )}
@@ -954,7 +1067,12 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
       {...omit(props, ["children"])}
     >
       {twoUp && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2">
+        <div
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2",
+            cal.showWeekNumber ? "left-[calc(var(--cell-size)*0.75)]" : "left-0"
+          )}
+        >
           {navStart.length > 0 && <NavGroup buttons={navStart} />}
         </div>
       )}
@@ -969,8 +1087,8 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
           style={{
             left: first ? 0 : -grid.stride,
             right: last ? 0 : -grid.stride,
-            maskImage: captionFade(first ? "right" : "left"),
-            WebkitMaskImage: captionFade(first ? "right" : "left"),
+            maskImage: captionFade(first ? "right" : "left", cal.showWeekNumber),
+            WebkitMaskImage: captionFade(first ? "right" : "left", cal.showWeekNumber),
           }}
         >
           <div
@@ -998,7 +1116,7 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
             <div
               className={cn(
                 "absolute inset-y-0 flex items-center",
-                cal.showWeekNumber ? "pl-[calc(var(--cell-size)+0.5rem)]" : "pl-2"
+                cal.showWeekNumber ? "pl-[calc(var(--cell-size)*0.75+0.5rem)]" : "pl-2"
               )}
               style={{ left: grid.stride!, right: grid.stride! }}
             >
@@ -1069,23 +1187,11 @@ function WeekdayCell({
   );
 }
 
-function Weekdays({ className, style, children }: HTMLAttributes<HTMLElement>) {
-  const cal = useCalendarContext();
-  const grid = useGridContext();
-  // Stacked months show one weekday row, pinned above both grids; sliding
-  // sideways (1 month or 2), each month's row travels in its panel instead.
-  if (cal.numberOfMonths > 1 || grid.stride !== null) return null;
-  return (
-    <div
-      role="row"
-      aria-hidden
-      {...{ [INERT_ATTR]: "" }}
-      className={cn("flex", className)}
-      style={style}
-    >
-      {children}
-    </div>
-  );
+// DayPicker's own weekday row never renders. Stacked months show one row,
+// pinned above both grids; sliding sideways (1 month or 2), each month's row
+// travels in its panel instead, from the first paint.
+function Weekdays() {
+  return null;
 }
 
 function Weekday({ className, style, children, ...props }: HTMLAttributes<HTMLElement>) {
@@ -1112,7 +1218,7 @@ function WeekNumberHeader({ className, style, ...props }: HTMLAttributes<HTMLEle
     <div
       role="columnheader"
       aria-label={(props as { "aria-label"?: string })["aria-label"]}
-      className={cn("w-[var(--cell-size)] shrink-0", className)}
+      className={cn("w-[calc(var(--cell-size)*0.75)] shrink-0", className)}
       style={style}
     />
   );
@@ -1130,17 +1236,24 @@ function Weeks({ className, style, children }: HTMLAttributes<HTMLElement>) {
   const month = useContext(MonthContext);
   const grid = useGridContext();
   const height = useMotionValue<number | "auto">("auto");
-  const measuredRef = useRef(false);
+  // The month the height was last taken from, and the height it settles on.
+  const measuredRef = useRef<{ month: number; h: number } | null>(null);
   const [clip, setClip] = useState(false);
 
+  // Only a month change springs. A resize within the same month (fonts and
+  // cell sizes settling after mount, a container resize) snaps, so the
+  // calendar never grows on first paint.
   const onHeight = useCallback(
-    (h: number) => {
-      if (!measuredRef.current || grid.reduceMotion) {
-        measuredRef.current = true;
-        height.set(h);
+    (h: number, monthTime: number) => {
+      const last = measuredRef.current;
+      measuredRef.current = { month: monthTime, h };
+      if (!last || grid.reduceMotion || last.month === monthTime) {
+        if (last?.month === monthTime && last.h === h) return;
+        height.jump(h);
+        setClip(false);
         return;
       }
-      if (height.get() === h) return;
+      if (last.h === h) return;
       setClip(true);
       animate(height, h, { ...spring.moderate, onComplete: () => setClip(false) });
     },
@@ -1153,7 +1266,11 @@ function Weeks({ className, style, children }: HTMLAttributes<HTMLElement>) {
   return (
     <motion.div
       data-slot="calendar-weeks"
-      className={cn("relative grid", clip && "[overflow-y:clip]")}
+      // Clipped while the height springs, so a taller month leaving sideways
+      // never spills below. Stacked months travel a whole slot vertically
+      // through this box: a clip would slice them flat, so the strip's soft
+      // mask is their only edge.
+      className={cn("relative grid", clip && !grid.stacked && "[overflow-y:clip]")}
       style={{ height }}
     >
       <AnimatePresence initial={false} custom={grid.direction}>
@@ -1188,7 +1305,7 @@ function WeeksPanel({
   monthTime: number;
   offset: number;
   stride: number | null;
-  onHeight: (h: number) => void;
+  onHeight: (h: number, monthTime: number) => void;
 }) {
   const present = useIsPresent();
   const cal = useCalendarContext();
@@ -1198,18 +1315,19 @@ function WeeksPanel({
   const shownElsewhere = useShownElsewhere(monthTime, present, stride);
   const ref = useRef<HTMLDivElement>(null);
   // Side by side, the weekday row travels with its days, so a slide moves
-  // each month as one block instead of sliding days under fixed labels.
-  const side = stride !== null && !stacked;
+  // each month as one block instead of sliding days under fixed labels. Known
+  // before the stride is measured, so the row is there on the first paint.
+  const side = !stacked;
   const firstWeek = month?.calendarMonth.weeks[0]?.days ?? [];
   useIsoLayoutEffect(() => {
     const el = ref.current;
     if (!el || !present) return;
-    onHeight(el.offsetHeight);
+    onHeight(el.offsetHeight, monthTime);
     if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
+    const ro = new ResizeObserver(() => onHeight(el.offsetHeight, monthTime));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [present, onHeight]);
+  }, [present, onHeight, monthTime]);
   return (
     <PanelPresentContext.Provider value={present}>
       <motion.div
@@ -1236,7 +1354,7 @@ function WeeksPanel({
               <span
                 role="columnheader"
                 aria-label={labels.labelWeekNumberHeader?.()}
-                className="w-[var(--cell-size)] shrink-0"
+                className="w-[calc(var(--cell-size)*0.75)] shrink-0"
               />
             )}
             {firstWeek.map((day) => (
@@ -1282,7 +1400,7 @@ function WeekNumber({ className, style, children, ...props }: WeekNumberProps) {
       aria-label={(props as { "aria-label"?: string })["aria-label"]}
       {...{ [INERT_ATTR]: "" }}
       className={cn(
-        "flex w-[var(--cell-size)] shrink-0 items-center justify-center tabular-nums text-muted-foreground opacity-60",
+        "flex w-[calc(var(--cell-size)*0.75)] shrink-0 items-center justify-center tabular-nums text-muted-foreground opacity-60",
         cal.fill ? "max-h-[var(--cell-size)]" : "h-[var(--cell-size)]",
         typeClass("caption", cal.compact ? "compact" : "default"),
         className
@@ -1306,9 +1424,7 @@ function Day({ day, modifiers, className, style, children, ...props }: DayProps)
   const grid = useGridContext();
   const month = useContext(MonthContext);
   const n = dayNumber(day.date);
-  const band = grid.band;
   const visible = !modifiers.hidden;
-  const inBand = !!band && visible && band.from !== band.to && n >= band.from && n <= band.to;
   const nextDay = addDays(day.date, 1);
   const lastOfMonth = nextDay.getMonth() !== day.date.getMonth();
   const firstOfMonth = day.date.getDate() === 1;
@@ -1323,17 +1439,33 @@ function Day({ day, modifiers, className, style, children, ...props }: DayProps)
   // week's first day (outside days included, hidden or not), whatever
   // weekStartsOn, locale or ISO numbering decided that day is.
   const weekday = (((n - gridFirst) % 7) + 7) % 7;
-  const edgeLeft = inBand && n > band!.from && (weekday === 0 || (firstOfMonth && cal.outsideHidden));
-  const edgeRight = inBand && n < band!.to && (weekday === 6 || (lastOfMonth && cal.outsideHidden));
   const drawn = (m: number) => {
     if (m < gridFirst || m > gridLast) return false;
     if (!cal.outsideHidden || !month) return true;
     const d = addDays(day.date, m - n);
     return d.getMonth() === month.calendarMonth.date.getMonth();
   };
-  const bandAtLeft = (m: number) => !!band && drawn(m) && m > band.from && m <= band.to;
-  const bandAtRight = (m: number) => !!band && drawn(m) && m >= band.from && m < band.to;
   const corner = (edge: boolean, touching: boolean) => (edge && !touching ? "2px" : 0);
+  // This cell's slice of a band (the live one, or a fading ghost), or null.
+  const slice = (band: { from: number; to: number } | null): CSSProperties | null => {
+    if (!band || !visible || band.from === band.to || n < band.from || n > band.to) return null;
+    const edgeLeft = n > band.from && (weekday === 0 || (firstOfMonth && cal.outsideHidden));
+    const edgeRight = n < band.to && (weekday === 6 || (lastOfMonth && cal.outsideHidden));
+    const atLeft = (m: number) => drawn(m) && m > band.from && m <= band.to;
+    const atRight = (m: number) => drawn(m) && m >= band.from && m < band.to;
+    return {
+      left: n > band.from ? 0 : "50%",
+      right: n < band.to ? 0 : "50%",
+      borderTopLeftRadius: corner(edgeLeft, atLeft(n - 7)),
+      borderBottomLeftRadius: corner(edgeLeft, atLeft(n + 7)),
+      borderTopRightRadius: corner(edgeRight, atRight(n - 7)),
+      borderBottomRightRadius: corner(edgeRight, atRight(n + 7)),
+    };
+  };
+  const bandSlice = slice(grid.band);
+  const ghost = grid.ghost;
+  const ghostSlice = slice(ghost);
+  const ghostEnd = !!ghost && visible && (n === ghost.from || n === ghost.to);
 
   return (
     <div
@@ -1353,21 +1485,42 @@ function Day({ day, modifiers, className, style, children, ...props }: DayProps)
       )}
       style={style}
     >
-      {inBand && (
+      {/* The range a new pick replaced: its band slice and filled ends fade
+          out together on the moderate exit, under everything live. Its own
+          presence scope: the month panel's initial={false} would otherwise
+          skip the starting opacity and mount it already faded. */}
+      <AnimatePresence>
+        {(ghostSlice || ghostEnd) && (
+          <motion.span
+            key={ghost!.id}
+            aria-hidden
+            data-slot="calendar-range-ghost"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={spring.moderate.exit}
+          >
+            {ghostSlice && <span className="absolute inset-y-0 bg-hover" style={ghostSlice} />}
+            {ghostEnd && (
+              <span
+                className={cn(
+                  "relative bg-foreground",
+                  cal.fill ? "aspect-square h-full max-w-full" : "size-[var(--cell-size)]",
+                  cal.pill ? "rounded-full" : "rounded-lg"
+                )}
+              />
+            )}
+          </motion.span>
+        )}
+      </AnimatePresence>
+      {bandSlice && (
         <span
           aria-hidden
           data-slot="calendar-range-band"
           // The hover fill: a long band reads heavier than a small one, so it
           // takes the lightest token; the highlight over it stacks a step up.
           className="pointer-events-none absolute inset-y-0 bg-hover"
-          style={{
-            left: n > band!.from ? 0 : "50%",
-            right: n < band!.to ? 0 : "50%",
-            borderTopLeftRadius: corner(edgeLeft, bandAtLeft(n - 7)),
-            borderBottomLeftRadius: corner(edgeLeft, bandAtLeft(n + 7)),
-            borderTopRightRadius: corner(edgeRight, bandAtRight(n - 7)),
-            borderBottomRightRadius: corner(edgeRight, bandAtRight(n + 7)),
-          }}
+          style={bandSlice}
         />
       )}
       {children}
@@ -1669,7 +1822,7 @@ function Calendar(props: CalendarProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [fits, setFits] = useState(true);
   const neededWidth =
-    (7 + (showWeekNumber ? 1 : 0)) * cellSize * 2 + MONTH_GAP + CALENDAR_PAD * 2;
+    (7 + (showWeekNumber ? WEEK_COL_RATIO : 0)) * cellSize * 2 + MONTH_GAP + CALENDAR_PAD * 2;
   useIsoLayoutEffect(() => {
     if (orientation !== "auto" || !twoMonths) return;
     const parent = wrapperRef.current?.parentElement;
@@ -1732,7 +1885,8 @@ function Calendar(props: CalendarProps) {
     disabled: matchers.disabled,
     modifiers: { ...matchers.modifiers, ...rest.modifiers },
     components: { ...components, ...rest.components },
-    className: cn("p-2", fill && "w-full", className),
+    // bg-inherit passes the surface down to the stacked weekday row.
+    className: cn("bg-inherit p-2", fill && "w-full", className),
   };
 
   const picker =

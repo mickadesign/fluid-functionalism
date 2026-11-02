@@ -39,8 +39,7 @@ behavior they extend.
 | [Slider](https://www.fluidfunctionalism.com/docs/slider) | `slider` · `base/slider` | Spring-snapped thumb, step dots, range mode, and a click-to-edit value | [Slider](craft.md#slider) |
 | [Switch](https://www.fluidfunctionalism.com/docs/switch) | `switch` · `base/switch` | Toggle with animated thumb and label | [Switch](craft.md#switch) |
 | [Table](https://www.fluidfunctionalism.com/docs/table) | `table` | Data table with fluid hover on rows and semantic markup | [Table](craft.md#table) |
-| [Tabs](https://www.fluidfunctionalism.com/docs/tabs) | `tabs` · `base/tabs` | Segmented control with sliding indicator and fluid hover | [Tabs](craft.md#tabs) |
-| [TabsSubtle](https://www.fluidfunctionalism.com/docs/tabs-subtle) | `tabs-subtle` · `base/tabs-subtle` | Tab navigation with an animated pill indicator | [TabsSubtle](craft.md#tabs-subtle) |
+| [Tabs](https://www.fluidfunctionalism.com/docs/tabs) | `tabs` · `base/tabs` | Tab navigation with an animated pill indicator | [Tabs](craft.md#tabs) |
 | [ThinkingIndicator](https://www.fluidfunctionalism.com/docs/thinking-indicator) | `thinking-indicator` | Animated status indicator with morphing SVG and cycling text | [ThinkingIndicator](craft.md#thinking-indicator) |
 | [ThinkingSteps](https://www.fluidfunctionalism.com/docs/thinking-steps) | `thinking-steps` · `base/thinking-steps` | Chain-of-thought display with sequential animation and collapsible steps | [ThinkingSteps](craft.md#thinking-steps) |
 | [Tooltip](https://www.fluidfunctionalism.com/docs/tooltip) | `tooltip` · `base/tooltip` | Spring-based floating tooltip with configurable placement | [Tooltip](craft.md#tooltip) |
@@ -54,7 +53,7 @@ needs it.
 
 | System | Registry name | What it does | Craft |
 |---|---|---|---|
-| [Fluid Hover](https://www.fluidfunctionalism.com/docs/fluid-hover) | `use-fluid-hover` | One hook and one highlight per list. The highlight glides to the item nearest your cursor and never blinks off between rows | [Fluid Hover](craft.md#fluid-hover) |
+| [Fluid Hover](https://www.fluidfunctionalism.com/docs/fluid-hover) | `use-fluid-hover` | One hook and one highlight per list. The highlight glides from item to item under your cursor instead of blinking between them | [Fluid Hover](craft.md#fluid-hover) |
 | [Motion](https://www.fluidfunctionalism.com/docs/motion) | `springs` | 3 spring speeds — fast, moderate, slow — each with an exit one tier quicker than its entrance | [Motion](craft.md#motion) |
 | [Reveal](https://www.fluidfunctionalism.com/docs/reveal) | `reveal` | 1 class reveals a whole page, on load and on scroll | [Reveal](craft.md#reveal) |
 | [Scrollbars](https://www.fluidfunctionalism.com/docs/scrollbars) | `scroll-area` · `base/scroll-area` | A scrollbar that stays out of the way but never disappears, with native scroll on touch | [Scrollbars](craft.md#scrollbars) |

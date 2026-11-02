@@ -16,7 +16,7 @@ import { PRESET_SPECS } from "@/lib/docs/api/reveal";
 import type { RevealPresetName } from "@/lib/reveal/presets";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/flavored/tabs";
 
 // ---------------------------------------------------------------------------
 // Tidepool, a made-up shared inbox: its landing page and the app itself
@@ -479,17 +479,13 @@ function LandingPage({ className }: { className: string }) {
               the hero: it plays on load with the copy instead of waiting
               half revealed for a scroll. */}
           <div
-            className={cn("mt-9 w-full bg-muted p-3 sm:p-6", shape.container)}
+            aria-hidden
+            className={cn(
+              "pointer-events-none mt-9 w-[calc(100%+24px)] overflow-hidden border border-border bg-background select-none sm:w-[calc(100%+48px)]",
+              shape.container,
+            )}
           >
-            <div
-              aria-hidden
-              className={cn(
-                "pointer-events-none overflow-hidden border border-border bg-background select-none",
-                shape.container,
-              )}
-            >
-              <AppScreen />
-            </div>
+            <AppScreen />
           </div>
         </section>
 
@@ -677,7 +673,7 @@ export function PresetDemo({ preset }: { preset: Preset }) {
     <ComponentPreview hideHeader padding="none">
       <div className="flex w-full flex-col self-stretch">
         <div className="flex w-full items-center gap-3 border-b border-border/60 px-3 py-3">
-          <TabsSubtle
+          <Tabs
             idPrefix={`reveal-${preset.toLowerCase()}`}
             selectedIndex={INTENSITIES.indexOf(intensity)}
             onSelect={(i) => {
@@ -686,9 +682,9 @@ export function PresetDemo({ preset }: { preset: Preset }) {
             }}
           >
             {INTENSITIES.map((label, i) => (
-              <TabsSubtleItem key={label} index={i} label={label} />
+              <TabsItem key={label} index={i} label={label} />
             ))}
-          </TabsSubtle>
+          </Tabs>
           <Button
             className="ml-auto"
             leadingIcon={ReplayIcon}

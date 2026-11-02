@@ -7,6 +7,7 @@ import { SETTING_LABELS, describeSettings } from "@/lib/starter/install";
 import { starterSlug, type StarterSettings } from "@/lib/starter/settings";
 import type { HeadingFont } from "@/lib/docs/site-settings";
 import { googleFontWeights, nearestGoogleFontWeight, type GoogleFont } from "@/lib/docs/google-fonts";
+import { ACCENT_PRESETS, DEFAULT_ACCENT, accentCss } from "@/lib/accent";
 import {
   SITE,
   OVERWRITE_NOTE,
@@ -181,7 +182,7 @@ export interface StarterHeading {
 /** The family a heading choice names, or null for Inter (nothing to do). */
 function headingFamily(heading: StarterHeading | undefined): string | null {
   if (!heading || heading.font === "inter") return null;
-  if (heading.font === "source-serif") return "Source Serif 4";
+  if (heading.font === "geist-serif") return "Geist Serif";
   return heading.custom?.n ?? null;
 }
 
@@ -191,12 +192,11 @@ const nextFontExport = (family: string) => family.replace(/[^A-Za-z0-9]+/g, "_")
 /** The step that sets the headings' font, as the site renders it. */
 function headingLines(heading: StarterHeading): string[] {
   const css = "app/globals.css";
-  if (heading.font === "source-serif") {
+  if (heading.font === "geist-serif") {
     return [
-      "Either way, set the headings in Source Serif 4, as picked on the site (body text and components stay Inter):",
-      `- app/layout.tsx: import { Source_Serif_4 } from "next/font/google", load it with { subsets: ["latin"], axes: ["opsz"], variable: "--font-heading" } and add its .variable class to <html> next to Inter's.`,
-      // eslint-disable-next-line no-restricted-syntax -- prompt text for the agent's CSS, not a style here
-      `- ${css}: h1, h2, h3 { font-family: var(--font-heading), Georgia, serif; font-variation-settings: 'wght' 450, 'opsz' 18 !important; } and h1 { font-variation-settings: 'wght' 450, 'opsz' 25 !important; }. One weight, 450, for every heading: the serif carries its own contrast. !important because component titles set their weight inline.`,
+      "Either way, set the headings in Geist Serif, as picked on the site (body text and components stay Inter):",
+      `- Run npm i geist. app/layout.tsx: import { GeistSerifRegular } from "geist/font/serif/regular" and add its .variable class (--font-geist-serif-regular) to <html> next to Inter's.`,
+      `- ${css}: h1, h2, h3 { font-family: var(--font-geist-serif-regular), "Times New Roman", serif; font-variation-settings: normal !important; font-weight: 400 !important; font-synthesis-weight: none; }. Geist Serif has one Regular cut so far, so every heading is 400. !important because component titles set Inter's weight inline.`,
       `- Also in ${css}, the display role runs 4px larger for the serif: :root { --fs-display: 32px; --lh-display: 38px; --fs-display-compact: 28px; --lh-display-compact: 34px; } after the type scale.`,
     ];
   }
@@ -229,13 +229,23 @@ function headingLines(heading: StarterHeading): string[] {
  *  or, in a folder that already holds an app, install the same components
  *  and settings into it. A heading font other than Inter adds a step that
  *  sets it up the way the site draws it. */
-export function buildStarterPrompt(settings: StarterSettings, heading?: StarterHeading): string {
+export function buildStarterPrompt(
+  settings: StarterSettings,
+  heading?: StarterHeading,
+  customAccent: string | null = null,
+): string {
   const slug = starterSlug(settings);
   const flavor = settings.base === "base" ? "Base UI" : "Radix";
   const family = headingFamily(heading);
+  // A custom accent replaces the preset in words; the slug keeps the preset.
+  const summary = describeSettings(settings, customAccent);
+  // The color an existing app has to set itself: the tokens item installs
+  // the default blue.
+  const accent = accentCss(settings.accent, customAccent);
+  const setAccent = accent !== accentCss(DEFAULT_ACCENT, null);
   const lines: string[] = [];
   lines.push(
-    `Start a new React app with Fluid Functionalism: every component installed, every system wired, set to ${describeSettings(settings)}${family ? `, ${family} headings` : ""}.`,
+    `Start a new React app with Fluid Functionalism: every component installed, every system wired, set to ${summary}${family ? `, ${family} headings` : ""}.`,
   );
   lines.push("");
   lines.push("Run (shadcn CLI, Next.js template, asks nothing):");
@@ -248,6 +258,11 @@ export function buildStarterPrompt(settings: StarterSettings, heading?: StarterH
   lines.push(
     `- components/providers.tsx holds the settings: next-themes (${settings.theme} by default, D flips light and dark) and FluidProvider (${settings.shape} corners, ${settings.size} size step, ${SETTING_LABELS.icons[settings.icons]} icons, reduced motion that follows the OS). Change a value there and every component follows.`,
   );
+  lines.push(
+    customAccent
+      ? `- app/layout.tsx sets the accent on <html> as --fluid-accent (focus rings, the switch track and every accented detail read it). Change its value to "${customAccent}", the color picked on the site.`
+      : `- app/layout.tsx sets the accent on <html> as --fluid-accent (${ACCENT_PRESETS[settings.accent].label.toLowerCase()}, ${accent}): focus rings, the switch track and every accented detail read it.`,
+  );
   lines.push("- app/page.tsx: an app shell (sidebar and topbar) around a home screen to replace.");
   lines.push(
     settings.base === "base"
@@ -259,7 +274,7 @@ export function buildStarterPrompt(settings: StarterSettings, heading?: StarterH
   lines.push(`npx shadcn@latest add ${SITE}/r/setup/${slug}.json --overwrite`);
   lines.push(OVERWRITE_NOTE);
   lines.push(
-    `Then wrap the root layout's children in <FluidRoot> from components/fluid-root.tsx (inside the theme provider, if any), load Inter with axes: ["opsz"], and default the theme to ${settings.theme}.`,
+    `Then wrap the root layout's children in <FluidRoot> from components/fluid-root.tsx (inside the theme provider, if any), load Inter with axes: ["opsz"], and default the theme to ${settings.theme}.${setAccent ? ` For the accent, put style={{ "--fluid-accent": "${accent}" }} on <html>.` : ""}`,
   );
   lines.push("");
   if (family && heading) {

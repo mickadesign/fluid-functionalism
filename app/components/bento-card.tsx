@@ -41,7 +41,7 @@ export function BentoCard({ slug, name, isNew, animateLayout = false, action, cl
   // inside the card routed focus to the preview's first interactive element
   // (so the user could keyboard-drive the demo afterwards). In practice it
   // caused unintended visual focus state on the first item — the
-  // checked-state on radios, the selected tab on TabsSubtle, the open
+  // checked-state on radios, the selected tab on Tabs, the open
   // accordion section, etc. — making cards look "primed" the moment a user
   // clicked anywhere in them. Now clicking only focuses what the user
   // actually clicked; Tab still routes into the card naturally.
@@ -61,7 +61,7 @@ export function BentoCard({ slug, name, isNew, animateLayout = false, action, cl
         {name}
       </span>
       {isNew && (
-        <Badge variant="dot" color="blue" size="sm">
+        <Badge variant="dot" color="accent" size="sm">
           New
         </Badge>
       )}

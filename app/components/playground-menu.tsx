@@ -14,6 +14,7 @@ import { Elevated } from "@/lib/elevated";
 import { ScrollArea } from "@/registry/radix/scroll-area";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
+import { useShape } from "@/lib/shape-context";
 import { spring } from "@/lib/springs";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ export function PlaygroundMenu({
   const panelRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion() ?? false;
   const PencilIcon = useIcon("pencil");
+  const shape = useShape();
 
   // Anchor: the panel's right edge lines up with the button's, and it opens
   // toward whichever side has more room — upward from the button's top edge in
@@ -209,7 +211,7 @@ export function PlaygroundMenu({
                     shadow-3 weight. The panel inside (PlaygroundPanel's
                     bg-muted card) then reads against a real surface color
                     rather than a flat background. */}
-                <Elevated offset={2} shadowLevel={3} className="rounded-lg">
+                <Elevated offset={2} shadowLevel={3} className={shape.container}>
                   <ScrollArea
                     className="rounded-[inherit]"
                     style={{ height: panelHeight, maxHeight: pos.maxHeight }}

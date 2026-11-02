@@ -82,7 +82,7 @@
       "name": "tokens",
       "type": "registry:theme",
       "title": "Interaction Tokens",
-      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --focus-ring color, and the base-layer :focus-visible fallback ring.",
+      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --fluid-accent color (switch track, drop and swatch rings, copy highlight) with --focus-ring derived from it, the accent text selection, and the base-layer :focus-visible fallback ring.",
       "cssVars": {
         "theme": {
           "color-hover": "var(--hover)",
@@ -96,7 +96,8 @@
           "selected": "#D4D4D4",
           "destructive-light": "#FEF2F2",
           "overlay": "0 0 0",
-          "focus-ring": "#6B97FF",
+          "fluid-accent": "#6B97FF",
+          "focus-ring": "var(--fluid-accent)",
           "tint": "rgb(0 0 0 / 0.08)",
           "tint-hover": "rgb(0 0 0 / 0.065)"
         },
@@ -112,6 +113,12 @@
       },
       "css": {
         "@layer base": {
+          "::selection": {
+            "background-color": "color-mix(in oklab, var(--fluid-accent, #6B97FF) 25%, transparent)"
+          },
+          ".dark ::selection": {
+            "background-color": "color-mix(in oklab, var(--fluid-accent, #6B97FF) 40%, transparent)"
+          },
           ":focus-visible": {
             "outline": "1px solid var(--focus-ring, #6B97FF)",
             "outline-offset": "2px",
@@ -210,6 +217,7 @@
             "--typeset-check": "16px",
             "--typeset-check-radius": "5px",
             "--typeset-check-gap": "8px",
+            "--typeset-check-press": "0.875",
             "--typeset-indent": "24px",
             "--typeset-sub-indent": "20px",
             "font-size": "var(--typeset-body)",
@@ -238,6 +246,7 @@
             "--typeset-check": "14px",
             "--typeset-check-radius": "4px",
             "--typeset-check-gap": "4px",
+            "--typeset-check-press": "0.8571",
             "--typeset-indent": "18px",
             "--typeset-sub-indent": "16px"
           },
@@ -362,10 +371,14 @@
             "border-radius": "var(--typeset-check-radius)",
             "background": "none",
             "cursor": "pointer",
-            "transition": "border-color 80ms ease-out"
+            "transition": "border-color 80ms ease-out, scale 180ms cubic-bezier(0.23, 1, 0.32, 1)"
           },
           ":where(.typeset input[type=checkbox]:not(:disabled):hover):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "border-color": "color-mix(in oklab, var(--foreground, currentColor) 40%, transparent)"
+          },
+          ":where(.typeset input[type=checkbox]:not(:disabled):active):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+            "scale": "var(--typeset-check-press)",
+            "transition-duration": "80ms, 80ms"
           },
           ":where(.typeset input[type=checkbox]:checked):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "border-color": "transparent"
@@ -382,7 +395,12 @@
             "inset": "0",
             "background-color": "var(--foreground, currentColor)",
             "-webkit-mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat",
-            "mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat"
+            "mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat",
+            "transition": "scale 180ms cubic-bezier(0.23, 1, 0.32, 1)"
+          },
+          ":where(.typeset input[type=checkbox]:checked:not(:disabled):active):not(:where(.typeset .not-typeset, .typeset .not-typeset *))::before": {
+            "scale": "calc(1 / var(--typeset-check-press))",
+            "transition-duration": "80ms"
           },
           ":where(.typeset .task-list-item input[type=checkbox]):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "vertical-align": "-0.25em",
@@ -406,7 +424,19 @@
           },
           ":where(.typeset ul[data-type=\"taskList\"] > li[data-checked=\"true\"] > div > :not(ul, ol)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "color": "var(--muted-foreground, color-mix(in oklab, currentColor 65%, transparent))",
-            "text-decoration-line": "line-through"
+            "text-decoration-line": "line-through",
+            "transition": "color 80ms ease-out, background-size 80ms ease-out"
+          },
+          ":where(.typeset ul[data-type=\"taskList\"] > li > div > p:first-child):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+            "display": "inline",
+            "background-image": "linear-gradient(currentColor, currentColor)",
+            "background-repeat": "no-repeat",
+            "background-position": "0 0.641em",
+            "background-size": "0% max(1px, 0.0684em)"
+          },
+          ":where(.typeset ul[data-type=\"taskList\"] > li[data-checked=\"true\"] > div > p:first-child):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+            "text-decoration-line": "none",
+            "background-size": "100% max(1px, 0.0684em)"
           },
           ":where(.typeset blockquote):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "padding-left": "1em",
@@ -488,6 +518,11 @@
             },
             ":where(.typeset input[type=checkbox]:checked):not(:where(.typeset .not-typeset, .typeset .not-typeset *))::before": {
               "display": "none"
+            }
+          },
+          "@media (prefers-reduced-motion: reduce)": {
+            ":where(.typeset ul[data-type=\"taskList\"] > li > div > :not(ul, ol)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+              "transition-property": "color"
             }
           }
         }
@@ -688,7 +723,7 @@
       "title": "Icon Context",
       "description": "Named icon slots with a Lucide default set; swap any icon via IconProvider.",
       "dependencies": [
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "files": [
         {
@@ -753,7 +788,7 @@
       "dependencies": [
         "@hugeicons/react",
         "@hugeicons/core-free-icons",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "icon-context"
@@ -776,7 +811,7 @@
       "description": "Untitled UI glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Untitled UI.",
       "dependencies": [
         "@untitledui/icons",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "icon-context"
@@ -908,7 +943,7 @@
       "dependencies": [
         "motion",
         "@radix-ui/react-accordion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -941,7 +976,7 @@
       "dependencies": [
         "motion",
         "@base-ui/react@^1.9.0",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1011,7 +1046,8 @@
         "utils",
         "shape-context",
         "size-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {
@@ -1074,7 +1110,7 @@
         "motion",
         "@radix-ui/react-slot",
         "class-variance-authority",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1122,7 +1158,7 @@
         "motion",
         "@base-ui/react@^1.9.0",
         "class-variance-authority",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1398,7 +1434,7 @@
       "dependencies": [
         "motion",
         "@radix-ui/react-dialog",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1431,7 +1467,7 @@
       "dependencies": [
         "motion",
         "@base-ui/react@^1.9.0",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1517,7 +1553,7 @@
       "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
       "dependencies": [
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1546,7 +1582,7 @@
       "title": "Input Group",
       "description": "Grouped input fields with fluid hover highlighting, animated label transitions, optional icons, and error states.",
       "dependencies": [
-        "lucide-react@^1.61.0",
+        "lucide-react",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1636,7 +1672,7 @@
       "description": "Sonner-style stack of queued composer messages: collapsed cards fan out on hover (tap on touch), drag to reorder, a gutter arrow counts the overflow, edit/remove per card, and a shared-layout morph into the sent message.",
       "dependencies": [
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "springs",
@@ -1689,14 +1725,14 @@
       ]
     },
     {
-      "name": "tabs-subtle",
+      "name": "tabs",
       "type": "registry:ui",
-      "title": "Tabs Subtle",
+      "title": "Tabs",
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-tabs",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1710,9 +1746,9 @@
       ],
       "files": [
         {
-          "path": "registry/radix/tabs-subtle.tsx",
+          "path": "registry/radix/tabs.tsx",
           "type": "registry:ui",
-          "target": "components/ui/tabs-subtle.tsx"
+          "target": "components/ui/tabs.tsx"
         }
       ],
       "css": {
@@ -1724,20 +1760,20 @@
           "display": "none"
         }
       },
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs-subtle. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs-subtle.",
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
       "categories": [
         "components"
       ]
     },
     {
-      "name": "tabs-subtle-base",
+      "name": "tabs-base",
       "type": "registry:ui",
-      "title": "Tabs Subtle",
+      "title": "Tabs",
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -1751,9 +1787,9 @@
       ],
       "files": [
         {
-          "path": "registry/base/tabs-subtle.tsx",
+          "path": "registry/base/tabs.tsx",
           "type": "registry:ui",
-          "target": "components/ui/tabs-subtle.tsx"
+          "target": "components/ui/tabs.tsx"
         }
       ],
       "css": {
@@ -1765,7 +1801,7 @@
           "display": "none"
         }
       },
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs-subtle. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs-subtle.",
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
       "categories": [
         "components"
       ]
@@ -1917,7 +1953,7 @@
       "dependencies": [
         "@radix-ui/react-dialog",
         "motion",
-        "lucide-react@^1.61.0",
+        "lucide-react",
         "class-variance-authority"
       ],
       "registryDependencies": [
@@ -1966,7 +2002,7 @@
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react@^1.61.0",
+        "lucide-react",
         "class-variance-authority"
       ],
       "registryDependencies": [
@@ -2247,74 +2283,6 @@
       ]
     },
     {
-      "name": "tabs",
-      "type": "registry:ui",
-      "title": "Tabs",
-      "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Built on Radix UI Tabs.",
-      "dependencies": [
-        "motion",
-        "@radix-ui/react-tabs",
-        "lucide-react@^1.61.0"
-      ],
-      "registryDependencies": [
-        "utils",
-        "springs",
-        "font-weight",
-        "shape-context",
-        "surface-context",
-        "surface-classes",
-        "icon-context",
-        "use-fluid-hover",
-        "size-context",
-        "tokens"
-      ],
-      "files": [
-        {
-          "path": "registry/radix/tabs.tsx",
-          "type": "registry:ui",
-          "target": "components/ui/tabs.tsx"
-        }
-      ],
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
-      "categories": [
-        "components"
-      ]
-    },
-    {
-      "name": "tabs-base",
-      "type": "registry:ui",
-      "title": "Tabs (Base UI)",
-      "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Base UI flavor.",
-      "dependencies": [
-        "motion",
-        "@base-ui/react@^1.9.0",
-        "lucide-react@^1.61.0"
-      ],
-      "registryDependencies": [
-        "utils",
-        "springs",
-        "font-weight",
-        "shape-context",
-        "surface-context",
-        "surface-classes",
-        "icon-context",
-        "use-fluid-hover",
-        "size-context",
-        "tokens"
-      ],
-      "files": [
-        {
-          "path": "registry/base/tabs.tsx",
-          "type": "registry:ui",
-          "target": "components/ui/tabs.tsx"
-        }
-      ],
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
-      "categories": [
-        "components"
-      ]
-    },
-    {
       "name": "thinking-indicator",
       "type": "registry:ui",
       "title": "Thinking Indicator",
@@ -2466,10 +2434,10 @@
           }
         },
         ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
-          "animation": "reveal-skeleton-in 250ms ease-in-out both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 250ms infinite"
+          "animation": "reveal-skeleton-in 250ms ease-in-out 160ms both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 410ms infinite"
         },
         ".reveal-swap > :first-child:not(:last-child) [data-slot=\"skeleton\"]": {
-          "animation": "none"
+          "animation-play-state": "paused"
         },
         "@keyframes reveal-leave": {
           "to": {
@@ -2524,7 +2492,7 @@
             "animation-delay": "calc(var(--reveal-load-delay, 0s) + var(--reveal-step))"
           },
           ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
-            "animation": "reveal-skeleton-in 250ms ease-in-out both"
+            "animation": "reveal-skeleton-in 250ms ease-in-out 160ms both"
           }
         }
       },
@@ -2635,6 +2603,9 @@
             "animation": "sf-divider-end both linear",
             "animation-timeline": "--sf-scroller",
             "animation-range": "calc(100% - var(--scroll-divider-size)) 100%"
+          },
+          ".scroll-divider:last-child::after": {
+            "content": "none"
           }
         },
         "@supports (animation-timeline: scroll())": {
@@ -2795,6 +2766,9 @@
             "animation": "sf-divider-end both linear",
             "animation-timeline": "--sf-scroller",
             "animation-range": "calc(100% - var(--scroll-divider-size)) 100%"
+          },
+          ".scroll-divider:last-child::after": {
+            "content": "none"
           }
         },
         "@supports (animation-timeline: scroll())": {
@@ -2863,7 +2837,7 @@
         "@radix-ui/react-select",
         "motion",
         "class-variance-authority",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -2902,7 +2876,7 @@
         "@base-ui/react@^1.9.0",
         "motion",
         "class-variance-authority",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -2941,7 +2915,7 @@
         "@radix-ui/react-popover",
         "motion",
         "class-variance-authority",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -2982,7 +2956,7 @@
         "@base-ui/react@^1.9.0",
         "motion",
         "class-variance-authority",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -3017,10 +2991,10 @@
       "name": "command-menu",
       "type": "registry:ui",
       "title": "Command Menu",
-      "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; subtle tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
+      "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
       "dependencies": [
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -3035,7 +3009,7 @@
         "popup",
         "scroll-area",
         "dialog",
-        "tabs-subtle",
+        "tabs",
         "tokens",
         "type-scale"
       ],
@@ -3058,7 +3032,7 @@
       "dependencies": [
         "@daypicker/react@~10.0.2",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -3095,7 +3069,7 @@
       "dependencies": [
         "@radix-ui/react-popover",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "calendar",
@@ -3139,7 +3113,7 @@
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "calendar",
@@ -3240,7 +3214,7 @@
       "dependencies": [
         "@radix-ui/react-collapsible",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -3291,7 +3265,7 @@
       "dependencies": [
         "@base-ui/react@^1.9.0",
         "motion",
-        "lucide-react@^1.61.0"
+        "lucide-react"
       ],
       "registryDependencies": [
         "utils",
@@ -3354,6 +3328,7 @@
         "icon-context",
         "use-fluid-hover",
         "elevated",
+        "popup",
         "slider",
         "size-context",
         "tooltip",

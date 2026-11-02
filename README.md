@@ -18,7 +18,7 @@ F L U I D   F U N C T I O N A L I S M
 
 Refined UI components with satisfying hover.
 
-A [shadcn/ui](https://ui.shadcn.com) registry of components, the systems they share, and blocks that compose them. Every transition exists to make a state change legible: springs instead of durations, one hover highlight that glides to the item nearest your cursor, and labels that get heavier without shifting the layout. Components that touch a primitive ship in two flavors, [Radix](https://www.radix-ui.com) and [Base UI](https://base-ui.com), with the same API on both.
+A [shadcn/ui](https://ui.shadcn.com) registry of components, the systems they share, and blocks that compose them. Every transition exists to make a state change legible: springs instead of durations, one hover highlight that glides from item to item under your cursor, and labels that get heavier without shifting the layout. Components that touch a primitive ship in two flavors, [Radix](https://www.radix-ui.com) and [Base UI](https://base-ui.com), with the same API on both.
 
 [Docs and demos](https://www.fluidfunctionalism.com) · [Browse components](https://www.fluidfunctionalism.com/docs) · [Compare with shadcn/ui](https://www.fluidfunctionalism.com/compare)
 
@@ -134,8 +134,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Slider](https://www.fluidfunctionalism.com/docs/slider) | `slider` · `base/slider` | Spring-snapped thumb, step dots, range mode, and a click-to-edit value |
 | [Switch](https://www.fluidfunctionalism.com/docs/switch) | `switch` · `base/switch` | Toggle with animated thumb and label |
 | [Table](https://www.fluidfunctionalism.com/docs/table) | `table` | Data table with fluid hover on rows and semantic markup |
-| [Tabs](https://www.fluidfunctionalism.com/docs/tabs) | `tabs` · `base/tabs` | Segmented control with sliding indicator and fluid hover |
-| [TabsSubtle](https://www.fluidfunctionalism.com/docs/tabs-subtle) | `tabs-subtle` · `base/tabs-subtle` | Tab navigation with an animated pill indicator |
+| [Tabs](https://www.fluidfunctionalism.com/docs/tabs) | `tabs` · `base/tabs` | Tab navigation with an animated pill indicator |
 | [ThinkingIndicator](https://www.fluidfunctionalism.com/docs/thinking-indicator) | `thinking-indicator` | Animated status indicator with morphing SVG and cycling text |
 | [ThinkingSteps](https://www.fluidfunctionalism.com/docs/thinking-steps) | `thinking-steps` · `base/thinking-steps` | Chain-of-thought display with sequential animation and collapsible steps |
 | [Tooltip](https://www.fluidfunctionalism.com/docs/tooltip) | `tooltip` · `base/tooltip` | Spring-based floating tooltip with configurable placement |
@@ -146,7 +145,7 @@ The systems every component shares. Each installs as code, the same way.
 
 | System | Registry name | What it does |
 |---|---|---|
-| [Fluid Hover](https://www.fluidfunctionalism.com/docs/fluid-hover) | `use-fluid-hover` | One hook and one highlight per list. The highlight glides to the item nearest your cursor and never blinks off between rows |
+| [Fluid Hover](https://www.fluidfunctionalism.com/docs/fluid-hover) | `use-fluid-hover` | One hook and one highlight per list. The highlight glides from item to item under your cursor instead of blinking between them |
 | [Motion](https://www.fluidfunctionalism.com/docs/motion) | `springs` | 3 spring speeds, fast, moderate, and slow, each with an exit one tier quicker than its entrance |
 | [Reveal](https://www.fluidfunctionalism.com/docs/reveal) | `reveal` | 1 class reveals a whole page, on load and on scroll |
 | [Scrollbars](https://www.fluidfunctionalism.com/docs/scrollbars) | `scroll-area` · `base/scroll-area` | A scrollbar that stays out of the way but never disappears, with native scroll on touch |
@@ -192,7 +191,7 @@ Or install a whole set (`@fluid/icons-tabler`, `@fluid/icons-phosphor`, `@fluid/
 ## What makes these different
 
 - **Motion as information.** Transitions make state changes legible. Nothing moves for decoration.
-- **Hover as preview.** One highlight per list glides to the item nearest your cursor, so you see where a click lands before you click.
+- **Hover as preview.** One highlight per list glides from item to item under your cursor, so you see where a click lands before you click.
 - **Springs, not durations.** 3 spring speeds cover the library. Interrupt an animation and it reverses from where it is instead of finishing first.
 - **Weight without reflow.** Selected and hovered labels get heavier. An optical-size axis compensates the width and a ghost span reserves it, so nothing shifts.
 - **Two flavors, one API.** Radix or Base UI, whichever your project already uses.

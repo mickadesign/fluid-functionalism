@@ -348,7 +348,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
         )}
         style={{ fontVariationSettings: fontWeights.normal }}
       >
-        <mark className="bg-transparent text-foreground transition-colors duration-80 group-hover:bg-[#6B97FF]/20 group-hover:text-foreground">
+        <mark className="bg-transparent text-foreground transition-colors duration-80 group-hover:bg-[color-mix(in_oklab,var(--fluid-accent,#6B97FF)_20%,transparent)] group-hover:text-foreground">
           {value}
         </mark>
       </span>
