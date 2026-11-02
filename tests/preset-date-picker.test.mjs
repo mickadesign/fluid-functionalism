@@ -115,7 +115,14 @@ describe("date picker preset codec", () => {
     expect(back.preset.pickerSize).toBe("compact");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"pamoiL"`);
+    expect(code).toMatchInlineSnapshot(`"pbmoiL"`);
+  });
+
+  it("keeps version a codes side by side after auto became the default", () => {
+    const res = decodeDatePickerPreset("pa0");
+    expect(res.ok).toBe(true);
+    expect(res.preset.orientation).toBe("horizontal");
+    expect(decodeDatePickerPreset("pb0").preset.orientation).toBe("auto");
   });
 });
 

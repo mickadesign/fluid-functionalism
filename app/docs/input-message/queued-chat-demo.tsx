@@ -27,6 +27,9 @@ type Turn = {
   from: "user" | "assistant";
   text: string;
   thinking?: boolean;
+  // Set on the demo's seeded turns: already sent when the demo loads, so they
+  // skip ChatMessage's entrance.
+  seeded?: boolean;
   // Attachments carried through from the composer / dispatched queue item, so
   // the sent bubble shows them inline.
   files?: File[];
@@ -142,12 +145,17 @@ export function QueuedChatDemo({
     }
   };
 
-  const respond = (text: string, files: File[] = [], queuedId?: string) => {
+  const respond = (
+    text: string,
+    files: File[] = [],
+    queuedId?: string,
+    seeded = false
+  ) => {
     const reply = `Replying to “${text}”. Here's a fuller answer that streams in a word at a time so you can watch the queue release the next message.`;
     setChat((c) => [
       ...c,
-      { from: "user", text, files, id: queuedId },
-      { from: "assistant", text: "", thinking: true },
+      { from: "user", text, files, id: queuedId, seeded },
+      { from: "assistant", text: "", thinking: true, seeded },
     ]);
     setChatStatus("streaming");
 
@@ -204,7 +212,7 @@ export function QueuedChatDemo({
   const loadInitialDemo = () => {
     pausedRef.current = true;
     setPaused(true);
-    respond("Help me polish the dashboard design");
+    respond("Help me polish the dashboard design", [], undefined, true);
     const [img, pdf] = demoFilesRef.current;
     setQueue([
       // A message with attachments, a short one, and a longer one.
@@ -364,7 +372,7 @@ export function QueuedChatDemo({
           >
             {chat.map((m, i) =>
               m.thinking ? (
-                <ChatMessage key={i} from="assistant">
+                <ChatMessage key={i} from="assistant" {...(m.seeded && { initial: false })}>
                   <ThinkingIndicator showIcon={false} className="px-0 py-0" />
                 </ChatMessage>
               ) : m.id && m.id === morphingId ? (
@@ -390,7 +398,12 @@ export function QueuedChatDemo({
                 // carries attachments. Attachment cards skip the box-scale morph
                 // (it squishes the thumbnails + text since the card lays them out
                 // inline and the bubble stacks them) and fade in cleanly.
-                <ChatMessage key={i} from={m.from} files={m.files}>
+                <ChatMessage
+                  key={i}
+                  from={m.from}
+                  files={m.files}
+                  {...(m.seeded && { initial: false })}
+                >
                   {m.text}
                 </ChatMessage>
               )

@@ -24,7 +24,7 @@ type SizeVariant = "default" | "compact";
 interface SizeClasses {
   /** The variant these classes belong to — handy for conditionals. */
   variant: SizeVariant;
-  /** Bounded control height — buttons, inputs, select triggers, subtle tabs —
+  /** Bounded control height — buttons, inputs, select triggers, tabs —
    *  AND list/menu rows (select options, dropdown, checkbox and radio rows).
    *  One token by design: a popup row lines up with the trigger that opened
    *  it because they share this height. */

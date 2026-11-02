@@ -23,7 +23,7 @@ import {
 const manifest = JSON.parse(readFileSync(new URL("../registry.json", import.meta.url), "utf-8"));
 const depUrl = buildDepResolver(manifest.items);
 
-/** Every combination of the five settings (2 × 2 × 2 × 5 × 3 = 120). */
+/** Every combination of the six settings (2 × 2 × 2 × 5 × 3 × 17 = 2040). */
 function allSettings() {
   let combos = [{}];
   for (const [key, values] of Object.entries(SETTING_VALUES)) {
@@ -38,9 +38,9 @@ describe("starter slug", () => {
     expect(parseStarterSlug(DEFAULT_SLUG)).toEqual({ ok: true, settings: STARTER_DEFAULTS });
   });
 
-  it("round-trips all 120 combinations", () => {
+  it("round-trips all 2040 combinations", () => {
     const combos = allSettings();
-    expect(combos).toHaveLength(120);
+    expect(combos).toHaveLength(2040);
     for (const s of combos) {
       expect(parseStarterSlug(starterSlug(s)), starterSlug(s)).toEqual({ ok: true, settings: s });
     }
@@ -90,10 +90,12 @@ describe("starter item", () => {
     }
   });
 
-  it("writes the settings into the providers, and the layout loads Inter with opsz", () => {
-    const s = { base: "radix", shape: "pill", size: "compact", icons: "phosphor", theme: "dark" };
+  it("writes the settings into the providers, and the layout loads Inter with opsz and sets the accent", () => {
+    const s = { base: "radix", shape: "pill", size: "compact", icons: "phosphor", theme: "dark", accent: "violet" };
     const files = Object.fromEntries(starterFiles(s).map((f) => [f.target, f.content]));
     expect(files["app/layout.tsx"]).toContain(`axes: ["opsz"]`);
+    expect(files["app/layout.tsx"]).toContain(`"--fluid-accent": "light-dark(#7F22FE, #A684FF)"`);
+    expect(starterFiles(STARTER_DEFAULTS).find((f) => f.target === "app/layout.tsx").content).toContain(`"--fluid-accent": "#6B97FF"`);
     expect(files["components/providers.tsx"]).toContain(`defaultTheme="dark"`);
     expect(files["components/providers.tsx"]).toContain(`<FluidProvider shape="pill" size="compact" icons={phosphorIcons}>`);
     expect(files["components/sidebar-app/app-sidebar.tsx"]).toContain(`@/components/sidebar-app/nav-data`);
@@ -128,10 +130,10 @@ describe("generated starter files compile", () => {
 
   const MATRIX = [
     STARTER_DEFAULTS,
-    { base: "radix", shape: "pill", size: "compact", icons: "lucide", theme: "dark" },
-    { base: "base", shape: "rounded", size: "default", icons: "tabler", theme: "light" },
-    { base: "radix", shape: "rounded", size: "compact", icons: "phosphor", theme: "system" },
-    { base: "base", shape: "pill", size: "default", icons: "hugeicons", theme: "dark" },
+    { base: "radix", shape: "pill", size: "compact", icons: "lucide", theme: "dark", accent: "violet" },
+    { base: "base", shape: "rounded", size: "default", icons: "tabler", theme: "light", accent: "violet" },
+    { base: "radix", shape: "rounded", size: "compact", icons: "phosphor", theme: "system", accent: "red" },
+    { base: "base", shape: "pill", size: "default", icons: "hugeicons", theme: "dark", accent: "red" },
   ];
 
   for (const s of MATRIX) {

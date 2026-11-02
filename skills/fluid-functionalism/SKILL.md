@@ -3,7 +3,7 @@ name: fluid-functionalism
 description: >-
   Build React UIs with Fluid Functionalism — a shadcn/ui registry (@fluid) of
   animated components with a shared motion system: three spring speeds, a
-  hover highlight that glides to the item nearest the cursor, labels that
+  hover highlight that glides from item to item under the cursor, labels that
   change weight without layout shift. Use whenever the user mentions Fluid
   Functionalism, @fluid, or fluidfunctionalism.com, asks for UI with
   satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or Base
@@ -21,7 +21,7 @@ description: >-
 
 A [shadcn/ui](https://ui.shadcn.com) registry of components where every
 transition makes a state change legible: springs instead of durations, one
-hover highlight per list that glides to the item nearest the cursor, and
+hover highlight per list that glides from item to item under the cursor, and
 labels that get heavier without moving their neighbours. Components that touch
 a primitive ship in two flavors — Radix and Base UI — with the same API.
 
@@ -348,8 +348,7 @@ written down. In order of reach:
   installing half a tree.
 - If an install fails on a name, check the catalog in
   [references/components.md](references/components.md) — the registry name is
-  not always the component's display name (e.g. TabsSubtle → `tabs-subtle`,
-  Fluid Hover → `use-fluid-hover`, Motion → `springs`).
+  not always the component's display name (e.g. Fluid Hover → `use-fluid-hover`, Motion → `springs`).
 - The base flavor lives at the `base/<name>` **path** — `@fluid/base/select`,
   URL `/r/base/select.json`. Names like `<name>-base` are internal build
   names; `/r/<name>-base.json` 404s **by design** (the build moves those

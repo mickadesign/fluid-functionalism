@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -28,10 +29,13 @@ import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Calendar,
+  WEEK_COL_RATIO,
   type CalendarOrientation,
   type CalendarProps,
   type DateRange,
 } from "@/components/ui/calendar";
+
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // ---------------------------------------------------------------------------
 // Date picker core
@@ -1072,7 +1076,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       setMonth(anchor ?? new Date());
       if (orientation === "auto" && numberOfMonths > 1 && typeof window !== "undefined") {
         const needed =
-          (7 + (calendarProps?.showWeekNumber ? 1 : 0)) * cellSize * 2 + 24 + 24 +
+          (7 + (calendarProps?.showWeekNumber ? WEEK_COL_RATIO : 0)) * cellSize * 2 + 24 + 24 +
           (presets?.length ? PRESETS_WIDTH : 0);
         setLayout(window.innerWidth - 16 >= needed ? "horizontal" : "vertical");
       }
@@ -1129,7 +1133,38 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
 
   // Segment hover scope: date, time(s), clear.
   const segmentsRef = useRef<HTMLDivElement>(null);
-  const segmentHover = useFluidHover(segmentsRef, { axis: "x", gapClick: false });
+  // Too narrow for date and time on one row (a phone, a side panel), the
+  // time moves to a second row under the date. The one-row width is measured
+  // while on one row; the segments size to their widest value, so it holds.
+  const [twoRows, setTwoRows] = useState(false);
+  const rowWidthRef = useRef(0);
+  const timed = hasTime || hasTimeRange;
+  useIsoLayoutEffect(() => {
+    const el = segmentsRef.current;
+    const parent = el?.parentElement;
+    if (!el || !parent || !timed) {
+      setTwoRows(false);
+      return;
+    }
+    const measure = () => {
+      // The content's width, not the box's: the field's min-width lets a
+      // flex parent shrink the box under its content.
+      if (el.dataset.twoRows === undefined) {
+        rowWidthRef.current = el.scrollWidth + el.offsetWidth - el.clientWidth;
+      }
+      const cs = getComputedStyle(parent);
+      const room =
+        parent.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      setTwoRows(rowWidthRef.current > room + 0.5);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [timed]);
+  const segmentHover = useFluidHover(segmentsRef, { axis: twoRows ? "xy" : "x", gapClick: false });
   const scope = useMemo(() => ({ registerItem: segmentHover.registerItem }), [segmentHover.registerItem]);
   const dateRef = useSegment(scope, 0);
   // The clear button mounts only once there is a value, after the scope's
@@ -1153,7 +1188,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     "relative z-[1] inline-flex h-full items-center outline-none",
     "transition-[color] duration-80",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
-    compact ? "px-1.5" : "px-2",
+    // Two rows take the compact inset, so the time row still fits a phone
+    // inside the roomier field padding.
+    compact || twoRows ? "px-1.5" : "px-2",
     innerRadius
   );
 
@@ -1327,6 +1364,17 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     () => buildSlots(step, startMinutes ?? nowMinutes - (nowMinutes % step)),
     [step, startMinutes, nowMinutes]
   );
+  const duration =
+    startMinutes !== null && endMinutes !== null && endMinutes > startMinutes ? (
+      // Body size even where the time inputs grow to 16px on touch: it's a
+      // note, not a field, and the smaller size keeps the row on a phone.
+      <span
+        data-slot="date-picker-duration"
+        className={cn("whitespace-nowrap text-muted-foreground", sizeClasses.text)}
+      >
+        {formatDuration(endMinutes - startMinutes)}
+      </span>
+    ) : null;
   const timeSegments = hasTime ? (
     <TimeField
       Popover={Popover}
@@ -1388,20 +1436,16 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         segmentClass={segmentClass}
         fallback={(startMinutes ?? nowMinutes) + 60}
         prefix={timeIcon(ArrowIcon)}
-        suffix={
-          startMinutes !== null && endMinutes !== null && endMinutes > startMinutes ? (
-            <span
-              data-slot="date-picker-duration"
-              className="whitespace-nowrap text-muted-foreground"
-            >
-              {formatDuration(endMinutes - startMinutes)}
-            </span>
-          ) : undefined
-        }
+        suffix={duration}
       />
     </>
   ) : null;
 
+  // Stacked, each row keeps the one-row height (inside the field's 1px
+  // border and 2px padding), so the segments' h-full still resolves.
+  const rowStyle = twoRows
+    ? { height: sizeClasses.controlHeight - (field ? 6 : 0) }
+    : undefined;
   const clearable_ = field && clearable && (hasValue || (hasTime && !!time) || (hasTimeRange && !!timeRange));
   const content = (
     <div
@@ -1410,13 +1454,16 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       aria-label={ariaLabel}
       data-slot="date-picker"
       data-variant={variant}
+      data-two-rows={twoRows || undefined}
       className={cn(
         "group/date-picker relative inline-flex items-center",
-        sizeClasses.control,
+        twoRows ? "flex-wrap" : sizeClasses.control,
         sizeClasses.text,
         field
           ? cn(
-              "border border-border bg-transparent p-0.5",
+              "border border-border bg-transparent",
+              // Two rows get more room around them than the one-row field.
+              twoRows ? "p-1" : "p-0.5",
               shape.input,
               compact ? "min-w-[128px]" : "min-w-[160px]"
             )
@@ -1438,11 +1485,29 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
           )}
         />
       )}
-      {datePopover}
-      {(hasTime || hasTimeRange) && (
+      <span
+        className={cn(
+          "inline-flex h-full items-center",
+          // A lone date field fills the box, so its hover spans the width.
+          field && !timed && "flex-1",
+          twoRows && "order-1"
+        )}
+        style={rowStyle}
+      >
+        {datePopover}
+      </span>
+      {timed && !twoRows && (
         <span aria-hidden className="relative z-[1] mx-0.5 h-4 w-px shrink-0 bg-border" />
       )}
-      {timeSegments}
+      {twoRows && (
+        // The line between the date row and the time row.
+        <span aria-hidden className="order-3 my-1 h-px basis-full bg-border" />
+      )}
+      {timed && (
+        <span className={cn("inline-flex h-full items-center", twoRows && "order-4")} style={rowStyle}>
+          {timeSegments}
+        </span>
+      )}
       <AnimatePresence initial={false}>
         {clearable_ && (
           <motion.button
@@ -1453,10 +1518,13 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
             data-slot="date-picker-clear"
             className={cn(
               "relative z-[1] ml-auto inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
+              // Two rows: the clear sits right after the date it clears.
+              twoRows && "order-2 ml-0",
               "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
               compact ? "w-6" : "w-7",
               innerRadius
             )}
+            style={rowStyle}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: spring.fast }}
             exit={{ opacity: 0, transition: spring.fast.exit }}

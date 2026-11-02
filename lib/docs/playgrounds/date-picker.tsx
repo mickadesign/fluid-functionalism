@@ -325,7 +325,7 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
 
   return children({
     // Top left, so the row never slides sideways as its fields change width.
-    preview: <div className="flex w-full justify-start px-6 py-16">{picker}</div>,
+    preview: <div className="flex w-full justify-start px-4 py-16 sm:px-6">{picker}</div>,
     demoPreview: <div className="flex w-full justify-center">{picker}</div>,
     controls,
     code: buildDatePickerPlaygroundCode(state),

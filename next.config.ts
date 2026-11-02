@@ -47,6 +47,16 @@ const nextConfig: NextConfig = {
         destination: "/r/use-fluid-hover.json",
         permanent: true,
       },
+      // TabsSubtle was renamed Tabs on 2026-10-28 (the segmented Tabs it
+      // replaced was removed). Old install URLs, registry dependencies and
+      // doc links keep resolving.
+      ...["", "base/", "radix/"].map((dir) => ({
+        source: `/r/${dir}tabs-subtle.json`,
+        destination: `/r/${dir}tabs.json`,
+        permanent: true,
+      })),
+      { source: "/docs/tabs-subtle", destination: "/docs/tabs", permanent: true },
+      { source: "/docs/tabs-subtle.md", destination: "/docs/tabs.md", permanent: true },
       // Short link to the agent skill page, for sharing.
       {
         source: "/skill",

@@ -246,8 +246,12 @@ export default function OgVideoPage() {
             stage.dispatchEvent(new PointerEvent("pointerout", enter));
             stage.dispatchEvent(new MouseEvent("mouseout", enter));
           }
-          zone.dispatchEvent(new PointerEvent("pointermove", init));
-          zone.dispatchEvent(new MouseEvent("mousemove", init));
+          // On what lies under the cursor, as a real pointer's move would
+          // be: the hover hooks light only the item the move lands in.
+          const hit = document.elementFromPoint(clientX, clientY);
+          const target = hit && zone.contains(hit) ? hit : zone;
+          target.dispatchEvent(new PointerEvent("pointermove", init));
+          target.dispatchEvent(new MouseEvent("mousemove", init));
         } else if (inside.current.has(zone)) {
           inside.current.delete(zone);
           zone.dispatchEvent(new PointerEvent("pointerout", init));

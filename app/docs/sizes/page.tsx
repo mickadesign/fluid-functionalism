@@ -21,7 +21,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/flavored/select";
-import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/flavored/tabs";
 import { CheckboxGroup, CheckboxItem } from "@/registry/radix/checkbox-group";
 import { Dropdown } from "@/components/flavored/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
@@ -29,6 +29,7 @@ import { cn } from "@/registry/default/lib/utils";
 import { ChevronDown, ListFilter, Plus } from "lucide-react";
 import { SORT_OPTIONS, ToolbarDemo } from "@/app/docs/sizes/toolbar-demo";
 import { PROVIDER_PROPS, CONSUMER_PROPS } from "@/lib/docs/api/sizes";
+import { ACCENT_VAR } from "@/lib/accent";
 
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
@@ -114,10 +115,10 @@ const { gap } = useSize(); // icon-to-label and control-to-control gap: 8px / 4p
 
 <SizeProvider size="compact">
   <div className={cn("flex items-center", gap)}>
-    <TabsSubtle activeLabel selectedIndex={view} onSelect={setView}>
-      <TabsSubtleItem index={0} icon={Table2} label="Table" />
-      <TabsSubtleItem index={1} icon={SquareKanban} label="Board" />
-    </TabsSubtle>
+    <Tabs activeLabel selectedIndex={view} onSelect={setView}>
+      <TabsItem index={0} icon={Table2} label="Table" />
+      <TabsItem index={1} icon={SquareKanban} label="Board" />
+    </Tabs>
     <div className={cn("ml-auto flex items-center", gap)}>
       <InputGroup className="w-28">
         <InputField index={0} label="Search" labelHidden icon={Search}
@@ -152,13 +153,13 @@ function CompactRegionDemo() {
         className="relative flex items-center px-3 py-3 min-h-[52px] border-b border-border/60 bg-background"
         style={{ borderTopLeftRadius: "inherit", borderTopRightRadius: "inherit" }}
       >
-        <TabsSubtle
+        <Tabs
           selectedIndex={step === "default" ? 0 : 1}
           onSelect={(i) => setStep(i === 0 ? "default" : "compact")}
         >
-          <TabsSubtleItem index={0} label="Default" />
-          <TabsSubtleItem index={1} label="Compact" />
-        </TabsSubtle>
+          <TabsItem index={0} label="Default" />
+          <TabsItem index={1} label="Compact" />
+        </Tabs>
       </div>
       <div
         className="overflow-hidden"
@@ -243,7 +244,7 @@ function CompactRegionDemo() {
         </defs>
         <path
           d="M112,20 Q70,26 22,66"
-          stroke="#6B97FF"
+          style={{ stroke: ACCENT_VAR }}
           strokeWidth={1.5}
           strokeLinecap="round"
           markerEnd="url(#ff-sizes-annotation-arrow)"
@@ -321,13 +322,13 @@ function TokenInspectorDemo() {
         className="relative z-[70] flex items-center px-3 py-3 min-h-[52px] border-b border-border/60 bg-background"
         style={{ borderTopLeftRadius: "inherit", borderTopRightRadius: "inherit" }}
       >
-        <TabsSubtle
+        <Tabs
           selectedIndex={step === "default" ? 0 : 1}
           onSelect={(i) => setStep(i === 0 ? "default" : "compact")}
         >
-          <TabsSubtleItem index={0} label="Default" />
-          <TabsSubtleItem index={1} label="Compact" />
-        </TabsSubtle>
+          <TabsItem index={0} label="Default" />
+          <TabsItem index={1} label="Compact" />
+        </Tabs>
       </div>
       <div
         className="overflow-hidden"

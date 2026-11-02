@@ -669,6 +669,10 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
       return () => clearTimeout(id);
     }, [pinFromPeekHold]);
     const pinnedFromPeek = pinFromPeekHold;
+    // Below the drawer breakpoint the rail also gives its width back, on the
+    // same exit tween as the CSS dissolve (slow.exit = 160ms), so the inset
+    // slides into the space instead of snapping when display:none lands.
+    const shown = open && !isMobile;
     const widthTransition = reduceMotion
       ? { duration: 0 }
       : isResizing
@@ -677,7 +681,7 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
             ? spring.moderate
             : spring.moderate.exit
           : { duration: 0 }
-        : open
+        : shown
           ? spring.slow
           : spring.slow.exit;
 
@@ -717,7 +721,7 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
           className
         )}
         initial={false}
-        animate={{ width: open ? width : "0rem" }}
+        animate={{ width: shown ? width : "0rem" }}
         transition={widthTransition}
         // Hover-mode dismissal lives on the shell root: the pointer can land
         // on the overlay without ever crossing it (the card slides in under

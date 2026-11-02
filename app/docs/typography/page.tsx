@@ -117,8 +117,8 @@ export default function TypographyDoc() {
             1 font family:{" "}
             <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>. Headings
             can switch to{" "}
-            <ExternalLink href="https://fonts.google.com/specimen/Source+Serif+4">Source Serif 4</ExternalLink>{" "}
-            or any Google Fonts family.
+            <ExternalLink href="https://vercel.com/font">Geist Serif</ExternalLink> or any Google Fonts
+            family.
           </Rule>
           <Rule>1 paragraph style.</Rule>
         </ul>
@@ -143,8 +143,8 @@ export default function TypographyDoc() {
 
       <DocSection title="Heading font">
         <P>
-          3 choices for headings: Inter, Source Serif 4, or any Google Fonts family. Source Serif 4
-          has the same weight and optical size axes as Inter. Press<Code>F</Code>to cycle.
+          3 choices for headings: Inter, Geist Serif, or any Google Fonts family. Geist Serif runs
+          the display style 4px larger, in its one Regular cut. Press<Code>F</Code>to cycle.
         </P>
         <HeadingFontDemo />
       </DocSection>

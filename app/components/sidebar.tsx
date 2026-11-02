@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
@@ -25,9 +24,9 @@ interface NavEntry {
   name: string;
 }
 
-/** The New dot, in the changelog's blue: on what the latest release lists as
- *  New and on pages landed since (AHEAD_OF_RELEASE), so the dots move on
- *  with each month's release. */
+/** The New dot, in the accent (the changelog's New color): on pages landed
+ *  since the latest release (AHEAD_OF_RELEASE), so the dots only mark what
+ *  is new this month. */
 function NewDot() {
   // Rendered as a flex sibling of the weight-animated label (the row's gap
   // provides the spacing), matching the old NavItem dot's visual position.
@@ -49,7 +48,7 @@ function NavGroup({
   pathname: string;
   ariaLabel: string;
 }) {
-  // New in the latest release, or landed since and listed ahead of the next.
+  // Landed since the latest release and listed ahead of the next.
   const { isNew } = useReleaseMarks();
   return (
     // A labelled group (System, Components) gets 16px above it instead of
@@ -97,6 +96,28 @@ export function SiteSidebar() {
   return (
     <Sidebar collapsible="offcanvas" bordered={false} rail={false} className="ml-2">
       <SidebarContent className="py-2">
+        {/* The settings block only ships in the mobile sheet (on desktop it
+            lives in the right panel), first and scrolling with the menu. */}
+        {isMobile && (
+          <>
+            <div className="flex flex-col gap-2 px-4 pt-2 pb-4">
+              <div className="flex items-center justify-between pt-2">
+                <h2
+                  className="text-site-title text-foreground leading-none"
+                  style={{ fontVariationSettings: fontWeights.semibold }}
+                >
+                  Make them yours
+                </h2>
+                <GitHubStarButton />
+              </div>
+              {/* Labels start under the heading: no group label to line
+                  up with here, unlike the right panel. */}
+              <SettingsContent inset={false} />
+            </div>
+            <div aria-hidden className="mx-4 mb-2 h-px shrink-0 bg-border" />
+          </>
+        )}
+
         {/* Search: opens the site's command menu (⌘K anywhere). */}
         <SidebarGroup>
           <SiteCommandMenuTrigger />
@@ -140,22 +161,6 @@ export function SiteSidebar() {
         />
       </SidebarContent>
 
-      {/* The settings block only ships in the mobile sheet — on desktop it
-          lives in the right panel. */}
-      {isMobile && (
-        <SidebarFooter className="p-4 pt-2">
-          <div className="flex items-center justify-between pt-2">
-            <h2
-              className="text-site-title text-foreground leading-none"
-              style={{ fontVariationSettings: fontWeights.semibold }}
-            >
-              Make them yours
-            </h2>
-            <GitHubStarButton />
-          </div>
-          <SettingsContent tooltipSide="right" />
-        </SidebarFooter>
-      )}
     </Sidebar>
   );
 }

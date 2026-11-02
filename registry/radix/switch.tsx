@@ -292,11 +292,14 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
           style={{
             width: m.trackWidth,
             height: m.trackHeight,
-            // On: #6B97FF, darkening to #5C89F2 on hover. Off: --accent, mixing
-            // in 10% of the overlay color on hover (darker in light mode,
-            // lighter in dark), crossfaded by transition-colors over 80ms.
+            // On: the accent (--fluid-accent, #6B97FF without the token),
+            // mixing in 8% black on hover. Off: --accent, mixing in 10% of the
+            // overlay color on hover (darker in light mode, lighter in dark),
+            // crossfaded by transition-colors over 80ms.
             backgroundColor: checked
-              ? hovered ? "#5C89F2" : "#6B97FF"
+              ? hovered
+                ? "color-mix(in oklab, var(--fluid-accent, #6B97FF), black 8%)"
+                : "var(--fluid-accent, #6B97FF)"
               : hovered
                 ? "color-mix(in oklab, var(--accent), rgb(var(--overlay)) 10%)"
                 : "var(--accent)",

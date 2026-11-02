@@ -70,6 +70,7 @@ function List({
   boxed,
   disabled,
   gapClick,
+  nearest = true,
   portal,
 }: {
   expose: (api: Api) => void;
@@ -82,11 +83,13 @@ function List({
   boxed?: boolean;
   disabled?: (el: HTMLElement) => boolean;
   gapClick?: boolean | { maxDistance?: number };
+  /** Gap clicks route only with `nearest`; the harness opts in unless told. */
+  nearest?: boolean;
   /** A React child rendered through a portal, like a row's own dropdown. */
   portal?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const api = useFluidHover(ref, { isItemDisabled: disabled, gapClick });
+  const api = useFluidHover(ref, { isItemDisabled: disabled, gapClick, nearest });
   expose(api);
   const { setActiveIndex } = api;
   const rowsKey = keys?.join("|") ?? String(rows.length);
@@ -107,7 +110,7 @@ function List({
 }
 
 function setup(
-  opts: { boxed?: boolean; disabled?: boolean; gapClick?: boolean | { maxDistance?: number } } = {}
+  opts: { boxed?: boolean; disabled?: boolean; gapClick?: boolean | { maxDistance?: number }; nearest?: boolean } = {}
 ) {
   const clicks = [vi.fn(), vi.fn(), vi.fn()];
   let api!: Api;
@@ -118,6 +121,7 @@ function setup(
       boxed={opts.boxed}
       disabled={opts.disabled ? (el) => el.dataset.testid === "row-1" : undefined}
       gapClick={opts.gapClick}
+      nearest={opts.nearest}
     />
   );
   const highlight = (index: number | null) => act(() => api.setActiveIndex(index));
@@ -198,6 +202,15 @@ describe("useFluidHover: gap clicks land on the highlighted row", () => {
 
   it("never activates a disabled row", () => {
     const { getByTestId, clicks, highlight } = setup({ disabled: true });
+    highlight(1);
+    fireEvent.click(getByTestId("gap"));
+    for (const c of clicks) expect(c).not.toHaveBeenCalled();
+  });
+
+  it("without `nearest` (the default), a gap click lands nowhere, even with a row lit", () => {
+    // The highlight updates a frame after the pointer leaves a row, so a row
+    // can still be lit when a click lands in the gap.
+    const { getByTestId, clicks, highlight } = setup({ nearest: false });
     highlight(1);
     fireEvent.click(getByTestId("gap"));
     for (const c of clicks) expect(c).not.toHaveBeenCalled();

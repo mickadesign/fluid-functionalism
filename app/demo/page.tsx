@@ -54,7 +54,6 @@ function DemoPageInner() {
   const slideOrder = [
     "checkbox-group",
     "accordion",
-    "tabs",
     "radio-group",
     "slider",
     "ask-user-questions",
@@ -71,7 +70,7 @@ function DemoPageInner() {
     "switch",
     "table",
     "card",
-    "tabs-subtle",
+    "tabs",
     "thinking-indicator",
     "thinking-steps",
     "banner",
@@ -294,7 +293,7 @@ function DemoPageInner() {
               style={{ height: "100%" }}
               action={cardActions()}
             >
-              {stage(<SettingsContent tooltipSide="right" />)}
+              {stage(<SettingsContent />)}
             </BentoCard>
           ) : Playground ? (
             <Playground key={current.slug}>
