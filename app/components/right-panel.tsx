@@ -339,11 +339,18 @@ function SettingRow({
     // relative: painted over the list's highlight, which sits behind the
     // trigger in place of the trigger's own hover fill.
     // pl-2: the label starts where the group label above it does.
+    // The trigger's icons follow the row's highlight too, not the button's
+    // own hover: a lit row thickens and darkens them wherever the pointer
+    // is on it, label included, and an unlit row never does.
     <div className={cn("relative flex items-center justify-between gap-3", inset && "pl-2")}>
       <span className="shrink-0 whitespace-nowrap text-site-body text-muted-foreground">{label}</span>
       <span
         ref={controlRef}
-        className="flex min-w-0 items-center [&>div]:min-w-0 [&_button:hover]:bg-transparent [&_button>span:nth-child(2)]:order-1 [&_button>span:nth-child(2)]:size-(--swatch)! [&_button>svg]:order-1"
+        className={cn(
+          "flex min-w-0 items-center [&>div]:min-w-0 [&_button:hover]:bg-transparent [&_button>span:nth-child(2)]:order-1 [&_button>span:nth-child(2)]:size-(--swatch)! [&_button>svg]:order-1",
+          "[&_button:not([data-fluid-hover-active])>span>svg]:stroke-[1.5] [&_button:not([data-fluid-hover-active])>span>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>span>svg]:stroke-[2] [&_button[data-fluid-hover-active]>span>svg]:text-foreground",
+          "[&_button:not([data-fluid-hover-active])>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>svg]:text-foreground"
+        )}
         style={{ "--swatch": `${icon}px` } as CSSProperties}
       >
         {children}
@@ -532,6 +539,26 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
   const hover = useFluidHover(listRef);
   // registerItem is stable; the handlers object is new each render.
   const { registerItem: registerHover, handlers: hoverHandlers } = hover;
+  // While a row's menu is open the list's highlight goes out and stays out:
+  // the menu has the pointer's attention. Moves in the menu are already
+  // ignored, but the pointer still crosses the trigger on its way there.
+  // Closing it, the next move lights a row again, fading in where it lands.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const sync = () => setMenuOpen(!!list.querySelector('[aria-expanded="true"]'));
+    const observer = new MutationObserver(sync);
+    observer.observe(list, { subtree: true, attributes: true, attributeFilter: ["aria-expanded"] });
+    sync();
+    return () => observer.disconnect();
+  }, []);
+  const { onMouseLeave: putOut, onMouseEnter: fadeInNext } = hoverHandlers;
+  useEffect(() => {
+    if (!menuOpen) return;
+    putOut();
+    fadeInNext();
+  }, [menuOpen, putOut, fadeInNext]);
 
   const MonitorIcon = useIcon("monitor");
   const SunIcon = useIcon("sun");
@@ -574,7 +601,12 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
       {/* The settings, stacked with no gap under one fluid hover. */}
       <SettingInsetContext.Provider value={inset}>
       <SettingHoverContext.Provider value={registerHover}>
-      <div ref={listRef} className="relative flex flex-col" {...hoverHandlers}>
+      <div
+        ref={listRef}
+        className="relative flex flex-col"
+        {...hoverHandlers}
+        onMouseMove={menuOpen ? undefined : hoverHandlers.onMouseMove}
+      >
         <FluidHoverHighlight hover={hover} className={shapeClasses.input} />
         <SettingRow label="Theme" hoverIndex={0} shortcut="T" index={themeOptions.findIndex((o) => o.value === theme)}>
           <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
@@ -873,10 +905,15 @@ export function RightPanel() {
       className="shrink-0 overflow-hidden sticky top-4 self-start mt-4 xl-fade-block max-xl:pointer-events-none"
       initial={false}
       animate={{
-        width: shown ? 256 : 0,
+        // 256px of panel plus 4px either side, which the negative left
+        // margin and the trimmed right one give back: the clip (here and
+        // the scroll area's) sits 4px out, so focus rings drawn 2px outside
+        // the controls flush with the panel's edges aren't cut off.
+        width: shown ? 264 : 0,
+        marginLeft: shown ? -4 : 0,
         // 16px on the right, matching the 16px top (sticky top-4) and the
         // 16px the max-h calc leaves at the bottom — one even inset.
-        marginRight: shown ? 16 : 0,
+        marginRight: shown ? 12 : 0,
       }}
       transition={
         reduceMotion ? { duration: 0 } : shown ? spring.slow : spring.slow.exit
@@ -887,7 +924,7 @@ export function RightPanel() {
       inert={open ? undefined : true}
     >
       <motion.div
-        className="w-64"
+        className="w-[264px]"
         initial={false}
         animate={{ opacity: open ? 1 : 0 }}
         transition={
@@ -905,7 +942,7 @@ export function RightPanel() {
       <ScrollArea viewportClassName="scroll-fade max-h-[calc(100svh-2rem-48px)]">
       {/* Groups stack like the left sidebar's: each later one brings its own
           16px (pt-4) above its label. */}
-      <div className="flex flex-col">
+      <div className="flex flex-col px-1">
         {showSettings && (
         // contain-inline-size: the rail's scroll area sizes to its content,
         // so the card's one-line labels would widen it past the rail;
