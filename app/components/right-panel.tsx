@@ -750,22 +750,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
             </SelectContent>
           </Select>
         </SettingRow>
-        <SettingRow label="Primitive" hoverIndex={7} index={baseOptions.findIndex((o) => o.value === base)}>
-          <Select value={base} onValueChange={(v) => setBase(v as Base)}>
-            <SelectTrigger
-              variant="borderless"
-              className="min-w-0 w-auto px-2 text-site-body"
-            />
-            <SelectContent>
-              {baseOptions.map((o, i) => (
-                <SelectItem key={o.value} value={o.value} index={i}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        <SettingRow label="Hover" hoverIndex={8} shortcut="H" index={HOVER_MODES.indexOf(hoverMode)}>
+        <SettingRow label="Hover" hoverIndex={7} shortcut="H" index={HOVER_MODES.indexOf(hoverMode)}>
           <Select value={hoverMode} onValueChange={(v) => setHoverMode(v as HoverMode)}>
             <SelectTrigger
               variant="borderless"
@@ -775,6 +760,21 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
               {HOVER_MODES.map((m, i) => (
                 <SelectItem key={m} value={m} index={i}>
                   {HOVER_MODE_LABELS[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Primitive" hoverIndex={8} index={baseOptions.findIndex((o) => o.value === base)}>
+          <Select value={base} onValueChange={(v) => setBase(v as Base)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+            />
+            <SelectContent>
+              {baseOptions.map((o, i) => (
+                <SelectItem key={o.value} value={o.value} index={i}>
+                  {o.label}
                 </SelectItem>
               ))}
             </SelectContent>
