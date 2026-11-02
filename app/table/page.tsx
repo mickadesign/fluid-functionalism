@@ -5,10 +5,10 @@ import { useIcon } from "@/lib/icon-context";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  TabsSubtle,
-  TabsSubtleItem,
-  TabsSubtlePanel,
-} from "@/components/flavored/tabs-subtle";
+  Tabs,
+  TabsItem,
+  TabsPanel,
+} from "@/components/flavored/tabs";
 import {
   Table,
   TableHeader,
@@ -393,23 +393,23 @@ export default function TablePage() {
         Quotes
       </h1>
 
-      <TabsSubtle
+      <Tabs
         idPrefix="quotes"
         selectedIndex={selectedTab}
         onSelect={setSelectedTab}
       >
         {tabs.map((tab, i) => (
-          <TabsSubtleItem
+          <TabsItem
             key={tab.label}
             index={i}
             icon={tab.icon}
             label={tab.label}
           />
         ))}
-      </TabsSubtle>
+      </Tabs>
 
       {tabs.map((tab, i) => (
-        <TabsSubtlePanel
+        <TabsPanel
           key={tab.label}
           index={i}
           selectedIndex={selectedTab}
@@ -440,7 +440,7 @@ export default function TablePage() {
               ))}
             </TableBody>
           </Table>
-        </TabsSubtlePanel>
+        </TabsPanel>
       ))}
     </div>
   );

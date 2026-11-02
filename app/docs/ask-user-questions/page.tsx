@@ -333,7 +333,7 @@ const questions = [
       },
       {
         id: "tabs",
-        title: "TabsSubtle",
+        title: "Tabs",
         description:
           "Quiet segmented tabs that morph between selections. Reach for these when section headers would be too loud.",
       },
@@ -827,7 +827,7 @@ const stackedQuestions: AskUserQuestion[] = [
       },
       {
         id: "tabs",
-        title: "TabsSubtle",
+        title: "Tabs",
         description:
           "Quiet segmented tabs that morph between selections. Reach for these when section headers would be too loud.",
       },

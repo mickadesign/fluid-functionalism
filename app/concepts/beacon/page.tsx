@@ -17,10 +17,10 @@ import {
   TableCell,
 } from "@/registry/default/table";
 import {
-  TabsSubtle,
-  TabsSubtleItem,
-  TabsSubtlePanel,
-} from "@/components/flavored/tabs-subtle";
+  Tabs,
+  TabsItem,
+  TabsPanel,
+} from "@/components/flavored/tabs";
 import {
   Select,
   SelectTrigger,
@@ -382,11 +382,11 @@ export default function BeaconPage() {
       <div className="mx-auto flex h-screen w-full max-w-[960px] flex-col gap-4 px-6 py-12">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsSubtle idPrefix="beacon-view" selectedIndex={view} onSelect={setView}>
-            <TabsSubtleItem index={0} label="Active" />
-            <TabsSubtleItem index={1} label="Backlog" />
-            <TabsSubtleItem index={2} label="Board" />
-          </TabsSubtle>
+          <Tabs idPrefix="beacon-view" selectedIndex={view} onSelect={setView}>
+            <TabsItem index={0} label="Active" />
+            <TabsItem index={1} label="Backlog" />
+            <TabsItem index={2} label="Board" />
+          </Tabs>
 
           <div className="flex items-center gap-2">
             <Button
@@ -437,15 +437,15 @@ export default function BeaconPage() {
               />
             )}
 
-            <TabsSubtlePanel index={0} selectedIndex={view} idPrefix="beacon-view">
+            <TabsPanel index={0} selectedIndex={view} idPrefix="beacon-view">
               <IssueTable rows={activeRows} />
-            </TabsSubtlePanel>
-            <TabsSubtlePanel index={1} selectedIndex={view} idPrefix="beacon-view">
+            </TabsPanel>
+            <TabsPanel index={1} selectedIndex={view} idPrefix="beacon-view">
               <IssueTable rows={backlogRows} />
-            </TabsSubtlePanel>
-            <TabsSubtlePanel index={2} selectedIndex={view} idPrefix="beacon-view">
+            </TabsPanel>
+            <TabsPanel index={2} selectedIndex={view} idPrefix="beacon-view">
               <Board rows={ACTIVE} />
-            </TabsSubtlePanel>
+            </TabsPanel>
           </div>
         </div>
       </div>

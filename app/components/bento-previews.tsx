@@ -1,8 +1,10 @@
 "use client";
 
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { slideVariants, useSlideDirection } from "@/lib/docs/slide-direction";
+import { useCardArt } from "@/lib/docs/playgrounds/card";
+import { accentHexOf, accentSwatches, useAccent } from "@/lib/docs/accent";
 import { CarouselDots } from "@/registry/default/carousel-dots";
 import Image from "next/image";
 import { useIcon, useIcons } from "@/lib/icon-context";
@@ -29,8 +31,6 @@ import {
   SWITCH_ITEMS,
   TABLE_COLUMNS,
   TABLE_ROWS,
-  TABS_DEFAULT,
-  TABS_ITEMS,
   TOOLTIP_COPY,
 } from "@/app/components/demo-data";
 
@@ -41,6 +41,13 @@ import {
   AccordionContent,
 } from "@/registry/radix/accordion";
 import { Badge } from "@/registry/default/badge";
+import {
+  Banner,
+  BannerTitle,
+  BannerDescription,
+  BannerActions,
+  BannerAction,
+} from "@/registry/default/banner";
 import { Button } from "@/registry/radix/button";
 import {
   Card,
@@ -117,6 +124,8 @@ import {
   useCommandMenuItems,
 } from "@/lib/docs/command-menu-items";
 import { Elevated } from "@/lib/elevated";
+import { Calendar, type DateRange } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
 import { BentoTileContext } from "@/app/components/bento-card";
 import { usePreviewPlayback } from "@/lib/docs/preview-playback";
 import { cn } from "@/lib/utils";
@@ -131,11 +140,10 @@ import {
   TableHead,
   TableCell,
 } from "@/registry/default/table";
-import { Tabs, TabsList, TabItem } from "@/registry/radix/tabs";
 import {
-  TabsSubtle,
-  TabsSubtleItem,
-} from "@/components/flavored/tabs-subtle";
+  Tabs,
+  TabsItem,
+} from "@/components/flavored/tabs";
 import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
 import {
   ThinkingSteps,
@@ -167,35 +175,28 @@ function InputMessagePreview() {
 }
 
 function CardPreview() {
-  const Circle = useIcon("circle");
-  const Shield = useIcon("shield");
-  const Palette = useIcon("palette");
-  const Search = useIcon("search");
-  const items = [
-    { icon: Circle, title: "Fluid motion" },
-    { icon: Shield, title: "Accessible" },
-    { icon: Palette, title: "Yours to theme" },
-    { icon: Search, title: "Fluid hover" },
-  ];
-  // A medium tile: 4 compact inline rows (icon and title) under one fluid
+  // The Card page's logo art, in the visitor's accent.
+  const { thumb } = useCardArt();
+  const items = ["Fluid motion", "Accessible", "Yours to theme", "Fluid hover"];
+  // A medium tile: 4 compact inline rows (avatar and title) under one fluid
   // hover, divided by hairlines. The descriptions stay on the docs page:
   // with them the 4 rows outgrow the tile's stage.
   return (
     <div className="w-full max-w-[520px]">
       <CardGroup orientation="inline" fluidHover>
-        {items.map((item) => (
+        {items.map((title) => (
           <Card
-            key={item.title}
-            label={item.title}
+            key={title}
+            label={title}
             size="compact"
             // 4 rows must share a 300px tile row with the stage padding and
             // the footer: 52px rows instead of the compact row's 60px minimum.
             className="min-h-[52px] py-1.5"
             onClick={() => {}}
           >
-            <CardMedia icon={item.icon} />
+            <CardMedia logo={thumb} size={28} />
             <CardHeader>
-              <CardTitle>{item.title}</CardTitle>
+              <CardTitle>{title}</CardTitle>
             </CardHeader>
           </Card>
         ))}
@@ -287,7 +288,8 @@ function ButtonPreview() {
 }
 
 function CheckboxPreview() {
-  const [checked, setChecked] = useState<Set<number>>(new Set());
+  // Two neighbours start checked, so the tile shows the merged selection fill.
+  const [checked, setChecked] = useState<Set<number>>(() => new Set([1, 2]));
   return (
     <div className="w-full max-w-[220px]">
       <CheckboxGroup checkedIndices={checked}>
@@ -412,6 +414,40 @@ function SelectPreview() {
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+// A stay already picked across the month break, so the band shows from the
+// first frame; 2 months side by side once the tile is wide enough. Cells
+// shrink to 30px so a 6-week month fits the 300px row.
+function CalendarPreview() {
+  const narrow = useNarrowFrame();
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const today = new Date();
+    return { from: addDays(today, 3), to: addDays(today, 8) };
+  });
+  return (
+    <Calendar
+      mode="range"
+      numberOfMonths={narrow ? 1 : 2}
+      orientation="horizontal"
+      cellSize={30}
+      selected={range}
+      onSelect={setRange}
+    />
+  );
+}
+
+function DatePickerPreview() {
+  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  return (
+    <div className="flex w-full max-w-[280px] justify-center">
+      <DatePicker value={date} onValueChange={setDate} />
     </div>
   );
 }
@@ -546,21 +582,6 @@ function TablePreview() {
 }
 
 function TabsPreview() {
-  const [tab, setTab] = useState<string>(TABS_DEFAULT);
-  return (
-    <div className="w-full max-w-[360px]">
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          {TABS_ITEMS.map((item) => (
-            <TabItem key={item.value} value={item.value} label={item.label} />
-          ))}
-        </TabsList>
-      </Tabs>
-    </div>
-  );
-}
-
-function TabsSubtlePreview() {
   const Home = useIcon("home");
   const MessageCircle = useIcon("message-circle");
   const Inbox = useIcon("inbox");
@@ -572,11 +593,34 @@ function TabsSubtlePreview() {
   ];
   return (
     <div className="w-fit mx-auto">
-      <TabsSubtle idPrefix="bento-tabs" selectedIndex={tab} onSelect={setTab} activeLabel aria-label="Navigation">
+      <Tabs idPrefix="bento-tabs" selectedIndex={tab} onSelect={setTab} activeLabel aria-label="Navigation">
         {items.map((item, i) => (
-          <TabsSubtleItem key={item.label} index={i} icon={item.icon} label={item.label} />
+          <TabsItem key={item.label} index={i} icon={item.icon} label={item.label} />
         ))}
-      </TabsSubtle>
+      </Tabs>
+    </div>
+  );
+}
+
+function BannerPreview() {
+  // Dismissing collapses it; it comes back a beat later so the tile never
+  // sits empty.
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    if (open) return;
+    const id = setTimeout(() => setOpen(true), 1200);
+    return () => clearTimeout(id);
+  }, [open]);
+  return (
+    <div className="w-full max-w-[440px]">
+      <Banner status="info" dismissible open={open} onDismiss={() => setOpen(false)}>
+        <BannerTitle>The registry has new components</BannerTitle>
+        <BannerDescription>Run the install command again to pull the latest versions.</BannerDescription>
+        <BannerActions>
+          <BannerAction variant="primary">Copy command</BannerAction>
+          <BannerAction variant="ghost">Later</BannerAction>
+        </BannerActions>
+      </Banner>
     </div>
   );
 }
@@ -615,7 +659,7 @@ const askUserExampleQuestions: AskUserQuestion[] = [
       { id: "input", title: "InputMessage", description: "Chat-style composer with attachments" },
       { id: "thinking", title: "ThinkingSteps", description: "Streamed reasoning steps" },
       { id: "ask", title: "AskUserQuestions", description: "Stepped question flows" },
-      { id: "tabs", title: "TabsSubtle", description: "Quiet segmented tabs" },
+      { id: "tabs", title: "Tabs", description: "Quiet segmented tabs" },
       { id: "nav", title: "NavMenu", description: "Sidebar navigation" },
     ],
     nextLabel: "Continue",
@@ -739,6 +783,10 @@ function TooltipPreview() {
 
 function ColorPickerPreview() {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  // The site's accent, live: the picker shows it, its swatches are the
+  // presets, and any color picked here becomes the accent everywhere, as
+  // the right panel's Accent row does.
+  const accent = useAccent();
   // `relative` is load-bearing: the FormatDropdown (HEX/RGB/HSL/OKLCH) portals
   // INTO this wrapper and uses absolute positioning computed against the
   // wrapper's bounding rect. Without `relative`, the menu's absolute coords
@@ -747,7 +795,11 @@ function ColorPickerPreview() {
   return (
     <div ref={setContainer} className="relative w-full max-w-[280px]">
       <ColorPickerPortalContainer value={container}>
-        <ColorPicker defaultValue="#6B97FF" />
+        <ColorPicker
+          value={accent.hex}
+          onValueChange={(_, parsed) => accent.setColor(accentHexOf(parsed))}
+          swatches={accentSwatches(accent.dark)}
+        />
       </ColorPickerPortalContainer>
     </div>
   );
@@ -756,12 +808,15 @@ function ColorPickerPreview() {
 function ChatMessagePreview() {
   return (
     <div className="flex w-full max-w-[300px] flex-col gap-1">
-      <ChatMessage from="user" size="compact">
-        Why is every other input box so stiff?
-      </ChatMessage>
-      <ChatMessage from="assistant" size="compact">
-        Because nothing about them moves with you.
-      </ChatMessage>
+      {/* Already sent: initial={false} skips their entrance. */}
+      <AnimatePresence initial={false}>
+        <ChatMessage key="q" from="user" size="compact">
+          Why is every other input box so stiff?
+        </ChatMessage>
+        <ChatMessage key="a" from="assistant" size="compact">
+          Because nothing about them moves with you.
+        </ChatMessage>
+      </AnimatePresence>
     </div>
   );
 }
@@ -773,8 +828,10 @@ function SidebarPreview() {
   // desktop, and rail-only on a phone, where 12rem of rail would leave the
   // main region an 83px sliver that shows nothing.
   const narrow = useNarrowFrame();
+  // The app frame rounds with the Radius setting, like the site's cards.
+  const shape = useShape();
   return (
-    <div className="flex h-[380px] w-full max-w-[620px] overflow-hidden rounded-xl border border-border bg-background">
+    <div className={cn("flex h-[460px] w-full max-w-[620px] overflow-hidden border border-border bg-background", shape.container)}>
       {/* A whole app shell in miniature — workspace row, a thread list with
           the status-dot treatment, a user row, and the main region beside it.
           collapsible="none" keeps it static: it never becomes the
@@ -888,6 +945,7 @@ function SidebarPreview() {
 }
 
 export const previewMap: Record<string, React.FC> = {
+  banner: BannerPreview,
   "input-message": InputMessagePreview,
   "chat-message": ChatMessagePreview,
   sidebar: SidebarPreview,
@@ -897,10 +955,12 @@ export const previewMap: Record<string, React.FC> = {
   badge: BadgePreview,
   "carousel-dots": CarouselDotsPreview,
   button: ButtonPreview,
+  calendar: CalendarPreview,
   "checkbox-group": CheckboxPreview,
   "color-picker": ColorPickerPreview,
   combobox: ComboboxPreview,
   "command-menu": CommandMenuPreview,
+  "date-picker": DatePickerPreview,
   dialog: DialogPreview,
   dropdown: DropdownPreview,
   "input-copy": InputCopyPreview,
@@ -910,8 +970,7 @@ export const previewMap: Record<string, React.FC> = {
   slider: SliderPreview,
   switch: SwitchPreview,
   table: TablePreview,
-  tabs: TabsPreview,
-  "tabs-subtle": TabsSubtlePreview,
+  "tabs": TabsPreview,
   "thinking-indicator": ThinkingIndicatorPreview,
   "thinking-steps": ThinkingStepsPreview,
   tooltip: TooltipPreview,

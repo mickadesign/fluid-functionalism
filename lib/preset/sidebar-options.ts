@@ -82,6 +82,10 @@ export const DEFAULT_STATE: PlayState = {
   footerCalloutStacked: false,
 };
 
+/** The globals' keys, for a playground that hydrates its rail from a
+ *  decoded preset and leaves these to the site settings. */
+export const PRESET_GLOBAL_KEYS = ["flavor", "shape", "size"] as const satisfies readonly (keyof PresetGlobals)[];
+
 export const DEFAULT_GLOBALS: PresetGlobals = {
   flavor: "radix",
   shape: "rounded",

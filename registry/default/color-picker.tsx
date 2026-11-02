@@ -3,6 +3,7 @@
 import {
   createContext,
   forwardRef,
+  Fragment,
   useContext,
   useRef,
   useState,
@@ -20,7 +21,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Menu } from "@base-ui/react/menu";
 import { NumberField } from "@base-ui/react/number-field";
 import { cn } from "@/lib/utils";
-import { spring } from "@/lib/springs";
+import { spring, exitFallbackMs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { nestedRadius, useShape, shapeMap } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
@@ -29,8 +30,9 @@ import { surfaceClasses } from "@/lib/surface-classes";
 import { useIcons } from "@/lib/icon-context";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { Elevated } from "@/lib/elevated";
+import { popupMotionClass } from "@/lib/popup";
 import { Slider } from "@/registry/radix/slider";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipProvider } from "@/registry/radix/tooltip";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // ---------------------------------------------------------------------------
@@ -100,8 +102,9 @@ interface ColorPickerProps
   format?: ColorFormat;
   defaultFormat?: ColorFormat;
   onFormatChange?: (format: ColorFormat) => void;
-  /** Any CSS color, named colors ("tomato") included. */
-  swatches?: string[];
+  /** Any CSS color, named colors ("tomato") included. A `{ color, label }`
+   *  swatch names its color in a tooltip and to screen readers. */
+  swatches?: ColorSwatchItem[];
   /** The button already hides itself where `window.EyeDropper` is missing
    *  (the API is Chromium-only). */
   hideEyedropper?: boolean;
@@ -135,6 +138,9 @@ interface ColorPickerPopoverProps extends ColorPickerProps {
   /** Called when the open state would change (fires even when controlled). */
   onOpenChange?: (open: boolean) => void;
 }
+
+/** A swatch for the picker's strip: a CSS color, or one with a name. */
+type ColorSwatchItem = string | { color: string; label?: string };
 
 interface ColorSwatchProps
   extends Omit<HTMLAttributes<HTMLButtonElement>, "color"> {
@@ -1002,15 +1008,17 @@ function FormatDropdown({
           sideOffset={6}
           className="z-[60] outline-none"
         >
+          {/* The positioner's data-side flips the origin and the 4px enter
+              offset when the menu opens above, as Dropdown's does. */}
           <motion.div
-            initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
+            className={popupMotionClass}
+            initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
             animate={
               open
                 ? { opacity: 1, y: 0, scaleY: 1 }
-                : { opacity: 0, y: -4, scaleY: 0.96 }
+                : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
             }
             transition={open ? spring.fast : spring.fast.exit}
-            style={{ transformOrigin: "top center" }}
             // The close held Base UI's unmount (preventUnmountOnClose); release it once
             // the exit spring has finished so the close animation fully plays.
             onAnimationComplete={() => {
@@ -1686,7 +1694,7 @@ const ColorSwatch = forwardRef<HTMLButtonElement, ColorSwatchProps>(
     // page background, then a 2px outer ring (accent blue when selected,
     // 40% gray on hover). The gap keeps the ring readable on any swatch color.
     const ring = selected
-      ? "inset 0 0 0 1px rgba(127,127,127,0.25), 0 0 0 2px var(--background), 0 0 0 4px #6B97FF"
+      ? "inset 0 0 0 1px rgba(127,127,127,0.25), 0 0 0 2px var(--background), 0 0 0 4px var(--fluid-accent, #6B97FF)"
       : hovered
         ? "inset 0 0 0 1px rgba(127,127,127,0.25), 0 0 0 2px var(--background), 0 0 0 4px rgba(127,127,127,0.4)"
         : "inset 0 0 0 1px rgba(127,127,127,0.25)";
@@ -1725,15 +1733,97 @@ ColorSwatch.displayName = "ColorSwatch";
 // SwatchStrip
 // ---------------------------------------------------------------------------
 
+// One cell of the strip: the swatch with 4px of room, so the cells tile with
+// no gap and the hover background, a cell wide, rings the swatch. The cell is
+// the button; the swatch inside only paints. Selected, the foreground fills
+// a band 2px in, as a Calendar range end fills its cell: a 2px frame round
+// the swatch that no swatch color can swallow, the hover background gliding
+// beneath it.
+const SWATCH_HAIRLINE = "inset 0 0 0 1px rgba(127,127,127,0.25)";
+
+interface SwatchCellProps extends Omit<HTMLAttributes<HTMLButtonElement>, "color" | "onClick"> {
+  color: string;
+  label?: string;
+  index: number;
+  selected: boolean;
+  /** The pointer is on this cell. */
+  lit: boolean;
+  /** …and pressing. */
+  pressed: boolean;
+  registerItem: (index: number, element: HTMLElement | null) => void;
+  onPick: (color: string) => void;
+}
+
+// forwardRef and the rest props: a labeled cell is a Tooltip's asChild
+// trigger, which hands it a ref and its pointer and focus handlers.
+const SwatchCell = forwardRef<HTMLButtonElement, SwatchCellProps>(
+  ({ color, label, index, selected, lit, pressed, registerItem, onPick, className, ...props }, forwardedRef) => {
+    const shape = useShape();
+    const ref = useRef<HTMLButtonElement>(null);
+    useRegisterFluidHoverItem(registerItem, index, ref);
+    const setRef = useCallback(
+      (node: HTMLButtonElement | null) => {
+        ref.current = node;
+        if (typeof forwardedRef === "function") forwardedRef(node);
+        else if (forwardedRef) forwardedRef.current = node;
+      },
+      [forwardedRef]
+    );
+    return (
+      <button
+        {...props}
+        ref={setRef}
+        type="button"
+        aria-label={label ?? `Select color ${color}`}
+        aria-pressed={selected}
+        className={cn(
+          "relative z-10 shrink-0 cursor-pointer p-1 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+          shape.container,
+          className
+        )}
+        onClick={() => onPick(color)}
+      >
+        {/* The selected band, 2px in. Under the pointer it dims a step,
+            the way a solid Button answers hover, and pressed it thins by
+            1px a side, as the hover fill does. */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute bg-foreground transition-[opacity,inset,border-radius] duration-80",
+            lit && pressed ? "inset-[3px]" : "inset-0.5",
+            !selected ? "opacity-0" : lit && !pressed ? "opacity-80" : "opacity-100"
+          )}
+          // Concentric with the cell.
+          style={{ borderRadius: nestedRadius(shape.containerRadius, lit && pressed ? 3 : 2) }}
+        />
+        <span
+          className={cn("relative block size-7 overflow-hidden", shape.bg)}
+          style={{ ...CHECKER_BG, boxShadow: SWATCH_HAIRLINE }}
+        >
+          <span className="absolute inset-0" style={{ backgroundColor: color }} />
+        </span>
+      </button>
+    );
+  }
+);
+
+SwatchCell.displayName = "SwatchCell";
+
 function SwatchStrip({
   swatches,
   current,
   onPick,
 }: {
-  swatches: string[];
+  swatches: ColorSwatchItem[];
   current: string;
   onPick: (color: string) => void;
 }) {
+  const shape = useShape();
+  const items = useMemo(
+    () => swatches.map((sw) => (typeof sw === "string" ? { color: sw, label: undefined } : sw)),
+    [swatches]
+  );
+
   // Selection compares normalized lowercase hex (alpha included), so "#FFF",
   // "#ffffff" and "rgb(255, 255, 255)" all mark the same swatch.
   const normalizedCurrent = useMemo(() => {
@@ -1748,37 +1838,105 @@ function SwatchStrip({
   const resolvedSwatches = useMemo(() => {
     const resolved: Record<string, string> = {};
     if (!isClient) return resolved;
-    for (const sw of swatches) {
-      if (!parseColor(sw)) {
-        const p = resolveCssColor(sw);
-        if (p) resolved[sw] = rgbToHexStr(p.r, p.g, p.b, p.a).toLowerCase();
+    for (const { color } of items) {
+      if (!parseColor(color)) {
+        const p = resolveCssColor(color);
+        if (p) resolved[color] = rgbToHexStr(p.r, p.g, p.b, p.a).toLowerCase();
       }
     }
     return resolved;
-  }, [isClient, swatches]);
+  }, [isClient, items]);
+
+  // One fluid hover across the grid: the background follows the pointer
+  // from swatch to swatch, row and column alike, and goes out over the
+  // unfilled end of the last row.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hover = useFluidHover(containerRef, { axis: "xy" });
+  // registerItem is stable; the handlers object is new each render.
+  const { registerItem, handlers, activeIndex } = hover;
+
+  // Each swatch's normalized color, and so the selected one's index. Until a
+  // named swatch is resolved, its raw name never equals a hex, so it renders
+  // unselected while hydrating.
+  const normalized = items.map(({ color }) => {
+    const parsed = parseColor(color);
+    return parsed
+      ? rgbToHexStr(parsed.r, parsed.g, parsed.b, parsed.a).toLowerCase()
+      : resolvedSwatches[color] ?? color.toLowerCase();
+  });
+  const selectedIndex = normalized.indexOf(normalizedCurrent);
+  // Hovering the selected swatch: its band answers the press itself, so the
+  // fill under it stays at rest.
+  const litSelected = activeIndex !== null && activeIndex === selectedIndex;
+
+  // Held from the press until the button comes up anywhere, as the Calendar
+  // does: the fill steps to the pressed token and shrinks 1px a side.
+  const [pressed, setPressed] = useState(false);
+  useEffect(() => {
+    if (!pressed) return;
+    const release = () => setPressed(false);
+    window.addEventListener("mouseup", release);
+    return () => window.removeEventListener("mouseup", release);
+  }, [pressed]);
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {swatches.map((sw, i) => {
-        // Until a named swatch is resolved, its raw name never equals a hex,
-        // so it renders unselected while hydrating.
-        const parsed = parseColor(sw);
-        const normalized = parsed
-          ? rgbToHexStr(parsed.r, parsed.g, parsed.b, parsed.a).toLowerCase()
-          : resolvedSwatches[sw] ?? sw.toLowerCase();
-        const isSelected = normalized === normalizedCurrent;
-        return (
+    // -m-1: the cells' 4px of room sits outside the strip's edges, so the
+    // swatches line up with the fields above. One tooltip group: once a name
+    // shows, the next swatch's shows at once instead of waiting again. Not
+    // hoverable: crossing to a name would hold off the swatches in its path.
+    <TooltipProvider delayDuration={300} disableHoverableContent>
+      <div
+        ref={containerRef}
+        className="relative -m-1 flex flex-wrap"
+        {...handlers}
+        onMouseDown={(e) => {
+          if (e.button === 0) setPressed(true);
+        }}
+        onMouseUp={() => setPressed(false)}
+      >
+        {/* The hover fill, pressed like a ghost Button (the Calendar's day
+            recipe): a surface 3px in with a same-color 1px spread at rest,
+            so its edge sits 2px in, where the selected band's does; the
+            spread collapses on press, shrinking it 1px a side as it steps
+            to the active token. */}
+        <FluidHoverHighlight
+          hover={hover}
+          className={cn(
+            "bg-transparent before:pointer-events-none before:absolute before:inset-[3px] before:bg-[var(--swatch-press)] before:transition-[box-shadow,background-color] before:[transition-duration:180ms,80ms] before:[transition-timing-function:cubic-bezier(0.23,1,0.32,1),ease]",
+            shape.container,
+            // The band's radius 2px in, less the 1px spread.
+            shape.variant === "pill" ? "before:rounded-full" : "before:rounded-[9px]",
+            pressed && !litSelected
+              ? "[--swatch-press:var(--active)] before:shadow-[0_0_0_0px_var(--swatch-press)] before:[transition-duration:80ms,80ms]"
+              : "[--swatch-press:var(--hover)] before:shadow-[0_0_0_1px_var(--swatch-press)]"
+          )}
+        />
+        {items.map(({ color, label }, i) => {
+          const cell = (
+            <SwatchCell
+              color={color}
+              label={label}
+              index={i}
+              selected={i === selectedIndex}
+              lit={activeIndex === i}
+              pressed={pressed}
+              registerItem={registerItem}
+              onPick={onPick}
+            />
+          );
           // Index in the key: the same color may appear twice in a list.
-          <ColorSwatch
-            key={`${sw}-${i}`}
-            color={sw}
-            size={28}
-            selected={isSelected}
-            onClick={() => onPick(sw)}
-          />
-        );
-      })}
-    </div>
+          return label ? (
+            // sideOffset 2: the name sits just past the cell, 6px off the
+            // swatch.
+            <Tooltip key={`${color}-${i}`} content={label} sideOffset={2}>
+              {cell}
+            </Tooltip>
+          ) : (
+            <Fragment key={`${color}-${i}`}>{cell}</Fragment>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -1790,6 +1948,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
   (
     {
       value,
+      // eslint-disable-next-line no-restricted-syntax -- a starting color for the picker, not the accent
       defaultValue = "#6B97FF",
       onValueChange,
       format,
@@ -2264,6 +2423,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
     // when that is its own emitted string coming back, lastEmitted skips
     // the re-parse.
     const isControlled = pickerProps.value !== undefined;
+    // eslint-disable-next-line no-restricted-syntax -- a starting color for the picker, not the accent
     const [internalValue, setInternalValue] = useState(pickerProps.value ?? pickerProps.defaultValue ?? "#6B97FF");
     const currentValue = isControlled ? (pickerProps.value as string) : internalValue;
 
@@ -2278,11 +2438,10 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
     // Release Base UI's deferred unmount once the exit tween has played.
     // onAnimationComplete on the motion.div is the primary signal; this
     // timeout is a fallback for throttled/background tabs where rAF-driven
-    // animation callbacks can stall (spring.moderate.exit is 120ms — 150ms
-    // covers it with margin).
+    // animation callbacks can stall.
     useEffect(() => {
       if (open) return;
-      const id = setTimeout(() => actionsRef.current?.unmount(), 150);
+      const id = setTimeout(() => actionsRef.current?.unmount(), exitFallbackMs(spring.fast));
       return () => clearTimeout(id);
     }, [open, actionsRef]);
 
@@ -2298,6 +2457,45 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
       ? rgbToHexStr(parsed.r, parsed.g, parsed.b, 1).replace(/^#/, "").toUpperCase()
       : currentValue;
 
+    // With the remove button the trigger becomes a field of two segments, as
+    // in DatePicker: the border moves to a wrapper, and one fluid hover glides
+    // between the open segment and the X. Segments sit 2px inside the field
+    // (plus its 1px border), so their corners nest 3px inside its radius.
+    const fieldRef = useRef<HTMLDivElement>(null);
+    const segmentHover = useFluidHover(fieldRef, { axis: "x", gapClick: false });
+    const { registerItem: registerSegment } = segmentHover;
+    const triggerSegmentRef = useCallback(
+      (el: HTMLButtonElement | null) => registerSegment(0, el),
+      [registerSegment]
+    );
+    const removeSegmentRef = useCallback(
+      (el: HTMLButtonElement | null) => registerSegment(1, el),
+      [registerSegment]
+    );
+    const innerRadius =
+      nestedRadius(shape.bgRadius, 3) === 5 ? "rounded-[5px]" : "rounded-[17px]";
+
+    const triggerContent = (
+      <>
+        {triggerLabel && triggerLabelPosition === "left" && (
+          <span className={cn("text-muted-foreground px-1 select-none", sizeClasses.text)}>
+            {triggerLabel}
+          </span>
+        )}
+        <ColorTile color={swatchColor} size={compact ? 16 : 20} />
+        {triggerShowValue && (
+          <span className={cn("text-foreground tabular-nums", sizeClasses.text)}>
+            {valueLabel}
+          </span>
+        )}
+        {triggerLabel && triggerLabelPosition === "right" && (
+          <span className={cn("text-muted-foreground px-1 select-none", sizeClasses.text)}>
+            {triggerLabel}
+          </span>
+        )}
+      </>
+    );
+
     // A size prop pins the whole compound (trigger + portalled panel — React
     // context crosses portals) to one step of the ladder.
     const root = (
@@ -2310,76 +2508,88 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
         modal={false}
       >
         <div ref={ref} className="inline-flex">
-          <Popover.Trigger
-            className={cn(
-              "flex items-center border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
-              sizeClasses.gap,
-              sizeClasses.control,
-              compact ? "px-1.5" : "px-2",
-              shape.input,
-              triggerClassName
-            )}
-            style={{ fontVariationSettings: fontWeights.normal }}
-          >
-            {triggerLabel && triggerLabelPosition === "left" && (
-              <span className={cn("text-muted-foreground px-1 select-none", sizeClasses.text)}>
-                {triggerLabel}
-              </span>
-            )}
-            <ColorTile color={swatchColor} size={compact ? 16 : 20} />
-            {triggerShowValue && (
-              <span className={cn("text-foreground tabular-nums", sizeClasses.text)}>
-                {valueLabel}
-              </span>
-            )}
-            {triggerLabel && triggerLabelPosition === "right" && (
-              <span className={cn("text-muted-foreground px-1 select-none", sizeClasses.text)}>
-                {triggerLabel}
-              </span>
-            )}
-            {/* A span with role="button", since a real button can't nest in
-                the trigger button. stopPropagation keeps a remove press from
-                also toggling the popover. */}
-            {triggerShowRemove && (
-              <span
-                role="button"
+          {triggerShowRemove ? (
+            <div
+              ref={fieldRef}
+              data-slot="color-picker-trigger-field"
+              className={cn(
+                "relative inline-flex items-center border border-border bg-transparent p-0.5",
+                sizeClasses.control,
+                shape.input,
+                triggerClassName
+              )}
+              {...segmentHover.handlers}
+            >
+              <FluidHoverHighlight hover={segmentHover} className={cn("z-0", innerRadius)} />
+              <Popover.Trigger
+                ref={triggerSegmentRef}
+                className={cn(
+                  "relative z-[1] flex h-full items-center outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+                  sizeClasses.gap,
+                  // 2px field padding + this keeps the content where the
+                  // single-segment trigger has it.
+                  compact ? "px-1" : "px-1.5",
+                  innerRadius
+                )}
+                style={{ fontVariationSettings: fontWeights.normal }}
+              >
+                {triggerContent}
+              </Popover.Trigger>
+              <button
+                ref={removeSegmentRef}
+                type="button"
                 aria-label="Remove color"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTriggerRemove?.();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onTriggerRemove?.();
-                  }
-                }}
-                className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer flex items-center"
+                onClick={() => onTriggerRemove?.()}
+                className={cn(
+                  "relative z-[1] inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+                  compact ? "w-6" : "w-7",
+                  innerRadius
+                )}
               >
                 <XIcon size={14} strokeWidth={1.5} />
-              </span>
-            )}
-          </Popover.Trigger>
+              </button>
+            </div>
+          ) : (
+            <Popover.Trigger
+              className={cn(
+                "flex items-center border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+                sizeClasses.gap,
+                sizeClasses.control,
+                compact ? "px-1.5" : "px-2",
+                shape.input,
+                triggerClassName
+              )}
+              style={{ fontVariationSettings: fontWeights.normal }}
+            >
+              {triggerContent}
+            </Popover.Trigger>
+          )}
           <Popover.Portal>
             <Popover.Positioner
+              // With the remove button, the panel lines up with the field's
+              // edge rather than the open segment's.
+              anchor={triggerShowRemove ? fieldRef : undefined}
               side="bottom"
               align="start"
               sideOffset={6}
               className="z-50 outline-none"
             >
               <motion.div
-                initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
+                // The positioner's data-side flips the 4px enter offset when
+                // the panel opens above, as Dropdown's does. The origin stays
+                // on the trigger's corner (align="start"): top-left below,
+                // bottom-left above.
+                className={cn(
+                  popupMotionClass,
+                  "origin-top-left [[data-side=top]_&]:origin-bottom-left"
+                )}
+                initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
                 animate={
                   open
                     ? { opacity: 1, y: 0, scaleY: 1 }
-                    : { opacity: 0, y: -4, scaleY: 0.96 }
+                    : { opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }
                 }
-                transition={open ? spring.moderate : spring.moderate.exit}
-                // Top-left origin matches align="start": the panel unfolds
-                // from the trigger's corner.
-                style={{ transformOrigin: "top left" }}
+                transition={open ? spring.fast : spring.fast.exit}
                 // The close held Base UI's unmount (preventUnmountOnClose); release it
                 // once the exit spring has finished so the close animation
                 // fully plays.
@@ -2440,6 +2650,7 @@ export {
 
 export type {
   ColorPickerProps,
+  ColorSwatchItem,
   ColorPickerPopoverProps,
   ColorSwatchProps,
   ColorFormat,

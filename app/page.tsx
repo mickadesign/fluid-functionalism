@@ -17,7 +17,10 @@ export default function Page() {
     useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
 
   return (
-    <div className="mt-12 lg:mt-0">
+    // reveal-landing-subtle, a preset the Reveal page documents: the hero
+    // plays on load, and each tile rises on scroll (reveal-scroll, set in
+    // BentoGrid). A value changed on /docs/reveal changes here too.
+    <div className="reveal-landing-subtle mt-12 lg:mt-0">
       <div className="w-full max-w-[680px] mx-auto py-20 sm:py-28 px-6">
         {/* The title and the arrows share a row, as on every docs page; the
             description and the buttons run full width under them, so a

@@ -6,7 +6,7 @@ import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
-import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/flavored/tabs";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
@@ -29,8 +29,9 @@ interface ComponentPreviewProps {
   playbackButton?: PlaybackButton;
   /** Padding around the preview content. Use "compact" when the demo
    *  is a self-contained block that already supplies its own breathing
-   *  room (dialogs, full-bleed cards). "responsive" is compact on mobile
-   *  and default on desktop — for big demos that feel cramped on phones.
+   *  room (dialogs, full-bleed cards). "default" narrows its sides to
+   *  16px on phones; "responsive" is compact there on every side — for big
+   *  demos that feel cramped on phones.
    *  "none" removes the padding entirely so the demo bleeds to the
    *  preview frame (full-width tables, scroll areas).
    *  Defaults to "default". */
@@ -133,10 +134,10 @@ export function ComponentPreview({
             {title}
           </span>
         )}
-        <TabsSubtle selectedIndex={tab} onSelect={setTab}>
-          <TabsSubtleItem index={0} label="Preview" />
-          <TabsSubtleItem index={1} label="Code" />
-        </TabsSubtle>
+        <Tabs selectedIndex={tab} onSelect={setTab}>
+          <TabsItem index={0} label="Preview" />
+          <TabsItem index={1} label="Code" />
+        </Tabs>
         <div className="ml-auto flex items-center gap-1">
           {inspectable && tab === 0 && (
             // Toggling Inspect must not dismiss whatever the preview has open
@@ -182,7 +183,7 @@ export function ComponentPreview({
       {/* Content. Wrapped so its rectangular bottom corners get clipped
           to the outer container's rounded shape (rounded-xl / rounded-3xl
           depending on shape). overflow-hidden alone on the outer would
-          re-clip the TabsSubtle focus ring above; this scoped clipper
+          re-clip the Tabs focus ring above; this scoped clipper
           uses `border-bottom-*-radius: inherit` so it adopts whichever
           shape is active, and leaves the top corners square (the tab
           bar sits above, well below the outer's curved top edge). */}
@@ -218,7 +219,7 @@ export function ComponentPreview({
                   ? "px-4 py-4"
                   : padding === "responsive"
                     ? "px-4 py-4 sm:px-8 sm:py-12"
-                    : "px-8 py-12"
+                    : "px-4 py-12 sm:px-8"
             }`}
           >
             {children}

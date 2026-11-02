@@ -28,6 +28,7 @@
         "--typeset-check": "16px",
         "--typeset-check-radius": "5px",
         "--typeset-check-gap": "8px",
+        "--typeset-check-press": "0.875",
         "--typeset-indent": "24px",
         "--typeset-sub-indent": "20px",
         "font-size": "var(--typeset-body)",
@@ -56,6 +57,7 @@
         "--typeset-check": "14px",
         "--typeset-check-radius": "4px",
         "--typeset-check-gap": "4px",
+        "--typeset-check-press": "0.8571",
         "--typeset-indent": "18px",
         "--typeset-sub-indent": "16px"
       },
@@ -180,10 +182,14 @@
         "border-radius": "var(--typeset-check-radius)",
         "background": "none",
         "cursor": "pointer",
-        "transition": "border-color 80ms ease-out"
+        "transition": "border-color 80ms ease-out, scale 180ms cubic-bezier(0.23, 1, 0.32, 1)"
       },
       ":where(.typeset input[type=checkbox]:not(:disabled):hover):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
         "border-color": "color-mix(in oklab, var(--foreground, currentColor) 40%, transparent)"
+      },
+      ":where(.typeset input[type=checkbox]:not(:disabled):active):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+        "scale": "var(--typeset-check-press)",
+        "transition-duration": "80ms, 80ms"
       },
       ":where(.typeset input[type=checkbox]:checked):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
         "border-color": "transparent"
@@ -200,7 +206,12 @@
         "inset": "0",
         "background-color": "var(--foreground, currentColor)",
         "-webkit-mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat",
-        "mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat"
+        "mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat",
+        "transition": "scale 180ms cubic-bezier(0.23, 1, 0.32, 1)"
+      },
+      ":where(.typeset input[type=checkbox]:checked:not(:disabled):active):not(:where(.typeset .not-typeset, .typeset .not-typeset *))::before": {
+        "scale": "calc(1 / var(--typeset-check-press))",
+        "transition-duration": "80ms"
       },
       ":where(.typeset .task-list-item input[type=checkbox]):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
         "vertical-align": "-0.25em",
@@ -224,7 +235,19 @@
       },
       ":where(.typeset ul[data-type=\"taskList\"] > li[data-checked=\"true\"] > div > :not(ul, ol)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
         "color": "var(--muted-foreground, color-mix(in oklab, currentColor 65%, transparent))",
-        "text-decoration-line": "line-through"
+        "text-decoration-line": "line-through",
+        "transition": "color 80ms ease-out, background-size 80ms ease-out"
+      },
+      ":where(.typeset ul[data-type=\"taskList\"] > li > div > p:first-child):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+        "display": "inline",
+        "background-image": "linear-gradient(currentColor, currentColor)",
+        "background-repeat": "no-repeat",
+        "background-position": "0 0.641em",
+        "background-size": "0% max(1px, 0.0684em)"
+      },
+      ":where(.typeset ul[data-type=\"taskList\"] > li[data-checked=\"true\"] > div > p:first-child):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+        "text-decoration-line": "none",
+        "background-size": "100% max(1px, 0.0684em)"
       },
       ":where(.typeset blockquote):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
         "padding-left": "1em",
@@ -306,6 +329,11 @@
         },
         ":where(.typeset input[type=checkbox]:checked):not(:where(.typeset .not-typeset, .typeset .not-typeset *))::before": {
           "display": "none"
+        }
+      },
+      "@media (prefers-reduced-motion: reduce)": {
+        ":where(.typeset ul[data-type=\"taskList\"] > li > div > :not(ul, ol)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+          "transition-property": "color"
         }
       }
     }

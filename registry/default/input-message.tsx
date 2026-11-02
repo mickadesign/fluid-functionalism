@@ -651,7 +651,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     // `shadow-surface-2` supplies the resting edge.
     const EDGE_DROP = "0 1px 1px -0.5px var(--shadow-color)";
     const edgeShadow = dragOver
-      ? `0 0 0 1px #6B97FF, ${EDGE_DROP}`
+      ? `0 0 0 1px var(--fluid-accent, #6B97FF), ${EDGE_DROP}`
       : focusVisible
         ? `0 0 0 1px color-mix(in oklab, var(--foreground) 20%, transparent), ${EDGE_DROP}`
         : hovered && clickToFocus && !disabled
