@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MARKDOWN_PAGES } from "@/lib/docs/markdown";
 import { plainDescription } from "@/lib/docs/install-brief";
+import { OG_IMAGES, OG_VIDEOS } from "@/lib/og-media";
 
 const INDEX_DESCRIPTION =
   "Animated React components for shadcn/ui, in Radix and Base UI flavors, with one shared motion system. Install, flavors, and every component.";
@@ -16,7 +17,6 @@ export function docMetadata(slug?: string): Metadata {
   const title = `${entry?.name ?? "Introduction"} · Fluid Functionalism`;
   const description = entry ? plainDescription(entry.description) : INDEX_DESCRIPTION;
   const path = entry ? `/docs/${entry.slug}` : "/docs";
-  const images = [{ url: "/metadata/og.png", width: 1200, height: 630 }];
 
   return {
     title,
@@ -25,8 +25,8 @@ export function docMetadata(slug?: string): Metadata {
       canonical: path,
       types: { "text/markdown": `${path}.md` },
     },
-    // Replaced wholesale, not merged, over the root layout's: repeat the image.
-    openGraph: { title, description, url: path, images },
+    // Replaced wholesale, not merged, over the root layout's: repeat the card.
+    openGraph: { title, description, url: path, images: OG_IMAGES, videos: OG_VIDEOS },
     twitter: { card: "summary_large_image", title, description, images: ["/metadata/og.png"] },
   };
 }

@@ -302,7 +302,7 @@ using it honestly:
 - Cite at most two craft details per entry — the sharpest contrasts with
   what the current code does, not a feature dump.
 - Only cite what the project actually lacks: if their hand-rolled version
-  already fades in at the nearest row, that bullet is not an argument.
+  already fades in where it lands, that bullet is not an argument.
   Reading the current component first is what makes the pitch credible.
 - The same comparison sets the effort honestly: craft the local version
   already replicates means the replacement changes less than it seems
@@ -362,8 +362,8 @@ diff before any --overwrite.
 | Now | Replace with | Impact | Effort | Why | Evidence |
 |---|---|---|---|---|---|
 | durations hand-written in 6 files | springs (motion tokens) | high | S | exits reuse the entrance spring today, so dismissals drag; tokens pair every tier with a one-tier-quicker exit tween | components/panel.tsx:44, dock.tsx:18 (+4) |
-| nav + table per-row :hover | use-fluid-hover | high | S | hover blinks off between rows; the highlight glides to the nearest row and a gap click still lands on what's lit | audit.mjs / @1280: per-row, dark in the 4px gap |
-| static card grid (projects.tsx), the landing surface | card | med | M | the grid is the first thing anyone sees and nothing answers the cursor on it; the highlight tracks the nearest card in both axes and dividers drop beside the active one, with local markup to carry over | audit.mjs / @1280: none on 9 cards |
+| nav + table per-row :hover | use-fluid-hover | high | S | hover blinks off between rows; the highlight glides from row to row (gap-0 rows) and fades in fresh after empty space | audit.mjs / @1280: per-row, dark in the 4px gap |
+| static card grid (projects.tsx), the landing surface | card | med | M | the grid is the first thing anyone sees and nothing answers the cursor on it; the highlight tracks the card under the cursor across both axes and dividers drop beside the active one, with local markup to carry over | audit.mjs / @1280: none on 9 cards |
 | hand-rolled command palette (cmd-k.tsx) | base/command-menu | med | M | keyboard scroll keeps the row centered and travels with the highlight; ⌘K resolves per-platform with a Dvorak-safe fallback, both missing locally | cmd-k.tsx:88 scrollIntoView, :31 metaKey only |
 
 **Also worth fixing**

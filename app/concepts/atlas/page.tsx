@@ -11,6 +11,7 @@ import { useIcon } from "@/lib/icon-context";
 import { ConceptFrame } from "@/app/concepts/_components/concept-frame";
 import { Button } from "@/registry/radix/button";
 import { ChatMessage } from "@/registry/default/chat-message";
+import { AnimatePresence } from "motion/react";
 import { InputMessage } from "@/registry/default/input-message";
 import type { QueuedMessage } from "@/registry/default/input-message";
 import { ThinkingIndicator } from "@/registry/default/thinking-indicator";
@@ -132,6 +133,9 @@ export default function AtlasPage() {
         {/* Transcript */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-[720px] flex-col gap-5 px-6 py-12">
+            {/* Messages there at first render are already sent and skip
+                their entrance; new ones and the thinking reply animate in. */}
+            <AnimatePresence initial={false}>
             {messages.map((m) => (
                 <ChatMessage
                   key={m.id}
@@ -148,10 +152,11 @@ export default function AtlasPage() {
                 </ChatMessage>
               ))}
               {responding && (
-                <ChatMessage from="assistant" className="max-w-full">
+                <ChatMessage key="thinking" from="assistant" className="max-w-full">
                   <ThinkingIndicator className="!px-0" />
                 </ChatMessage>
               )}
+            </AnimatePresence>
             </div>
           </div>
 

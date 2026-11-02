@@ -38,7 +38,7 @@ const REPO = "https://github.com/mickadesign/fluid-functionalism";
 const CRAFT = `${REPO}/blob/main/skills/fluid-functionalism/references/craft.md`;
 
 const SUMMARY =
-  "Animated React components for shadcn/ui, in Radix and Base UI flavors, sharing one motion system: three spring speeds, a hover highlight that glides to the item nearest the cursor, and labels that change weight without layout shift.";
+  "Animated React components for shadcn/ui, in Radix and Base UI flavors, sharing one motion system: three spring speeds, a hover highlight that glides from item to item under the cursor, and labels that change weight without layout shift.";
 
 const FONT_LINE =
   'Load Inter with its `opsz` axis as well as `wght` (with next/font: `Inter({ subsets: ["latin"], axes: ["opsz"] })`), so labels change weight without changing width.';

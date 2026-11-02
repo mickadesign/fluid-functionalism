@@ -143,7 +143,7 @@ One optional line that says what the month was about.
   the site. A `/docs/` label under New dots its sidebar row and badges its
   Showcase card; one under Updated or Breaking reads Updated in ⌘K. The
   markers move on when the next release merges. A page that lands after a
-  release can keep its New badge (not its sidebar dot) through
+  release can keep its New badge and sidebar dot through
   `AHEAD_OF_RELEASE` in `lib/changelog/load.ts`; its entry lapses once the
   release for its month exists, and the routine deletes it in its PR.
 

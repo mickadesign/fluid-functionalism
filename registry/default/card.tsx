@@ -121,12 +121,9 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
 
-    // >1 column wraps into a grid, where nearest-item must be resolved in two
-    // dimensions; a single column is a plain vertical list.
-    const axis = columns > 1 ? "xy" : "y";
-    // A card grid has generous whitespace, so a gap click only routes when it
-    // lands within a hand's width of the highlighted card.
-    const hover = useFluidHover(containerRef, { axis, gapClick: { maxDistance: 16 } });
+    // The card under the pointer lights, in a column or a grid alike; the
+    // gaps between cards light nothing, so a click there lands nowhere.
+    const hover = useFluidHover(containerRef);
     const {
       activeIndex,
       handlers,
@@ -585,7 +582,7 @@ const CardTitle = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
         {...props}
       >
         <span
-          className={cn("col-start-1 row-start-1 invisible min-w-0 overflow-hidden text-ellipsis", trim)}
+          className={cn("col-start-1 row-start-1 invisible min-w-0 overflow-x-clip text-ellipsis", trim)}
           style={{ fontVariationSettings: fontWeights.semibold }}
           aria-hidden="true"
         >
@@ -593,7 +590,7 @@ const CardTitle = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
         </span>
         <span
           className={cn(
-            "col-start-1 row-start-1 min-w-0 overflow-hidden text-ellipsis text-foreground transition-[font-variation-settings] duration-80",
+            "col-start-1 row-start-1 min-w-0 overflow-x-clip text-ellipsis text-foreground transition-[font-variation-settings] duration-80",
             trim
           )}
           style={{

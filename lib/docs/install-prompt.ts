@@ -5,6 +5,9 @@ import { decodePreset, type PresetComponentDef } from "@/lib/preset/components";
 import { PRESET_GENERATORS } from "@/lib/preset/generators";
 import { SETTING_LABELS, describeSettings } from "@/lib/starter/install";
 import { starterSlug, type StarterSettings } from "@/lib/starter/settings";
+import type { HeadingFont } from "@/lib/docs/site-settings";
+import { googleFontWeights, nearestGoogleFontWeight, type GoogleFont } from "@/lib/docs/google-fonts";
+import { ACCENT_PRESETS, DEFAULT_ACCENT, accentCss } from "@/lib/accent";
 import {
   SITE,
   OVERWRITE_NOTE,
@@ -164,15 +167,86 @@ export function starterCommand(settings: StarterSettings): string {
   return `npx shadcn@latest create -n my-app -t next ${SITE}/r/starter/${starterSlug(settings)}.json`;
 }
 
+/** The heading font the visitor picked on the site (right panel > Heading
+ *  font). Not a starter setting: the starter always ships Inter, so the
+ *  brief carries it as a step for the agent. */
+export interface StarterHeading {
+  font: HeadingFont;
+  /** The Google Fonts family, when `font` is "custom". */
+  custom: GoogleFont | null;
+  /** The custom family's one heading weight; `null` keeps the role
+   *  weights (550, display 700). */
+  weight: number | null;
+}
+
+/** The family a heading choice names, or null for Inter (nothing to do). */
+function headingFamily(heading: StarterHeading | undefined): string | null {
+  if (!heading || heading.font === "inter") return null;
+  if (heading.font === "geist-serif") return "Geist Serif";
+  return heading.custom?.n ?? null;
+}
+
+/** next/font/google's export for a family: spaces become underscores. */
+const nextFontExport = (family: string) => family.replace(/[^A-Za-z0-9]+/g, "_");
+
+/** The step that sets the headings' font, as the site renders it. */
+function headingLines(heading: StarterHeading): string[] {
+  const css = "app/globals.css";
+  if (heading.font === "geist-serif") {
+    return [
+      "Either way, set the headings in Geist Serif, as picked on the site (body text and components stay Inter):",
+      `- Run npm i geist. app/layout.tsx: import { GeistSerifRegular } from "geist/font/serif/regular" and add its .variable class (--font-geist-serif-regular) to <html> next to Inter's.`,
+      `- ${css}: h1, h2, h3 { font-family: var(--font-geist-serif-regular), "Times New Roman", serif; font-variation-settings: normal !important; font-weight: 400 !important; font-synthesis-weight: none; }. Geist Serif has one Regular cut so far, so every heading is 400. !important because component titles set Inter's weight inline.`,
+      `- Also in ${css}, the display role runs 4px larger for the serif: :root { --fs-display: 32px; --lh-display: 38px; --fs-display-compact: 28px; --lh-display-compact: 34px; } after the type scale.`,
+    ];
+  }
+  const font = heading.custom!;
+  const variable = !!font.a?.wght;
+  const title = heading.weight ?? 550;
+  const display = heading.weight ?? 700;
+  // Static families load named cuts only: the ones the headings use.
+  const cuts = [...new Set([title, display].map((w) => nearestGoogleFontWeight(font, w)))].sort((a, b) => a - b);
+  const load = variable
+    ? `{ subsets: ["latin"],${font.a?.opsz ? ` axes: ["opsz"],` : ""} variable: "--font-heading" }`
+    : `{ subsets: ["latin"], weight: [${cuts.map((w) => `"${w}"`).join(", ")}], variable: "--font-heading" }`;
+  const weights =
+    heading.weight === null
+      ? `font-weight: 550 !important; } and h1 { font-weight: 700 !important; }`
+      : `font-weight: ${heading.weight} !important; }`;
+  const available = googleFontWeights(font);
+  return [
+    `Either way, set the headings in ${font.n} (Google Fonts), as picked on the site (body text and components stay Inter):`,
+    `- app/layout.tsx: import { ${nextFontExport(font.n)} } from "next/font/google", load it with ${load} and add its .variable class to <html> next to Inter's.`,
+    `- ${css}: h1, h2, h3 { font-family: var(--font-heading), sans-serif; font-variation-settings: normal !important; font-synthesis-weight: none; ${weights} (!important because component titles set Inter's weight axis inline.)`,
+    heading.weight === null
+      ? `- Headings keep Inter's role weights, 550 and 700 for h1${variable ? "" : `; ${font.n} draws the nearest of its weights (${available.join(", ")})`}.`
+      : `- One weight, ${heading.weight}, for every heading, as picked on the site.`,
+  ];
+}
+
 /** Builds the home page's "Copy prompt": a brief that has an agent start a
  *  new app from the starter with the visitor's "Make them yours" settings,
  *  or, in a folder that already holds an app, install the same components
- *  and settings into it. */
-export function buildStarterPrompt(settings: StarterSettings): string {
+ *  and settings into it. A heading font other than Inter adds a step that
+ *  sets it up the way the site draws it. */
+export function buildStarterPrompt(
+  settings: StarterSettings,
+  heading?: StarterHeading,
+  customAccent: string | null = null,
+): string {
   const slug = starterSlug(settings);
   const flavor = settings.base === "base" ? "Base UI" : "Radix";
+  const family = headingFamily(heading);
+  // A custom accent replaces the preset in words; the slug keeps the preset.
+  const summary = describeSettings(settings, customAccent);
+  // The color an existing app has to set itself: the tokens item installs
+  // the default blue.
+  const accent = accentCss(settings.accent, customAccent);
+  const setAccent = accent !== accentCss(DEFAULT_ACCENT, null);
   const lines: string[] = [];
-  lines.push(`Start a new React app with Fluid Functionalism: every component installed, every system wired, set to ${describeSettings(settings)}.`);
+  lines.push(
+    `Start a new React app with Fluid Functionalism: every component installed, every system wired, set to ${summary}${family ? `, ${family} headings` : ""}.`,
+  );
   lines.push("");
   lines.push("Run (shadcn CLI, Next.js template, asks nothing):");
   lines.push(starterCommand(settings));
@@ -183,6 +257,11 @@ export function buildStarterPrompt(settings: StarterSettings): string {
   lines.push("- app/layout.tsx loads Inter with its opsz axis, so labels change weight without changing width.");
   lines.push(
     `- components/providers.tsx holds the settings: next-themes (${settings.theme} by default, D flips light and dark) and FluidProvider (${settings.shape} corners, ${settings.size} size step, ${SETTING_LABELS.icons[settings.icons]} icons, reduced motion that follows the OS). Change a value there and every component follows.`,
+  );
+  lines.push(
+    customAccent
+      ? `- app/layout.tsx sets the accent on <html> as --fluid-accent (focus rings, the switch track and every accented detail read it). Change its value to "${customAccent}", the color picked on the site.`
+      : `- app/layout.tsx sets the accent on <html> as --fluid-accent (${ACCENT_PRESETS[settings.accent].label.toLowerCase()}, ${accent}): focus rings, the switch track and every accented detail read it.`,
   );
   lines.push("- app/page.tsx: an app shell (sidebar and topbar) around a home screen to replace.");
   lines.push(
@@ -195,9 +274,13 @@ export function buildStarterPrompt(settings: StarterSettings): string {
   lines.push(`npx shadcn@latest add ${SITE}/r/setup/${slug}.json --overwrite`);
   lines.push(OVERWRITE_NOTE);
   lines.push(
-    `Then wrap the root layout's children in <FluidRoot> from components/fluid-root.tsx (inside the theme provider, if any), load Inter with axes: ["opsz"], and default the theme to ${settings.theme}.`,
+    `Then wrap the root layout's children in <FluidRoot> from components/fluid-root.tsx (inside the theme provider, if any), load Inter with axes: ["opsz"], and default the theme to ${settings.theme}.${setAccent ? ` For the accent, put style={{ "--fluid-accent": "${accent}" }} on <html>.` : ""}`,
   );
   lines.push("");
+  if (family && heading) {
+    lines.push(...headingLines(heading));
+    lines.push("");
+  }
   lines.push(SKILL_LINE);
   lines.push(`Docs: ${SITE}/docs`);
   lines.push(CHANGELOG_LINE);

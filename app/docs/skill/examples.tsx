@@ -5,12 +5,12 @@ import { Check, Copy } from "lucide-react";
 import { cn } from "@/registry/default/lib/utils";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { InputCopy } from "@/registry/default/input-copy";
-import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/flavored/tabs";
 import { Compare, clickStep, turns, useLoop, usePlayback, useScriptCursor, type Side } from "./hero-shared";
 
 // ---------------------------------------------------------------------------
 // The other /docs/skill examples. Each pairs what an agent writes on its own with
-// what it writes following the skill's references: the real TabsSubtle component,
+// what it writes following the skill's references: the real Tabs component,
 // InputCopy component, and the Button's 1px press.
 // The script plays the generic side, then the skill side, turn by turn, with
 // a cursor that glides to each target and clicks it; a real pointer takes
@@ -18,12 +18,12 @@ import { Compare, clickStep, turns, useLoop, usePlayback, useScriptCursor, type 
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Tabs: subtle tabs, weight without reflow and a sliding pill
+// Tabs: weight without reflow and a sliding pill
 // ---------------------------------------------------------------------------
 
 const TABS = ["Overview", "Activity", "Settings"];
 
-/** Generic subtle tabs: font-semibold on the active tab widens it and
+/** Generic tabs: font-semibold on the active tab widens it and
  *  shoves its neighbors; the active pill jumps instead of sliding, and each
  *  tab paints its own hover. */
 function GenericTabs({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
@@ -76,11 +76,11 @@ export function TabsExample() {
       cursor={playing ? cursor : null}
       generic={<GenericTabs selected={generic} onSelect={setGeneric} />}
       skill={
-        <TabsSubtle selectedIndex={skill} onSelect={setSkill} idPrefix="skill-example-tabs" aria-label="Example tabs">
+        <Tabs selectedIndex={skill} onSelect={setSkill} idPrefix="skill-example-tabs" aria-label="Example tabs">
           {TABS.map((label, i) => (
-            <TabsSubtleItem key={label} index={i} label={label} />
+            <TabsItem key={label} index={i} label={label} />
           ))}
-        </TabsSubtle>
+        </Tabs>
       }
     />
   );
@@ -192,7 +192,7 @@ export function CopyExample() {
           // scripted cursor can't trigger, so its look is mirrored here for
           // [data-script-hover]: the value tints, the icon thickens, muted
           // text comes up to full strength.
-          className="w-full max-w-[240px] [&_button[data-script-hover]_mark]:bg-[#6B97FF]/20 [&_button[data-script-hover]_svg]:stroke-[2] [&_button[data-script-hover]_.text-muted-foreground]:text-foreground"
+          className="w-full max-w-[240px] [&_button[data-script-hover]_mark]:bg-[color-mix(in_oklab,var(--fluid-accent,#6B97FF)_20%,transparent)] [&_button[data-script-hover]_svg]:stroke-[2] [&_button[data-script-hover]_.text-muted-foreground]:text-foreground"
         />
       }
     />

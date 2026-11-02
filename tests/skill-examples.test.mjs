@@ -17,7 +17,10 @@ describe("the skill page's Copy example keeps up with InputCopy", () => {
   it("mirrors hover styles InputCopy still has", () => {
     const mirrored = [
       // [example selector, InputCopy class it stands in for]
-      ["[&_button[data-script-hover]_mark]:bg-[#6B97FF]/20", /<mark className="[^"]*group-hover:bg-\[#6B97FF\]\/20/],
+      [
+        "[&_button[data-script-hover]_mark]:bg-[color-mix(in_oklab,var(--fluid-accent,#6B97FF)_20%,transparent)]",
+        /<mark className="[^"]*group-hover:bg-\[color-mix\(in_oklab,var\(--fluid-accent,#6B97FF\)_20%,transparent\)\]/,
+      ],
       ["[&_button[data-script-hover]_svg]:stroke-[2]", /group-hover:stroke-\[2\]/],
       ["[&_button[data-script-hover]_.text-muted-foreground]:text-foreground", /text-muted-foreground group-hover:text-foreground/],
     ];

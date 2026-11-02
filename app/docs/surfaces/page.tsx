@@ -25,6 +25,7 @@ import { surfaceClasses } from "@/registry/default/lib/surface-classes";
 import { cn } from "@/registry/default/lib/utils";
 import { ScrollArea } from "@/registry/base/scroll-area";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
+import { ACCENT_VAR } from "@/lib/accent";
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -297,7 +298,8 @@ function StaticRoleItem({
   );
 }
 
-const ANNOTATION_BLUE = "#6B97FF";
+// The page annotations draw in the accent (right panel > Accent).
+const ANNOTATION_ACCENT = ACCENT_VAR;
 // Red marks the collapse: the dialog and the dropdown share one surface, so
 // their callouts go red to flag the problem. The page background stays blue
 // (it's just orienting context, not part of the bug).
@@ -325,7 +327,7 @@ const ANNOTATIONS: {
     title: "Page background",
     hex: "#171717",
     swatch: "#171717",
-    color: ANNOTATION_BLUE,
+    color: ANNOTATION_ACCENT,
     label: { left: 14, top: 24, align: "left" },
     start: { x: 118, y: 74 },
     end: { x: 84, y: 150 },
@@ -436,7 +438,7 @@ function ProblemAnnotations() {
           <path
             key={a.key}
             d={buildArrowPath(a.start, a.end, ARROW_VALUES[a.key])}
-            stroke={a.color}
+            style={{ stroke: a.color }}
             strokeWidth={1.5}
             strokeLinecap="round"
             fill="none"
@@ -961,7 +963,7 @@ function SolutionAnnotations({
   dialogRef: { current: HTMLDivElement | null };
   dropdownRef: { current: HTMLDivElement | null };
 }) {
-  const color = ANNOTATION_BLUE;
+  const color = ANNOTATION_ACCENT;
 
   type Box = {
     left: number;
@@ -1083,7 +1085,7 @@ function SolutionAnnotations({
           <path
             key={c.key}
             d={c.path}
-            stroke={color}
+            style={{ stroke: color }}
             strokeWidth={1.5}
             strokeLinecap="round"
             fill="none"

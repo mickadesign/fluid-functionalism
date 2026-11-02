@@ -8,6 +8,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { cn } from "@/lib/utils";
 import {
   BalanceDemo,
+  HeadingFontDemo,
   NumbersDemo,
   PrettyDemo,
   TrimDemo,
@@ -114,7 +115,10 @@ export default function TypographyDoc() {
           <Rule>2 text colors: foreground and muted.</Rule>
           <Rule>
             1 font family:{" "}
-            <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>.
+            <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>. Headings
+            can switch to{" "}
+            <ExternalLink href="https://vercel.com/font">Geist Serif</ExternalLink> or any Google Fonts
+            family.
           </Rule>
           <Rule>1 paragraph style.</Rule>
         </ul>
@@ -135,6 +139,14 @@ export default function TypographyDoc() {
           5 styles, each a size and a line height. Press<Code>S</Code>for compact.
         </P>
         <TypeScaleSpecimen />
+      </DocSection>
+
+      <DocSection title="Heading font">
+        <P>
+          3 choices for headings: Inter, Geist Serif, or any Google Fonts family. Geist Serif runs
+          the display style 4px larger, in its one Regular cut. Press<Code>F</Code>to cycle.
+        </P>
+        <HeadingFontDemo />
       </DocSection>
 
       <DocSection title="Markdown">

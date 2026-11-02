@@ -47,7 +47,7 @@ export default function FluidHoverDoc() {
     <DocPage
       title="Fluid Hover"
       slug="fluid-hover"
-      description="Hover that never blinks and always follows your cursor to the nearest item."
+      description="Hover that glides from item to item under your cursor instead of blinking between them."
     >
       <DocSection title="Blink or glide">
         <p className="text-site-body text-muted-foreground">
@@ -60,18 +60,20 @@ export default function FluidHoverDoc() {
 
       <DocSection title="Show the math">
         <p className="text-site-body text-muted-foreground">
-          1 rule, no dead zones: the nearest dot wins. Flip the switch and
-          that is the whole algorithm.
+          By default the item under the pointer lights, and empty space puts
+          the highlight out. Pass <Code>nearest</Code> for 1 rule with no dead
+          zones: the nearest dot wins. Flip the switch and that is the whole
+          algorithm.
         </p>
         <ShowTheMathDemo />
       </DocSection>
 
       <DocSection title="3 axes">
         <p className="text-site-body text-muted-foreground">
-          Menus, tabs, and card grids all feel the same under the cursor.
-          Pass <Code>y</Code>, <Code>x</Code>, or <Code>xy</Code> and the
-          highlight follows you down the list, across the strip, or to the
-          closest card.
+          Menus, tabs, and card grids all feel the same under the cursor. With{" "}
+          <Code>nearest</Code>, pass <Code>y</Code>, <Code>x</Code>, or{" "}
+          <Code>xy</Code> to say how near is measured: down the list, across
+          the strip, or to the closest card.
         </p>
         <AxesDemo />
       </DocSection>
@@ -119,7 +121,7 @@ export default function FluidHoverDoc() {
         <p className="text-site-body text-muted-foreground">
           The highlight respects the OS setting on its own. Turn on reduced
           motion and the travel drops out: the highlight still fades in on
-          the nearest row, it just stops sliding between rows. No{" "}
+          the row under the pointer, it just stops sliding between rows. No{" "}
           <Code>{`<MotionConfig>`}</Code> needed, so a copied component
           behaves the same in your app.
         </p>
