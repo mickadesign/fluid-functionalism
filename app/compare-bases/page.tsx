@@ -51,19 +51,6 @@ import {
   DialogTrigger as BaseDialogTrigger,
 } from "@/registry/base/dialog";
 
-import {
-  Tabs as RadixTabs,
-  TabsList as RadixTabsList,
-  TabItem as RadixTabItem,
-  TabPanel as RadixTabPanel,
-} from "@/registry/radix/tabs";
-import {
-  Tabs as BaseTabs,
-  TabsList as BaseTabsList,
-  TabItem as BaseTabItem,
-  TabPanel as BaseTabPanel,
-} from "@/registry/base/tabs";
-
 import { Slider as RadixSlider } from "@/registry/radix/slider";
 import { Slider as BaseSlider } from "@/registry/base/slider";
 
@@ -115,13 +102,13 @@ import {
 // context-provided renderMenuItem), so a single import serves both columns.
 import { MenuItem } from "@/registry/default/menu-item";
 import {
-  TabsSubtle as RadixTabsSubtle,
-  TabsSubtleItem as RadixTabsSubtleItem,
-} from "@/registry/radix/tabs-subtle";
+  Tabs as RadixTabs,
+  TabsItem as RadixTabsItem,
+} from "@/registry/radix/tabs";
 import {
-  TabsSubtle as BaseTabsSubtle,
-  TabsSubtleItem as BaseTabsSubtleItem,
-} from "@/registry/base/tabs-subtle";
+  Tabs as BaseTabs,
+  TabsItem as BaseTabsItem,
+} from "@/registry/base/tabs";
 import {
   ThinkingSteps as RadixThinkingSteps,
   ThinkingStepsHeader as RadixThinkingStepsHeader,
@@ -178,7 +165,7 @@ function PrimitiveToggle() {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border">
-      <div className="text-sm" style={{ fontVariationSettings: fontWeights.semibold }}>
+      <div className="text-site-subtitle text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
         {label}
       </div>
       {children}
@@ -190,7 +177,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function SingleRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border">
-      <div className="text-sm" style={{ fontVariationSettings: fontWeights.semibold }}>
+      <div className="text-site-subtitle text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
         {label}
       </div>
       <div className="col-span-2">{children}</div>
@@ -235,18 +222,27 @@ export default function CompareBasesPage() {
         onMouseLeave={() => setHeroHovered(false)}
       >
         <h1
+          // The 60px hero is a marketing stage outside the 5 styles on
+          // purpose; this internal page stays off the sitemap.
+          // eslint-disable-next-line no-restricted-syntax
           className="text-6xl leading-[1.1] text-foreground"
           style={{ fontVariationSettings: fontWeights.bold }}
         >
           Fluid Functionalism
         </h1>
         <p
+          // The 60px hero is a marketing stage outside the 5 styles on
+          // purpose; this internal page stays off the sitemap.
+          // eslint-disable-next-line no-restricted-syntax
           className="text-6xl leading-[1.1] text-muted-foreground"
           style={{ fontVariationSettings: fontWeights.bold }}
         >
           built on Radix
         </p>
         <motion.p
+          // The 60px hero is a marketing stage outside the 5 styles on
+          // purpose; this internal page stays off the sitemap.
+          // eslint-disable-next-line no-restricted-syntax
           className="text-6xl leading-[1.1] text-foreground mb-8"
           style={{ fontVariationSettings: fontWeights.bold }}
           initial={false}
@@ -272,10 +268,10 @@ export default function CompareBasesPage() {
 
       <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-end pb-2">
         <div />
-        <div className="text-xs text-muted-foreground">
+        <div className="text-site-caption text-muted-foreground">
           Radix
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-site-caption text-muted-foreground">
           Base UI
         </div>
       </div>
@@ -365,29 +361,6 @@ export default function CompareBasesPage() {
         </BaseDialog>
       </Row>
 
-      <Row label="Tabs">
-        <RadixTabs defaultValue="one">
-          <RadixTabsList>
-            <RadixTabItem value="one" label="One" />
-            <RadixTabItem value="two" label="Two" />
-            <RadixTabItem value="three" label="Three" />
-          </RadixTabsList>
-          <RadixTabPanel value="one" className="pt-3 text-sm text-muted-foreground">First panel</RadixTabPanel>
-          <RadixTabPanel value="two" className="pt-3 text-sm text-muted-foreground">Second panel</RadixTabPanel>
-          <RadixTabPanel value="three" className="pt-3 text-sm text-muted-foreground">Third panel</RadixTabPanel>
-        </RadixTabs>
-        <BaseTabs defaultValue="one">
-          <BaseTabsList>
-            <BaseTabItem value="one" label="One" />
-            <BaseTabItem value="two" label="Two" />
-            <BaseTabItem value="three" label="Three" />
-          </BaseTabsList>
-          <BaseTabPanel value="one" className="pt-3 text-sm text-muted-foreground">First panel</BaseTabPanel>
-          <BaseTabPanel value="two" className="pt-3 text-sm text-muted-foreground">Second panel</BaseTabPanel>
-          <BaseTabPanel value="three" className="pt-3 text-sm text-muted-foreground">Third panel</BaseTabPanel>
-        </BaseTabs>
-      </Row>
-
       <Row label="Slider">
         <div className="pt-1">
           <RadixSlider value={sliderA} onChange={(v) => setSliderA(v as number)} min={0} max={100} step={1} />
@@ -432,17 +405,17 @@ export default function CompareBasesPage() {
         </BaseScrollArea>
       </Row>
 
-      <Row label="Tabs Subtle">
-        <RadixTabsSubtle selectedIndex={tabA} onSelect={setTabA}>
-          <RadixTabsSubtleItem index={0} label="Overview" />
-          <RadixTabsSubtleItem index={1} label="Activity" />
-          <RadixTabsSubtleItem index={2} label="Settings" />
-        </RadixTabsSubtle>
-        <BaseTabsSubtle selectedIndex={tabB} onSelect={setTabB}>
-          <BaseTabsSubtleItem index={0} label="Overview" />
-          <BaseTabsSubtleItem index={1} label="Activity" />
-          <BaseTabsSubtleItem index={2} label="Settings" />
-        </BaseTabsSubtle>
+      <Row label="Tabs">
+        <RadixTabs selectedIndex={tabA} onSelect={setTabA}>
+          <RadixTabsItem index={0} label="Overview" />
+          <RadixTabsItem index={1} label="Activity" />
+          <RadixTabsItem index={2} label="Settings" />
+        </RadixTabs>
+        <BaseTabs selectedIndex={tabB} onSelect={setTabB}>
+          <BaseTabsItem index={0} label="Overview" />
+          <BaseTabsItem index={1} label="Activity" />
+          <BaseTabsItem index={2} label="Settings" />
+        </BaseTabs>
       </Row>
 
       <Row label="Thinking Steps">
@@ -509,12 +482,12 @@ export default function CompareBasesPage() {
       {/* ── Single-source components ─────────────────────────────────── */}
       <section className="pt-24 pb-4">
         <h2
-          className="text-2xl text-foreground"
+          className="text-site-title text-foreground"
           style={{ fontVariationSettings: fontWeights.semibold }}
         >
           Built on Base UI
         </h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-[560px]">
+        <p className="text-site-body text-muted-foreground mt-2 max-w-[560px]">
           These components ship as a single source sitting on Base UI
           primitives — Popover, Menu, NumberField, Field, and the
           Radio/Checkbox Groups — and are used as-is under either flavor.

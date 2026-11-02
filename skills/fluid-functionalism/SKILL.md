@@ -3,25 +3,25 @@ name: fluid-functionalism
 description: >-
   Build React UIs with Fluid Functionalism — a shadcn/ui registry (@fluid) of
   animated components with a shared motion system: three spring speeds, a
-  hover highlight that glides to the item nearest the cursor, labels that
+  hover highlight that glides from item to item under the cursor, labels that
   change weight without layout shift. Use whenever the user mentions Fluid
   Functionalism, @fluid, or fluidfunctionalism.com, asks for UI with
-  satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or
-  Base UI project, builds any interface (settings dialogs, sidebars, command
-  menus, chat UIs, forms, lists, tables) in a project with @fluid components
-  installed, or asks to review/audit existing UI motion against the system.
+  satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or Base
+  UI project, builds any interface (settings dialogs, sidebars, command menus,
+  chat UIs, forms, lists, tables) in a project with @fluid components
+  installed, asks to review/audit existing UI motion against the system, or
+  asks to update installed @fluid components or what changed in a release.
   Also use before hand-writing animation code (hover highlights, icon swaps,
-  weight changes, enter/exit transitions) there, so custom code follows the
-  system instead of inventing timings. Each run, a bundled script reads the
-  stack fresh (deps, Radix vs Base UI flavor, MotionConfig, Inter opsz axis),
-  so the skill leaves no audit file in the project.
+  weight changes, enter/exit transitions, page reveals, skeleton loading)
+  there, so custom code follows the system instead of inventing timings.
+  Bundled scripts read the stack fresh each run and write nothing.
 ---
 
 # Fluid Functionalism
 
 A [shadcn/ui](https://ui.shadcn.com) registry of components where every
 transition makes a state change legible: springs instead of durations, one
-hover highlight per list that glides to the item nearest the cursor, and
+hover highlight per list that glides from item to item under the cursor, and
 labels that get heavier without moving their neighbours. Components that touch
 a primitive ship in two flavors — Radix and Base UI — with the same API.
 
@@ -29,7 +29,7 @@ Docs and live demos: <https://www.fluidfunctionalism.com> — every component
 page has a playground and a **Copy prompt** button whose text is a
 self-contained brief (install command, usage snippet, props, docs URL).
 
-Three jobs this skill covers:
+Four jobs this skill covers:
 
 1. **Know the project** — read the stack at the start of every run (next
    section). The read is fast and exact, so nothing is cached and nothing
@@ -47,6 +47,8 @@ Three jobs this skill covers:
    rest of the app. Read
    [references/custom-motion.md](references/custom-motion.md) before writing
    any animation, hover, or state-change styling by hand.
+4. **Keep it current** — bring installed items up to the latest release
+   without losing local work: [when asked to update](#when-asked-to-update).
 
 ## Every run: read the stack
 
@@ -127,6 +129,47 @@ something teaches people to ignore it.
 The shortlist goes in your reply. Because every entry cites its evidence,
 the next audit rebuilds it from the code as it is then: fixed items drop out
 on their own, and only declined ones need a decision to stay settled.
+
+## When asked to update
+
+When the user asks to update or upgrade Fluid Functionalism, or what changed
+since they installed it:
+
+1. **Read the stack** (above). An update never moves a file to the other
+   flavor: each file stays on the primitive its imports show.
+2. **Check what's behind:**
+
+   ```bash
+   node <skill>/scripts/upgrade.mjs [apps/web]
+   ```
+
+   It compares every installed FF file with the item the registry ships
+   today, in the flavor the file's own imports show, ignoring what an
+   install rewrites (import aliases, line endings, the `"use client"` line).
+   `CURRENT` files need nothing. `DIFFERS` lists the rest with their line
+   counts; `--diff <name>` (or a path) prints one, local on the `-` side,
+   registry on the `+`. A `REWRITES` line means the CLI rewrites more than
+   that (JavaScript output, a Tailwind prefix): compare those by hand. It
+   writes nothing and needs network access to fluidfunctionalism.com.
+3. **Read the changelog:** <https://www.fluidfunctionalism.com/changelog.md>,
+   newest month first. Every entry names its install URL; every Breaking
+   entry carries migration steps and a before/after diff.
+4. **Sort each difference.** A change the changelog explains is the registry
+   moving on: re-install that item with its line from the report. A change
+   it doesn't explain is a local edit: show it and ask before overwriting.
+   Both in one file: re-install, then re-apply the edit, or better, move it
+   into a wrapper so the next update keeps it (see Gotchas). `--overwrite`
+   also rewrites the item's dependencies, which its line names: check those
+   for local edits before running it.
+5. **Migrate call sites** for every Breaking entry that touches an item the
+   project uses: find the diff's `-` lines across the app and rewrite them to
+   its `+` lines. Renames fail the type checker, so let it find them.
+6. **Verify:** run the type checker and the build, run `upgrade.mjs` again
+   (every file reads `CURRENT`, or is a local edit the user kept), and report
+   item by item what changed and what you left alone.
+
+Never update by re-installing everything blind: `--overwrite` erases local
+work, and a release can break call sites the install never touches.
 
 ## One-time project setup
 
@@ -221,6 +264,14 @@ system:
   that moves, the slower the spring. Never hand-write a `duration` — import
   the token, and use its paired `.exit` tween for dismissals so exits read
   crisp instead of replaying the entrance backwards.
+- **Page reveals are 1 class.** Install `@fluid/reveal`, then put 1 class
+  on the page's container: `reveal-landing` for a page read once,
+  `reveal-product` for the app, `-subtle` for less. Slow data in the app
+  shows shadcn's Skeleton in a `reveal-swap`, which crossfades it into the
+  real block; `reveal-items` on both hands rows over one by one. Never
+  hand-roll a `whileInView` fade on every element, and keep the hero image
+  and headline out of any reveal. Rules and recipe:
+  [references/custom-motion.md](references/custom-motion.md#page-reveals-fluidreveal).
 - **One hover highlight per list.** Any custom list, menu, strip, or grid with
   hover uses `useFluidHover` + `<FluidHoverHighlight />` (install
   `@fluid/use-fluid-hover`) — never a per-row `:hover` background next to
@@ -297,8 +348,7 @@ written down. In order of reach:
   installing half a tree.
 - If an install fails on a name, check the catalog in
   [references/components.md](references/components.md) — the registry name is
-  not always the component's display name (e.g. TabsSubtle → `tabs-subtle`,
-  Fluid Hover → `use-fluid-hover`, Motion → `springs`).
+  not always the component's display name (e.g. Fluid Hover → `use-fluid-hover`, Motion → `springs`).
 - The base flavor lives at the `base/<name>` **path** — `@fluid/base/select`,
   URL `/r/base/select.json`. Names like `<name>-base` are internal build
   names; `/r/<name>-base.json` 404s **by design** (the build moves those

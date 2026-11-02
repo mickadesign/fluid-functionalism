@@ -24,6 +24,8 @@ interface CopyPromptButtonProps {
   className?: string;
   /** Runs after a successful copy, e.g. for analytics. */
   onCopy?: () => void;
+  /** @default "primary" */
+  variant?: "primary" | "secondary" | "ghost";
 }
 
 /** Whether the prompt was just copied — read by the leading icon, which the
@@ -78,7 +80,14 @@ function CopyPromptIcon({ size = 16, strokeWidth, className }: IconComponentProp
  *  page. Copies a self-contained brief for an AI coding agent (see
  *  `install-prompt.ts`). The label never changes; only the leading icon
  *  turns into a check for 2s, and a visually hidden "Copied" is read out. */
-export function CopyPromptButton({ prompt, label = "Copy prompt", size, className, onCopy }: CopyPromptButtonProps) {
+export function CopyPromptButton({
+  prompt,
+  label = "Copy prompt",
+  size,
+  className,
+  onCopy,
+  variant = "primary",
+}: CopyPromptButtonProps) {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -125,7 +134,7 @@ export function CopyPromptButton({ prompt, label = "Copy prompt", size, classNam
   return (
     <CopiedContext.Provider value={copied}>
       <Button
-        variant="primary"
+        variant={variant}
         leadingIcon={CopyPromptIcon}
         onClick={handleCopy}
         size={size}

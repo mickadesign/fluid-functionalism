@@ -77,8 +77,10 @@ it("starts each sidebar hover session at the pointer, even with another route ac
   flushFrame();
   const menu = getByRole("list", { name: "Components" });
   const overlay = () => container.querySelector<HTMLElement>('[data-slot="fluid-hover-highlight"]')!;
+  // Over a row: only the item under the pointer lights.
+  const row = (y: number) => [...menu.querySelectorAll<HTMLElement>("[data-top]")].find((el) => Number(el.dataset.top) === y - 10)!;
   const moveTo = (y: number) => {
-    fireEvent.mouseMove(menu, { clientX: 10, clientY: y });
+    fireEvent.mouseMove(row(y), { clientX: 10, clientY: y });
     flushFrame();
   };
   const start = (el: HTMLElement) => JSON.parse(el.dataset.start!);
@@ -102,6 +104,34 @@ it("starts each sidebar hover session at the pointer, even with another route ac
   moveTo(90);
   expect(overlay()).not.toBe(first);
   expect(start(overlay())).toMatchObject({ y: 80, opacity: 0 });
+});
+
+it("puts the highlight out over empty space, and fades it in where it lands next", () => {
+  const { container, getByRole } = render(
+    <SidebarMenu aria-label="Components">
+      <SidebarMenuItem><SidebarMenuButton data-top="40">Accordion</SidebarMenuButton></SidebarMenuItem>
+      <SidebarMenuItem><SidebarMenuButton data-top="80">Button</SidebarMenuButton></SidebarMenuItem>
+    </SidebarMenu>
+  );
+  flushFrame();
+  const menu = getByRole("list", { name: "Components" });
+  const overlay = () => container.querySelector<HTMLElement>('[data-slot="fluid-hover-highlight"]');
+  const button = (top: string) => menu.querySelector<HTMLElement>(`[data-top="${top}"]`)!;
+
+  fireEvent.mouseEnter(menu);
+  fireEvent.mouseMove(button("40"), { clientX: 10, clientY: 50 });
+  flushFrame();
+  expect(overlay()).not.toBeNull();
+
+  // The menu itself, between or past the rows: nothing lit.
+  fireEvent.mouseMove(menu, { clientX: 10, clientY: 75 });
+  flushFrame();
+  expect(overlay()).toBeNull();
+
+  // Back on a row: a new session, fading in on that row.
+  fireEvent.mouseMove(button("80"), { clientX: 10, clientY: 90 });
+  flushFrame();
+  expect(JSON.parse(overlay()!.dataset.start!)).toMatchObject({ y: 80, opacity: 0 });
 });
 
 it("springs the active background to a new row, snaps it when only its row moves", () => {

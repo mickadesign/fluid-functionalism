@@ -57,6 +57,10 @@ export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) &
   /** Where a fresh session fades in from. A dropdown passes its checked row,
    *  a nav menu its active route. Defaults to the rect itself. */
   from?: ItemRect | null;
+  /** `false` starts a fresh session opaque instead of fading in: for a
+   *  `from` under a filled item (the calendar's range start), so the
+   *  highlight reads as sliding out of it. */
+  fadeIn?: boolean;
   /** Radius, z-index, anything else. Merged onto
    *  `absolute bg-hover pointer-events-none`. */
   className?: string;
@@ -105,7 +109,7 @@ export function resolveHighlightSource(
 }
 
 export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
-  const { from, className, transition } = props;
+  const { from, fadeIn = true, className, transition } = props;
   const { rect, session } = resolveHighlightSource(props);
   // Reads the OS media query directly, so an installed copy honours reduced
   // motion without the app wrapping its tree in MotionConfig. A wrapped app
@@ -127,7 +131,7 @@ export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
             "pointer-events-none absolute left-0 top-0 bg-hover",
             className
           )}
-          initial={{ opacity: 0, ...toTarget(from ?? rect) }}
+          initial={{ opacity: fadeIn ? 0 : 1, ...toTarget(from ?? rect) }}
           animate={{ opacity: 1, ...toTarget(rect) }}
           exit={{ opacity: 0, transition: spring.fast.exit }}
           transition={resolveHighlightTransition(transition, reduceMotion)}

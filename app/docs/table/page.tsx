@@ -9,8 +9,9 @@ import {
   TableCell,
 } from "@/registry/default/table";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { tableProps, rowProps } from "@/lib/docs/api/table";
 
 const basicCode = `import {
   Table, TableHeader, TableBody,
@@ -43,15 +44,6 @@ const basicCode = `import {
     </TableRow>
   </TableBody>
 </Table>`;
-
-const tableProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "TableHeader and TableBody children." },
-];
-
-const rowProps: PropDef[] = [
-  { name: "index", type: "number", description: "Row index for fluid hover. Omit for header rows." },
-  { name: "children", type: "ReactNode", description: "TableCell or TableHead children." },
-];
 
 export default function TableDoc() {
   return (

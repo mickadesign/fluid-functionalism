@@ -9,12 +9,13 @@ import { ConceptFrame } from "@/app/concepts/_components/concept-frame";
 import { Button } from "@/registry/radix/button";
 import { Badge } from "@/registry/default/badge";
 import { ChatMessage } from "@/registry/default/chat-message";
+import { AnimatePresence } from "motion/react";
 import { InputMessage } from "@/registry/default/input-message";
 import {
-  TabsSubtle,
-  TabsSubtleItem,
-  TabsSubtlePanel,
-} from "@/components/flavored/tabs-subtle";
+  Tabs,
+  TabsItem,
+  TabsPanel,
+} from "@/components/flavored/tabs";
 import {
   ThinkingSteps,
   ThinkingStepsHeader,
@@ -211,19 +212,19 @@ function TurnView({ turn }: { turn: Turn }) {
 
       {!turn.thinking && (
         <>
-          <TabsSubtle idPrefix={`lumen-${turn.id}`} selectedIndex={tab} onSelect={setTab}>
-            <TabsSubtleItem index={0} icon={Sparkles} label="Answer" />
-            <TabsSubtleItem index={1} icon={Globe} label="Sources" />
-            <TabsSubtleItem index={2} icon={ImageIcon} label="Images" />
-          </TabsSubtle>
+          <Tabs idPrefix={`lumen-${turn.id}`} selectedIndex={tab} onSelect={setTab}>
+            <TabsItem index={0} icon={Sparkles} label="Answer" />
+            <TabsItem index={1} icon={Globe} label="Sources" />
+            <TabsItem index={2} icon={ImageIcon} label="Images" />
+          </Tabs>
 
-          <TabsSubtlePanel index={0} selectedIndex={tab} idPrefix={`lumen-${turn.id}`}>
+          <TabsPanel index={0} selectedIndex={tab} idPrefix={`lumen-${turn.id}`}>
             <Answer />
-          </TabsSubtlePanel>
-          <TabsSubtlePanel index={1} selectedIndex={tab} idPrefix={`lumen-${turn.id}`}>
+          </TabsPanel>
+          <TabsPanel index={1} selectedIndex={tab} idPrefix={`lumen-${turn.id}`}>
             <SourcesPanel />
-          </TabsSubtlePanel>
-          <TabsSubtlePanel index={2} selectedIndex={tab} idPrefix={`lumen-${turn.id}`}>
+          </TabsPanel>
+          <TabsPanel index={2} selectedIndex={tab} idPrefix={`lumen-${turn.id}`}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {IMAGES.map((img) => (
                 <ThinkingStepImage
@@ -235,7 +236,7 @@ function TurnView({ turn }: { turn: Turn }) {
                 />
               ))}
             </div>
-          </TabsSubtlePanel>
+          </TabsPanel>
         </>
       )}
     </article>
@@ -275,9 +276,13 @@ export default function LumenPage() {
       <div className="flex h-screen w-full flex-col">
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-[760px] flex-col gap-10 px-6 py-12">
-            {turns.map((turn) => (
-              <TurnView key={turn.id} turn={turn} />
-            ))}
+            {/* Turns there at first render are already sent and skip their
+                entrance; follow-ups animate in. */}
+            <AnimatePresence initial={false}>
+              {turns.map((turn) => (
+                <TurnView key={turn.id} turn={turn} />
+              ))}
+            </AnimatePresence>
           </div>
         </div>
 

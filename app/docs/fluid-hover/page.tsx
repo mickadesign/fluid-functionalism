@@ -2,7 +2,7 @@
 
 import { type ReactNode } from "react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import {
   PlainVsFluidDemo,
@@ -11,6 +11,7 @@ import {
   ListsDemo,
   CostDemo,
 } from "./demos";
+import { hookOptions, hookReturn, highlightProps } from "@/lib/docs/api/fluid-hover";
 
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
@@ -20,32 +21,6 @@ function Code({ children }: { children: ReactNode }) {
     </code>
   );
 }
-
-
-const hookOptions: PropDef[] = [
-  { name: "axis", type: '"y" | "x" | "xy"', default: '"y"', description: "Which way the list runs: y for lists, x for strips, xy for grids." },
-  { name: "isItemDisabled", type: "(el: HTMLElement) => boolean", description: "Skips an item: never lit, never clicked. Runs on every move, so keep it cheap." },
-  { name: "gapClick", type: "boolean | { maxDistance?: number }", default: "true", description: "A click between items goes to the lit one. false turns it off. maxDistance limits it to clicks within that many px." },
-];
-
-const hookReturn: PropDef[] = [
-  { name: "handlers", type: "{ onMouseEnter, onMouseMove, onMouseLeave, onClick }", description: "Spread onto the container. Mouse only. onClick is the gap click." },
-  { name: "registerItem", type: "(index, element | null) => void", description: "Give it to each row. Indices start at 0 and must not change while the list is on screen." },
-  { name: "activeIndex", type: "number | null", description: "The lit item, or null. Also set as data-fluid-hover-active on the item." },
-  { name: "setActiveIndex", type: "(index | null) => void", description: "Light an item yourself, for keyboard focus. The hook never moves focus." },
-  { name: "itemRects", type: "ItemRect[]", description: "Each item's box inside the container. Survives a parent scale, not a rotation." },
-  { name: "isMeasured", type: "boolean", description: "True once every item has a box. Measured again on register and on resize." },
-  { name: "remeasure", type: "() => void", description: "Measure again and hide the highlight until done. Call it when a popup opens." },
-  { name: "session", type: "number", description: "Counts pointer entries. The highlight fades in fresh on each one." },
-];
-
-const highlightProps: PropDef[] = [
-  { name: "hover", type: "ReturnType<typeof useFluidHover>", description: "The hook. The highlight reads what it needs from it." },
-  { name: "hidden", type: "boolean", default: "false", description: "Show nothing, keep the state. A closed popup." },
-  { name: "from", type: "ItemRect | null", description: "Where a fresh entry fades in from. Dropdowns pass the checked row when the pointer enters." },
-  { name: "className", type: "string", description: "Radius and z-index. The container must be position: relative." },
-  { name: "transition", type: "Transition | false", default: "spring.fast", description: "The travel. false snaps in place after a reflow." },
-];
 
 function UseList({ title, items }: { title: string; items: string[] }) {
   return (
@@ -72,9 +47,7 @@ export default function FluidHoverDoc() {
     <DocPage
       title="Fluid Hover"
       slug="fluid-hover"
-      installSlug="use-fluid-hover"
-      installNote="The useFluidHover hook and its highlight, already in every list and menu."
-      description="Hover that never blinks and always follows your cursor to the nearest item."
+      description="Hover that glides from item to item under your cursor instead of blinking between them."
     >
       <DocSection title="Blink or glide">
         <p className="text-site-body text-muted-foreground">
@@ -87,18 +60,20 @@ export default function FluidHoverDoc() {
 
       <DocSection title="Show the math">
         <p className="text-site-body text-muted-foreground">
-          1 rule, no dead zones: the nearest dot wins. Flip the switch and
-          that is the whole algorithm.
+          By default the item under the pointer lights, and empty space puts
+          the highlight out. Pass <Code>nearest</Code> for 1 rule with no dead
+          zones: the nearest dot wins. Flip the switch and that is the whole
+          algorithm.
         </p>
         <ShowTheMathDemo />
       </DocSection>
 
       <DocSection title="3 axes">
         <p className="text-site-body text-muted-foreground">
-          Menus, tabs, and card grids all feel the same under the cursor.
-          Pass <Code>y</Code>, <Code>x</Code>, or <Code>xy</Code> and the
-          highlight follows you down the list, across the strip, or to the
-          closest card.
+          Menus, tabs, and card grids all feel the same under the cursor. With{" "}
+          <Code>nearest</Code>, pass <Code>y</Code>, <Code>x</Code>, or{" "}
+          <Code>xy</Code> to say how near is measured: down the list, across
+          the strip, or to the closest card.
         </p>
         <AxesDemo />
       </DocSection>
@@ -146,7 +121,7 @@ export default function FluidHoverDoc() {
         <p className="text-site-body text-muted-foreground">
           The highlight respects the OS setting on its own. Turn on reduced
           motion and the travel drops out: the highlight still fades in on
-          the nearest row, it just stops sliding between rows. No{" "}
+          the row under the pointer, it just stops sliding between rows. No{" "}
           <Code>{`<MotionConfig>`}</Code> needed, so a copied component
           behaves the same in your app.
         </p>

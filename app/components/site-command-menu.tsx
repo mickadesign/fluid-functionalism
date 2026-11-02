@@ -29,7 +29,8 @@ import {
   SidebarMenuBadge,
 } from "@/components/flavored/sidebar";
 import { componentList, systemNavList } from "@/lib/docs/components";
-import { useIcons, type IconName } from "@/lib/icon-context";
+import { useReleaseMarks } from "@/lib/changelog/marks";
+import { useIcons, type IconComponent, type IconComponentProps, type IconName } from "@/lib/icon-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useShapeContext, type ShapeVariant } from "@/lib/shape-context";
 import { useSizeContext, type SizeVariant } from "@/lib/size-context";
@@ -40,6 +41,8 @@ import {
   type IconLibrary,
 } from "@/lib/docs/icon-playground";
 import { useBase, installUrl, type Base } from "@/lib/base-context";
+import { useAccent } from "@/lib/docs/accent";
+import { ACCENT_ORDER, ACCENT_PRESETS, accentCss } from "@/lib/accent";
 
 // ---------------------------------------------------------------------------
 // The site's own command menu: ⌘K anywhere. Every page, every setting the
@@ -90,6 +93,7 @@ const TABS = [
 const PAGES: { href: string; label: string; icon: IconName; keywords: string[] }[] = [
   { href: "/", label: "Showcase", icon: "home", keywords: ["home", "bento", "gallery"] },
   { href: "/docs", label: "Introduction", icon: "square-library", keywords: ["docs", "getting started", "install"] },
+  { href: "/changelog", label: "Changelog", icon: "clock", keywords: ["releases", "what's new", "updates", "breaking"] },
   { href: "/demo", label: "Demo", icon: "play", keywords: ["slides", "playground"] },
   { href: "/compare", label: "Compare with shadcn", icon: "scaling", keywords: ["shadcn", "side by side"] },
 ];
@@ -97,6 +101,7 @@ const PAGES: { href: string; label: string; icon: IconName; keywords: string[] }
 const PAGE_ORDER = [
   "/",
   "/docs",
+  "/changelog",
   ...systemNavList.map((s) => `/docs/${s.slug}`),
   ...componentList.map((c) => `/docs/${c.slug}`),
 ];
@@ -110,6 +115,31 @@ const SHAPES: { value: ShapeVariant; label: string; icon: IconName }[] = [
   { value: "rounded", label: "Rounded", icon: "rectangle-horizontal" },
   { value: "pill", label: "Pill", icon: "circle" },
 ];
+
+/** Each accent preset's own color in place of an icon: a round swatch in
+ *  the icon's box, three quarters of it across so it sits level with the
+ *  line icons around it, edged like the color picker's tiles. */
+/** `color` is any CSS color: a preset's light-dark() follows the theme. */
+function accentSwatch(color: string): IconComponent {
+  function AccentSwatch({ size = 16, className }: IconComponentProps) {
+    return (
+      <span
+        aria-hidden
+        className={`flex items-center justify-center ${className ?? ""}`}
+        style={{ width: size, height: size }}
+      >
+        <span
+          className="rounded-full shadow-[inset_0_0_0_1px_rgba(127,127,127,0.25)]"
+          style={{ width: size * 0.75, height: size * 0.75, backgroundColor: color }}
+        />
+      </span>
+    );
+  }
+  return AccentSwatch;
+}
+const ACCENT_SWATCHES = Object.fromEntries(
+  ACCENT_ORDER.map((a) => [a, accentSwatch(accentCss(a, null))])
+) as Record<(typeof ACCENT_ORDER)[number], IconComponent>;
 const SIZES: { value: SizeVariant; label: string }[] = [
   { value: "default", label: "Default" },
   { value: "compact", label: "Compact" },
@@ -148,7 +178,18 @@ export function SiteCommandMenuTrigger() {
         <SidebarMenuButton icon={icons.search} onClick={() => setOpen(true)}>
           Search
         </SidebarMenuButton>
-        <SidebarMenuBadge className="font-sans text-site-caption">{mac ? "⌘K" : "Ctrl K"}</SidebarMenuBadge>
+        {/* The right panel's key chips, one per key: 18px on a 2px-round
+            tint, 1px down to stay centered where the 20px badge sat. */}
+        <SidebarMenuBadge className="mt-px gap-0.5 px-0 font-mono text-site-micro leading-none [@media(hover:none)]:hidden">
+          {(mac ? ["⌘", "K"] : ["Ctrl", "K"]).map((key) => (
+            <kbd
+              key={key}
+              className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[2px] bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-[inherit]"
+            >
+              {key}
+            </kbd>
+          ))}
+        </SidebarMenuBadge>
       </SidebarMenuItem>
     </SidebarMenu>
   );
@@ -164,6 +205,7 @@ export function SiteCommandMenu() {
   const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
+  const { preset: accent, custom: customAccent, setPreset: setAccent } = useAccent();
   const [tab, setTab] = useState("all");
   const [recent, setRecent] = useState<string[]>([]);
 
@@ -189,8 +231,11 @@ export function SiteCommandMenu() {
 
   const currentComponent = componentList.find((c) => `/docs/${c.slug}` === pathname);
   const pageIndex = PAGE_ORDER.indexOf(pathname);
+  // New and Updated follow the latest changelog release, like the sidebar.
+  const { isNew, isUpdated } = useReleaseMarks();
 
   const items = useMemo<SiteItem[]>(() => {
+    const mark = (slug: string) => (isNew(slug) ? "New" : isUpdated(slug) ? "Updated" : undefined);
     const current = (on: boolean) => (on ? "Current" : undefined);
     const pages: SiteItem[] = [
       ...PAGES.map((p) => ({
@@ -208,7 +253,7 @@ export function SiteCommandMenu() {
         value: `/docs/${s.slug}`,
         label: s.name,
         action: `Open ${s.name}`,
-        description: s.isNew ? "New" : undefined,
+        description: mark(s.slug),
         keywords: [s.slug, ...s.description.split(/\W+/)],
         group: "System",
         onSelect: () => go(`/docs/${s.slug}`),
@@ -218,7 +263,7 @@ export function SiteCommandMenu() {
         value: `/docs/${c.slug}`,
         label: c.name,
         action: `Open ${c.name}`,
-        description: c.isNew ? "New" : c.isUpdated ? "Updated" : undefined,
+        description: mark(c.slug),
         keywords: [c.slug, ...c.description.split(/\W+/)],
         group: "Components",
         onSelect: () => go(`/docs/${c.slug}`),
@@ -237,6 +282,20 @@ export function SiteCommandMenu() {
         onSelect: () => {
           setTheme(t.value);
           showSuccessToast(`Theme set to ${t.label}`);
+        },
+      })),
+      ...ACCENT_ORDER.map((a) => ({
+        kind: "setting" as const,
+        value: `accent:${a}`,
+        label: `Accent: ${ACCENT_PRESETS[a].label}`,
+        action: `Set accent to ${ACCENT_PRESETS[a].label}`,
+        description: current(!customAccent && accent === a),
+        icon: ACCENT_SWATCHES[a],
+        keywords: ["accent", "color", "brand", "focus", a],
+        group: "Settings",
+        onSelect: () => {
+          setAccent(a);
+          showSuccessToast(`Accent set to ${ACCENT_PRESETS[a].label}`);
         },
       })),
       ...SHAPES.map((s) => ({
@@ -372,8 +431,13 @@ export function SiteCommandMenu() {
     setIconLibrary,
     base,
     setBase,
+    accent,
+    customAccent,
+    setAccent,
     currentComponent,
     pageIndex,
+    isNew,
+    isUpdated,
   ]);
 
   const visible = useMemo(

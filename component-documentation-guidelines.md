@@ -191,7 +191,7 @@ When text gets heavier on an interactive state (selected, checked, active, open,
 - **One weight pair:** resting `normal` → active `semibold` (400 → 550) for selected/checked/active/open states; `bold` (700) is only for the display style. Don't invent new pairs, so the whole system animates at consistent magnitudes.
 - **If you change the weight tokens or introduce much larger text,** re-measure and re-tune the paired `opsz` values. Method: render the label in an offscreen `<span style="font-optical-sizing:none">`, measure `getBoundingClientRect().width` at the resting `wght/opsz` vs each candidate bold `opsz`, and pick the `opsz` that centers the closed→bold width delta on zero across representative labels (longer strings dominate the perceived shift). The current values were tuned this way against real component labels.
 
-Reference implementations: `menu-item.tsx`, `nav-item.tsx`, `tabs-subtle.tsx`, `accordion.tsx`, `checkbox-group.tsx`, `radio-group.tsx`, `color-picker.tsx`, `ask-user-questions.tsx`.
+Reference implementations: `menu-item.tsx`, `nav-item.tsx`, `tabs.tsx`, `accordion.tsx`, `checkbox-group.tsx`, `radio-group.tsx`, `color-picker.tsx`, `ask-user-questions.tsx`.
 
 ---
 

@@ -240,6 +240,13 @@ describe("typeset sheet", () => {
     for (const [sel, decls] of rules) {
       for (const [prop, value] of Object.entries(decls)) {
         // The sheet's own variables are tokens with px fallbacks, or px.
+        // Except the press scale: a ratio that takes 1px off each side of
+        // the box.
+        if (prop === "--typeset-check-press") {
+          const box = parseFloat(decls["--typeset-check"]);
+          expect(Number(value) * box, `${prop} in ${sel}`).toBeCloseTo(box - 2, 2);
+          continue;
+        }
         if (prop.startsWith("--")) {
           expect(value, `${prop} in ${sel}`).toMatch(/^(var\(--(fs|lh)-[a-z]+(-compact)?, \d+px\)|\d+px)$/);
           continue;

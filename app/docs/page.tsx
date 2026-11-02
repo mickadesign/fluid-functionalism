@@ -5,7 +5,6 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
-import { docOrder } from "@/lib/docs/components";
 import { InputCopy } from "@/registry/default/input-copy";
 import { Tooltip } from "@/registry/radix/tooltip";
 
@@ -14,7 +13,6 @@ export default function DocsIndex() {
   // Square icon buttons follow the site-wide size step (see /docs/sizes).
   const iconSize =
     useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
-  const firstComponent = docOrder[0];
 
   return (
     <div className="flex flex-col gap-8 px-6">
@@ -38,15 +36,13 @@ export default function DocsIndex() {
               </Button>
             </Link>
           </Tooltip>
-          {firstComponent && (
-            <Tooltip content={<span>{firstComponent.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
-              <Link href={`/docs/${firstComponent.slug}`} aria-label={`Next: ${firstComponent.name}`} className="outline-none" tabIndex={-1}>
-                <Button variant="ghost" size={iconSize}>
-                  <ArrowRight />
-                </Button>
-              </Link>
-            </Tooltip>
-          )}
+          <Tooltip content={<span>Changelog &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+            <Link href="/changelog" aria-label="Next: Changelog" className="outline-none" tabIndex={-1}>
+              <Button variant="ghost" size={iconSize}>
+                <ArrowRight />
+              </Button>
+            </Link>
+          </Tooltip>
         </div>
       </div>
 

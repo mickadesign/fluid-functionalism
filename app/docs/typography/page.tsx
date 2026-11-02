@@ -8,6 +8,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { cn } from "@/lib/utils";
 import {
   BalanceDemo,
+  HeadingFontDemo,
   NumbersDemo,
   PrettyDemo,
   TrimDemo,
@@ -104,8 +105,6 @@ export default function TypographyDoc() {
     <DocPage
       title="Typography"
       slug="typography"
-      installSlug="typography"
-      installNote="The 5 styles for any text, markdown included."
       description="Bold rules that create consistency across the whole component library."
       intro="Typography is hard. Every style you add makes it clunkier, so building this page was mostly cutting and refactoring until only the essential rules remained. Those rules power every component in the library, and each one is simple. Defining them and applying them on every surface is what makes it hard. Good rules hold every kind of component, and every component holds to them. Enjoy!"
     >
@@ -116,7 +115,10 @@ export default function TypographyDoc() {
           <Rule>2 text colors: foreground and muted.</Rule>
           <Rule>
             1 font family:{" "}
-            <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>.
+            <ExternalLink href="https://rsms.me/inter/">Inter Variable 4.0</ExternalLink>. Headings
+            can switch to{" "}
+            <ExternalLink href="https://vercel.com/font">Geist Serif</ExternalLink> or any Google Fonts
+            family.
           </Rule>
           <Rule>1 paragraph style.</Rule>
         </ul>
@@ -137,6 +139,14 @@ export default function TypographyDoc() {
           5 styles, each a size and a line height. Press<Code>S</Code>for compact.
         </P>
         <TypeScaleSpecimen />
+      </DocSection>
+
+      <DocSection title="Heading font">
+        <P>
+          3 choices for headings: Inter, Geist Serif, or any Google Fonts family. Geist Serif runs
+          the display style 4px larger, in its one Regular cut. Press<Code>F</Code>to cycle.
+        </P>
+        <HeadingFontDemo />
       </DocSection>
 
       <DocSection title="Markdown">

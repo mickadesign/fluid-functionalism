@@ -22,6 +22,7 @@ const useIsoLayoutEffect =
 import { cn } from "@/lib/utils";
 import { useIcons } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { useShape } from "@/lib/shape-context";
@@ -280,14 +281,13 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     const shape = useShape();
 
     // Strip non-HTML props before spreading
-    const {
-      value: _value,
-      defaultValue: _defaultValue,
-      onValueChange: _onValueChange,
-      collapsible: _collapsible,
-      type: _type,
-      ...htmlProps
-    } = rest as Record<string, unknown>;
+    const htmlProps = omit(rest as Record<string, unknown>, [
+      "value",
+      "defaultValue",
+      "onValueChange",
+      "collapsible",
+      "type",
+    ]);
 
     // Build Radix root props
     const radixProps =

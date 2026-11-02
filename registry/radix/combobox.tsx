@@ -22,6 +22,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import {
   useFluidHover,
   useRegisterFluidHoverItem,
@@ -556,7 +557,9 @@ const FieldInput = forwardRef<
     /** The input's `size` attribute: its intrinsic width in characters. */
     inputSize?: number;
   }
->(({ placeholder, invalid, inputClassName, inputSize, onKeyDown, onClick, className: _className, ...props }, ref) => {
+>(({ placeholder, invalid, inputClassName, inputSize, onKeyDown, onClick, ...rest }, ref) => {
+  // className styles the field around the input (FieldFrame), not the input.
+  const props = omit(rest, ["className"]);
   const sizeClasses = useSize();
   const {
     values,

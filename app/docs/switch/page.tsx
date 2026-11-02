@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Switch } from "@/registry/radix/switch";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { switchProps } from "@/lib/docs/api/switch";
 
 const basicCode = `import { Switch } from "./components";
 import { useState } from "react";
@@ -23,13 +24,6 @@ const disabledCode = `<Switch
   onToggle={() => {}}
   disabled
 />`;
-
-const switchProps: PropDef[] = [
-  { name: "label", type: "string", description: "Text label displayed next to the switch." },
-  { name: "checked", type: "boolean", description: "Whether the switch is on." },
-  { name: "onToggle", type: "() => void", description: "Called when the switch is toggled." },
-  { name: "disabled", type: "boolean", default: "false", description: "Disables the switch." },
-];
 
 export default function SwitchDoc() {
   const [checked, setChecked] = useState(false);

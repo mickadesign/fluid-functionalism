@@ -8,10 +8,11 @@ import {
   AccordionContent,
 } from "@/registry/radix/accordion";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
 import { AccordionPlayground } from "@/lib/docs/playgrounds/accordion";
+import { rootProps, itemProps, triggerProps, contentProps } from "@/lib/docs/api/accordion";
 
 const standaloneCode = `import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./components";
 
@@ -100,29 +101,6 @@ const rowHighlightCode = `import { AccordionGroup, AccordionItem, AccordionTrigg
     </AccordionContent>
   </AccordionItem>
 </AccordionGroup>`;
-
-const rootProps: PropDef[] = [
-  { name: "type", type: '"single" | "multiple"', default: '"single"', description: "Whether one or multiple items can be expanded." },
-  { name: "collapsible", type: "boolean", default: "true", description: "Allow collapsing all items when type is single." },
-  { name: "defaultValue", type: "string | string[]", description: "Initially expanded item value(s)." },
-  { name: "value", type: "string | string[]", description: "Controlled expanded value(s)." },
-  { name: "onValueChange", type: "(value) => void", description: "Callback when expanded state changes." },
-  { name: "highlight", type: '"trigger" | "item"', default: '"item"', description: "What an open item tints: item holds a block across the row and its panel, trigger scopes it to the row and shows it on hover. Same prop on AccordionItem standalone." },
-];
-
-const itemProps: PropDef[] = [
-  { name: "value", type: "string", description: "Unique identifier for this item." },
-  { name: "index", type: "number", description: "Position index for fluid hover. Required inside AccordionGroup, omit for standalone." },
-  { name: "disabled", type: "boolean", default: "false", description: "Whether this item is disabled." },
-];
-
-const triggerProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "Trigger label content." },
-];
-
-const contentProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "Collapsible content." },
-];
 
 // ── Playground ───────────────────────────────────────────
 
@@ -233,7 +211,6 @@ export default function AccordionDoc() {
           </AccordionGroup>
         </ComponentPreview>
       </DocSection>
-
 
       <DocSection title="Row highlight">
         <p className="text-site-body text-muted-foreground">

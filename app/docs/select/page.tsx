@@ -12,8 +12,9 @@ import {
   SelectSeparator,
 } from "@/components/flavored/select";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { selectProps, triggerProps, itemProps, contentProps } from "@/lib/docs/api/select";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -148,102 +149,6 @@ const disabledCode = `import { Select, SelectTrigger, SelectContent, SelectItem 
     <SelectItem index={2} value="c">Available</SelectItem>
   </SelectContent>
 </Select>`;
-
-// ---------------------------------------------------------------------------
-// Props definitions
-// ---------------------------------------------------------------------------
-
-const selectProps: PropDef[] = [
-  {
-    name: "value",
-    type: "string",
-    description: "Controlled selected value.",
-  },
-  {
-    name: "defaultValue",
-    type: "string",
-    description: "Uncontrolled default value.",
-  },
-  {
-    name: "onValueChange",
-    type: "(value: string) => void",
-    description: "Called when the selected value changes.",
-  },
-  {
-    name: "disabled",
-    type: "boolean",
-    default: "false",
-    description: "Disables the entire select.",
-  },
-  {
-    name: "name",
-    type: "string",
-    description: "Name for form submission.",
-  },
-  {
-    name: "required",
-    type: "boolean",
-    default: "false",
-    description: "Marks the select as required in forms.",
-  },
-];
-
-const triggerProps: PropDef[] = [
-  {
-    name: "variant",
-    type: '"bordered" | "borderless"',
-    default: '"bordered"',
-    description: "Visual style of the trigger.",
-  },
-  {
-    name: "icon",
-    type: "IconComponent",
-    description: "Optional icon displayed before the value.",
-  },
-  {
-    name: "placeholder",
-    type: "string",
-    default: '"Select…"',
-    description: "Text shown when no value is selected.",
-  },
-  {
-    name: "error",
-    type: "string",
-    description: "Error message shown below the trigger.",
-  },
-];
-
-const itemProps: PropDef[] = [
-  {
-    name: "index",
-    type: "number",
-    description: "Position index within the content for fluid hover.",
-  },
-  {
-    name: "value",
-    type: "string",
-    description: "Unique value for this option.",
-  },
-  {
-    name: "icon",
-    type: "IconComponent",
-    description: "Optional icon displayed before the label.",
-  },
-  {
-    name: "disabled",
-    type: "boolean",
-    default: "false",
-    description: "Disables this individual item.",
-  },
-];
-
-const contentProps: PropDef[] = [
-  {
-    name: "className",
-    type: "string",
-    description: "Additional classes for the menu container.",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Doc Page

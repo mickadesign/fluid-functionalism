@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { componentList } from "@/lib/docs/components";
+import { useReleaseMarks } from "@/lib/changelog/marks";
 import { previewMap } from "@/app/components/bento-previews";
 import { playgroundMap } from "@/lib/docs/playgrounds";
 import { BentoCard } from "@/app/components/bento-card";
@@ -43,6 +44,7 @@ function DemoPageInner() {
   const iconSize =
     useSizeVariant() === "compact" ? ("icon-compact" as const) : ("icon" as const);
   const searchParams = useSearchParams();
+  const { isNew } = useReleaseMarks();
   const cardRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   // Slides render at 1:1 by default — the size the component actually ships
@@ -52,7 +54,6 @@ function DemoPageInner() {
   const slideOrder = [
     "checkbox-group",
     "accordion",
-    "tabs",
     "radio-group",
     "slider",
     "ask-user-questions",
@@ -61,13 +62,15 @@ function DemoPageInner() {
     "button",
     "dropdown",
     "combobox",
+    "calendar",
+    "date-picker",
     "command-menu",
     "color-picker",
     "input-group",
     "switch",
     "table",
     "card",
-    "tabs-subtle",
+    "tabs",
     "thinking-indicator",
     "thinking-steps",
     "banner",
@@ -91,7 +94,7 @@ function DemoPageInner() {
     // A slide needs either a static bento preview or a registered playground
     // (which brings its own state-driven preview + pen menu).
     if (!c || (!previewMap[c.slug] && !playgroundMap[c.slug])) return null;
-    return { slug: c.slug, name: c.name, isNew: c.isNew, type: "component" as const };
+    return { slug: c.slug, name: c.name, isNew: isNew(c.slug), type: "component" as const };
   }).filter((s): s is NonNullable<typeof s> => s != null);
 
   const paramSlug = searchParams.get("c");
@@ -290,7 +293,7 @@ function DemoPageInner() {
               style={{ height: "100%" }}
               action={cardActions()}
             >
-              {stage(<SettingsContent tooltipSide="right" />)}
+              {stage(<SettingsContent />)}
             </BentoCard>
           ) : Playground ? (
             <Playground key={current.slug}>

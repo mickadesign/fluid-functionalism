@@ -4,11 +4,12 @@ import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { CarouselDots } from "@/registry/default/carousel-dots";
 import { slideVariants, useSlideDirection } from "@/lib/docs/slide-direction";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { cn } from "@/registry/default/lib/utils";
+import { props } from "@/lib/docs/api/carousel-dots";
 
 const SLIDES = ["Inbox", "Drafts", "Sent", "Archive"];
 
@@ -32,15 +33,6 @@ const [hovering, setHovering] = useState(false);
   onValueChange={setSlide}
   autoplay={{ duration: 3000, paused: hovering }}
 />`;
-
-const props: PropDef[] = [
-  { name: "count", type: "number", description: "How many dots to show." },
-  { name: "value", type: "number", description: "Index of the current dot." },
-  { name: "onValueChange", type: "(index: number) => void", description: "Called with a clicked dot's index, and with the next index each time autoplay finishes a slide." },
-  { name: "autoplay", type: "boolean | { duration?, paused?, loop? }", description: "The current pill fills over duration (default 3000ms), then the next slide comes in. paused holds the fill; loop (default true) wraps to the first slide. Omit for a static, solid pill." },
-  { name: "progress", type: "number | MotionValue<number>", description: "Drive the fill yourself, 0 to 1, when something else owns the clock. Takes precedence over autoplay." },
-  { name: "getLabel", type: "(index: number) => string", default: '"Go to slide N"', description: "Accessible name for each dot." },
-];
 
 /** The slide both demos page through: a label that slides sideways. */
 function Slide({ index, direction }: { index: number; direction: number }) {

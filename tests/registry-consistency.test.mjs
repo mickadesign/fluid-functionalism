@@ -24,7 +24,8 @@ const itemNames = new Set(registry.items.map((item) => item.name));
 
 // Deps that intentionally stay plain names and resolve from the default
 // shadcn registry (ui.shadcn.com) instead of being URL-rewritten.
-const SHADCN_DEFAULT_DEPS = new Set(["utils"]);
+// `skeleton` is shadcn's own Skeleton, which the reveal item builds on.
+const SHADCN_DEFAULT_DEPS = new Set(["utils", "skeleton"]);
 
 describe("dual-flavour slugs", () => {
   it.each(DUAL_FLAVOR_SLUGS)("%s has a Radix and a Base UI source file", (slug) => {
@@ -164,6 +165,15 @@ describe("committed build output (public/r)", () => {
   it("no stray <name>-base.json files remain at the top level", () => {
     const strays = readdirSync(outDir).filter((f) => f.endsWith("-base.json"));
     expect(strays).toEqual([]);
+  });
+
+  it("every name in the served index resolves to a payload (/r/{name}.json)", () => {
+    // The @fluid namespace URL template, the shadcn MCP server and the public
+    // registry's health check all fetch index names this way.
+    const index = JSON.parse(readFileSync(join(outDir, "registry.json"), "utf-8"));
+    for (const { name } of index.items) {
+      expect(existsSync(join(outDir, `${name}.json`)), `public/r/${name}.json`).toBe(true);
+    }
   });
 });
 

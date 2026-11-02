@@ -23,6 +23,7 @@ import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 import { cn } from "@/lib/utils";
 import { useSizeVariant, fieldTouchClass, type SizeVariant } from "@/lib/size-context";
 import { spring } from "@/lib/springs";
+import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 
@@ -1883,6 +1884,22 @@ ComfortableSlider.displayName = "SliderComfortable";
 // it regardless of the resolved step, so no capability is ever lost.
 // ---------------------------------------------------------------------------
 
+/** Props only the compact engine implements; setting any one routes the
+ *  slider to it (see needsCompactEngine below). */
+const COMPACT_ENGINE_PROPS = [
+  "steps",
+  "showSteps",
+  "showValue",
+  "valuePosition",
+  "trackClassName",
+  "trackStyle",
+  "fillClassName",
+  "fillStyle",
+  "hideFill",
+  "thumbColor",
+  "thumbBorderColor",
+] as const;
+
 interface SliderProps extends SliderEngineProps {
   /** Default-step layout: value pips along the track, or an edge-to-edge
    *  scrubber. Ignored when the compact design renders. */
@@ -1902,17 +1919,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
     // reads those props.
     const needsCompactEngine =
       Array.isArray(props.value) ||
-      props.steps !== undefined ||
-      props.showSteps !== undefined ||
-      props.showValue !== undefined ||
-      props.valuePosition !== undefined ||
-      props.trackClassName !== undefined ||
-      props.trackStyle !== undefined ||
-      props.fillClassName !== undefined ||
-      props.fillStyle !== undefined ||
-      props.hideFill !== undefined ||
-      props.thumbColor !== undefined ||
-      props.thumbBorderColor !== undefined;
+      COMPACT_ENGINE_PROPS.some((key) => props[key] !== undefined);
 
     if (resolved === "compact" || needsCompactEngine) {
       return <CompactSlider ref={ref} {...props} />;
@@ -1927,21 +1934,11 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
       label,
       formatValue,
       disabled,
-      // Compact-engine-only fields — all undefined on this path (any defined
-      // one would have routed to the compact engine above).
-      steps: _steps,
-      showSteps: _showSteps,
-      showValue: _showValue,
-      valuePosition: _valuePosition,
-      trackClassName: _trackClassName,
-      trackStyle: _trackStyle,
-      fillClassName: _fillClassName,
-      fillStyle: _fillStyle,
-      hideFill: _hideFill,
-      thumbColor: _thumbColor,
-      thumbBorderColor: _thumbBorderColor,
-      ...html
+      ...rest
     } = props;
+    // Compact-engine-only fields — all undefined on this path (any defined
+    // one would have routed to the compact engine above).
+    const html = omit(rest, COMPACT_ENGINE_PROPS);
 
     return (
       <ComfortableSlider

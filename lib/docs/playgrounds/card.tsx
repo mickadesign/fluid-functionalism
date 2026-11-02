@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useAccent } from "@/lib/docs/accent";
 import {
   Card,
   CardGroup,
@@ -28,6 +29,7 @@ import {
   CARD_ITEMS,
   CARD_BANNER,
   CARD_THUMB,
+  tintCardArt,
   encodeCardPreset,
   decodeCardPreset,
   type CardPreset,
@@ -49,6 +51,15 @@ import type { PlaygroundProps } from "./types";
 // re-exported here so doc pages keep their import site.
 export const BANNER = CARD_BANNER;
 export const THUMB = CARD_THUMB;
+
+/** The banner and logo in the visitor's accent, on the theme showing. */
+export function useCardArt() {
+  const { hex } = useAccent();
+  return useMemo(
+    () => ({ banner: tintCardArt(CARD_BANNER, hex), thumb: tintCardArt(CARD_THUMB, hex) }),
+    [hex]
+  );
+}
 
 type PlayOrientation = "card" | "inline";
 type PlayBorder = "none" | "outlined";
@@ -125,6 +136,7 @@ ${inner.filter(Boolean).join("\n")}
 }
 
 export function CardPlayground({ children }: PlaygroundProps) {
+  const art = useCardArt();
   const icons = useIcons();
 
   const [orientation, setOrientation] = useState<PlayOrientation>("card");
@@ -206,7 +218,7 @@ export function CardPlayground({ children }: PlaygroundProps) {
     media === "icon" ? (
       <CardMedia icon={icon} />
     ) : media === "logo" ? (
-      <CardMedia logo={THUMB} size={32} />
+      <CardMedia logo={art.thumb} size={32} />
     ) : null;
 
   const renderFooter = () => {
@@ -368,7 +380,7 @@ export function CardPlayground({ children }: PlaygroundProps) {
             if (selectedOn) setSelectedIndex(i);
           }}
         >
-          {isImage && <CardImage src={BANNER} />}
+          {isImage && <CardImage src={art.banner} />}
           {isSmall && isInline && renderSmall(item.icon)}
           <CardHeader>
             {isSmall && !isInline && renderSmall(item.icon)}
