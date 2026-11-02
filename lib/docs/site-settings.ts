@@ -167,3 +167,25 @@ export function customWeightCookie(weight: number | null): string {
     ? `${CUSTOM_WEIGHT_COOKIE}=; path=/; max-age=0; samesite=lax`
     : `${CUSTOM_WEIGHT_COOKIE}=${weight}; path=/; max-age=${MAX_AGE}; samesite=lax`;
 }
+
+// ---------------------------------------------------------------------------
+// Hover: fluid (the highlight glides between items) or standard (it sits on
+// the item under the pointer). Outside SiteSettings, like the heading font:
+// it travels to installs through the install URL (`r/standard/…`), not a
+// starter slug.
+// ---------------------------------------------------------------------------
+
+export type HoverMode = "fluid" | "standard";
+
+export const HOVER_MODES = ["fluid", "standard"] as const satisfies readonly HoverMode[];
+
+export const HOVER_COOKIE = "ff_hover";
+
+/** The saved hover mode, fluid when missing or unknown. */
+export function readHoverMode(get: (name: string) => string | undefined): HoverMode {
+  return get(HOVER_COOKIE) === "standard" ? "standard" : "fluid";
+}
+
+export function hoverModeCookie(value: HoverMode): string {
+  return `${HOVER_COOKIE}=${value}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}

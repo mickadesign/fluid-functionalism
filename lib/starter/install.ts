@@ -57,6 +57,9 @@ export function starterRegistryDeps(items: readonly ManifestItem[], s: StarterSe
     .filter(
       (name) =>
         !name.endsWith("-base") &&
+        // Standard hover's item is served as standard/use-fluid-hover; a
+        // standard starter reaches it through its dependency URLs.
+        !name.endsWith("-standard") &&
         !EXCLUDED.has(name) &&
         (!name.startsWith("icons-") || name === chosenSet),
     );

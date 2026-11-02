@@ -11,6 +11,7 @@ import { useIcon } from "@/lib/icon-context";
 import { docOrder, systemList } from "@/lib/docs/components";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { useBase, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
+import { useHoverMode } from "@/lib/docs/hover-mode";
 
 interface DocPageProps {
   title: string;
@@ -55,6 +56,7 @@ export function DocPage({
   const installNote = installNoteProp ?? system?.installNote;
   const ArrowRight = useIcon("arrow-right");
   const { base } = useBase();
+  const hover = useHoverMode();
   // Square buttons have no provider-following value, so the prev/next arrows
   // derive their step explicitly (see /docs/sizes).
   const iconSize =
@@ -155,7 +157,7 @@ export function DocPage({
             )}
           </div>
           <CopyPromptButton
-            prompt={installPrompt ?? buildInstallPrompt({ slug, installSlug, base })}
+            prompt={installPrompt ?? buildInstallPrompt({ slug, installSlug, base, hover })}
             onCopy={onInstallCopy}
           />
         </div>

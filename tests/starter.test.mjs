@@ -73,8 +73,9 @@ describe("starter item", () => {
     expect(new Set(deps).size).toBe(deps.length);
     expect(deps.filter((d) => d.endsWith("-base"))).toEqual([]);
     expect(deps.filter((d) => d.startsWith("icons-"))).toEqual(["icons-phosphor"]);
+    expect(deps.filter((d) => d.endsWith("-standard"))).toEqual([]);
     for (const name of names) {
-      if (name.endsWith("-base") || name.startsWith("icons-") || name === "sidebar-app") continue;
+      if (name.endsWith("-base") || name.endsWith("-standard") || name.startsWith("icons-") || name === "sidebar-app") continue;
       expect(deps, name).toContain(name);
     }
     expect(starterRegistryDeps(manifest.items, { ...STARTER_DEFAULTS, icons: "lucide" }).some((d) => d.startsWith("icons-"))).toBe(false);

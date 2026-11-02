@@ -49,7 +49,8 @@ import { ColorPickerPopover } from "@/registry/default/color-picker";
 import { accentHexOf, accentSwatches, useAccent } from "@/lib/docs/accent";
 import { ACCENT_ORDER, LOW_ACCENT_CONTRAST, accentLabel, contrastRatio } from "@/lib/accent";
 import { useHeadingFont, headingFontLabel, HeadingWeightSelect } from "@/lib/docs/heading-font";
-import type { HeadingFont } from "@/lib/docs/site-settings";
+import { HOVER_MODE_LABELS, useHoverModeSetting } from "@/lib/docs/hover-mode";
+import { HOVER_MODES, type HeadingFont, type HoverMode } from "@/lib/docs/site-settings";
 
 const REPO = "mickadesign/fluid-functionalism";
 
@@ -533,6 +534,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
   const { base, setBase } = useBase();
   const { font, fonts, custom, setFont, browse } = useHeadingFont();
   const accent = useAccent();
+  const { mode: hoverMode, setMode: setHoverMode } = useHoverModeSetting();
   const reduceMotion = useReducedMotion();
   const shapeClasses = useShape();
   const listRef = useRef<HTMLDivElement>(null);
@@ -758,6 +760,21 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
               {baseOptions.map((o, i) => (
                 <SelectItem key={o.value} value={o.value} index={i}>
                   {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Hover" hoverIndex={8} shortcut="H" index={HOVER_MODES.indexOf(hoverMode)}>
+          <Select value={hoverMode} onValueChange={(v) => setHoverMode(v as HoverMode)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+            />
+            <SelectContent>
+              {HOVER_MODES.map((m, i) => (
+                <SelectItem key={m} value={m} index={i}>
+                  {HOVER_MODE_LABELS[m]}
                 </SelectItem>
               ))}
             </SelectContent>
