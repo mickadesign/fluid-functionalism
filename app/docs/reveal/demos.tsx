@@ -479,17 +479,13 @@ function LandingPage({ className }: { className: string }) {
               the hero: it plays on load with the copy instead of waiting
               half revealed for a scroll. */}
           <div
-            className={cn("mt-9 w-full bg-muted p-3 sm:p-6", shape.container)}
+            aria-hidden
+            className={cn(
+              "pointer-events-none mt-9 w-[calc(100%+24px)] overflow-hidden border border-border bg-background select-none sm:w-[calc(100%+48px)]",
+              shape.container,
+            )}
           >
-            <div
-              aria-hidden
-              className={cn(
-                "pointer-events-none overflow-hidden border border-border bg-background select-none",
-                shape.container,
-              )}
-            >
-              <AppScreen />
-            </div>
+            <AppScreen />
           </div>
         </section>
 

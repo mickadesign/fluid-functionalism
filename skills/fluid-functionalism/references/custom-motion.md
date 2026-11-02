@@ -329,9 +329,12 @@ import { Skeleton } from "@/components/ui/skeleton";
   too, for a sidebar.
 - Load blocks independently: each request lands on its own time and in any
   order. Never fake a tidy sequence; give each metric its own swap.
-- Skeletons fade in over 250ms before shadcn's pulse starts, so they arrive
-  instead of popping in. Keep Skeletons inside a block: a Skeleton that is
-  itself an animated child loses its pulse.
+- Skeletons wait 160ms, then fade in over 250ms before shadcn's pulse
+  starts: data that lands within 160ms never shows one, and a slower one
+  arrives instead of popping in. A swapped-out skeleton fades from wherever
+  its fade or pulse was, never jumping back to full first. Keep Skeletons
+  inside a block: a Skeleton that is itself an animated child loses its
+  pulse.
 
 ### Accessibility
 

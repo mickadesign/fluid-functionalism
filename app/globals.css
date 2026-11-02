@@ -1500,10 +1500,12 @@ html.transitioning *::after {
   animation-name: reveal-out;
   animation-fill-mode: forwards;
 }
-/* Skeletons fade in over the slow tier's 250ms on an even curve, then pulse
-   like shadcn's `animate-pulse`, on keyframes of their own so the block
-   works without Tailwind's. A skeleton that has been swapped out stops
-   pulsing: it is fading away and would otherwise animate unseen forever. */
+/* Skeletons wait 160ms, so data that lands sooner never shows one, then fade
+   in over the slow tier's 250ms on an even curve and pulse like shadcn's
+   `animate-pulse`, on keyframes of their own so the block works without
+   Tailwind's. A skeleton that has been swapped out pauses where it is: it
+   fades away from the opacity it had, instead of jumping back to full, and
+   stops animating unseen. Swapped out during the wait, it never shows. */
 @keyframes reveal-skeleton-in {
   from {
     opacity: 0;
@@ -1516,11 +1518,11 @@ html.transitioning *::after {
 }
 :is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot="skeleton"] {
   animation:
-    reveal-skeleton-in 250ms ease-in-out both,
-    reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 250ms infinite;
+    reveal-skeleton-in 250ms ease-in-out 160ms both,
+    reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 410ms infinite;
 }
 .reveal-swap > :first-child:not(:last-child) [data-slot="skeleton"] {
-  animation: none;
+  animation-play-state: paused;
 }
 /* Leaving at the top mirrors the way in: it fades out, lifts, and scales down. */
 @keyframes reveal-leave {
@@ -1592,7 +1594,7 @@ html.transitioning *::after {
     animation-delay: calc(var(--reveal-load-delay, 0s) + var(--reveal-step));
   }
   :is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot="skeleton"] {
-    animation: reveal-skeleton-in 250ms ease-in-out both;
+    animation: reveal-skeleton-in 250ms ease-in-out 160ms both;
   }
 }
 /* </generated:reveal> */
