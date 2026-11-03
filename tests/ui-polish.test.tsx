@@ -325,6 +325,10 @@ describe("no results keeps the last results' height", () => {
         fireEvent.change(input, { target: { value: "zzz" } });
       });
       expect(surface.style.minHeight).toBe(`${BOX_HEIGHT}px`);
+      // The empty list gives up its flex-1 so ComboboxEmpty centers in the floor.
+      expect(surface.querySelector('[data-slot="scroll-area"]')!.className).toContain(
+        "[&:not(:has([role=option]))]:flex-none"
+      );
       await act(async () => {
         fireEvent.change(input, { target: { value: "re" } });
       });

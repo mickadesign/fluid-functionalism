@@ -1289,7 +1289,12 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
 
     return (
       <ComboboxContentContext.Provider value={contentCtx}>
-        <ScrollArea className={popupScrollAreaClass} viewportClassName={cn(popupViewportClass, "scroll-fade")}>
+        {/* With no options the list gives up its flex-1, so the free height
+            the floor holds goes to ComboboxEmpty's my-auto and centers it. */}
+        <ScrollArea
+          className={cn(popupScrollAreaClass, "[&:not(:has([role=option]))]:flex-none")}
+          viewportClassName={cn(popupViewportClass, "scroll-fade")}
+        >
         <div
           ref={(node: HTMLDivElement | null) => {
             (containerRef as React.MutableRefObject<HTMLDivElement | null>).current =
