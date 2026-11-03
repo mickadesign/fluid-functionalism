@@ -207,7 +207,7 @@ The stack read tells you which of these are already done. Skip those.
 4. **Load Inter with its optical-size axis** if the project uses Inter and
    you want the weight animations to hold width. With `next/font/google`:
    `Inter({ subsets: ["latin"], axes: ["opsz"] })`. Self-hosted: a
-   `@font-face` with `font-weight: 100 900` pointing at `InterVariable.ttf`.
+   `@font-face` with `font-weight: 100 900` pointing at `InterVariable.woff2`.
    Without the `opsz` axis everything still works — labels just widen
    slightly when they get heavier.
 

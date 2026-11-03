@@ -121,6 +121,13 @@ export default async function RootLayout({
       }
     >
       {/* Font smoothing (antialiased/grayscale) is set globally in globals.css */}
+      <head>
+        {/* Inter's upright face (the @font-face in globals.css) starts with
+            the HTML, not after the stylesheet is parsed: every weight is a
+            variation setting, so until it lands, semibold labels and
+            headings draw at 400. The italic stays lazy. */}
+        <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body>
         {/* reducedMotion="user" makes every Motion component honor the
             OS "reduce motion" setting: transform / scale / position / layout

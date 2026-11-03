@@ -81,7 +81,7 @@ Self-hosted, the way the docs site does it:
 ```css
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/InterVariable.ttf") format("truetype");
+  src: url("/fonts/InterVariable.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
 }

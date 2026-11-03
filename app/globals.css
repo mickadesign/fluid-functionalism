@@ -2,9 +2,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Inter 4.0 variable (wght + opsz), as woff2. The upright face is preloaded
+   from app/layout.tsx; keep that URL in step with this one. */
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/InterVariable.ttf") format("truetype");
+  src: url("/fonts/InterVariable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -15,10 +17,23 @@
    set italic text download it. */
 @font-face {
   font-family: "Inter";
-  src: url("/fonts/InterVariable-Italic.ttf") format("truetype");
+  src: url("/fonts/InterVariable-Italic.woff2") format("woff2");
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
+}
+
+/* What paints until Inter arrives: Arial scaled to Inter's average width and
+   vertical metrics, so the swap doesn't reflow lines or shift rows. Values
+   computed the way next/font's adjustFontFallback does, from the woff2's
+   default instance (wght 400, opsz 14). */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  size-adjust: 107.89%;
+  ascent-override: 89.79%;
+  descent-override: 22.36%;
+  line-gap-override: 0%;
 }
 
 /* ============================================================================
@@ -248,7 +263,7 @@
 ============================================================================ */
 
 @theme inline {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
