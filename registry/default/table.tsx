@@ -218,6 +218,56 @@ const TableCell = forwardRef<
 
 TableCell.displayName = "TableCell";
 
+// ── TableEmpty ───────────────────────────────────────────
+
+interface TableEmptyProps extends Omit<HTMLAttributes<HTMLTableRowElement>, "title"> {
+  /** How many columns the message spans: the table's column count. */
+  columns: number;
+  /** One short line saying what belongs here. */
+  title?: ReactNode;
+  /** One line on how rows get here. */
+  description?: ReactNode;
+  /** The control that creates the first row, e.g. a Button. */
+  action?: ReactNode;
+  /** The height to hold, in body rows, so filling the table doesn't shift
+   *  what sits under it. Default 3. */
+  rows?: number;
+}
+
+// Rendered in place of the body rows when there are none. Not a fluid hover
+// item (no `index`), so it never lights up.
+const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
+  ({ columns, title, description, action, rows = 3, children, className, ...props }, ref) => {
+    const sizeClasses = useSize();
+    const rowHeight = sizeClasses.variant === "compact" ? 28 : 36;
+    return (
+      <tr ref={ref} data-slot="table-empty" className={className} {...props}>
+        <td colSpan={columns} className="p-0">
+          <div
+            role="status"
+            className="flex flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            style={{ minHeight: rows * rowHeight }}
+          >
+            {title && (
+              <span
+                className="text-foreground"
+                style={{ fontVariationSettings: fontWeights.semibold }}
+              >
+                {title}
+              </span>
+            )}
+            {description && <span className="text-muted-foreground">{description}</span>}
+            {children}
+            {action && <div className="mt-2">{action}</div>}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+
+TableEmpty.displayName = "TableEmpty";
+
 // ── Exports ──────────────────────────────────────────────
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty };

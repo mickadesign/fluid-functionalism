@@ -236,7 +236,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
             // exactly on the ladder's control height.
             `flex items-center ${sizeClasses.gap} ${shape.input} ${
               compact ? "px-2" : "px-2.5"
-            } ${sizeClasses.control} ring-1 transition-all duration-80`,
+            } ${sizeClasses.control} ring-1 transition-[color,background-color,border-radius,box-shadow] duration-80`,
             bgClass,
             ringClass
           )}

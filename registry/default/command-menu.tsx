@@ -276,16 +276,27 @@ export function isMacPlatform(): boolean {
 }
 
 // The platform never changes, so it is read once and served as a store
-// snapshot: the server (and hydration) draw ⌘, other platforms swap to
-// words in the render that follows, with no state or effect per cap.
+// snapshot. The server can't see navigator: it (and hydration) draws what
+// CommandMenuPlatform says, ⌘ when nothing does, and a wrong guess swaps in
+// the render that follows, with no state or effect per cap.
 let macPlatform: boolean | null = null;
 const readMac = () => (macPlatform ??= isMacPlatform());
-const serverMac = () => true;
 const subscribeNever = () => () => {};
+
+const PlatformContext = createContext<boolean | null>(null);
+
+/** Tells the server render which glyphs to draw, so caps paint as ⌘ or Ctrl
+ *  from the first frame instead of swapping (and changing width) after
+ *  hydration. Derive `mac` from the request's `Sec-CH-UA-Platform` or
+ *  User-Agent header. */
+export function CommandMenuPlatform({ mac, children }: { mac: boolean; children: ReactNode }) {
+  return <PlatformContext.Provider value={mac}>{children}</PlatformContext.Provider>;
+}
 
 /** Whether to draw ⌘ and ⌥ rather than Ctrl and Alt. */
 export function useIsMac(): boolean {
-  return useSyncExternalStore(subscribeNever, readMac, serverMac);
+  const serverMac = useContext(PlatformContext) ?? true;
+  return useSyncExternalStore(subscribeNever, readMac, () => serverMac);
 }
 
 // Layout effects have no server counterpart; on the server they are no-ops.
@@ -1053,6 +1064,23 @@ const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
       setActiveIndex(lastActiveRef.current);
     };
 
+    // No results keeps the height the last results showed (what was on
+    // screen of it, not what scrolled), so the message sits where the rows
+    // were and the palette doesn't jump on each keystroke into and out of
+    // an empty query. The rows' own height takes over again once they return.
+    const shownHeightRef = useRef(0);
+    useIsoLayoutEffect(() => {
+      const node = listRef.current;
+      if (!node) return;
+      if (empty) {
+        node.style.minHeight = shownHeightRef.current ? `${shownHeightRef.current}px` : "";
+        return;
+      }
+      node.style.minHeight = "";
+      const viewport = node.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+      shownHeightRef.current = Math.min(node.offsetHeight, viewport?.clientHeight ?? Infinity);
+    }, [empty, rows.length, listRef]);
+
     return (
       // Not the popup viewport class: a palette is sized by its rows up to
       // its shell's max-height, which leaves every box on the way
@@ -1090,8 +1118,9 @@ const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
           onMouseDown={(e) => e.preventDefault()}
           className={cn(
             // The list is the fill's offsetParent, so rows and fill scroll
-            // together inside the viewport. Padding collapses when empty.
-            "relative flex flex-col gap-1 p-1 outline-none data-[empty]:p-0",
+            // together inside the viewport. Padding collapses when empty, and
+            // the message centers in the height the rows left.
+            "relative flex flex-col gap-1 p-1 outline-none data-[empty]:justify-center data-[empty]:p-0",
             className
           )}
           {...props}

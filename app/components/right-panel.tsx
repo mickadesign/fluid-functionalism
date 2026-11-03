@@ -869,7 +869,7 @@ export function RightPanel() {
           <motion.div
             // Mirrors the left rail's reopen trigger: same top-4 inset from
             // its edge, same default trigger size.
-            className="fixed top-4 right-4 z-40 max-xl:hidden"
+            className="fixed top-4 right-4 z-[var(--z-sticky,30)] max-xl:hidden"
             initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{

@@ -82,6 +82,11 @@ export const shortcutProps: PropDef[] = [
 ];
 
 /** The page's tables in page order, titled as on the page. */
+export const platformProps: PropDef[] = [
+  { name: "mac", type: "boolean", description: "Whether the visitor is on a Mac, read on the server from the Sec-CH-UA-Platform or User-Agent header. Shortcut caps then paint as ⌘ or Ctrl from the first frame instead of swapping after hydration. Without it the server draws ⌘." },
+  { name: "children", type: "ReactNode", description: "The tree holding command menus." },
+];
+
 export const apiReference: ApiTable[] = [
   { title: "Item data", props: itemDataProps },
   { title: "CommandMenu", props: rootProps },
@@ -92,4 +97,5 @@ export const apiReference: ApiTable[] = [
   { title: "CommandMenuItem", props: itemProps },
   { title: "CommandMenuFooter", props: footerProps },
   { title: "CommandMenuShortcut", props: shortcutProps },
+  { title: "CommandMenuPlatform", props: platformProps },
 ];

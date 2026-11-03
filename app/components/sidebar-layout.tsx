@@ -75,7 +75,7 @@ function DesktopReopenTrigger() {
     <AnimatePresence>
       {!open && (
         <motion.div
-          className="max-xl:hidden fixed top-4 left-4 z-50"
+          className="max-xl:hidden fixed top-4 left-4 z-[var(--z-sticky,30)]"
           initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{
@@ -201,7 +201,7 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
             It floats over the page, so a blurred page-colored ground keeps
             the icon legible over headings scrolling under it. */}
         <SidebarTrigger
-          className="xl:hidden fixed top-4 left-4 z-50 bg-background/70 backdrop-blur-md"
+          className="xl:hidden fixed top-4 left-4 z-[var(--z-sticky,30)] bg-background/70 backdrop-blur-md"
           aria-label="Open navigation"
         />
         <DesktopReopenTrigger />

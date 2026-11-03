@@ -156,7 +156,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           <motion.div
             className={cn(
               container ? "absolute" : "fixed",
-              "inset-0 z-50 bg-black/40 dark:bg-black/80"
+              "inset-0 z-[var(--z-overlay,40)] bg-black/40 dark:bg-black/80"
             )}
             initial={{ opacity: 0 }}
             animate={{ opacity: open ? 1 : 0 }}
@@ -167,7 +167,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           <motion.div
             className={cn(
               container ? "absolute" : "fixed",
-              "left-1/2 z-50 w-[calc(100%-2rem)]",
+              "left-1/2 z-[var(--z-modal,50)] w-[calc(100%-2rem)]",
               position === "top" ? "top-[12dvh]" : "top-1/2",
               surfaceClasses(dialogLevel),
               "p-6 focus:outline-none",
