@@ -8,6 +8,7 @@ import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
 import { CalendarPlayground, demoBookedDays } from "@/lib/docs/playgrounds/calendar";
 import { apiReference } from "@/lib/docs/api/calendar";
+import { demoToday } from "@/lib/demo-today";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -112,13 +113,13 @@ function CalendarPlaygroundSection() {
 }
 
 export default function CalendarDoc() {
-  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  const [date, setDate] = useState<Date | undefined>(demoToday);
   const [range, setRange] = useState<DateRange | undefined>(undefined);
   const [stacked, setStacked] = useState<DateRange | undefined>(undefined);
   const [booking, setBooking] = useState<DateRange | undefined>(undefined);
   const [weekday, setWeekday] = useState<Date | undefined>(undefined);
-  const [big, setBig] = useState<Date | undefined>(() => new Date());
-  const [week, setWeek] = useState<Date | undefined>(() => new Date());
+  const [big, setBig] = useState<Date | undefined>(demoToday);
+  const [week, setWeek] = useState<Date | undefined>(demoToday);
   const booked = useMemo(() => demoBookedDays(), []);
 
   return (
@@ -180,7 +181,7 @@ export default function CalendarDoc() {
             selected={booking}
             onSelect={setBooking}
             booked={booked}
-            disabled={{ before: new Date() }}
+            disabled={{ before: demoToday() }}
           />
         </ComponentPreview>
         <p className="text-site-body text-muted-foreground">

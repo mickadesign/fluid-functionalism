@@ -159,6 +159,7 @@ import {
   AskUserQuestions,
   type AskUserQuestion,
 } from "@/registry/default/ask-user-questions";
+import { demoToday } from "@/lib/demo-today";
 
 function InputMessagePreview() {
   const [value, setValue] = useState("");
@@ -428,7 +429,7 @@ function addDays(date: Date, days: number) {
 function CalendarPreview() {
   const narrow = useNarrowFrame();
   const [range, setRange] = useState<DateRange | undefined>(() => {
-    const today = new Date();
+    const today = demoToday();
     return { from: addDays(today, 3), to: addDays(today, 8) };
   });
   return (
@@ -444,7 +445,7 @@ function CalendarPreview() {
 }
 
 function DatePickerPreview() {
-  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  const [date, setDate] = useState<Date | undefined>(demoToday);
   return (
     <div className="flex w-full max-w-[280px] justify-center">
       <DatePicker value={date} onValueChange={setDate} />
