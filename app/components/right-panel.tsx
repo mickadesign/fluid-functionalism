@@ -812,6 +812,13 @@ function useIsXl() {
     () => true
   );
 }
+const subscribeNever = () => () => {};
+/** False on the server and while hydrating, true after. Gates the
+ *  xl-fade-block transition, so the panel is on screen at first paint
+ *  instead of fading in on its own. */
+function useIsClient() {
+  return useSyncExternalStore(subscribeNever, () => true, () => false);
+}
 
 export function RightPanel() {
   // The bare "]" key shows/hides the panel — the mirror of the left rail's
@@ -854,6 +861,7 @@ export function RightPanel() {
   // it, so the page slides into the space instead of snapping once
   // display:none lands (the exit tween matches the CSS fade's 160ms).
   const isXl = useIsXl();
+  const isClient = useIsClient();
   const shown = open && isXl;
   const PanelRightIcon = useIcon("panel-right");
   // The changelog's rail holds its Releases index alone: nothing on that
@@ -920,6 +928,7 @@ export function RightPanel() {
         opacity instead of fading. */}
     <motion.div
       className="shrink-0 overflow-hidden sticky top-4 self-start mt-4 xl-fade-block max-xl:pointer-events-none"
+      data-ready={isClient || undefined}
       initial={false}
       animate={{
         // 256px of panel plus 4px either side, which the negative left
