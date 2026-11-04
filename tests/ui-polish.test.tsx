@@ -206,17 +206,23 @@ describe("TableEmpty", () => {
   it("spans every column with the headline, explanation and action", () => {
     const { container, getByRole } = render(<Empty />);
     expect(container.querySelector("td")?.getAttribute("colspan")).toBe("2");
-    const status = getByRole("status");
-    expect(status.textContent).toContain("No members yet");
-    expect(status.textContent).toContain("People you invite show up here.");
+    const empty = container.querySelector("[data-slot=table-empty] div")!;
+    expect(empty.textContent).toContain("No members yet");
+    expect(empty.textContent).toContain("People you invite show up here.");
     expect(getByRole("button", { name: "Invite" })).toBeTruthy();
   });
 
-  it("holds 3 rows of height on each ladder step", () => {
-    const { getByRole, unmount } = render(<Empty />);
-    expect(getByRole("status").style.minHeight).toBe("108px");
+  it("holds its rows of height from the cells' own padding", () => {
+    const { container, unmount } = render(<Empty />);
+    const hold = container.querySelector<HTMLElement>("[data-slot=table-empty] div")!;
+    expect(hold.style.getPropertyValue("--table-empty-rows")).toBe("3");
+    expect(hold.className).toContain("min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)))]");
+    // Cells and the empty state read the same variable, set per ladder step.
+    expect(container.querySelector("table")!.className).toContain("[--table-cell-py:--spacing(2)]");
+    expect(container.querySelector("th")!.className).toContain("py-(--table-cell-py)");
     unmount();
-    expect(render(<Empty size="compact" />).getByRole("status").style.minHeight).toBe("84px");
+    const compact = render(<Empty size="compact" />).container;
+    expect(compact.querySelector("table")!.className).toContain("[--table-cell-py:5px]");
   });
 });
 
@@ -258,6 +264,8 @@ describe("shortcut caps platform", () => {
     expect(readMacPlatform('"iOS"', null)).toBe(true);
     expect(readMacPlatform(null, "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe(true);
     expect(readMacPlatform(null, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe(false);
+    expect(readMacPlatform(null, null)).toBe(false);
+    expect(readMacPlatform("", "")).toBe(false);
     expect(readMacPlatform(null, null)).toBe(false);
   });
 });

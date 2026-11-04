@@ -6,6 +6,7 @@ import {
   createContext,
   useContext,
   forwardRef,
+  type CSSProperties,
   type ReactNode,
   type HTMLAttributes,
   type TdHTMLAttributes,
@@ -78,7 +79,14 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
           <table
             ref={ref}
-            className={cn("w-full border-collapse", sizeClasses.text, className)}
+            // --table-cell-py is the one source for row height: cells pad by
+            // it and TableEmpty holds its rows with it.
+            className={cn(
+              "w-full border-collapse",
+              sizeClasses.variant === "compact" ? "[--table-cell-py:5px]" : "[--table-cell-py:--spacing(2)]",
+              sizeClasses.text,
+              className
+            )}
             {...props}
           >
             {children}
@@ -184,7 +192,8 @@ const TableHead = forwardRef<
       className={cn(
         "text-left text-foreground",
         // py + line box lands the row on the ladder (36px / 28px).
-        sizeClasses.variant === "compact" ? "px-2.5 py-[5px]" : "px-3 py-2",
+        "py-(--table-cell-py)",
+        sizeClasses.variant === "compact" ? "px-2.5" : "px-3",
         className
       )}
       {...props}
@@ -208,7 +217,8 @@ const TableCell = forwardRef<
       // border fade. Same padding as TableHead so every row shares a height.
       className={cn(
         "text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
-        sizeClasses.variant === "compact" ? "px-2.5 py-[5px]" : "px-3 py-2",
+        "py-(--table-cell-py)",
+        sizeClasses.variant === "compact" ? "px-2.5" : "px-3",
         className
       )}
       {...props}
@@ -238,15 +248,14 @@ interface TableEmptyProps extends Omit<HTMLAttributes<HTMLTableRowElement>, "tit
 // item (no `index`), so it never lights up.
 const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
   ({ columns, title, description, action, rows = 3, children, className, ...props }, ref) => {
-    const sizeClasses = useSize();
-    const rowHeight = sizeClasses.variant === "compact" ? 28 : 36;
     return (
       <tr ref={ref} data-slot="table-empty" className={className} {...props}>
         <td colSpan={columns} className="p-0">
+          {/* A body row is one line box plus the cells' padding, so `rows` of
+              them stay in step with TableCell whatever the ladder step. */}
           <div
-            role="status"
-            className="flex flex-col items-center justify-center gap-1 px-3 py-4 text-center"
-            style={{ minHeight: rows * rowHeight }}
+            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            style={{ "--table-empty-rows": rows } as CSSProperties}
           >
             {title && (
               <span

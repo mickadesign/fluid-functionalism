@@ -84,7 +84,8 @@ export default async function RootLayout({
   // its number instead of widening when a client fetch lands.
   const [cookieStore, headerStore, stars] = await Promise.all([cookies(), headers(), getGitHubStars()]);
   // Shortcut caps (⌘K, Ctrl K) paint for the visitor's platform from the
-  // first frame instead of swapping after hydration.
+  // first frame instead of swapping after hydration. The HTML now depends on
+  // these two headers: if this layout is ever cached, add them to Vary.
   const mac = readMacPlatform(headerStore.get("sec-ch-ua-platform"), headerStore.get("user-agent"));
   const sidebarDefaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   // The "Make them yours" settings, saved one cookie each by
