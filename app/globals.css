@@ -987,8 +987,9 @@ html[data-size="compact"] {
 }
 /* </generated:typeset> */
 
-/* Theme-toggle cross-fade: ThemeProvider adds `.transitioning` around the
-   class swap so colors tween instead of snapping. */
+/* Shape-toggle morph: ShapeProvider adds `.transitioning` around the swap so
+   radii tween instead of snapping. (Theme swaps cross-fade as one View
+   Transition snapshot instead: registry/default/lib/theme-context.tsx.) */
 html.transitioning *,
 html.transitioning *::before,
 html.transitioning *::after {

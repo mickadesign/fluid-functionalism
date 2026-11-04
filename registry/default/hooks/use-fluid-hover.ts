@@ -6,6 +6,8 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
+  useSyncExternalStore,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -56,9 +58,22 @@ export interface UseFluidHoverOptions {
   nearest?: boolean;
 }
 
+/**
+ * The highlighted index as a store a row can subscribe to. Read it with
+ * `useFluidHoverSelect` instead of passing `activeIndex` down a context: a
+ * context re-renders every row on every highlight change, a selector
+ * re-renders the row the highlight left and the row it reached.
+ */
+export interface FluidHoverActiveStore {
+  subscribe: (listener: () => void) => () => void;
+  get: () => number | null;
+}
+
 export interface UseFluidHoverReturn {
   activeIndex: number | null;
   setActiveIndex: Dispatch<SetStateAction<number | null>>;
+  /** `activeIndex` as a stable store, for rows (see `useFluidHoverSelect`). */
+  activeStore: FluidHoverActiveStore;
   itemRects: ItemRect[];
   /**
    * True once every registered item has been measured and no remeasure is
@@ -266,8 +281,25 @@ export function useFluidHover<T extends HTMLElement>(
   // row registering). Written in a layout effect, which runs before any
   // row's registration effect in the same commit.
   const activeIndexRef = useRef<number | null>(null);
+  const listenersRef = useRef(new Set<() => void>());
+  const activeStore = useMemo<FluidHoverActiveStore>(
+    () => ({
+      subscribe: (listener) => {
+        listenersRef.current.add(listener);
+        return () => {
+          listenersRef.current.delete(listener);
+        };
+      },
+      get: () => activeIndexRef.current,
+    }),
+    []
+  );
   useIsoLayoutEffect(() => {
     activeIndexRef.current = activeIndex;
+    // The store lags `activeIndex` by this one effect, so a row rendering
+    // alongside the change reads the old value; subscribed rows re-render
+    // with the new one in this same commit, before paint.
+    listenersRef.current.forEach((listener) => listener());
   }, [activeIndex]);
 
   // The state, in the DOM: `data-fluid-hover-active` on the highlighted item
@@ -603,6 +635,7 @@ export function useFluidHover<T extends HTMLElement>(
   return {
     activeIndex,
     setActiveIndex,
+    activeStore,
     itemRects,
     isMeasured,
     session,
@@ -617,6 +650,27 @@ export function useFluidHover<T extends HTMLElement>(
     remeasure,
     measureItems,
   };
+}
+
+const subscribeNever = () => () => {};
+
+/**
+ * Reads one value derived from the highlighted index, re-rendering only when
+ * that value changes. The selector must return a primitive:
+ *
+ *   const isActive = useFluidHoverSelect(ctx?.activeStore, (i) => i === index);
+ *
+ * A missing store (a row rendered outside a list) reads as nothing lit.
+ */
+export function useFluidHoverSelect<T>(
+  store: FluidHoverActiveStore | null | undefined,
+  select: (activeIndex: number | null) => T
+): T {
+  return useSyncExternalStore(
+    store?.subscribe ?? subscribeNever,
+    () => select(store ? store.get() : null),
+    () => select(null)
+  );
 }
 
 /**

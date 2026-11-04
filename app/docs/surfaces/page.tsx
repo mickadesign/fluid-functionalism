@@ -14,6 +14,7 @@ import { SurfaceProvider } from "@/registry/default/lib/surface-context";
 import { Elevated } from "@/lib/elevated";
 import { Dropdown, useDropdown } from "@/components/flavored/dropdown";
 import { MenuItem } from "@/registry/default/menu-item";
+import { useFluidHoverSelect } from "@/hooks/use-fluid-hover";
 import { Slider } from "@/registry/radix/slider";
 import {
   ColorPicker,
@@ -867,7 +868,7 @@ function RoleItem({
   checked: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { registerItem, activeIndex, checkedIndex } = useDropdown();
+  const { registerItem, activeStore, checkedIndex } = useDropdown();
   const shape = useShape();
   const CheckIcon = useIcon("check");
 
@@ -876,7 +877,7 @@ function RoleItem({
     return () => registerItem(index, null);
   }, [index, registerItem]);
 
-  const isActive = activeIndex === index;
+  const isActive = useFluidHoverSelect(activeStore, (i) => i === index);
   const highlighted = isActive || checked;
 
   return (

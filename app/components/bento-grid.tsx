@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ComponentEntry } from "@/lib/docs/components";
 import { previewMap } from "@/app/components/bento-previews";
 import { useReleaseMarks } from "@/lib/changelog/marks";
@@ -95,6 +95,49 @@ function useGridCols(): 1 | 2 | 3 | null {
   return cols;
 }
 
+/**
+ * How many tiles render their live preview from the start (bands 1 and 2,
+ * the first screen at xl). The rest mount as they come within
+ * LAZY_MARGIN of the viewport: a live preview brings its hover hooks,
+ * observers and loops, and a visitor who never scrolls shouldn't pay for
+ * thirty of them. Mounted once, a tile stays mounted.
+ */
+const EAGER_TILES = 5;
+const LAZY_MARGIN = "1200px 0px";
+
+function TileStage({ eager, children }: { eager: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(eager);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (mounted || !el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setMounted(true);
+      },
+      { rootMargin: LAZY_MARGIN }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [mounted]);
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "reveal-scroll flex size-full min-h-0 items-center justify-center",
+        // Below md the rows size to their previews: an empty stage holds
+        // roughly a preview's height so tiles don't all crowd into the
+        // margin at once and mount together.
+        !mounted && "max-md:min-h-[200px]"
+      )}
+    >
+      {mounted ? children : null}
+    </div>
+  );
+}
+
 interface BentoGridProps {
   components: ComponentEntry[];
 }
@@ -131,7 +174,7 @@ export function BentoGrid({ components }: BentoGridProps) {
           : undefined
       }
     >
-      {ordered.map(({ entry: c, side }) => {
+      {ordered.map(({ entry: c, side }, order) => {
         const Preview = previewMap[c.slug];
         if (!Preview) return null;
         // The wrapper is the grid item and the reveal-scroll section. The
@@ -162,9 +205,9 @@ export function BentoGrid({ components }: BentoGridProps) {
                 {/* The component follows its card in (a nested
                     reveal-scroll runs half a range behind). It fills the
                     stage and re-centers, so previews lay out as before. */}
-                <div className="reveal-scroll flex size-full min-h-0 items-center justify-center">
+                <TileStage eager={order < EAGER_TILES}>
                   <Preview />
-                </div>
+                </TileStage>
               </BentoTileContext.Provider>
             </BentoCard>
           </div>
