@@ -213,14 +213,9 @@ function labelParts(date: Date, locale: string | undefined, options: Intl.DateTi
   );
 }
 
-/** `Wed Oct 21`, or `Wed Oct 21, 2027` outside the current year. A year
- *  field beside the date passes `withYear` false: it shows the year. */
-export function formatDateLabel(
-  date: Date,
-  locale?: string,
-  now = new Date(),
-  withYear = date.getFullYear() !== now.getFullYear()
-): string {
+/** `Wed Oct 21, 2026`. A year field beside the date passes `withYear`
+ *  false (`Wed Oct 21`): it shows the year. */
+export function formatDateLabel(date: Date, locale?: string, withYear = true): string {
   return labelParts(date, locale, singleLabelOptions(withYear))
     .map((part) => part.value)
     .join("");
@@ -1230,7 +1225,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         ? formatRangeLabel(range, locale)
         : (placeholder ?? "Pick dates")
       : single
-        ? formatDateLabel(single, locale, now, yearPicker ? false : undefined)
+        ? formatDateLabel(single, locale, !yearPicker)
         : (placeholder ?? "Pick a date");
 
   // The date keeps the width of its widest possible label (and of the
@@ -1257,7 +1252,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       return widestLabelParts(sample, locale, options);
     }
     const date = singleTime !== undefined ? new Date(singleTime) : new Date(year, 0, 1);
-    const options = singleLabelOptions(!yearPicker && date.getFullYear() !== year);
+    const options = singleLabelOptions(!yearPicker);
     return widestLabelParts(labelParts(date, locale, options), locale, options);
   }, [mode, fromTime, toTime, singleTime, year, locale, yearPicker]);
   const labelPlaceholder =

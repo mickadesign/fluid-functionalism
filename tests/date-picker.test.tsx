@@ -225,17 +225,16 @@ describe("year field", () => {
   });
 
   it("drops the year from the label when asked", () => {
-    const now = new Date(2026, 0, 1);
-    expect(formatDateLabel(new Date(1990, 9, 21), "en-US", now, false)).toBe("Sun Oct 21");
+    expect(formatDateLabel(new Date(1990, 9, 21), "en-US", false)).toBe("Sun Oct 21");
   });
 });
 
 describe("date labels", () => {
   const now = new Date(2026, 9, 19);
 
-  it("reads Wed Oct 21, with the year outside the current one", () => {
-    expect(formatDateLabel(new Date(2026, 9, 21), "en-US", now)).toBe("Wed Oct 21");
-    expect(formatDateLabel(new Date(2027, 9, 21), "en-US", now)).toBe("Thu Oct 21, 2027");
+  it("reads Wed Oct 21, 2026, always with the year", () => {
+    expect(formatDateLabel(new Date(2026, 9, 21), "en-US")).toBe("Wed Oct 21, 2026");
+    expect(formatDateLabel(new Date(2027, 9, 21), "en-US")).toBe("Thu Oct 21, 2027");
   });
 
   it("reads a range as Oct 21 → Oct 24", () => {
@@ -279,7 +278,7 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
 
   it("opens on focus, and ArrowDown moves focus to the selected day", async () => {
     render(<Single />);
-    expect(trigger().value).toBe("Wed Oct 21");
+    expect(trigger().value).toBe("Wed Oct 21, 2026");
     await openAndEnter();
     await waitFor(() =>
       expect(document.activeElement?.getAttribute("aria-label")).toMatch(/October 21st, 2026/)
@@ -375,7 +374,7 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
     await waitFor(() => expect(trigger().getAttribute("aria-expanded")).toBe("false"), {
       timeout: 1000,
     });
-    expect(trigger().value).toBe("Fri Oct 23");
+    expect(trigger().value).toBe("Fri Oct 23, 2026");
   });
 
   it("commits a typed time on Enter", async () => {
