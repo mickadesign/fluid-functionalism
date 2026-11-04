@@ -148,7 +148,7 @@ describe("useFluidHoverSelect", () => {
           <Row index={i} />
         </Profiler>
       ));
-      const { container } = render(<List>{rows}</List>);
+      const { container, rerender } = render(<List>{rows}</List>);
       flushFrames();
 
       log.reset();
@@ -164,6 +164,18 @@ describe("useFluidHoverSelect", () => {
       act(() => setActive(null));
       expect(log.rendered()).toEqual(["row-04"]);
       expect(container.querySelector("[data-lit]")).toBeNull();
+
+      // A row that mounts while the highlight already sits on it reads the
+      // store on its first render.
+      act(() => setActive(20));
+      const late = (
+        <Profiler key={20} id="row-20" onRender={log.onRender}>
+          <Row index={20} />
+        </Profiler>
+      );
+      rerender(<List>{[...rows, late]}</List>);
+      flushFrames();
+      expect(container.querySelector("[data-lit]")?.getAttribute("data-row")).toBe("20");
     });
   }
 });

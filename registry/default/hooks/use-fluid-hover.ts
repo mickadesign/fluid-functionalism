@@ -296,7 +296,9 @@ export function useFluidHover<T extends HTMLElement>(
   );
   useIsoLayoutEffect(() => {
     activeIndexRef.current = activeIndex;
-    // Subscribed rows re-render in this same commit, before paint.
+    // The store lags `activeIndex` by this one effect, so a row rendering
+    // alongside the change reads the old value; subscribed rows re-render
+    // with the new one in this same commit, before paint.
     listenersRef.current.forEach((listener) => listener());
   }, [activeIndex]);
 

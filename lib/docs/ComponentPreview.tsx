@@ -108,7 +108,10 @@ export function ComponentPreview({
       .then(({ highlight }) => highlight(code))
       .then((html) => {
         if (!cancelled) setHighlighted({ code, html });
-      });
+      })
+      // A chunk that fails to load (offline, deploy skew) leaves the plain
+      // text in place rather than an unhandled rejection.
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

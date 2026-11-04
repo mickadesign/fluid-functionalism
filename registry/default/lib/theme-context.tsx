@@ -45,7 +45,9 @@ function swapTheme(apply: () => void) {
     // still tween inside it: hold them off until the cross-fade ends.
     const style = injectStyle(CROSS_FADE_CSS + NO_TRANSITIONS_CSS);
     const transition = document.startViewTransition(apply);
-    transition.finished.finally(() => style.remove());
+    // `finished` rejects when a newer swap skips this one; clean up either way.
+    const cleanup = () => style.remove();
+    transition.finished.then(cleanup, cleanup);
     return;
   }
   const style = injectStyle(NO_TRANSITIONS_CSS);
