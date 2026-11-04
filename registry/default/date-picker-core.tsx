@@ -238,28 +238,59 @@ function buildDate(year: number, month: number, day: number): Date | null {
   return date.getMonth() === month - 1 ? date : null;
 }
 
-/** 2-digit years read as this century: `26` is 2026. */
-function fullYear(digits: string) {
-  return digits.length <= 2 ? 2000 + Number(digits) : Number(digits);
+/** 2-digit years land within 20 years ahead of `now`, else the century
+ *  before: in 2026, `26` is 2026, `46` is 2046, `89` is 1989. */
+function fullYear(digits: string, now: Date) {
+  if (digits.length > 2) return Number(digits);
+  const year = 2000 + Number(digits);
+  return year > now.getFullYear() + 20 ? year - 100 : year;
 }
 
-/** The locale's month names, long and short, lowercased without dots. */
-function monthNames(locale: string | undefined): string[][] {
-  const names = (l: string | undefined) =>
+interface LocaleWords {
+  /** Month names, long and short, lowercased without dots. */
+  months: string[][];
+  /** Weekday names, long and short, the same way. */
+  weekdays: Set<string>;
+  /** Whether a numeric date leads with the day (`12/11`). */
+  dayFirst: boolean;
+}
+
+const localeWordsCache = new Map<string, LocaleWords>();
+
+/** The words a typed date can hold in a locale, English included. Built
+ *  once per locale: Intl formatters are the costly part of a keystroke. */
+function localeWords(locale: string | undefined): LocaleWords {
+  const key = locale ?? "";
+  const cached = localeWordsCache.get(key);
+  if (cached) return cached;
+  const clean = (name: string) => name.toLowerCase().replace(/\./g, "");
+  const months = (l: string | undefined) =>
     (["long", "short"] as const).map((month) => {
       const fmt = new Intl.DateTimeFormat(l, { month });
-      return Array.from({ length: 12 }, (_, m) => fmt.format(new Date(2026, m, 1)).toLowerCase().replace(/\./g, ""));
+      return Array.from({ length: 12 }, (_, m) => clean(fmt.format(new Date(2026, m, 1))));
     });
-  // English names read in any locale.
-  return [...names(locale), ...names("en-US")];
+  const weekdays = (l: string | undefined) =>
+    (["long", "short"] as const).flatMap((weekday) => {
+      const fmt = new Intl.DateTimeFormat(l, { weekday });
+      return Array.from({ length: 7 }, (_, d) => clean(fmt.format(new Date(2026, 0, 4 + d))));
+    });
+  const order = new Intl.DateTimeFormat(locale, { day: "numeric", month: "numeric" })
+    .formatToParts(new Date(2026, 10, 12))
+    .find((part) => part.type === "day" || part.type === "month");
+  const words: LocaleWords = {
+    months: [...months(locale), ...months("en-US")],
+    weekdays: new Set([...weekdays(locale), ...weekdays("en-US")]),
+    dayFirst: order?.type === "day",
+  };
+  localeWordsCache.set(key, words);
+  return words;
 }
 
 /**
  * Reads a typed date: `Nov 12`, `12 nov 2026`, `Wed Nov 12`, `11/12`,
  * `11/12/26` (day and month in the locale's order), `2026-11-12`, `today`,
  * `tomorrow`. A missing year takes the reference's (else this year's).
- * Returns null when it
- * isn't a date. Exported for the unit tests.
+ * Returns null when it isn't a date. Exported for the unit tests.
  */
 export function parseDate(input: string, locale?: string, reference?: Date, now = new Date()): Date | null {
   const refYear = (reference ?? now).getFullYear();
@@ -271,19 +302,24 @@ export function parseDate(input: string, locale?: string, reference?: Date, now 
   const iso = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(s);
   if (iso) return buildDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
   const numeric = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2}|\d{4}))?$/.exec(s);
+  const words = localeWords(locale);
   if (numeric) {
-    const order = new Intl.DateTimeFormat(locale, { day: "numeric", month: "numeric" })
-      .formatToParts(new Date(2026, 10, 12))
-      .filter((part) => part.type === "day" || part.type === "month")
-      .map((part) => part.type);
     const [a, b] = [Number(numeric[1]), Number(numeric[2])];
-    const [month, day] = order[0] === "day" ? [b, a] : [a, b];
-    return buildDate(numeric[3] ? fullYear(numeric[3]) : refYear, month, day);
+    const [month, day] = words.dayFirst ? [b, a] : [a, b];
+    return buildDate(numeric[3] ? fullYear(numeric[3], now) : refYear, month, day);
   }
-  // Words: a month name (3 letters or more), a day, maybe a year. Other
-  // words (a weekday) are skipped.
-  const names = monthNames(locale);
+  // Words: a month name (3 letters or more), a day, maybe a year. A word
+  // that is exactly a weekday (`mar.` is mardi in French, before `nov.`)
+  // names the month only when nothing else does (`mar 3` in Spanish).
+  const monthOf = (word: string) => {
+    for (const list of words.months) {
+      const i = list.findIndex((name) => name === word || name.startsWith(word));
+      if (i >= 0) return i + 1;
+    }
+    return null;
+  };
   let month: number | null = null;
+  let weekdayMonth: number | null = null;
   const numbers: string[] = [];
   for (const token of s.split(/[\s/-]+/).filter(Boolean)) {
     if (/^\d+(st|nd|rd|th|\.)?$/.test(token)) {
@@ -292,20 +328,18 @@ export function parseDate(input: string, locale?: string, reference?: Date, now 
     }
     const word = token.replace(/\./g, "");
     if (month !== null || word.length < 3) continue;
-    for (const list of names) {
-      const i = list.findIndex((name) => name === word || name.startsWith(word));
-      if (i >= 0) {
-        month = i + 1;
-        break;
-      }
-    }
+    if (words.weekdays.has(word)) weekdayMonth ??= monthOf(word);
+    else month = monthOf(word);
   }
+  month ??= weekdayMonth;
   if (month === null || numbers.length === 0 || numbers.length > 2) return null;
-  const dayDigits = numbers.find((n) => n.length <= 2);
-  const yearDigits = numbers.find((n) => n !== dayDigits);
+  // The day is the first number of 1 or 2 digits; the other is the year.
+  const dayIndex = numbers.findIndex((n) => n.length <= 2);
+  const dayDigits = numbers[dayIndex];
+  const yearDigits = numbers.find((_, i) => i !== dayIndex);
   // A year mid-typing (`2`, `203`) isn't one yet: the calendar stays put.
   if (!dayDigits || (yearDigits && yearDigits.length !== 2 && yearDigits.length !== 4)) return null;
-  return buildDate(yearDigits ? fullYear(yearDigits) : refYear, month, Number(dayDigits));
+  return buildDate(yearDigits ? fullYear(yearDigits, now) : refYear, month, Number(dayDigits));
 }
 
 /** `2026-10-21`, from the date's local parts (not UTC). */
@@ -1208,6 +1242,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       if (editable && popupContentRef.current?.contains(document.activeElement)) {
         refocusRef.current = true;
         dateInputRef.current?.focus();
+        // Focus fires onFocus synchronously; if it didn't (the field went
+        // disabled), the flag must not swallow the next open.
+        refocusRef.current = false;
       }
     }
     setOpenState(next);
@@ -1653,7 +1690,11 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     <TimeField
       Popover={Popover}
       value={single ? single.getFullYear() : null}
-      onCommit={(y) => setValue(withYear(single ?? now, y))}
+      onCommit={(y) => {
+        // A year that lands on a day the calendar can't pick leaves the date.
+        const next = withYear(single ?? new Date(), y);
+        if (!isDayUnavailable(next, calendarProps ?? {})) setValue(next);
+      }}
       slots={yearSlots}
       hourCycle={hourCycle}
       locale={locale}

@@ -200,6 +200,21 @@ describe("typed dates", () => {
     expect(parseDate("12 nov", "fr-FR", ref)).toEqual(new Date(2026, 10, 12));
   });
 
+  it("skips a weekday that also starts a month name", () => {
+    // mar. is mardi in French, mar is martes in Spanish: the month is nov.
+    expect(parseDate("mar. 4 nov. 2026", "fr-FR", ref)).toEqual(new Date(2026, 10, 4));
+    expect(parseDate("mar, 4 nov", "es-ES", ref)).toEqual(new Date(2026, 10, 4));
+    // Alone, the word is still the month.
+    expect(parseDate("mar 4", "es-ES", ref)).toEqual(new Date(2026, 2, 4));
+  });
+
+  it("reads 2-digit years within 20 years ahead, else last century", () => {
+    const now = new Date(2026, 0, 1);
+    expect(parseDate("3/4/89", "en-US", ref, now)).toEqual(new Date(1989, 2, 4));
+    expect(parseDate("3/4/46", "en-US", ref, now)).toEqual(new Date(2046, 2, 4));
+    expect(parseDate("Nov 12 12", "en-US", ref, now)).toEqual(new Date(2012, 10, 12));
+  });
+
   it("reads today and tomorrow", () => {
     const now = new Date(2026, 9, 31);
     expect(parseDate("tomorrow", "en-US", ref, now)).toEqual(new Date(2026, 10, 1));
