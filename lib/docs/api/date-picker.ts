@@ -26,6 +26,18 @@ export const datePickerValueProps: PropDef[] = [
     type: "DatePickerPreset[]",
     description: "Range mode: `{ label, range }` shortcuts beside the calendar.",
   },
+  {
+    name: "yearPicker",
+    type: "boolean",
+    default: "false",
+    description: "Single mode: a year field after the date. Picking a year keeps the month and day.",
+  },
+  {
+    name: "years",
+    type: "{ from: number; to: number }",
+    default: "100 back, 10 ahead",
+    description: "The years the year list offers.",
+  },
 ];
 
 /** The time fields beside the date. */
@@ -137,7 +149,7 @@ export const datePickerFormProps: PropDef[] = [
   {
     name: "id",
     type: "string",
-    description: "The date trigger's id, for `<label htmlFor>`.",
+    description: "The date field's id (the trigger in range mode), for `<label htmlFor>`.",
   },
   {
     name: "aria-label",

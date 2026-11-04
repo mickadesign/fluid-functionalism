@@ -115,7 +115,7 @@ describe("date picker preset codec", () => {
     expect(back.preset.pickerSize).toBe("compact");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"pbmoiL"`);
+    expect(code).toMatchInlineSnapshot(`"pc1M0yT"`);
   });
 
   it("keeps version a codes side by side after auto became the default", () => {
@@ -123,6 +123,16 @@ describe("date picker preset codec", () => {
     expect(res.ok).toBe(true);
     expect(res.preset.orientation).toBe("horizontal");
     expect(decodeDatePickerPreset("pb0").preset.orientation).toBe("auto");
+  });
+
+  it("keeps version b codes after the year field arrived", () => {
+    const res = decodeDatePickerPreset("pbZCG8");
+    expect(res.ok).toBe(true);
+    expect(res.preset.year).toBe(false);
+    expect(res.preset.time).toBe("timeRange");
+    const withYear = encodeDatePickerPreset({ year: true });
+    expect(withYear.startsWith("pc")).toBe(true);
+    expect(decodeDatePickerPreset(withYear).preset.year).toBe(true);
   });
 });
 

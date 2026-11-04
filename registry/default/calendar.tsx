@@ -24,6 +24,7 @@ import {
   useIsPresent,
   useMotionValue,
   useReducedMotion,
+  type MotionValue,
 } from "motion/react";
 import {
   DayPicker,
@@ -119,6 +120,15 @@ export function resolveDayMatchers({
   };
 }
 
+/** Whether a day can't be picked: booked, outside `available`, or
+ *  `disabled`. For a date typed outside the grid. */
+export function isDayUnavailable(
+  date: Date,
+  matchers: Parameters<typeof resolveDayMatchers>[0]
+) {
+  return dateMatchModifiers(date, resolveDayMatchers(matchers).disabled);
+}
+
 /** ISO 8601 week numbers by default: they need a Monday start, so the
  *  Monday start comes with them unless the caller picked a Sunday week, in
  *  which case the locale's own numbering applies. Exported for the test. */
@@ -160,6 +170,7 @@ interface CalendarContextValue {
   navHidden: boolean;
   /** Extra content under each day's number (a price, a count). */
   dayDetail?: (date: Date) => ReactNode;
+  animateMonthChange: boolean;
 }
 
 const CalendarContext = createContext<CalendarContextValue | null>(null);
@@ -179,6 +190,14 @@ interface GridContextValue {
   previewEnd: number | null;
   direction: number;
   reduceMotion: boolean;
+  /** Month changes swap in place instead of sliding. */
+  jump: boolean;
+  /** The months on screen just before the latest change, by time: the only
+   *  leaving months still shown. Null before any change. */
+  previousMonths: number[] | null;
+  /** Each month panel's slide offset, by `slot:month`, so a month entering
+   *  a slot starts from the one it replaces. */
+  panelMotion: Map<string, MotionValue<number>>;
   /** Side by side months: how far one month travels on a month change (its
    *  width plus the gap), so the grids move as one strip. Null otherwise. */
   stride: number | null;
@@ -212,14 +231,40 @@ const PanelPresentContext = createContext(true);
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
- * True for a month panel that is sliding out of one slot while the same month
- * slides into the neighbouring slot. Both copies share a path, and their
- * translucent range bands and text would stack into a darker blink, so the
- * outgoing copy hides and the incoming one carries the month.
+ * True for a leaving month panel that should not be seen:
+ * - It slides out of one slot while the same month slides into the
+ *   neighbouring slot. Both copies share a path, and their translucent range
+ *   bands and text would stack into a darker blink, so the outgoing copy
+ *   hides and the incoming one carries the month.
+ * - It left before the latest change (quick chevron presses): only the month
+ *   this slot showed just before that change slides out, so presses never
+ *   pile up months still finishing their exit. Checked per slot: side by
+ *   side, a month two presses old can still be leaving the right slot while
+ *   the same month was the left slot's last.
  */
-function useShownElsewhere(monthTime: number, present: boolean, stride: number | null) {
+function useShownElsewhere(monthTime: number, present: boolean, stride: number | null, slot: number) {
   const { months } = useDayPicker();
-  return !present && stride !== null && months.some((m) => m.date.getTime() === monthTime);
+  const { previousMonths } = useGridContext();
+  if (present) return false;
+  if (previousMonths && previousMonths[slot] !== monthTime) return true;
+  return stride !== null && months.some((m) => m.date.getTime() === monthTime);
+}
+
+/** The travel for the month panels in one slot: the direction, and where
+ *  the month this slot showed before the latest change is right now. */
+function useTravel(slot: number): Travel {
+  const { direction, previousMonths, panelMotion } = useGridContext();
+  return useMemo(
+    () => ({
+      d: direction,
+      from: () => {
+        const replaced = previousMonths?.[slot];
+        const mv = replaced === undefined ? undefined : panelMotion.get(`${slot}:${replaced}`);
+        return mv ? { at: mv.get(), v: mv.getVelocity() } : AT_REST;
+      },
+    }),
+    [direction, previousMonths, panelMotion, slot]
+  );
 }
 
 const INDEX_ATTR = "data-calendar-index";
@@ -231,28 +276,65 @@ const INDEX_ATTR = "data-calendar-index";
  * the same slide over a third of the stride, crossfading where the two
  * meet. `custom` is the direction of travel, read from AnimatePresence so
  * an exiting panel always gets the latest one.
+ *
+ * A change can land mid-slide (quick chevron presses). The month entering a
+ * slot then starts one travel past where the month it replaces is right
+ * now, at that month's speed, so the two stay locked as one strip instead
+ * of the newcomer starting from rest a full stride out, overlapping the
+ * month still on its way.
  */
 const SINGLE_MONTH_TRAVEL = 1 / 3;
+
+interface Travel {
+  /** 1 forward, -1 back. */
+  d: number;
+  /** The replaced month's offset and velocity in this slot, read when the
+   *  newcomer mounts. */
+  from: () => { at: number; v: number };
+}
+
+const AT_REST = { at: 0, v: 0 };
 
 function slideVariants(
   offset: number,
   stride: number | null,
   axis: "x" | "y" = "x",
-  single = false
+  single = false,
+  jump = false
 ) {
+  // A jump swaps the months in place, in one frame.
+  if (jump) {
+    const instant = { duration: 0 };
+    return {
+      enter: { opacity: 0, x: 0, y: 0 },
+      center: { opacity: 1, x: 0, y: 0, transition: instant },
+      exit: { opacity: 0, x: 0, y: 0, transition: instant },
+    };
+  }
   const carousel = stride !== null && offset > 0;
   const distance = carousel ? (single ? stride * SINGLE_MONTH_TRAVEL : stride) : offset;
   // Full-stride grids hand over in one path; shorter travel overlaps them.
   const solid = carousel && !single;
-  const exitTransition = carousel ? spring.moderate : spring.moderate.exit;
+  // A whole month width is the biggest move in the calendar, so the strip
+  // rides the slow tier (moderate covered it in a few frames and read as a
+  // jump). Both grids take the same spring and stay one strip. Shorter
+  // travel keeps moderate.
+  const travel = solid ? spring.slow : spring.moderate;
+  const exitTransition = carousel ? travel : spring.moderate.exit;
   // Stacked months travel up and down, like the layout they sit in.
   const at = (v: number) => (axis === "x" ? { x: v } : { y: v });
   return {
-    enter: (d: number) => ({ opacity: solid ? 1 : 0, ...at(d * distance) }),
-    center: { opacity: 1, x: 0, y: 0, transition: spring.moderate },
-    exit: (d: number) => ({
+    enter: (t: Travel) => ({ opacity: solid ? 1 : 0, ...at(t.d * distance + t.from().at) }),
+    center: (t: Travel) => ({
+      opacity: 1,
+      x: 0,
+      y: 0,
+      // The replaced month's speed rides along on the travel axis only.
+      transition: { default: travel, [axis]: { ...travel, velocity: t.from().v } },
+    }),
+    exit: (t: Travel) => ({
       opacity: solid ? 1 : 0,
-      ...at(-d * distance),
+      ...at(-t.d * distance),
       transition: exitTransition,
     }),
   };
@@ -342,10 +424,13 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
   // grid's geometry (the keyboard crossing a month boundary), and the grids
   // slide in the direction of travel.
   const [lastMonthKey, setLastMonthKey] = useState(monthKey);
+  const [previousKey, setPreviousKey] = useState<number | null>(null);
+  const [panelMotion] = useState(() => new Map<string, MotionValue<number>>());
   const [direction, setDirection] = useState(0);
   const [snap, setSnap] = useState(false);
   if (monthKey !== lastMonthKey) {
     setLastMonthKey(monthKey);
+    setPreviousKey(lastMonthKey);
     setDirection(monthKey > lastMonthKey ? 1 : -1);
     setSnap(true);
   }
@@ -380,6 +465,11 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       inertRef.current = false;
       onMouseEnter();
     }
+    // A day's rounded corners leave slivers of its cell outside the button.
+    // Crossing one diagonally (the pointer moving down a week to pick an end)
+    // keeps the lit day: putting it out would start a new hover session, and
+    // a range pick then slides its end out from the start day again.
+    if (target.matches?.('[role="gridcell"]') && target.querySelector(`[${INDEX_ATTR}]`)) return;
     onMouseMove(e);
   };
 
@@ -584,6 +674,14 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
 
   const sharedRows = twoUp ? Math.max(...months.map((m) => m.weeks.length)) : null;
 
+  const previousMonths = useMemo(() => {
+    if (previousKey === null) return null;
+    const first = new Date(previousKey);
+    return Array.from({ length: cal.numberOfMonths }, (_, i) =>
+      new Date(first.getFullYear(), first.getMonth() + i, 1).getTime()
+    );
+  }, [previousKey, cal.numberOfMonths]);
+
   const gridCtx = useMemo(
     () => ({
       registerItem,
@@ -592,6 +690,9 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       previewEnd,
       direction,
       reduceMotion,
+      jump: !cal.animateMonthChange,
+      previousMonths,
+      panelMotion,
       stride,
       stacked,
       sharedRows,
@@ -608,6 +709,9 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
       previewEnd,
       direction,
       reduceMotion,
+      cal.animateMonthChange,
+      previousMonths,
+      panelMotion,
       stride,
       stacked,
       sharedRows,
@@ -945,6 +1049,8 @@ function CaptionText({
   offset,
   stride,
   centered,
+  travel,
+  slot,
   children,
 }: {
   compact: boolean;
@@ -952,12 +1058,14 @@ function CaptionText({
   offset: number;
   stride: number | null;
   centered: boolean;
+  travel: Travel;
+  slot: number;
   children: ReactNode;
 }) {
   const present = useIsPresent();
   const cal = useCalendarContext();
-  const { direction, stacked } = useGridContext();
-  const shownElsewhere = useShownElsewhere(monthTime, present, stride);
+  const { stacked, jump } = useGridContext();
+  const shownElsewhere = useShownElsewhere(monthTime, present, stride, slot);
   return (
     <motion.span
       role={present ? "status" : undefined}
@@ -973,8 +1081,8 @@ function CaptionText({
         typeClass("body", compact ? "compact" : "default")
       )}
       style={{ fontVariationSettings: fontWeights.semibold }}
-      variants={slideVariants(offset, stride, stacked ? "y" : "x", cal.numberOfMonths === 1)}
-      custom={direction}
+      variants={slideVariants(offset, stride, stacked ? "y" : "x", cal.numberOfMonths === 1, jump)}
+      custom={travel}
       initial="enter"
       animate="center"
       exit="exit"
@@ -1003,6 +1111,7 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
   const cal = useCalendarContext();
   const { formatters } = useDayPicker();
   const grid = useGridContext();
+  const travel = useTravel(displayIndex);
   const last = displayIndex === cal.numberOfMonths - 1;
   const first = displayIndex === 0;
   const twoUp = cal.numberOfMonths > 1 && cal.orientation === "horizontal";
@@ -1030,7 +1139,7 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
     // No clip: the label is trimmed to cap height, so a clip would shave its
     // ascenders and round overshoots; the 10px slide fades in and out anyway.
     <span className="relative inline-grid">
-      <AnimatePresence initial={false} custom={grid.direction}>
+      <AnimatePresence initial={false} custom={travel}>
         <CaptionText
           key={key}
           monthTime={key}
@@ -1038,6 +1147,8 @@ function MonthCaption({ calendarMonth, displayIndex, className, style, ...props 
           offset={offset}
           stride={grid.stride}
           centered={twoUp}
+          travel={travel}
+          slot={displayIndex}
         >
           {formatters.formatCaption(
             calendarMonth.date,
@@ -1235,6 +1346,8 @@ function WeekNumberHeader({ className, style, ...props }: HTMLAttributes<HTMLEle
 function Weeks({ className, style, children }: HTMLAttributes<HTMLElement>) {
   const month = useContext(MonthContext);
   const grid = useGridContext();
+  const cal = useCalendarContext();
+  const fullStride = grid.stride !== null && cal.numberOfMonths > 1;
   const height = useMotionValue<number | "auto">("auto");
   // The month the height was last taken from, and the height it settles on.
   const measuredRef = useRef<{ month: number; h: number } | null>(null);
@@ -1247,7 +1360,7 @@ function Weeks({ className, style, children }: HTMLAttributes<HTMLElement>) {
     (h: number, monthTime: number) => {
       const last = measuredRef.current;
       measuredRef.current = { month: monthTime, h };
-      if (!last || grid.reduceMotion || last.month === monthTime) {
+      if (!last || grid.reduceMotion || grid.jump || last.month === monthTime) {
         if (last?.month === monthTime && last.h === h) return;
         height.jump(h);
         setClip(false);
@@ -1255,13 +1368,16 @@ function Weeks({ className, style, children }: HTMLAttributes<HTMLElement>) {
       }
       if (last.h === h) return;
       setClip(true);
-      animate(height, h, { ...spring.moderate, onComplete: () => setClip(false) });
+      // The same spring as the months sliding, so the box lands with them.
+      animate(height, h, { ...(fullStride ? spring.slow : spring.moderate), onComplete: () => setClip(false) });
     },
-    [grid.reduceMotion, height]
+    [grid.reduceMotion, grid.jump, height, fullStride]
   );
 
   const key = month ? month.calendarMonth.date.getTime() : 0;
   const offset = grid.reduceMotion ? 0 : 10;
+  const slot = month?.displayIndex ?? 0;
+  const travel = useTravel(slot);
 
   return (
     <motion.div
@@ -1273,10 +1389,12 @@ function Weeks({ className, style, children }: HTMLAttributes<HTMLElement>) {
       className={cn("relative grid", clip && !grid.stacked && "[overflow-y:clip]")}
       style={{ height }}
     >
-      <AnimatePresence initial={false} custom={grid.direction}>
+      <AnimatePresence initial={false} custom={travel}>
         <WeeksPanel
           key={key}
           monthTime={key}
+          slot={slot}
+          travel={travel}
           className={className}
           style={style}
           offset={offset}
@@ -1295,6 +1413,8 @@ function WeeksPanel({
   style,
   children,
   monthTime,
+  slot,
+  travel,
   offset,
   stride,
   onHeight,
@@ -1303,6 +1423,8 @@ function WeeksPanel({
   style?: CSSProperties;
   children: ReactNode;
   monthTime: number;
+  slot: number;
+  travel: Travel;
   offset: number;
   stride: number | null;
   onHeight: (h: number, monthTime: number) => void;
@@ -1311,9 +1433,19 @@ function WeeksPanel({
   const cal = useCalendarContext();
   const month = useContext(MonthContext);
   const { formatters, labels } = useDayPicker();
-  const { direction, stacked, sharedRows } = useGridContext();
-  const shownElsewhere = useShownElsewhere(monthTime, present, stride);
+  const { stacked, sharedRows, jump, panelMotion } = useGridContext();
+  const shownElsewhere = useShownElsewhere(monthTime, present, stride, slot);
   const ref = useRef<HTMLDivElement>(null);
+  // The slide offset, published for the month that replaces this one in
+  // its slot (it may arrive mid-slide).
+  const slide = useMotionValue(0);
+  useIsoLayoutEffect(() => {
+    const id = `${slot}:${monthTime}`;
+    panelMotion.set(id, slide);
+    return () => {
+      if (panelMotion.get(id) === slide) panelMotion.delete(id);
+    };
+  }, [panelMotion, slot, monthTime, slide]);
   // Side by side, the weekday row travels with its days, so a slide moves
   // each month as one block instead of sliding days under fixed labels. Known
   // before the stride is measured, so the row is there on the first paint.
@@ -1340,9 +1472,9 @@ function WeeksPanel({
           shownElsewhere && "invisible",
           className
         )}
-        style={style}
-        variants={slideVariants(offset, stride, stacked ? "y" : "x", cal.numberOfMonths === 1)}
-        custom={direction}
+        style={{ ...style, [stacked ? "y" : "x"]: slide }}
+        variants={slideVariants(offset, stride, stacked ? "y" : "x", cal.numberOfMonths === 1, jump)}
+        custom={travel}
         initial="enter"
         animate="center"
         exit="exit"
@@ -1719,6 +1851,10 @@ interface CalendarBaseProps extends PassThrough {
   showOutsideDays?: boolean;
   /** Pins the calendar to one step of the size ladder. */
   size?: SizeVariant;
+  /** Month changes slide in the direction of travel. False swaps them in
+   *  place, for a month set from outside many times in a row (a date being
+   *  typed). Default true. */
+  animateMonthChange?: boolean;
 }
 
 interface CalendarSingleProps extends CalendarBaseProps {
@@ -1764,6 +1900,7 @@ function Calendar(props: CalendarProps) {
     className,
     style,
     autoFocus,
+    animateMonthChange = true,
     ...rest
   } = props as CalendarBaseProps & {
     mode?: "single" | "range";
@@ -1857,8 +1994,9 @@ function Calendar(props: CalendarProps) {
       autoFocus: !!autoFocus,
       navHidden: !!rest.hideNavigation || !!rest.disableNavigation,
       dayDetail,
+      animateMonthChange,
     }),
-    [compact, fill, shape.variant, mode, value, range, picking, matchers.disabled, resolvedOrientation, numberOfMonths, showOutsideDays, showWeekNumber, autoFocus, rest.hideNavigation, rest.disableNavigation, dayDetail]
+    [compact, fill, shape.variant, mode, value, range, picking, matchers.disabled, resolvedOrientation, numberOfMonths, showOutsideDays, showWeekNumber, autoFocus, rest.hideNavigation, rest.disableNavigation, dayDetail, animateMonthChange]
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

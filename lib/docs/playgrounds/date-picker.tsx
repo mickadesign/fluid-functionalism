@@ -64,6 +64,7 @@ export function demoPresets(today = new Date()): DatePickerPreset[] {
 export function buildDatePickerPlaygroundCode(o: PlayState): string {
   const range = o.mode === "range";
   const time = !range && o.time !== "none" ? o.time : "none";
+  const year = !range && o.year;
   const calendarProps = [
     ...(o.days === "booked" ? ["booked", "disabled: { before: new Date() }"] : []),
     ...(o.weekNumbers ? ["showWeekNumber: true"] : []),
@@ -73,6 +74,7 @@ export function buildDatePickerPlaygroundCode(o: PlayState): string {
     ...(o.variant === "ghost" ? [`variant="ghost"`] : []),
     `value={${range ? "range" : "date"}}`,
     `onValueChange={${range ? "setRange" : "setDate"}}`,
+    ...(year ? ["yearPicker"] : []),
     ...(time === "time" ? ["time={time}", "onTimeChange={setTime}"] : []),
     ...(time === "timeRange" ? ["timeRange={time}", "onTimeRangeChange={setTime}"] : []),
     ...(time !== "none" && o.step !== "15" ? [`step={${o.step}}`] : []),
@@ -133,6 +135,7 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
       mode,
       variant: pick(["outline", "ghost"] as const),
       time: pick(["none", "time", "timeRange"] as const),
+      year: Math.random() > 0.7,
       presets: Math.random() > 0.5,
       months: Math.random() > 0.7 ? (mode === "range" ? "1" : "2") : defaultMonths(mode),
       orientation: pick(["auto", "horizontal", "vertical"] as const),
@@ -163,6 +166,7 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
     disabled: state.disabled,
     size: state.pickerSize === "site" ? undefined : state.pickerSize,
   };
+  const yearPicker = !range_ && state.year;
   const picker = range_ ? (
     <DatePicker
       key="range"
@@ -173,18 +177,27 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
       presets={state.presets ? presets : undefined}
     />
   ) : state.time === "time" ? (
-    <DatePicker key="time" {...shared} value={date} onValueChange={setDate} time={time} onTimeChange={setTime} />
+    <DatePicker
+      key="time"
+      {...shared}
+      value={date}
+      onValueChange={setDate}
+      yearPicker={yearPicker}
+      time={time}
+      onTimeChange={setTime}
+    />
   ) : state.time === "timeRange" ? (
     <DatePicker
       key="timeRange"
       {...shared}
       value={date}
       onValueChange={setDate}
+      yearPicker={yearPicker}
       timeRange={timeRange}
       onTimeRangeChange={setTimeRange}
     />
   ) : (
-    <DatePicker key="single" {...shared} value={date} onValueChange={setDate} />
+    <DatePicker key="single" {...shared} value={date} onValueChange={setDate} yearPicker={yearPicker} />
   );
 
   const controls = (
@@ -213,6 +226,13 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
           ]}
         />
       </PlayField>
+      <Switch
+        label="Year"
+        checked={state.year}
+        disabled={range_}
+        onToggle={() => set("year", !state.year)}
+        className={PLAY_SWITCH}
+      />
       <PlayField label="Time" disabled={range_}>
         <PlaySelect
           value={state.time}

@@ -30,6 +30,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Calendar,
   WEEK_COL_RATIO,
+  isDayUnavailable,
   type CalendarOrientation,
   type CalendarProps,
   type DateRange,
@@ -212,9 +213,14 @@ function labelParts(date: Date, locale: string | undefined, options: Intl.DateTi
   );
 }
 
-/** `Wed Oct 21`, or `Wed Oct 21, 2027` outside the current year. */
-export function formatDateLabel(date: Date, locale?: string, now = new Date()): string {
-  const withYear = date.getFullYear() !== now.getFullYear();
+/** `Wed Oct 21`, or `Wed Oct 21, 2027` outside the current year. A year
+ *  field beside the date passes `withYear` false: it shows the year. */
+export function formatDateLabel(
+  date: Date,
+  locale?: string,
+  now = new Date(),
+  withYear = date.getFullYear() !== now.getFullYear()
+): string {
   return labelParts(date, locale, singleLabelOptions(withYear))
     .map((part) => part.value)
     .join("");
@@ -227,6 +233,84 @@ export function formatRangeLabel(range: DateRange, locale?: string, now = new Da
   const fmt = new Intl.DateTimeFormat(locale, rangeLabelOptions(withYear));
   if (!range.to) return `${fmt.format(range.from)} →`;
   return `${fmt.format(range.from)} → ${fmt.format(range.to)}`;
+}
+
+const RELATIVE_DAYS: Record<string, number> = { today: 0, tomorrow: 1, yesterday: -1 };
+
+function buildDate(year: number, month: number, day: number): Date | null {
+  if (month < 1 || month > 12 || day < 1) return null;
+  const date = new Date(year, month - 1, day);
+  return date.getMonth() === month - 1 ? date : null;
+}
+
+/** 2-digit years read as this century: `26` is 2026. */
+function fullYear(digits: string) {
+  return digits.length <= 2 ? 2000 + Number(digits) : Number(digits);
+}
+
+/** The locale's month names, long and short, lowercased without dots. */
+function monthNames(locale: string | undefined): string[][] {
+  const names = (l: string | undefined) =>
+    (["long", "short"] as const).map((month) => {
+      const fmt = new Intl.DateTimeFormat(l, { month });
+      return Array.from({ length: 12 }, (_, m) => fmt.format(new Date(2026, m, 1)).toLowerCase().replace(/\./g, ""));
+    });
+  // English names read in any locale.
+  return [...names(locale), ...names("en-US")];
+}
+
+/**
+ * Reads a typed date: `Nov 12`, `12 nov 2026`, `Wed Nov 12`, `11/12`,
+ * `11/12/26` (day and month in the locale's order), `2026-11-12`, `today`,
+ * `tomorrow`. A missing year takes the reference's (else this year's).
+ * Returns null when it
+ * isn't a date. Exported for the unit tests.
+ */
+export function parseDate(input: string, locale?: string, reference?: Date, now = new Date()): Date | null {
+  const refYear = (reference ?? now).getFullYear();
+  const s = input.trim().toLowerCase().replace(/,/g, " ");
+  if (!s) return null;
+  if (s in RELATIVE_DAYS) {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + RELATIVE_DAYS[s]);
+  }
+  const iso = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(s);
+  if (iso) return buildDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  const numeric = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2}|\d{4}))?$/.exec(s);
+  if (numeric) {
+    const order = new Intl.DateTimeFormat(locale, { day: "numeric", month: "numeric" })
+      .formatToParts(new Date(2026, 10, 12))
+      .filter((part) => part.type === "day" || part.type === "month")
+      .map((part) => part.type);
+    const [a, b] = [Number(numeric[1]), Number(numeric[2])];
+    const [month, day] = order[0] === "day" ? [b, a] : [a, b];
+    return buildDate(numeric[3] ? fullYear(numeric[3]) : refYear, month, day);
+  }
+  // Words: a month name (3 letters or more), a day, maybe a year. Other
+  // words (a weekday) are skipped.
+  const names = monthNames(locale);
+  let month: number | null = null;
+  const numbers: string[] = [];
+  for (const token of s.split(/[\s/-]+/).filter(Boolean)) {
+    if (/^\d+(st|nd|rd|th|\.)?$/.test(token)) {
+      numbers.push(token.replace(/\D/g, ""));
+      continue;
+    }
+    const word = token.replace(/\./g, "");
+    if (month !== null || word.length < 3) continue;
+    for (const list of names) {
+      const i = list.findIndex((name) => name === word || name.startsWith(word));
+      if (i >= 0) {
+        month = i + 1;
+        break;
+      }
+    }
+  }
+  if (month === null || numbers.length === 0 || numbers.length > 2) return null;
+  const dayDigits = numbers.find((n) => n.length <= 2);
+  const yearDigits = numbers.find((n) => n !== dayDigits);
+  // A year mid-typing (`2`, `203`) isn't one yet: the calendar stays put.
+  if (!dayDigits || (yearDigits && yearDigits.length !== 2 && yearDigits.length !== 4)) return null;
+  return buildDate(yearDigits ? fullYear(yearDigits) : refYear, month, Number(dayDigits));
 }
 
 /** `2026-10-21`, from the date's local parts (not UTC). */
@@ -364,7 +448,26 @@ function useSegment(scope: SegmentScope, index: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Time field: an editable time with its own slot-list popover
+// Year helpers (pure, exported for the unit tests)
+// ---------------------------------------------------------------------------
+
+/** Reads a typed year: four digits inside the list, else null. */
+export function parseYear(input: string, from: number, to: number): number | null {
+  const s = input.trim();
+  if (!/^\d{4}$/.test(s)) return null;
+  const year = Number(s);
+  return year >= from && year <= to ? year : null;
+}
+
+/** The same month and day in another year; Feb 29 lands on Feb 28. */
+export function withYear(date: Date, year: number): Date {
+  const lastDay = new Date(year, date.getMonth() + 1, 0).getDate();
+  return new Date(year, date.getMonth(), Math.min(date.getDate(), lastDay));
+}
+
+// ---------------------------------------------------------------------------
+// Time field: an editable time with its own slot-list popover. The year
+// field is the same field over years, with its own `format` and `parse`.
 // ---------------------------------------------------------------------------
 
 interface TimeFieldProps {
@@ -374,6 +477,10 @@ interface TimeFieldProps {
   slots: TimeSlot[];
   hourCycle: 12 | 24;
   locale?: string;
+  /** A slot's label. Default: the time, in `hourCycle`. */
+  format?: (value: number) => string;
+  /** A typed value, or null. Default: `parseTime`. */
+  parse?: (input: string) => number | null;
   placeholder: string;
   label: string;
   disabled?: boolean;
@@ -396,6 +503,8 @@ function TimeField({
   slots,
   hourCycle,
   locale,
+  format: formatProp,
+  parse = parseTime,
   placeholder,
   label,
   disabled,
@@ -409,13 +518,14 @@ function TimeField({
   const sizeClasses = useSize();
   const compact = sizeClasses.variant === "compact";
   const listId = useId();
+  const format = useCallback(
+    (value: number) => (formatProp ? formatProp(value) : formatTime(value, hourCycle, locale)),
+    [formatProp, hourCycle, locale]
+  );
   // Every row's time takes the width of the longest one, so the durations
   // after it line up in one column. Digits are tabular, so the longest string
   // is the widest; its AM/PM twin is measured too, as the letters differ.
-  const labels = useMemo(
-    () => slots.map((slot) => formatTime(slot.minutes, hourCycle, locale)),
-    [slots, hourCycle, locale]
-  );
+  const labels = useMemo(() => slots.map((slot) => format(slot.minutes)), [slots, format]);
   const widestLabels = useMemo(() => {
     const longest = labels.reduce((a, b) => (b.length > a.length ? b : a), "");
     const twin = longest.replace(/AM|PM/, (m) => (m === "AM" ? "PM" : "AM"));
@@ -432,7 +542,7 @@ function TimeField({
   const { activeIndex, setActiveIndex, registerItem, remeasure } = hover;
   const { onMouseMove, onMouseEnter, onMouseLeave, onClick } = hover.handlers;
 
-  const display = value === null ? "" : formatTime(value, hourCycle, locale);
+  const display = value === null ? "" : format(value);
   const text = draft ?? display;
   const selectedIndex = value === null ? -1 : slots.findIndex((s) => s.minutes === value);
 
@@ -504,7 +614,7 @@ function TimeField({
   const floor = slots[0]?.duration !== undefined ? slots[0].minutes - slots[0].duration : -1;
   const commitDraft = () => {
     if (draft === null) return;
-    const parsed = parseTime(draft);
+    const parsed = parse(draft);
     if (parsed !== null && parsed > floor) onCommit(parsed);
     setDraft(null);
   };
@@ -519,13 +629,13 @@ function TimeField({
       const dir = e.key === "ArrowDown" ? 1 : -1;
       const next = Math.min(Math.max((activeIndex ?? selectedIndex ?? 0) + dir, 0), slots.length - 1);
       setActiveIndex(next);
-      setDraft(formatTime(slots[next].minutes, hourCycle, locale));
+      setDraft(format(slots[next].minutes));
       requestAnimationFrame(() => scrollToActive(false));
       return;
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      if (draft !== null && parseTime(draft) !== null) {
+      if (draft !== null && parse(draft) !== null) {
         commitDraft();
       } else if (activeIndex !== null && slots[activeIndex]) {
         onCommit(slots[activeIndex].minutes);
@@ -614,7 +724,7 @@ function TimeField({
         const next = e.target.value;
         setDraft(next);
         if (!open) setOpen(true);
-        const parsed = parseTime(next);
+        const parsed = parse(next);
         if (parsed !== null) {
           const i = nearestSlotIndex(slots, parsed);
           setActiveIndex(i >= 0 ? i : null);
@@ -934,7 +1044,7 @@ interface DatePickerBaseProps {
   /** BCP 47 locale for labels and times. Default: the browser's. */
   locale?: string;
   className?: string;
-  /** The date trigger's id, for a `<label htmlFor>`. */
+  /** The date field's id (the trigger in range mode), for a `<label htmlFor>`. */
   id?: string;
   /** Names the group for screen readers, read before the date. */
   "aria-label"?: string;
@@ -953,6 +1063,11 @@ interface DatePickerSingleProps extends DatePickerBaseProps {
   defaultValue?: Date | undefined;
   onValueChange?: (date: Date | undefined) => void;
   presets?: never;
+  /** A year field after the date, with its own list: picking a year keeps
+   *  the month and day. The date label drops its year. Off by default. */
+  yearPicker?: boolean;
+  /** The years the list offers. Default: 100 years back to 10 ahead. */
+  years?: { from: number; to: number };
 }
 
 interface DatePickerRangeProps extends DatePickerBaseProps {
@@ -962,6 +1077,8 @@ interface DatePickerRangeProps extends DatePickerBaseProps {
   onValueChange?: (range: DateRange | undefined) => void;
   /** Ranges listed beside the calendar. Off by default. */
   presets?: DatePickerPreset[];
+  yearPicker?: never;
+  years?: never;
 }
 
 type DatePickerProps = DatePickerSingleProps | DatePickerRangeProps;
@@ -1006,6 +1123,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     name,
   } = props;
   const presets = mode === "range" ? (props as DatePickerRangeProps).presets : undefined;
+  const yearPicker = mode === "single" && !!(props as DatePickerSingleProps).yearPicker;
   const numberOfMonths = numberOfMonthsProp ?? (mode === "range" ? 2 : 1);
 
   const [value, setValue] = useControllable<Date | DateRange | undefined>(
@@ -1065,6 +1183,13 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   }, []);
 
   const cellSize = calendarProps?.cellSize ?? (compact ? 32 : 36);
+  // A single date is a text field, like a time: type it, or pick it in the
+  // calendar. A range stays a button.
+  const editable = mode === "single";
+  const [dateDraft, setDateDraft] = useState<string | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const popupContentRef = useRef<HTMLDivElement>(null);
+  const refocusRef = useRef(false);
   const setOpen = (next: boolean) => {
     if (ackRef.current !== null) {
       clearTimeout(ackRef.current);
@@ -1082,6 +1207,13 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       }
     } else {
       setDraft(undefined);
+      setDateDraft(null);
+      // A close from inside the calendar (a pick, Escape) hands focus back
+      // to the date field, without reopening it.
+      if (editable && popupContentRef.current?.contains(document.activeElement)) {
+        refocusRef.current = true;
+        dateInputRef.current?.focus();
+      }
     }
     setOpenState(next);
   };
@@ -1098,7 +1230,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         ? formatRangeLabel(range, locale)
         : (placeholder ?? "Pick dates")
       : single
-        ? formatDateLabel(single, locale)
+        ? formatDateLabel(single, locale, now, yearPicker ? false : undefined)
         : (placeholder ?? "Pick a date");
 
   // The date keeps the width of its widest possible label (and of the
@@ -1125,9 +1257,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       return widestLabelParts(sample, locale, options);
     }
     const date = singleTime !== undefined ? new Date(singleTime) : new Date(year, 0, 1);
-    const options = singleLabelOptions(date.getFullYear() !== year);
+    const options = singleLabelOptions(!yearPicker && date.getFullYear() !== year);
     return widestLabelParts(labelParts(date, locale, options), locale, options);
-  }, [mode, fromTime, toTime, singleTime, year, locale]);
+  }, [mode, fromTime, toTime, singleTime, year, locale, yearPicker]);
   const labelPlaceholder =
     placeholder ?? (mode === "range" ? "Pick dates" : "Pick a date");
 
@@ -1208,7 +1340,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         // Icon-to-label gap matches Button's, at both sizes.
         compact ? "gap-1" : "gap-1.5",
         "cursor-pointer whitespace-nowrap",
-        field && !hasTime && !hasTimeRange && "flex-1",
+        field && !hasTime && !hasTimeRange && !yearPicker && "flex-1",
         hasValue ? "text-foreground" : "text-muted-foreground",
         open && "text-foreground"
       )}
@@ -1254,7 +1386,156 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     </button>
   );
 
-  const calendarSelected = mode === "range" ? (draft ?? range) : single;
+  // A typed date the calendar can pick, or null.
+  const readDate = (input: string) => {
+    const date = parseDate(input, locale, single);
+    return date && !isDayUnavailable(date, calendarProps ?? {}) ? date : null;
+  };
+  const typedDate = dateDraft === null ? null : readDate(dateDraft);
+  const commitDateDraft = () => {
+    if (dateDraft === null) return;
+    if (typedDate) setValue(typedDate);
+    setDateDraft(null);
+  };
+  const openDate = () => {
+    if (!disabled && !open) setOpen(true);
+  };
+  // ArrowDown hands the keyboard to the calendar: the selected day, or
+  // today, takes focus (DayPicker keeps that one day in the tab order).
+  const focusCalendar = () => {
+    let tries = 0;
+    const attempt = () => {
+      const day = popupContentRef.current?.querySelector<HTMLElement>(
+        '[data-slot="calendar-grid"] [tabindex="0"]'
+      );
+      if (day) day.focus();
+      else if (++tries < 30) requestAnimationFrame(attempt);
+    };
+    requestAnimationFrame(attempt);
+  };
+  const onDateKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      commitDateDraft();
+      openDate();
+      focusCalendar();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (dateDraft !== null) {
+        commitDateDraft();
+        setOpen(false);
+      } else {
+        setOpen(!open);
+      }
+      return;
+    }
+    if (e.key === "Escape" && (open || dateDraft !== null)) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    }
+  };
+  const dateText = dateDraft ?? (single ? dateLabel : "");
+  const dateField = (
+    <span
+      ref={dateRef as RefObject<HTMLSpanElement>}
+      data-slot="date-picker-date"
+      className={cn(
+        segmentClass,
+        compact ? "gap-1" : "gap-1.5",
+        "cursor-text whitespace-nowrap has-[input:focus-visible]:ring-1 has-[input:focus-visible]:ring-[color:var(--focus-ring,#6B97FF)]",
+        sizeClasses.field,
+        field && !hasTime && !hasTimeRange && !yearPicker && "flex-1"
+      )}
+      // Any click on the date (its text, icon or padding) selects the whole
+      // date, ready to be typed over, and opens the calendar.
+      onClick={() => {
+        const input = dateInputRef.current;
+        if (!input || disabled) return;
+        input.focus();
+        input.select();
+        openDate();
+      }}
+    >
+      {field && (
+        <CalendarIcon
+          aria-hidden
+          size={sizeClasses.icon}
+          strokeWidth={1.5}
+          className="shrink-0 text-muted-foreground"
+        />
+      )}
+      <span className="inline-grid tabular-nums">
+        {/* The date's widest label, the placeholder and the draft, laid out
+            invisibly: the field keeps one width for any date. */}
+        <span aria-hidden className="invisible col-start-1 row-start-1 inline-flex whitespace-pre">
+          {labelSizer.map((options, i) => (
+            <span key={i} className="inline-grid">
+              {options.map((option) => (
+                <span key={option} className="col-start-1 row-start-1">
+                  {option}
+                </span>
+              ))}
+            </span>
+          ))}
+        </span>
+        <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
+          {dateDraft || labelPlaceholder}
+        </span>
+        <input
+          ref={dateInputRef}
+          type="text"
+          inputMode="text"
+          size={1}
+          id={id}
+          role="combobox"
+          aria-label={ariaLabel ?? "Date"}
+          aria-haspopup="dialog"
+          aria-expanded={!!open}
+          aria-autocomplete="none"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={disabled}
+          data-slot="date-picker-trigger"
+          data-placeholder={hasValue ? undefined : ""}
+          placeholder={labelPlaceholder}
+          value={dateText}
+          className={cn(
+            "col-start-1 row-start-1 w-full min-w-0 bg-transparent p-0 text-left tabular-nums text-foreground outline-none placeholder:text-muted-foreground",
+            sizeClasses.field,
+            "rounded-none"
+          )}
+          onFocus={(e) => {
+            e.currentTarget.select();
+            if (refocusRef.current) {
+              refocusRef.current = false;
+              return;
+            }
+            openDate();
+          }}
+          onBlur={(e) => {
+            // Into the calendar (ArrowDown, a day pressed): stays open.
+            if (popupContentRef.current?.contains(e.relatedTarget as Node)) return;
+            commitDateDraft();
+            if (open) setOpen(false);
+          }}
+          onChange={(e) => {
+            const next = e.target.value;
+            setDateDraft(next);
+            if (!open) setOpen(true);
+            // The calendar follows a date as it's typed.
+            const date = readDate(next);
+            if (date) setMonth(date);
+          }}
+          onKeyDown={onDateKeyDown}
+        />
+      </span>
+    </span>
+  );
+
+  const calendarSelected = mode === "range" ? (draft ?? range) : (typedDate ?? single);
   const onCalendarSelect = (next: Date | DateRange | undefined) => {
     if (mode === "single") {
       setValue(next as Date | undefined);
@@ -1305,7 +1586,10 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       orientation={numberOfMonths > 1 ? resolvedOrientation : undefined}
       month={month}
       onMonthChange={setMonth}
-      autoFocus
+      // A typed date keeps focus in its field; ArrowDown moves in.
+      autoFocus={!editable}
+      // Each keystroke can land on another month: swap, don't slide.
+      animateMonthChange={dateDraft === null}
     />
   );
 
@@ -1332,12 +1616,16 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     <Popover
       open={!!open}
       onOpenChange={setOpen}
-      kind="trigger"
-      anchor={dateTrigger}
+      kind={editable ? "anchor" : "trigger"}
+      anchor={editable ? dateField : dateTrigger}
+      anchorRef={editable ? dateRef : undefined}
       escapeBlocked={() => !!draft}
       align="start"
     >
       <div
+        ref={popupContentRef}
+        // Pressing a day keeps focus in the date field, as a time's rows do.
+        onMouseDown={editable ? (e) => e.preventDefault() : undefined}
         className={cn(
           // Same box as the popup: its corners follow the popup's 12px.
           "flex rounded-[inherit] bg-inherit p-1",
@@ -1355,6 +1643,37 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       </div>
     </Popover>
   );
+
+  // Year segment: right after the date, read as part of it.
+  const yearsProp = mode === "single" ? (props as DatePickerSingleProps).years : undefined;
+  const yearFrom = yearsProp?.from ?? year - 100;
+  const yearTo = yearsProp?.to ?? year + 10;
+  const yearSlots = useMemo(
+    () => Array.from({ length: Math.max(yearTo - yearFrom + 1, 0) }, (_, i) => ({ minutes: yearFrom + i })),
+    [yearFrom, yearTo]
+  );
+  const formatYear = useCallback((y: number) => String(y), []);
+  const parseYearInput = useCallback((input: string) => parseYear(input, yearFrom, yearTo), [yearFrom, yearTo]);
+  const yearSegment = yearPicker ? (
+    <TimeField
+      Popover={Popover}
+      value={single ? single.getFullYear() : null}
+      onCommit={(y) => setValue(withYear(single ?? now, y))}
+      slots={yearSlots}
+      hourCycle={hourCycle}
+      locale={locale}
+      format={formatYear}
+      parse={parseYearInput}
+      placeholder="Year"
+      label="Year"
+      disabled={disabled}
+      scope={scope}
+      index={1}
+      segmentClass={segmentClass}
+      fallback={year}
+    />
+  ) : null;
+  const timeIndex = yearPicker ? 2 : 1;
 
   // Time segments.
   const startMinutes = hasTimeRange ? timeToMinutes(timeRange?.start) : null;
@@ -1387,7 +1706,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       label="Time"
       disabled={disabled}
       scope={scope}
-      index={1}
+      index={timeIndex}
       segmentClass={segmentClass}
       fallback={nowMinutes}
       prefix={timeIcon(ClockIcon)}
@@ -1412,7 +1731,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         label="Start time"
         disabled={disabled}
         scope={scope}
-        index={1}
+        index={timeIndex}
         segmentClass={segmentClass}
         fallback={nowMinutes}
         prefix={timeIcon(ClockIcon)}
@@ -1432,7 +1751,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         label="End time"
         disabled={disabled}
         scope={scope}
-        index={2}
+        index={timeIndex + 1}
         segmentClass={segmentClass}
         fallback={(startMinutes ?? nowMinutes) + 60}
         prefix={timeIcon(ArrowIcon)}
@@ -1495,6 +1814,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         style={rowStyle}
       >
         {datePopover}
+        {yearSegment}
       </span>
       {timed && !twoRows && (
         <span aria-hidden className="relative z-[1] mx-0.5 h-4 w-px shrink-0 bg-border" />

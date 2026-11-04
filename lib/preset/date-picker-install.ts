@@ -71,6 +71,7 @@ function datePickerDemoFile(p: DatePickerPreset): string {
     ...(p.variant === "ghost" ? [`variant="ghost"`] : []),
     `value={${d.range ? "range" : "date"}}`,
     `onValueChange={${d.range ? "setRange" : "setDate"}}`,
+    ...(d.year ? ["yearPicker"] : []),
     ...(d.time === "time" ? ["time={time}", "onTimeChange={setTime}"] : []),
     ...(d.time === "timeRange" ? ["timeRange={time}", "onTimeRangeChange={setTime}"] : []),
     ...(hasTime && p.step !== "15" ? [`step={${p.step}}`] : []),

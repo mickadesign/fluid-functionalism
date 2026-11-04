@@ -89,6 +89,12 @@ export const calendarLayoutProps: PropDef[] = [
 /** Extra rows, columns and the size step. */
 export const calendarAppearanceProps: PropDef[] = [
   {
+    name: "animateMonthChange",
+    type: "boolean",
+    default: "true",
+    description: "Months slide on a change. False swaps them in place, for a month set by typing.",
+  },
+  {
     name: "showWeekNumber",
     type: "boolean",
     default: "false",

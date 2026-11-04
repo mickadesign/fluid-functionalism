@@ -29,6 +29,8 @@ export interface DatePickerPlayState {
   /** The `variant` prop, labeled "Design" in the rail. */
   variant: "outline" | "ghost";
   time: DatePickerTime;
+  /** The `yearPicker` prop: a year field after a single date. */
+  year: boolean;
   presets: boolean;
   months: "1" | "2";
   orientation: "auto" | "horizontal" | "vertical";
@@ -49,6 +51,7 @@ export const DEFAULT_DATE_PICKER_STATE: DatePickerPlayState = {
   mode: "single",
   variant: "ghost",
   time: "timeRange",
+  year: false,
   presets: false,
   months: "2",
   orientation: "auto",
@@ -89,7 +92,7 @@ const DATE_PICKER_PRESET_FIELDS_A: readonly PresetField[] = [
 
 /** Version "b": orientation defaults to "auto", the component's own, so 2
  *  months stack on a phone. The values lead with it. */
-export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
+const DATE_PICKER_PRESET_FIELDS_B: readonly PresetField[] = [
   { key: "variant", values: ["ghost", "outline"], bits: 2 },
   { key: "mode", values: ["single", "range"], bits: 2 },
   { key: "time", values: ["timeRange", "none", "time"], bits: 2 },
@@ -108,14 +111,21 @@ export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
+/** Version "c": the year field, before the globals (which stay last). */
+export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
+  ...DATE_PICKER_PRESET_FIELDS_B.slice(0, -3),
+  { key: "year", values: [false, true], bits: 1 },
+  ...DATE_PICKER_PRESET_FIELDS_B.slice(-3),
+];
+
 // ── Registration (tag "p") ──────────────────────────────────────────────────
 
 export const DATE_PICKER_PRESET_DEF: PresetComponentDef = {
   tag: "p",
   label: "Date Picker",
   docsPath: "/docs/date-picker",
-  versions: { a: DATE_PICKER_PRESET_FIELDS_A, b: DATE_PICKER_PRESET_FIELDS },
-  currentVersion: "b",
+  versions: { a: DATE_PICKER_PRESET_FIELDS_A, b: DATE_PICKER_PRESET_FIELDS_B, c: DATE_PICKER_PRESET_FIELDS },
+  currentVersion: "c",
   defaults: DEFAULT_DATE_PICKER_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
@@ -150,14 +160,15 @@ export const defaultDatePickerMonths = (
 ): DatePickerPlayState["months"] => (mode === "range" ? "2" : "1");
 
 /** The playground's derived facts, shared by the preview and the generator:
- *  times belong to a single date, presets to a range, and the clear button
- *  to the outline field. */
+ *  times and the year field belong to a single date, presets to a range,
+ *  and the clear button to the outline field. */
 export function deriveDatePicker(p: DatePickerPlayState) {
   const range = p.mode === "range";
   const time: DatePickerTime = range ? "none" : p.time;
+  const year = !range && p.year;
   const presets = range && p.presets;
   const clearable = p.variant !== "outline" || p.clearable;
-  return { range, time, presets, clearable };
+  return { range, time, year, presets, clearable };
 }
 
 // ── Demo content, shared by the playground preview and the generator ────────

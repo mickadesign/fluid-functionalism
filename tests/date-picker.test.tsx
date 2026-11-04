@@ -18,12 +18,15 @@ import {
   formatRangeLabel,
   formatTime,
   nearestSlotIndex,
+  parseDate,
   parseTime,
+  parseYear,
   resolveHourCycle,
   shiftEnd,
   timeToMinutes,
   widestLabelParts,
   formValue,
+  withYear,
 } from "@/registry/default/date-picker-core";
 
 afterEach(cleanup);
@@ -177,6 +180,56 @@ describe("date label width", () => {
   });
 });
 
+describe("typed dates", () => {
+  const ref = new Date(2026, 0, 1);
+  it.each([
+    ["Nov 12", new Date(2026, 10, 12)],
+    ["nov 12, 2027", new Date(2027, 10, 12)],
+    ["12 November", new Date(2026, 10, 12)],
+    ["Wed Nov 12", new Date(2026, 10, 12)],
+    ["November 3rd 1990", new Date(1990, 10, 3)],
+    ["11/12", new Date(2026, 10, 12)],
+    ["11/12/27", new Date(2027, 10, 12)],
+    ["2026-11-12", new Date(2026, 10, 12)],
+  ])("reads %s", (input, date) => {
+    expect(parseDate(input, "en-US", ref)).toEqual(date);
+  });
+
+  it("reads numbers in the locale's day-month order", () => {
+    expect(parseDate("11/12", "en-GB", ref)).toEqual(new Date(2026, 11, 11));
+    expect(parseDate("12 nov", "fr-FR", ref)).toEqual(new Date(2026, 10, 12));
+  });
+
+  it("reads today and tomorrow", () => {
+    const now = new Date(2026, 9, 31);
+    expect(parseDate("tomorrow", "en-US", ref, now)).toEqual(new Date(2026, 10, 1));
+  });
+
+  it.each(["", "hello", "Feb 30", "13/13", "ju 4", "Nov", "Jul 4 2", "Jul 4 203"])("rejects %j", (input) => {
+    expect(parseDate(input, "en-US", ref)).toBeNull();
+  });
+});
+
+describe("year field", () => {
+  it("reads four digits inside the list", () => {
+    expect(parseYear("1987", 1926, 2036)).toBe(1987);
+    expect(parseYear(" 2030 ", 1926, 2036)).toBe(2030);
+    expect(parseYear("19", 1926, 2036)).toBeNull();
+    expect(parseYear("1900", 1926, 2036)).toBeNull();
+    expect(parseYear("20x6", 1926, 2036)).toBeNull();
+  });
+
+  it("keeps the month and day, and Feb 29 lands on Feb 28", () => {
+    expect(withYear(new Date(2026, 10, 4), 1990)).toEqual(new Date(1990, 10, 4));
+    expect(withYear(new Date(2024, 1, 29), 2025)).toEqual(new Date(2025, 1, 28));
+  });
+
+  it("drops the year from the label when asked", () => {
+    const now = new Date(2026, 0, 1);
+    expect(formatDateLabel(new Date(1990, 9, 21), "en-US", now, false)).toBe("Sun Oct 21");
+  });
+});
+
 describe("date labels", () => {
   const now = new Date(2026, 9, 19);
 
@@ -209,26 +262,69 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
   }
 
   const trigger = () =>
-    document.querySelector<HTMLButtonElement>("[data-slot=date-picker-trigger]")!;
+    document.querySelector<HTMLInputElement>("[data-slot=date-picker-trigger]")!;
   const popup = () => document.querySelector("[data-slot=date-picker-popup]");
-
-  it("opens with focus on the selected day", async () => {
-    render(<Single />);
-    expect(trigger().textContent).toContain("Oct 21");
+  // Focus opens the calendar and keeps the field focused; ArrowDown moves
+  // focus to the selected day.
+  const openAndEnter = async () => {
     await act(async () => {
-      fireEvent.click(trigger());
+      trigger().focus();
     });
     await waitFor(() => expect(popup()).not.toBeNull());
+    expect(document.activeElement).toBe(trigger());
+    await act(async () => {
+      fireEvent.keyDown(trigger(), { key: "ArrowDown" });
+    });
+  };
+
+  it("opens on focus, and ArrowDown moves focus to the selected day", async () => {
+    render(<Single />);
+    expect(trigger().value).toBe("Wed Oct 21");
+    await openAndEnter();
     await waitFor(() =>
       expect(document.activeElement?.getAttribute("aria-label")).toMatch(/October 21st, 2026/)
     );
   });
 
+  it("commits a typed date on Enter", async () => {
+    let picked: Date | undefined;
+    function Typed() {
+      const [date, setDate] = useState<Date | undefined>(new Date(2026, 9, 21));
+      return (
+        <DatePicker
+          value={date}
+          onValueChange={(d) => {
+            picked = d;
+            setDate(d);
+          }}
+          locale="en-US"
+        />
+      );
+    }
+    render(<Typed />);
+    await act(async () => {
+      trigger().focus();
+      fireEvent.change(trigger(), { target: { value: "Nov 12 2027" } });
+    });
+    await act(async () => {
+      fireEvent.keyDown(trigger(), { key: "Enter" });
+    });
+    expect(picked).toEqual(new Date(2027, 10, 12));
+    expect(trigger().value).toBe("Fri Nov 12, 2027");
+    // Something that isn't a date leaves the value alone.
+    await act(async () => {
+      fireEvent.change(trigger(), { target: { value: "soon" } });
+    });
+    await act(async () => {
+      fireEvent.keyDown(trigger(), { key: "Enter" });
+    });
+    expect(picked).toEqual(new Date(2027, 10, 12));
+    expect(trigger().value).toBe("Fri Nov 12, 2027");
+  });
+
   it("closes on Escape, returns focus to the trigger, and plays its exit", async () => {
     render(<Single />);
-    await act(async () => {
-      fireEvent.click(trigger());
-    });
+    await openAndEnter();
     await waitFor(() =>
       expect(document.activeElement?.getAttribute("aria-label")).toMatch(/October 21st, 2026/)
     );
@@ -269,7 +365,7 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
     }
     render(<Picker />);
     await act(async () => {
-      fireEvent.click(trigger());
+      trigger().focus();
     });
     const day = await screen.findByRole("button", { name: /October 23rd, 2026/ });
     await act(async () => {
@@ -279,7 +375,7 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
     await waitFor(() => expect(trigger().getAttribute("aria-expanded")).toBe("false"), {
       timeout: 1000,
     });
-    expect(trigger().textContent).toContain("Oct 23");
+    expect(trigger().value).toBe("Fri Oct 23");
   });
 
   it("commits a typed time on Enter", async () => {
