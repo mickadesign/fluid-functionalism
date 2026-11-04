@@ -83,7 +83,6 @@ const REFERENCE_TIERS = [
       { label: "Dropdown",                slug: "/docs/dropdown" },
       { label: "Tabs indicator",          slug: "/docs/tabs" },
       { label: "Carousel dots",           slug: "/docs/carousel-dots" },
-      { label: "Calendar month",          slug: "/docs/calendar" },
       { label: "Banner dismiss",          slug: "/docs/banner" },
       { label: "Switch thumb",            slug: "/docs/switch" },
       { label: "Chat bubbles",            slug: "/docs/chat-message" },
@@ -103,6 +102,7 @@ const REFERENCE_TIERS = [
     enterTransition: spring.slow,
     exitTransition: spring.slow.exit,
     components: [
+      { label: "Calendar month",      slug: "/docs/calendar" },
       { label: "Dialog",              slug: "/docs/dialog" },
       { label: "Ask-user questions",  slug: "/docs/ask-user-questions" },
       { label: "Thinking steps",      slug: "/docs/thinking-steps" },
