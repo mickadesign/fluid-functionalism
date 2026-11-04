@@ -17,7 +17,11 @@ import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { shapeMap } from "@/lib/shape-context";
 import { useSize } from "@/lib/size-context";
-import { useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
 
 // MenuItem is only used inside Dropdown, which opts out of the global pill
 // shape — see dropdown.tsx for the rationale.
@@ -62,7 +66,9 @@ export interface MenuItemRenderOptions {
 
 export interface DropdownContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  /** The highlighted row, read per row with `useFluidHoverSelect` so a
+   *  highlight change re-renders two rows instead of the whole menu. */
+  activeStore: FluidHoverActiveStore;
   checkedIndex?: number;
   /** Multiple selection (`checkedIndices` on the dropdown): rows are
    *  checkbox items and activating one keeps the menu open by default. */
@@ -154,7 +160,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
     const internalRef = useRef<HTMLDivElement>(null);
     const {
       registerItem,
-      activeIndex,
+      activeStore,
       checkedIndex,
       multiple,
       checkedIndices,
@@ -164,7 +170,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     useRegisterFluidHoverItem(registerItem, index, internalRef);
 
-    const isActive = activeIndex === index;
+    const isActive = useFluidHoverSelect(activeStore, (i) => i === index);
     const sizeClasses = useSize();
 
     const mergeRef = (node: HTMLDivElement | null) => {

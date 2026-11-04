@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  memo,
   useRef,
   useEffect,
   useLayoutEffect,
@@ -22,7 +23,9 @@ import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import {
   useFluidHover,
+  useFluidHoverSelect,
   useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
   type ItemRect,
 } from "@/hooks/use-fluid-hover";
 import {
@@ -130,7 +133,7 @@ function useComboboxContext() {
 // Content context for fluid hover
 interface ComboboxContentContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  activeStore: FluidHoverActiveStore;
 }
 
 const ComboboxContentContext =
@@ -872,7 +875,7 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       isMeasured,
@@ -987,8 +990,8 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
     );
 
     const contentCtx = useMemo(
-      () => ({ registerItem, activeIndex }),
-      [registerItem, activeIndex]
+      () => ({ registerItem, activeStore }),
+      [registerItem, activeStore]
     );
 
     // No matches keeps the popup at the height the last matches gave it, so
@@ -1129,7 +1132,11 @@ interface ComboboxItemProps extends HTMLAttributes<HTMLDivElement> {
   disabled?: boolean;
 }
 
-const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
+// Memoized: the list re-renders on every highlight change (it reads the
+// highlight context) and builds its rows inline, so without memo every row
+// would render again per pointer move. Rows read their own lit state from
+// the fluid hover store.
+const ComboboxItem = memo(forwardRef<HTMLDivElement, ComboboxItemProps>(
   ({ className, children, icon: Icon, value, disabled = false, ...props }, ref) => {
     const comboboxCtx = useComboboxContext();
     const contentCtx = useContext(ComboboxContentContext);
@@ -1145,7 +1152,7 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
     const registerItem = contentCtx?.registerItem;
     useRegisterFluidHoverItem(registerItem, index, internalRef);
 
-    const isActive = contentCtx?.activeIndex === index;
+    const isActive = useFluidHoverSelect(contentCtx?.activeStore, (i) => i === index);
     const isChecked = comboboxCtx.values.includes(value);
     // Base UI matches rows to `items` by value, so the row hands back the
     // item it was rendered from.
@@ -1240,7 +1247,7 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
       </ComboboxPrimitive.Item>
     );
   }
-);
+));
 
 ComboboxItem.displayName = "ComboboxItem";
 

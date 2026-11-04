@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/menu-item";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useFluidHover, isOwnEvent } from "@/hooks/use-fluid-hover";
+import { useFluidHover, useFluidHoverSelect, isOwnEvent } from "@/hooks/use-fluid-hover";
 import {
   useMergeSplitBlocks,
   useSelectionRuns,
@@ -108,7 +108,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       handlers,
@@ -125,8 +125,8 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const runs = useSelectionRuns(checkedIndices ?? []);
     const blocks = useMergeSplitBlocks(runs, itemRects, shape.bgRadius);
     const panelCtx = useMemo(
-      () => ({ registerItem, activeIndex, checkedIndex, multiple, checkedIndices }),
-      [registerItem, activeIndex, checkedIndex, multiple, checkedIndices]
+      () => ({ registerItem, activeStore, checkedIndex, multiple, checkedIndices }),
+      [registerItem, activeStore, checkedIndex, multiple, checkedIndices]
     );
     const panel = (
       <DropdownContext.Provider value={panelCtx}>
@@ -433,7 +433,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       handlers,
@@ -591,7 +591,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const contentCtx = useMemo(
       () => ({
         registerItem,
-        activeIndex,
+        activeStore,
         checkedIndex,
         multiple,
         checkedIndices,
@@ -601,7 +601,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       }),
       [
         registerItem,
-        activeIndex,
+        activeStore,
         checkedIndex,
         multiple,
         checkedIndices,
@@ -830,7 +830,7 @@ const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerProps>(
     const parent = useDropdown();
     const { open } = useDropdownMenuContext();
     useReportSubmenu(parent.onSubmenuOpenChange, index, open);
-    const lit = parent.activeIndex === index;
+    const lit = useFluidHoverSelect(parent.activeStore, (i) => i === index);
 
     // The row renders through the parent's MenuItem, wrapped in the submenu
     // trigger primitive instead of a plain item.

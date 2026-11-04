@@ -15,7 +15,12 @@ import {
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
-import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // ---------------------------------------------------------------------------
@@ -30,7 +35,9 @@ import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 interface TableContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  /** Read per row, so a highlight change re-renders only the rows whose
+   *  borders or text change, not the whole table. */
+  activeStore: FluidHoverActiveStore;
 }
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -51,15 +58,14 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
     const hover = useFluidHover(containerRef);
     const {
-      activeIndex,
+      activeStore,
       handlers,
       registerItem,
     } = hover;
 
-
     const contextValue = useMemo(
-      () => ({ registerItem, activeIndex }),
-      [registerItem, activeIndex]
+      () => ({ registerItem, activeStore }),
+      [registerItem, activeStore]
     );
 
     const table = (
@@ -138,14 +144,17 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
     useRegisterFluidHoverItem(ctx?.registerItem, index, internalRef);
 
     const isBodyRow = index !== undefined;
-    const activeIdx = ctx?.activeIndex ?? null;
     // Each row draws only its bottom border, so the lit row's top edge is the
     // border of the row above it. Hiding both leaves the highlight with no
     // rule along or through it. Row 0's top edge is the header's border.
-    const hideBorder = activeIdx !== null && (
-      (isBodyRow && (index === activeIdx || index === activeIdx - 1)) ||
-      (!isBodyRow && activeIdx === 0)
-    );
+    // 2: this row is lit; 1: its border borders the lit row; 0: neither.
+    const litState = useFluidHoverSelect(ctx?.activeStore, (active) => {
+      if (active === null) return 0;
+      if (!isBodyRow) return active === 0 ? 1 : 0;
+      if (index === active) return 2;
+      return index === active - 1 ? 1 : 0;
+    });
+    const hideBorder = litState > 0;
 
     return (
       <tr
@@ -160,7 +169,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         className={cn(
           "group/row relative z-10 border-b transition-[border-color] duration-80",
           hideBorder ? "border-transparent" : "border-accent/40",
-          isBodyRow && activeIdx === index && "is-active",
+          litState === 2 && "is-active",
           className
         )}
         // Weight goes through the variable font's axis with the same values

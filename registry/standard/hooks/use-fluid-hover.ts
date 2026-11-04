@@ -6,6 +6,8 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
+  useSyncExternalStore,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -42,9 +44,18 @@ export interface UseFluidHoverOptions {
   nearest?: boolean;
 }
 
+/** The highlighted index as a store rows subscribe to through
+ *  `useFluidHoverSelect`, so a change re-renders only the rows it touches. */
+export interface FluidHoverActiveStore {
+  subscribe: (listener: () => void) => () => void;
+  get: () => number | null;
+}
+
 export interface UseFluidHoverReturn {
   activeIndex: number | null;
   setActiveIndex: Dispatch<SetStateAction<number | null>>;
+  /** `activeIndex` as a stable store, for rows (see `useFluidHoverSelect`). */
+  activeStore: FluidHoverActiveStore;
   itemRects: ItemRect[];
   /** True once every registered item has been measured and no remeasure is
    *  pending. Gate absolutely positioned overlays on it. */
@@ -103,8 +114,22 @@ export function useFluidHover<T extends HTMLElement>(
   const itemsRef = useRef(new Map<number, HTMLElement>());
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activeIndexRef = useRef<number | null>(null);
+  const listenersRef = useRef(new Set<() => void>());
+  const activeStore = useMemo<FluidHoverActiveStore>(
+    () => ({
+      subscribe: (listener) => {
+        listenersRef.current.add(listener);
+        return () => {
+          listenersRef.current.delete(listener);
+        };
+      },
+      get: () => activeIndexRef.current,
+    }),
+    []
+  );
   useIsoLayoutEffect(() => {
     activeIndexRef.current = activeIndex;
+    listenersRef.current.forEach((listener) => listener());
   }, [activeIndex]);
 
   // The state, in the DOM: the highlighted item carries the attribute, the
@@ -275,6 +300,7 @@ export function useFluidHover<T extends HTMLElement>(
   return {
     activeIndex,
     setActiveIndex,
+    activeStore,
     itemRects,
     isMeasured,
     session,
@@ -289,6 +315,23 @@ export function useFluidHover<T extends HTMLElement>(
     remeasure,
     measureItems,
   };
+}
+
+const subscribeNever = () => () => {};
+
+/**
+ * Reads one value derived from the highlighted index, re-rendering only when
+ * that value changes. The selector must return a primitive.
+ */
+export function useFluidHoverSelect<T>(
+  store: FluidHoverActiveStore | null | undefined,
+  select: (activeIndex: number | null) => T
+): T {
+  return useSyncExternalStore(
+    store?.subscribe ?? subscribeNever,
+    () => select(store ? store.get() : null),
+    () => select(null)
+  );
 }
 
 /**

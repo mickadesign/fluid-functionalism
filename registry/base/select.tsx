@@ -20,7 +20,12 @@ import { Select as SelectPrimitive } from "@base-ui/react/select";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
 import { useShape, shapeMap } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
@@ -70,7 +75,7 @@ function useSelectContext() {
 // Content context for fluid hover
 interface SelectContentContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  activeStore: FluidHoverActiveStore;
   checkedIndex?: number;
 }
 
@@ -358,7 +363,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       isMeasured,
@@ -456,8 +461,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       isMeasured && focusedIndex !== null ? itemRects[focusedIndex] : null;
 
     const contentCtx = useMemo(
-      () => ({ registerItem, activeIndex, checkedIndex }),
-      [registerItem, activeIndex, checkedIndex]
+      () => ({ registerItem, activeStore, checkedIndex }),
+      [registerItem, activeStore, checkedIndex]
     );
 
     return (
@@ -659,7 +664,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const registerItem = contentCtx?.registerItem;
     useRegisterFluidHoverItem(registerItem, index, internalRef);
 
-    const isActive = contentCtx?.activeIndex === index;
+    const isActive = useFluidHoverSelect(contentCtx?.activeStore, (i) => i === index);
     const isChecked = selectCtx.value === value;
 
     return (

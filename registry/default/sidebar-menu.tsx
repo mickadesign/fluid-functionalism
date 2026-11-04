@@ -29,7 +29,12 @@ import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { useSize, SizeProvider, typeClass, type SizeVariant } from "@/lib/size-context";
-import { useFluidHover, type ItemRect } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  type FluidHoverActiveStore,
+  type ItemRect,
+} from "@/hooks/use-fluid-hover";
 import type { IconComponent } from "@/lib/icon-context";
 import { resolveSlotTemplate, SlotElement } from "@/components/ui/sidebar-core";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
@@ -53,7 +58,11 @@ interface MenuScopeValue {
   registerRow: (el: HTMLElement) => () => void;
   setRowButton: (row: HTMLElement, button: HTMLElement | null) => void;
   setRowActive: (row: HTMLElement, active: boolean) => void;
-  hoveredRowEl: HTMLElement | null;
+  /** The hovered row is `orderedRows[activeStore.get()]`. Rows read it
+   *  through `useFluidHoverSelect`, so a hover change re-renders the row it
+   *  left and the row it reached instead of every row in the menu. */
+  activeStore: FluidHoverActiveStore;
+  orderedRows: HTMLElement[];
   /** Every visible active row, in DOM order — a parent section marker and
    *  the current row inside its sub-tree can be active at once. */
   activeRows: HTMLElement[];
@@ -230,6 +239,7 @@ function useMenuScope(
 ): MenuScope {
   const {
     activeIndex,
+    activeStore,
     setActiveIndex,
     itemRects,
     isMeasured,
@@ -446,13 +456,14 @@ function useMenuScope(
       registerRow,
       setRowButton,
       setRowActive,
-      hoveredRowEl,
+      activeStore,
+      orderedRows,
       activeRows,
       firstRowEl: orderedRows[0] ?? null,
       hasActive: activeRows.length > 0,
       refreshVisibility,
     }),
-    [registerRow, setRowButton, setRowActive, hoveredRowEl, activeRows, orderedRows, refreshVisibility]
+    [registerRow, setRowButton, setRowActive, activeStore, activeRows, orderedRows, refreshVisibility]
   );
 
   const shape = useShape();
@@ -672,7 +683,10 @@ function useMenuRow(rowRef: RefObject<HTMLLIElement | null>, isSubRow = false) {
     [setRowButton, rowRef]
   );
 
-  const isHovered = rowEl !== null && scope?.hoveredRowEl === rowEl;
+  const isHovered = useFluidHoverSelect(
+    scope?.activeStore,
+    (active) => rowEl !== null && active !== null && scope?.orderedRows[active] === rowEl
+  );
   const isActiveRow = rowEl !== null && (scope?.activeRows.includes(rowEl) ?? false);
 
   const [trailing, setTrailing] = useState({
