@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useId,
+  useSyncExternalStore,
   forwardRef,
   isValidElement,
   Children,
@@ -128,6 +129,14 @@ function useIsMobile(breakpoint: number): boolean {
     return () => mql.removeEventListener("change", onChange);
   }, [breakpoint]);
   return !!isMobile;
+}
+
+const subscribeNever = () => () => {};
+
+/** False on the server and while hydrating, true after: a client-only value
+ *  without a hydration mismatch. */
+function useIsClient() {
+  return useSyncExternalStore(subscribeNever, () => true, () => false);
 }
 
 // ─── SidebarProvider ─────────────────────────────────────────────────────────
@@ -513,14 +522,23 @@ export function SlotElement({
 // snapping it away: opacity fades while `display` rides the same transition
 // with allow-discrete, so none applies only once the fade lands (and
 // @starting-style fades it back in when the window grows). Literal classes
-// per breakpoint — Tailwind's scanner can't see composed strings.
+// per breakpoint — Tailwind's scanner can't see composed strings. The fade
+// classes only join after hydration: the server-rendered rail is there on
+// first paint and must not fade in with it (a bare duration is enough to fade
+// it, since transition-property starts at `all`).
 const BREAKPOINT_FADE_BASE =
   "transition-[opacity,display] ease-out [transition-behavior:allow-discrete] motion-reduce:transition-none";
 const BREAKPOINT_HIDDEN: Record<number, string> = {
-  640: "max-sm:hidden max-sm:opacity-0 max-sm:duration-160 sm:duration-240 sm:starting:opacity-0",
-  768: "max-md:hidden max-md:opacity-0 max-md:duration-160 md:duration-240 md:starting:opacity-0",
-  1024: "max-lg:hidden max-lg:opacity-0 max-lg:duration-160 lg:duration-240 lg:starting:opacity-0",
-  1280: "max-xl:hidden max-xl:opacity-0 max-xl:duration-160 xl:duration-240 xl:starting:opacity-0",
+  640: "max-sm:hidden max-sm:opacity-0",
+  768: "max-md:hidden max-md:opacity-0",
+  1024: "max-lg:hidden max-lg:opacity-0",
+  1280: "max-xl:hidden max-xl:opacity-0",
+};
+const BREAKPOINT_FADE: Record<number, string> = {
+  640: "max-sm:duration-160 sm:duration-240 sm:starting:opacity-0",
+  768: "max-md:duration-160 md:duration-240 md:starting:opacity-0",
+  1024: "max-lg:duration-160 lg:duration-240 lg:starting:opacity-0",
+  1280: "max-xl:duration-160 xl:duration-240 xl:starting:opacity-0",
 };
 
 // Props Motion redefines with incompatible signatures; they must not
@@ -669,6 +687,7 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
       return () => clearTimeout(id);
     }, [pinFromPeekHold]);
     const pinnedFromPeek = pinFromPeekHold;
+    const isClient = useIsClient();
     // Below the drawer breakpoint the rail also gives its width back, on the
     // same exit tween as the CSS dissolve (slow.exit = 160ms), so the inset
     // slides into the space instead of snapping when display:none lands.
@@ -713,8 +732,8 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
           // The inset rail has no card edge of its own, so its scroll hairline
           // hugs the rows' 8px gutter instead of running panel-wide.
           variant === "inset" && "[--scroll-divider-inset:8px]",
-          BREAKPOINT_FADE_BASE,
           BREAKPOINT_HIDDEN[mobileBreakpoint],
+          isClient && [BREAKPOINT_FADE_BASE, BREAKPOINT_FADE[mobileBreakpoint]],
           // A non-standard breakpoint has no literal utility in the map, so
           // JS hides the shell (no fade, but never rail + drawer at once).
           !BREAKPOINT_HIDDEN[mobileBreakpoint] && isMobile && "hidden",

@@ -36,6 +36,7 @@ import {
   GetCodeDialog,
 } from "@/lib/docs/preset-ui";
 import type { PlaygroundProps } from "./types";
+import { demoToday } from "@/lib/demo-today";
 
 // ── DatePicker playground ────────────────────────────────
 // What gets picked (a date, a range, a date with a time or a time range),
@@ -52,7 +53,7 @@ function addDays(date: Date, days: number) {
 }
 
 /** 4 ranges counted from today. */
-export function demoPresets(today = new Date()): DatePickerPreset[] {
+export function demoPresets(today = demoToday()): DatePickerPreset[] {
   return [
     { label: "Next 7 days", range: { from: today, to: addDays(today, 6) } },
     { label: "Next 14 days", range: { from: today, to: addDays(today, 13) } },
@@ -109,7 +110,7 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
   const [state, setState] = useState<PlayState>(DEFAULT_STATE);
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
-  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  const [date, setDate] = useState<Date | undefined>(demoToday);
   const [range, setRange] = useState<DateRange | undefined>(undefined);
   const [time, setTime] = useState<string | null>(DATE_PICKER_DEFAULT_TIME);
   const [timeRange, setTimeRange] = useState<TimeRange | null>({ ...DATE_PICKER_DEFAULT_TIME_RANGE });
@@ -156,7 +157,7 @@ export function DatePickerPlayground({ children }: PlaygroundProps) {
     step: Number(state.step),
     hourCycle: state.clock === "locale" ? undefined : (Number(state.clock) as 12 | 24),
     calendarProps: {
-      ...(state.days === "booked" ? { booked, disabled: { before: new Date() } } : {}),
+      ...(state.days === "booked" ? { booked, disabled: { before: demoToday() } } : {}),
       showWeekNumber: state.weekNumbers,
     },
     clearable: state.clearable,
