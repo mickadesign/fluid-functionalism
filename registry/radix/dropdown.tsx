@@ -629,7 +629,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           alignOffset={alignOffset}
         >
           <motion.div
-            className={cn("z-50 outline-none", popupMotionClass)}
+            className={cn("z-[var(--z-popover,60)] outline-none", popupMotionClass)}
             initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
             animate={
               open

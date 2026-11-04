@@ -233,7 +233,9 @@ Select.displayName = "Select";
 const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between outline-none cursor-pointer",
-    "transition-all duration-80",
+    // Listed, never `all`: a size change snaps instead of easing the
+    // trigger's height and padding.
+    "transition-[color,background-color,border-radius,box-shadow,opacity] duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     // data-pointer-focus: focus handed back after a pick with the pointer.
     "focus-visible:not-data-[pointer-focus]:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -480,7 +482,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-50"
+          className="z-[var(--z-popover,60)]"
           // Radix hands focus back to the trigger with focus(), which the
           // browser may report as :focus-visible even after a pick with the
           // pointer. Without keyboard navigation in the popup, the trigger

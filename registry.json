@@ -82,7 +82,7 @@
       "name": "tokens",
       "type": "registry:theme",
       "title": "Interaction Tokens",
-      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --fluid-accent color (switch track, drop and swatch rings, copy highlight) with --focus-ring derived from it, the accent text selection, and the base-layer :focus-visible fallback ring.",
+      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --fluid-accent color (switch track, drop and swatch rings, copy highlight) with --focus-ring derived from it, the --z-* stacking scale (sticky, overlay, modal, popover, tooltip), the accent text selection, and the base-layer :focus-visible fallback ring.",
       "cssVars": {
         "theme": {
           "color-hover": "var(--hover)",
@@ -99,7 +99,12 @@
           "fluid-accent": "#6B97FF",
           "focus-ring": "var(--fluid-accent)",
           "tint": "rgb(0 0 0 / 0.08)",
-          "tint-hover": "rgb(0 0 0 / 0.065)"
+          "tint-hover": "rgb(0 0 0 / 0.065)",
+          "z-sticky": "30",
+          "z-overlay": "40",
+          "z-modal": "50",
+          "z-popover": "60",
+          "z-tooltip": "70"
         },
         "dark": {
           "hover": "rgb(255 255 255 / 0.06)",
@@ -1529,7 +1534,8 @@
       "registryDependencies": [
         "springs",
         "surface-context",
-        "surface-classes"
+        "surface-classes",
+        "tokens"
       ],
       "files": [
         {
@@ -1556,7 +1562,8 @@
         "springs",
         "omit",
         "surface-context",
-        "surface-classes"
+        "surface-classes",
+        "tokens"
       ],
       "files": [
         {
@@ -3187,7 +3194,8 @@
         "springs",
         "font-weight",
         "shape-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {
@@ -3216,7 +3224,8 @@
         "omit",
         "font-weight",
         "shape-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {

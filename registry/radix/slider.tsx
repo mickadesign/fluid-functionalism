@@ -235,15 +235,18 @@ function ValueDisplay({
     if (editingIndex === index) {
       return (
         <span className="inline-grid text-[length:var(--fs-body,13px)] leading-[var(--lh-body,20px)]">
-          {/* Ghost for layout stability — widest possible value */}
-          <span
-            className="col-start-1 row-start-1 invisible"
-            style={{ fontVariationSettings: fontWeights.normal }}
-            aria-hidden="true"
-          >
-            {label ? `${label}: ` : ""}
-            {formatValue(max)}
-          </span>
+          {/* Ghosts for layout stability: the widest possible value */}
+          {[min, max].map((v) => (
+            <span
+              key={v}
+              className="col-start-1 row-start-1 invisible"
+              style={{ fontVariationSettings: fontWeights.normal }}
+              aria-hidden="true"
+            >
+              {label ? `${label}: ` : ""}
+              {formatValue(v)}
+            </span>
+          ))}
           <span className="col-start-1 row-start-1 flex items-center gap-1">
             {label && (
               <span className="text-muted-foreground">{label}:</span>
@@ -294,11 +297,26 @@ function ValueDisplay({
   };
 
 
-  // Assumes formatValue(max) is the longest string. Range mode reserves both
-  // ends plus the separator.
-  const widestValue = isRange
-    ? `${label ? `${label}: ` : ""}${formatValue(max)} — ${formatValue(max)}`
-    : `${label ? `${label}: ` : ""}${formatValue(max)}`;
+  // Either end of the scale can print the widest string (a negative min
+  // carries a minus sign), so both are stacked as ghosts and the grid cell
+  // takes the wider one. Range mode reserves both ends plus the separator.
+  // The separator copies the visible one's markup so the widths match.
+  const ghostFor = (v: number) => {
+    const text = formatValue(v);
+    return (
+      <>
+        {label ? `${label}: ` : ""}
+        {text}
+        {isRange && (
+          <>
+            <span className="mx-1">–</span>
+            {text}
+          </>
+        )}
+      </>
+    );
+  };
+  const ghostValues = [ghostFor(min), ghostFor(max)];
 
   // Weight, not color, signals interaction: normal → semibold over 100ms while
   // hovered or pressed. tabular-nums plus a ghost set at semibold (the
@@ -315,14 +333,17 @@ function ValueDisplay({
           : fontWeights.normal,
       }}
     >
-      {/* Invisible ghost — reserves width of widest possible value */}
-      <span
-        className="col-start-1 row-start-1 invisible whitespace-nowrap"
-        style={{ fontVariationSettings: fontWeights.semibold }}
-        aria-hidden="true"
-      >
-        {widestValue}
-      </span>
+      {/* Invisible ghosts: they reserve the width of the widest possible value */}
+      {ghostValues.map((ghost, i) => (
+        <span
+          key={i}
+          className="col-start-1 row-start-1 invisible whitespace-nowrap"
+          style={{ fontVariationSettings: fontWeights.semibold }}
+          aria-hidden="true"
+        >
+          {ghost}
+        </span>
+      ))}
       <span className="col-start-1 row-start-1 whitespace-nowrap">
         {/* While editing, the edit slot draws its own label beside the input. */}
         {label && editingIndex === null && (
@@ -331,7 +352,7 @@ function ValueDisplay({
         {isRange ? (
           <>
             {renderValue(0)}
-            <span className="mx-1 text-muted-foreground">—</span>
+            <span className="mx-1 text-muted-foreground">–</span>
             {renderValue(1)}
           </>
         ) : (
@@ -1274,6 +1295,9 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
     },
     ref
   ) => {
+    // The value slot's reserved width, in ch: the longer of the scale's two
+    // ends, since a negative min prints a minus sign max doesn't have.
+    const valueCh = Math.max(String(formatValue(min)).length, String(formatValue(max)).length);
     const containerRef = useRef<HTMLDivElement>(null);
     // Row presses and the scrubber's handle strip track their drags apart.
     const dragging = useRef(false);
@@ -1710,7 +1734,7 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
             )}
             <span
               className="text-[length:var(--fs-body,13px)] leading-[var(--lh-body,20px)] tabular-nums ml-auto px-2 bg-background text-transparent select-none"
-              style={{ minWidth: `${String(formatValue(max)).length}ch` }}
+              style={{ minWidth: `${valueCh}ch` }}
             >
               {formatValue(value)}
             </span>
@@ -1766,14 +1790,14 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
                 {label}
               </motion.span>
             )}
-            {/* minWidth reserves formatValue(max)'s length in ch, so the value
+            {/* minWidth reserves the widest end's length in ch, so the value
                 slot keeps its width as the number changes. */}
             <motion.span
               className="text-[length:var(--fs-body,13px)] leading-[var(--lh-body,20px)] tabular-nums ml-auto px-2"
               initial={false}
               animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
               transition={spring.fast}
-              style={{ minWidth: `${String(formatValue(max)).length}ch`, textAlign: "right" }}
+              style={{ minWidth: `${valueCh}ch`, textAlign: "right" }}
             >
               {formatValue(value)}
             </motion.span>
@@ -1836,7 +1860,7 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
               initial={false}
               animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
               transition={spring.fast}
-              style={{ minWidth: `${String(formatValue(max)).length}ch` }}
+              style={{ minWidth: `${valueCh}ch` }}
             >
               {formatValue(value)}
             </motion.span>

@@ -189,3 +189,12 @@ export function readHoverMode(get: (name: string) => string | undefined): HoverM
 export function hoverModeCookie(value: HoverMode): string {
   return `${HOVER_COOKIE}=${value}; path=/; max-age=${MAX_AGE}; samesite=lax`;
 }
+
+/** Whether the request comes from a Mac (or iPhone/iPad), from the
+ *  `Sec-CH-UA-Platform` hint where the browser sends one, the User-Agent
+ *  otherwise. Seeds CommandMenuPlatform so shortcut caps paint as ⌘ or Ctrl
+ *  from the first frame. */
+export function readMacPlatform(platformHint: string | null, userAgent: string | null): boolean {
+  if (platformHint) return /mac|ios/i.test(platformHint);
+  return /mac|iphone|ipad|ipod/i.test(userAgent ?? "");
+}

@@ -237,7 +237,9 @@ Select.displayName = "Select";
 const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between outline-none cursor-pointer",
-    "transition-all duration-80",
+    // Listed, never `all`: a size change snaps instead of easing the
+    // trigger's height and padding.
+    "transition-[color,background-color,border-radius,box-shadow,opacity] duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
   ],
@@ -470,7 +472,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           align="start"
           sideOffset={6}
           alignItemWithTrigger={false}
-          className="z-50 outline-none"
+          className="z-[var(--z-popover,60)] outline-none"
         >
           <motion.div
             className={popupMotionClass}

@@ -1006,7 +1006,7 @@ function FormatDropdown({
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-[60] outline-none"
+          className="z-[var(--z-popover,60)] outline-none"
         >
           {/* The positioner's data-side flips the origin and the 4px enter
               offset when the menu opens above, as Dropdown's does. */}
@@ -2572,7 +2572,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
               side="bottom"
               align="start"
               sideOffset={6}
-              className="z-50 outline-none"
+              className="z-[var(--z-popover,60)] outline-none"
             >
               <motion.div
                 // The positioner's data-side flips the 4px enter offset when

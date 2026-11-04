@@ -725,7 +725,7 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
           // strip or the overlay card — and the shell must rise above the
           // inset (a later sibling) so the card paints over it. Pinning from
           // a peek keeps both through the width spring for the same reason.
-          peekEnabled || pinnedFromPeek ? "z-40" : "overflow-hidden",
+          peekEnabled || pinnedFromPeek ? "z-[var(--z-sticky,30)]" : "overflow-hidden",
           // Flex order (not DOM order) decides the side, so consumers can
           // keep Sidebar before SidebarInset regardless of `side`.
           side === "right" && "order-last",

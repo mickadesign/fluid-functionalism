@@ -117,6 +117,20 @@
      value in each scope. */
   --focus-ring: var(--fluid-accent);
 
+  /* ── Stacking scale ──
+     The only z-index steps for layers that leave their component: sticky
+     chrome, the scrim under a modal, the modal or sheet itself, popovers
+     (menus, selects, pickers), and tooltips on top. A popover opened from a
+     dialog, or a tooltip on a menu row, wins by its step, never by which
+     portal mounted last. Components read var(--z-*, <literal>), so they keep
+     the same order in projects without these variables. Values inside one
+     component (rows over their hover fill) stay plain z-10 / z-20. */
+  --z-sticky: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+
   /* ── Alpha checkerboard (color-picker swatches) ── */
   --checker-a: light-dark(#bbbbbb, #1f1f1f);
   --checker-b: light-dark(#ffffff, #2a2a2a);
