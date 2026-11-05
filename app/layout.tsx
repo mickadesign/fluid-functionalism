@@ -27,7 +27,7 @@ import { BaseProvider } from "@/lib/base-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
 import { GitHubStarsProvider } from "@/app/components/right-panel";
 import { getGitHubStars } from "@/lib/github-stars";
-import { latestMarks } from "@/lib/changelog/load";
+import { latestMarks, recentNew } from "@/lib/changelog/load";
 
 // The optional serif for headings (right panel > Heading font, or F):
 // Vercel's display serif, one Regular cut so far and not on Google Fonts, so
@@ -151,7 +151,7 @@ export default async function RootLayout({
                             release lists as New, read from content/changelog. */}
                         <GitHubStarsProvider stars={stars}>
                           <CommandMenuPlatform mac={mac}>
-                            <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={latestMarks()}>
+                            <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={{ ...latestMarks(), recent: recentNew() }}>
                               {children}
                             </SidebarLayout>
                           </CommandMenuPlatform>

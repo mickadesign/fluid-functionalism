@@ -1333,6 +1333,59 @@
       ]
     },
     {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "title": "Checkbox",
+      "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Radix flavor.",
+      "dependencies": [
+        "motion",
+        "@radix-ui/react-checkbox"
+      ],
+      "registryDependencies": [
+        "utils",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/checkbox.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/checkbox. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#checkbox.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "checkbox-base",
+      "type": "registry:ui",
+      "title": "Checkbox (Base UI)",
+      "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Base UI flavor.",
+      "dependencies": [
+        "motion",
+        "@base-ui/react@^1.9.0"
+      ],
+      "registryDependencies": [
+        "utils",
+        "omit",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/base/checkbox.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/checkbox. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#checkbox.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "checkbox-group",
       "type": "registry:ui",
       "title": "Checkbox Group",
@@ -1603,6 +1656,89 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/input-copy. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input-copy.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "field",
+      "type": "registry:ui",
+      "title": "Field",
+      "description": "Compose a label, a control, helper text, and a validation message into one accessible field: fieldsets, legends, groups, separators, and vertical, horizontal, or responsive layouts.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "icon-context",
+        "size-context",
+        "tokens",
+        "type-scale",
+        "input",
+        "textarea"
+      ],
+      "files": [
+        {
+          "path": "registry/default/field.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/field. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#field.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "title": "Input",
+      "description": "Single-line text field drawn like the Select trigger: a fixed hairline, a hover fill, and a neutral focus border; file inputs get an icon. Pairs with Field.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "icon-context",
+        "shape-context",
+        "size-context",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/input.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/input. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "textarea",
+      "type": "registry:ui",
+      "title": "Textarea",
+      "description": "Multi-line text field with the Input's hairline that grows with its content. Pairs with Field.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/textarea.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/textarea. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#textarea.",
       "categories": [
         "components"
       ]

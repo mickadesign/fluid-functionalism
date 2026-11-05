@@ -1,0 +1,129 @@
+"use client";
+
+import { forwardRef, useState } from "react";
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
+import { AnimatePresence, motion } from "motion/react";
+import { cn } from "@/lib/utils";
+import { omit } from "@/lib/omit";
+import { useSize, type SizeVariant } from "@/lib/size-context";
+
+// ---------------------------------------------------------------------------
+// A single checkbox: the CheckboxGroup square on its own. A 1.5px --border
+// box that darkens on hover; checked, the box steps back and a drawn check
+// alone marks the state. Pair it with Field and FieldLabel for its text.
+// ---------------------------------------------------------------------------
+
+interface CheckboxProps
+  extends Omit<
+    CheckboxPrimitive.Root.Props,
+    "checked" | "defaultChecked" | "onCheckedChange" | "className"
+  > {
+  checked?: boolean;
+  defaultChecked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  className?: string;
+  /** Pins the box to one step of the size ladder (16px default, 14px
+   *  compact). Omitted, it follows the surrounding SizeProvider. */
+  size?: SizeVariant;
+}
+
+const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
+  ({ className, checked, defaultChecked = false, onCheckedChange, onKeyDown, size, ...props }, ref) => {
+    // Controlled or not, the check's enter and exit need the state in
+    // render, so the uncontrolled value is mirrored here.
+    const [uncontrolled, setUncontrolled] = useState(defaultChecked);
+    const isChecked = checked ?? uncontrolled;
+    const compact = useSize(size).variant === "compact";
+
+    return (
+      <CheckboxPrimitive.Root
+        ref={ref}
+        data-slot="checkbox"
+        checked={isChecked}
+        onCheckedChange={(next) => {
+          if (checked === undefined) setUncontrolled(next);
+          onCheckedChange?.(next);
+        }}
+        onKeyDown={(e) => {
+          // In a choice card (a FieldLabel around a whole Field) the box
+          // reads as an option to pick, so Enter toggles it like Space. A
+          // plain checkbox, even inside a label, leaves Enter to submit its
+          // form.
+          const card = e.currentTarget.closest("[data-slot=field-label]");
+          if (e.key === "Enter" && !e.repeat && card?.querySelector(":scope > [data-slot=field]")) {
+            e.preventDefault();
+            e.currentTarget.click();
+          }
+          onKeyDown?.(e);
+        }}
+        className={cn(
+          "relative inline-block shrink-0 cursor-pointer border-[1.5px] border-solid border-border bg-transparent p-0 outline-none",
+          "transition-[border-color] duration-80",
+          // Hovering the box, or the Field row it sits in, darkens the
+          // border; a checked box keeps it clear.
+          "hover:not-data-checked:border-foreground/40 group-hover/field:not-data-checked:border-foreground/40",
+          "data-checked:border-transparent",
+          "aria-invalid:not-data-checked:border-destructive/50",
+          "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+          "data-disabled:pointer-events-none data-disabled:opacity-50",
+          compact ? "size-[14px] rounded-[4px]" : "size-4 rounded-[5px]",
+          className
+        )}
+        {...props}
+      >
+        {/* keepMounted hands unmounting to AnimatePresence so the retract
+            plays; initial={false} shows a box checked at mount finished. */}
+        <AnimatePresence initial={false}>
+          {isChecked && (
+            <CheckboxPrimitive.Indicator
+              keepMounted
+              render={(indicatorProps) => {
+                // Motion owns these handlers and style on an svg.
+                const rest = omit(indicatorProps as React.HTMLAttributes<SVGSVGElement>, [
+                  "style",
+                  "onDrag",
+                  "onDragStart",
+                  "onDragEnd",
+                  "onAnimationStart",
+                  "onAnimationEnd",
+                  "onAnimationIteration",
+                ]);
+                return (
+                  <motion.svg
+                    {...rest}
+                    width={compact ? 16 : 18}
+                    height={compact ? 16 : 18}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-foreground"
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 1 }}
+                  >
+                    {/* The check draws itself: pathLength 0 → 1 over 0.08s
+                        easeOut, back to 0 over 0.04s easeIn. */}
+                    <motion.path
+                      d="M6 12L10 16L18 8"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1, transition: { duration: 0.08, ease: "easeOut" } }}
+                      exit={{ pathLength: 0, transition: { duration: 0.04, ease: "easeIn" } }}
+                    />
+                  </motion.svg>
+                );
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </CheckboxPrimitive.Root>
+    );
+  }
+);
+
+Checkbox.displayName = "Checkbox";
+
+export { Checkbox };
+export type { CheckboxProps };

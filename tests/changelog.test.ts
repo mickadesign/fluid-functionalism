@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { parseRelease, releaseEntries, type Inline } from "@/lib/changelog/parse";
-import { AHEAD_OF_RELEASE, latestMarks, loadReleases } from "@/lib/changelog/load";
+import { AHEAD_OF_RELEASE, latestMarks, loadReleases, recentNew } from "@/lib/changelog/load";
 import { buildMigrationPrompt } from "@/lib/changelog/migration-prompt";
 import { highlightDiff } from "@/lib/docs/highlight";
 import { releasesToMarkdown } from "@/lib/changelog/markdown";
@@ -338,6 +338,25 @@ describe("latestMarks", () => {
     for (const { month, slugs } of AHEAD_OF_RELEASE) {
       expect(month).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);
       for (const slug of slugs) expect(docSlugs.has(slug), slug).toBe(true);
+    }
+  });
+
+  it("dots every page added since NEW_SINCE, past its own release", () => {
+    const dir = dirWith({
+      "2026-09.md": release("2026-09", "## New\n\n- [Badge](/docs/badge): Too early. (#1)\n"),
+      "2026-10.md": release(
+        "2026-10",
+        "## New\n\n- [Banner](/docs/banner): A status message. (#2)\n- [Starter](/): Not a docs page. (#3)\n\n## Updated\n\n- [Select](/docs/select): A fix. (#4)\n",
+      ),
+    });
+    try {
+      const ahead = [
+        { month: "2026-09", slugs: ["card"] },
+        { month: "2026-11", slugs: ["field"] },
+      ];
+      expect(recentNew(dir, "2026-10", ahead).sort()).toEqual(["banner", "field"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

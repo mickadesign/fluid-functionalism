@@ -22,6 +22,7 @@ behavior they extend.
 | [Card](https://www.fluidfunctionalism.com/docs/card) | `card` | shadcn's compositional card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, and 2-D fluid hover | [Card](craft.md#card) |
 | [CarouselDots](https://www.fluidfunctionalism.com/docs/carousel-dots) | `carousel-dots` | Carousel dots, static or on autoplay (`autoplay` prop): fluid-hover click areas, a pill that fills over each slide | [CarouselDots](craft.md#carousel-dots) |
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments | [ChatMessage](craft.md#chat-message) |
+| [Checkbox](https://www.fluidfunctionalism.com/docs/checkbox) | `checkbox` · `base/checkbox` | A single checkbox: a hairline square that darkens on hover and a check that draws itself | [Checkbox](craft.md#checkbox) |
 | [CheckboxGroup](https://www.fluidfunctionalism.com/docs/checkbox-group) | `checkbox-group` · `base/checkbox-group` | Checkbox group with merged backgrounds for contiguous selections | [CheckboxGroup](craft.md#checkbox-group) |
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | `color-picker` · `base/color-picker` | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper, inline or in a popover | [ColorPicker](craft.md#color-picker) |
 | [Combobox](https://www.fluidfunctionalism.com/docs/combobox) | `combobox` · `base/combobox` | Type-to-filter field with keyboard highlight, fluid hover, chips for multiple selection, and a create-from-query row | [Combobox](craft.md#combobox) |
@@ -29,7 +30,9 @@ behavior they extend.
 | [DatePicker](https://www.fluidfunctionalism.com/docs/date-picker) | `date-picker` · `base/date-picker` | Field or ghost trigger (`variant`) for a date or a range, with optional `presets`, and editable `time` / `timeRange` fields whose slot lists show each duration; each segment opens its own popover | [DatePicker](craft.md#date-picker) |
 | [Dialog](https://www.fluidfunctionalism.com/docs/dialog) | `dialog` · `base/dialog` | Modal with spring enter/exit and overlay in 3 widths, the largest a canvas for a sidebar | [Dialog](craft.md#dialog) |
 | [Dropdown](https://www.fluidfunctionalism.com/docs/dropdown) | `dropdown` · `base/dropdown` | Menu-style dropdown with fluid hover, animated selection, and an optional search field in the popup | [Dropdown](craft.md#dropdown) |
+| [Field](https://www.fluidfunctionalism.com/docs/field) | `field` (brings `input`, `textarea`) | Label, control, help text, and error composed into one accessible field: fieldsets, legends, horizontal or responsive layout, choice cards | [Field](craft.md#field) |
 | [FileThumbnail](https://www.fluidfunctionalism.com/docs/input-message) | `file-thumbnail` | Read-only square preview of a File: images object-cover, PDFs render their first page | [InputMessage](craft.md#input-message) |
+| [Input](https://www.fluidfunctionalism.com/docs/input) | `input` | Single-line text field in the Select trigger's hairline, with a neutral focus border | [Input](craft.md#input) |
 | [InputCopy](https://www.fluidfunctionalism.com/docs/input-copy) | `input-copy` · `base/input-copy` | Read-only input with copy-to-clipboard and animated check feedback | [InputCopy](craft.md#input-copy) |
 | [InputGroup](https://www.fluidfunctionalism.com/docs/input-group) | `input-group` | Input fields with fluid hover, animated labels, and validation | [InputGroup](craft.md#input-group) |
 | [InputMessage](https://www.fluidfunctionalism.com/docs/input-message) | `input-message` · `base/input-message` | Chat-style composer with auto-resizing textarea, file drop, action slots, and a built-in send button | [InputMessage](craft.md#input-message) |
@@ -40,6 +43,7 @@ behavior they extend.
 | [Switch](https://www.fluidfunctionalism.com/docs/switch) | `switch` · `base/switch` | Toggle with animated thumb and label | [Switch](craft.md#switch) |
 | [Table](https://www.fluidfunctionalism.com/docs/table) | `table` | Data table with fluid hover on rows and semantic markup | [Table](craft.md#table) |
 | [Tabs](https://www.fluidfunctionalism.com/docs/tabs) | `tabs` · `base/tabs` | Tab navigation with an animated pill indicator | [Tabs](craft.md#tabs) |
+| [Textarea](https://www.fluidfunctionalism.com/docs/textarea) | `textarea` | Multi-line text field with the Input's hairline that grows with its content | [Textarea](craft.md#textarea) |
 | [ThinkingIndicator](https://www.fluidfunctionalism.com/docs/thinking-indicator) | `thinking-indicator` | Animated status indicator with morphing SVG and cycling text | [ThinkingIndicator](craft.md#thinking-indicator) |
 | [ThinkingSteps](https://www.fluidfunctionalism.com/docs/thinking-steps) | `thinking-steps` · `base/thinking-steps` | Chain-of-thought display with sequential animation and collapsible steps | [ThinkingSteps](craft.md#thinking-steps) |
 | [Tooltip](https://www.fluidfunctionalism.com/docs/tooltip) | `tooltip` · `base/tooltip` | Spring-based floating tooltip with configurable placement | [Tooltip](craft.md#tooltip) |
@@ -112,7 +116,7 @@ part itself.
   `typography` for the markdown in replies (`.typeset`)
 - Docs, changelogs, any rendered markdown → `typography` (`.typeset`)
 - Action palette → `command-menu` (dialog shell on ⌘K included)
-- Forms → `input-group`, `select`, `combobox`, `checkbox-group`,
+- Forms → `field` + `input`, `textarea`, `checkbox`, `input-group`, `select`, `combobox`, `checkbox-group`,
   `radio-group`, `switch`, `slider`, `color-picker`, `date-picker`
 - Booking, scheduling, availability → `calendar` (`booked`, `available`),
   `date-picker` (ranges, times)

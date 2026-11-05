@@ -30,6 +30,7 @@ Systems first — their craft applies across every component below.
 - [Card](#card)
 - [CarouselDots](#carousel-dots)
 - [ChatMessage](#chat-message)
+- [Checkbox](#checkbox)
 - [CheckboxGroup](#checkbox-group)
 - [ColorPicker](#color-picker)
 - [Combobox](#combobox)
@@ -37,6 +38,8 @@ Systems first — their craft applies across every component below.
 - [DatePicker](#date-picker)
 - [Dialog](#dialog)
 - [Dropdown](#dropdown)
+- [Field](#field)
+- [Input](#input)
 - [InputCopy](#input-copy)
 - [InputGroup](#input-group)
 - [InputMessage](#input-message)
@@ -47,6 +50,7 @@ Systems first — their craft applies across every component below.
 - [Switch](#switch)
 - [Table](#table)
 - [Tabs](#tabs)
+- [Textarea](#textarea)
 - [ThinkingIndicator](#thinking-indicator)
 - [ThinkingSteps](#thinking-steps)
 - [Tooltip](#tooltip)
@@ -276,6 +280,16 @@ Systems first — their craft applies across every component below.
 - Timestamps are a user-message-only affordance — `time` is ignored on assistant replies, which show their actions alone; the timestamp renders tabular-nums.
 - Messages cap at max-w-[80%]; attachments render as square thumbnails (default 64px) in a row above the bubble, justified toward the message's own side, and an attachment-only message (no children) drops the text bubble entirely. Each thumbnail gets a 1px inset pure-black/pure-white 10% outline so bright edge pixels do not disappear into the page.
 
+<a id="checkbox"></a>
+## Checkbox
+
+- The square is CheckboxGroup's: 16px (14px compact), a 1.5px --border at rounded-[5px] (4px compact), so a lone checkbox and a group row read as one family.
+- Checked, the border goes transparent and the drawn check alone marks the state; the check draws itself (pathLength 0 → 1 over 0.08s easeOut) and retracts faster (0.04s easeIn). AnimatePresence initial={false} so a box checked at mount does not animate on load.
+- Hover darkens an unchecked border to foreground/40, the same neutral as the Input's focus border, and so does hovering the Field row it sits in (group-hover/field), so the label is part of the target.
+- Keyboard focus shows the 1px --focus-ring; aria-invalid tints only the unchecked border red, and disabled dims to 50% with no pointer events.
+- Uncontrolled use is mirrored in local state because the check's enter and exit need the value in render; onCheckedChange always reports a plain boolean in both flavors.
+- Space toggles, as the ARIA checkbox pattern says; inside a choice card (a FieldLabel wrapping a whole Field) Enter toggles too, because the card reads as an option to pick. A plain checkbox, even one wrapped in a label, leaves Enter to submit its form.
+
 <a id="checkbox-group"></a>
 ## CheckboxGroup
 
@@ -367,6 +381,27 @@ Systems first — their craft applies across every component below.
 - Submenus: the primitive owns the safe area (the pointer can cut diagonally across other rows to an open submenu without closing it), but the fluid hover would still follow the pointer onto those rows. So while a submenu is open, the parent's highlight stays on its trigger and moves only with focus: both primitives move focus to another row only once the pointer leaves the safe area, and close the submenu as they do. The submenu renders through a portal yet is a React child of the parent, so the parent's handlers skip events from outside their own DOM; otherwise a click on a submenu row would also reach the parent's gap-click routing.
 - A submenu sits 2px off the parent menu (`sideOffset` 6 is measured from the trigger row, inside the menu's 4px padding) with its first row level with the trigger (`alignOffset` -4 cancels the padding), keeps its own `w-56` instead of tracking its anchor's width, and never takes focus on a hover open: only a keyboard open (→, Enter) lands on its first row.
 
+<a id="field"></a>
+## Field
+
+- Field is layout and type plus one link: the control (Input, Textarea, Select, Checkbox, any native field) is whatever goes inside, and after each render Field adds the ids of its own FieldDescription and FieldError to that control's aria-describedby, keeping the caller's ids. It is role=group only when named (aria-label or aria-labelledby), so single fields don't announce an empty group. Validation reads data-invalid on Field for the red label and aria-invalid on the control for its border.
+- Labels are body text in muted-foreground above a control and full foreground beside one (orientation horizontal), where they read as the control's own text.
+- Labels, descriptions and errors sit flush with the control's left edge; FieldError leads with the circle-alert icon nudged 1px down so it centers on the first caption line even when the message wraps or lists, the ladder's icon-to-label gap (8px, 4px compact) from its text.
+- Spacing comes from the size rules: stacked, label, control, description and error sit 4px apart at both steps, as in InputField; fields (and a fieldset's legend block) sit 12px apart, InputGroup's step; side by side, a control and its label or label column take the ladder gap (8px, 4px compact), as in a CheckboxGroup row. A choice card pads with the ladder's px (12px, 10px compact) and takes the shape's container radius.
+- FieldError takes children or an errors array from a form library or Standard Schema; duplicate messages collapse and several render as a plain list, false or empty children fall back to the array, and it renders nothing when there is nothing to say, so it can stay in the tree.
+- FieldGroup is an @container/field-group, so orientation responsive switches to a row on the group's width, not the viewport's.
+- Choice card: a FieldLabel wrapping a whole horizontal Field becomes one bordered, hoverable target (rounded-xl, p-3, hover:bg-hover) whose border darkens to foreground/40 once the checkbox inside is checked. Keyboard focus rings the card's outline in --focus-ring and the checkbox's own ring steps aside, so the focus mark matches the target.
+
+<a id="input"></a>
+## Input
+
+- The frame copies the Select trigger: border border-border that never moves at rest, the ladder's height (h-9 / h-7), px (12px / 10px) and body text, so an Input and a Select side by side match to the pixel.
+- Hover adds bg-hover; focus darkens the border to a neutral foreground/40 instead of an accent ring and drops the hover fill.
+- Focus wins over aria-invalid's red while the value is being fixed; Tailwind sorts aria-* after focus, so the invalid case carries its own stacked aria-invalid:focus: class.
+- On touch screens the text steps up to 16px inside the same height (the ladder's field class), so iOS Safari never zooms on focus.
+- type=number swaps the browser spinners for − and + buttons side by side at the right end, inset like segmented tabs (28px buttons 4px in, 24px and 2px compact) with nested corners; they stay out of the tab order (arrow keys already step) and call stepUp/stepDown, then dispatch an input event so a controlled onChange sees the new value and min, max and step hold.
+- type=file gets a file icon over its left padding (px + icon + gap) and the line padding a text input centers by itself (7px, 4px compact); its text stays muted until a file is picked, while the browser's Choose File button keeps full contrast.
+
 <a id="input-copy"></a>
 ## InputCopy
 
@@ -382,8 +417,9 @@ Systems first — their craft applies across every component below.
 ## InputGroup
 
 - A field lights up when it is the hover-nearest item OR focused (`labelActive = isActive || isFocused`): its leading icon shifts muted→foreground and stroke-width 1.5→2 over 80ms.
-- State chrome is a precedence ladder: disabled → transparent/ring-border; error → transparent at rest, bg-destructive-light/60 on hover-active, bg-card when focused, with ring-destructive/50 only while focused or hover-active; focused → bg-card + ring-border; hover-active → bg-muted/50; rest → fully transparent with invisible ring.
-- The label sits one notch tighter (pl-2.5, compact pl-2) than the ladder's control padding because "the field ring is invisible at rest, so the roomier inset reads as a gap".
+- The frame is the Select trigger's hairline: an inset ring-1 in --border that never moves at rest, bg-hover on the field under the pointer, and the ladder's px (12px, compact 10px) so text lines up with a Select beside it.
+- Focus darkens the ring to a neutral ring-foreground/40 instead of an accent, and it wins over the error tint (ring-destructive/50) while the value is being fixed; the red comes back on blur if the field is still invalid. Focus also drops the hover fill.
+- Label and error message sit flush with the field's edge, not inset to the text; the error leads with the circle-alert icon (14px, compact 12px) on the caption role.
 - The label stacks an invisible semibold layer under the visible one in one grid cell, reserving the bold width so weight changes never shift layout.
 - Mousedown anywhere on the input container (icon, padding) focuses the input — preserving the old one-big-label behavior — while clicks on the input itself are left alone so caret placement isn't disturbed.
 - The input container uses a fixed ladder control height (rather than py-2 around the line box) so the field sits exactly on the 36px / 28px size steps. On touch screens the text steps up to 16px inside that same height, so iOS Safari never zooms the page on focus and the row doesn't move.
@@ -486,6 +522,14 @@ Systems first — their craft applies across every component below.
 - One ResizeObserver on the root watches every registered tab button, and each item runs a second one on its label span, so pill rects re-measure when a label expands/collapses in activeLabel mode; a collapsed tab keeps its name for AT via `aria-label`.
 - The list wears `-mx-1 px-1 / -my-1 py-1` so the 2px-outset focus ring can draw inside `overflow-x-auto` without clipping, and `max-w-[calc(100%_+_8px)]` because fit-content parents size against the margin box — a plain max-w-full would clamp the list 8px too small and clip the first/last tab's ring.
 - Activation is manual, `activationMode="manual"` on Radix and `activateOnFocus={false}` on Base UI: arrows move focus, Enter/Space selects. The primitive owns role="tablist", roving tabindex, and Arrow/Home/End.
+
+<a id="textarea"></a>
+## Textarea
+
+- The Input's hairline on a multi-line box: fixed --border at rest, bg-hover on hover, neutral foreground/40 on focus that wins over aria-invalid's red.
+- It grows with field-sizing-content from three lines (76px, 64px compact) to ten (216px, 190px), then scrolls, with resize-none, so a long paste never pushes the form off screen; browsers without field-sizing keep the minimum and scroll.
+- Vertical padding puts the first line exactly where an Input's text sits: (36 - 2 - 20) / 2 = 7px, (28 - 2 - 18) / 2 = 4px compact, so a Textarea under an Input starts on the same baseline offset.
+- A pill shape steps down to its merged radius, because a full pill radius on a tall box reads as a blob.
 
 <a id="thinking-indicator"></a>
 ## ThinkingIndicator

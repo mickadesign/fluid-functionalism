@@ -635,6 +635,31 @@ const actions = <button aria-label="Copy"><Copy size={13} /></button>;
       "className: string. Merged onto the outer motion wrapper, e.g. to tweak max-width.",
     ],
   },
+  checkbox: {
+    craft: [
+      "The square is CheckboxGroup's: 16px (14px compact), a 1.5px --border at rounded-[5px] (4px compact), so a lone checkbox and a group row read as one family.",
+      "Checked, the border goes transparent and the drawn check alone marks the state; the check draws itself (pathLength 0 \u2192 1 over 0.08s easeOut) and retracts faster (0.04s easeIn). AnimatePresence initial={false} so a box checked at mount does not animate on load.",
+      "Hover darkens an unchecked border to foreground/40, the same neutral as the Input's focus border, and so does hovering the Field row it sits in (group-hover/field), so the label is part of the target.",
+      "Keyboard focus shows the 1px --focus-ring; aria-invalid tints only the unchecked border red, and disabled dims to 50% with no pointer events.",
+      "Uncontrolled use is mirrored in local state because the check's enter and exit need the value in render; onCheckedChange always reports a plain boolean in both flavors.",
+      "Space toggles, as the ARIA checkbox pattern says; inside a choice card (a FieldLabel wrapping a whole Field) Enter toggles too, because the card reads as an option to pick. A plain checkbox, even one wrapped in a label, leaves Enter to submit its form.",
+    ],
+    usage: `import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+
+<Field orientation="horizontal">
+  <Checkbox id="terms" checked={accepted} onCheckedChange={setAccepted} />
+  <FieldLabel htmlFor="terms">Accept terms and conditions</FieldLabel>
+</Field>`,
+    props: [
+      "checked: boolean. Controlled state; pair it with onCheckedChange.",
+      "defaultChecked: boolean (default false). Initial state when uncontrolled.",
+      "onCheckedChange: (checked: boolean) => void. Called on every toggle.",
+      "size: \"default\" | \"compact\". Pins the box to 16px or 14px.",
+      "aria-invalid: boolean. Tints the unchecked box red.",
+      "disabled: boolean (default false). Dims the box and drops pointer events.",
+    ],
+  },
   "checkbox-group": {
     craft: [
       "Contiguous checked rows merge into one rounded selection block: indices group into runs with stable IDs (reused when any member overlaps the previous render) so framer morphs a growing/shrinking block instead of exit+re-enter.",
@@ -911,11 +936,65 @@ const [view, setView] = useState(0);
       "disabled: boolean (default false). Disables the input and the copy button.",
     ],
   },
+  field: {
+    craft: [
+      "Field is layout and type plus one link: the control (Input, Textarea, Select, Checkbox, any native field) is whatever goes inside, and after each render Field adds the ids of its own FieldDescription and FieldError to that control's aria-describedby, keeping the caller's ids. It is role=group only when named (aria-label or aria-labelledby), so single fields don't announce an empty group. Validation reads data-invalid on Field for the red label and aria-invalid on the control for its border.",
+      "Labels are body text in muted-foreground above a control and full foreground beside one (orientation horizontal), where they read as the control's own text.",
+      "Labels, descriptions and errors sit flush with the control's left edge; FieldError leads with the circle-alert icon nudged 1px down so it centers on the first caption line even when the message wraps or lists, the ladder's icon-to-label gap (8px, 4px compact) from its text.",
+      "Spacing comes from the size rules: stacked, label, control, description and error sit 4px apart at both steps, as in InputField; fields (and a fieldset's legend block) sit 12px apart, InputGroup's step; side by side, a control and its label or label column take the ladder gap (8px, 4px compact), as in a CheckboxGroup row. A choice card pads with the ladder's px (12px, 10px compact) and takes the shape's container radius.",
+      "FieldError takes children or an errors array from a form library or Standard Schema; duplicate messages collapse and several render as a plain list, false or empty children fall back to the array, and it renders nothing when there is nothing to say, so it can stay in the tree.",
+      "FieldGroup is an @container/field-group, so orientation responsive switches to a row on the group's width, not the viewport's.",
+      "Choice card: a FieldLabel wrapping a whole horizontal Field becomes one bordered, hoverable target (rounded-xl, p-3, hover:bg-hover) whose border darkens to foreground/40 once the checkbox inside is checked. Keyboard focus rings the card's outline in --focus-ring and the checkbox's own ring steps aside, so the focus mark matches the target.",
+    ],
+    usage: `import {
+  Field, FieldDescription, FieldError, FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+
+<Field data-invalid={!!error}>
+  <FieldLabel htmlFor="email">Work email address</FieldLabel>
+  <Input id="email" type="email" placeholder="you@company.com" aria-invalid={!!error} />
+  <FieldDescription>We only use it to send your ticket.</FieldDescription>
+  <FieldError>{error}</FieldError>
+</Field>`,
+    props: [
+      "Field orientation: \"vertical\" | \"horizontal\" | \"responsive\" (default \"vertical\"). Label above, beside, or beside once the FieldGroup is wide enough.",
+      "Field data-invalid: boolean. Turns the label red; put aria-invalid on the control too.",
+      "FieldLegend variant: \"legend\" | \"label\" (default \"legend\"). Section title, or label-sized for a nested fieldset.",
+      "FieldLabel htmlFor: string. The id of the control it names. Wrap a whole Field in it for a choice card.",
+      "FieldSeparator children: ReactNode. Optional text centered on the rule.",
+      "FieldError children: ReactNode, or errors: Array<{ message?: string } | undefined>. Duplicates collapse, several render as a list.",
+    ],
+  },
+  input: {
+    craft: [
+      "The frame copies the Select trigger: border border-border that never moves at rest, the ladder's height (h-9 / h-7), px (12px / 10px) and body text, so an Input and a Select side by side match to the pixel.",
+      "Hover adds bg-hover; focus darkens the border to a neutral foreground/40 instead of an accent ring and drops the hover fill.",
+      "Focus wins over aria-invalid's red while the value is being fixed; Tailwind sorts aria-* after focus, so the invalid case carries its own stacked aria-invalid:focus: class.",
+      "On touch screens the text steps up to 16px inside the same height (the ladder's field class), so iOS Safari never zooms on focus.",
+      "type=number swaps the browser spinners for \u2212 and + buttons side by side at the right end, inset like segmented tabs (28px buttons 4px in, 24px and 2px compact) with nested corners; they stay out of the tab order (arrow keys already step) and call stepUp/stepDown, then dispatch an input event so a controlled onChange sees the new value and min, max and step hold.",
+      "type=file gets a file icon over its left padding (px + icon + gap) and the line padding a text input centers by itself (7px, 4px compact); its text stays muted until a file is picked, while the browser's Choose File button keeps full contrast.",
+    ],
+    usage: `import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
+
+<Field>
+  <FieldLabel htmlFor="email">Work email address</FieldLabel>
+  <Input id="email" type="email" placeholder="you@company.com" />
+</Field>`,
+    props: [
+      "size: \"default\" | \"compact\". Pins the field to 36px or 28px.",
+      "aria-invalid: boolean. Tints the hairline red until the field is focused.",
+      "disabled: boolean (default false). Dims the field and drops pointer events.",
+      "Every native input attribute passes through: type, value, placeholder, onChange.",
+    ],
+  },
   "input-group": {
     craft: [
       "A field lights up when it is the hover-nearest item OR focused (`labelActive = isActive || isFocused`): its leading icon shifts muted\u2192foreground and stroke-width 1.5\u21922 over 80ms.",
-      "State chrome is a precedence ladder: disabled \u2192 transparent/ring-border; error \u2192 transparent at rest, bg-destructive-light/60 on hover-active, bg-card when focused, with ring-destructive/50 only while focused or hover-active; focused \u2192 bg-card + ring-border; hover-active \u2192 bg-muted/50; rest \u2192 fully transparent with invisible ring.",
-      "The label sits one notch tighter (pl-2.5, compact pl-2) than the ladder's control padding because \"the field ring is invisible at rest, so the roomier inset reads as a gap\".",
+      "The frame is the Select trigger's hairline: an inset ring-1 in --border that never moves at rest, bg-hover on the field under the pointer, and the ladder's px (12px, compact 10px) so text lines up with a Select beside it.",
+      "Focus darkens the ring to a neutral ring-foreground/40 instead of an accent, and it wins over the error tint (ring-destructive/50) while the value is being fixed; the red comes back on blur if the field is still invalid. Focus also drops the hover fill.",
+      "Label and error message sit flush with the field's edge, not inset to the text; the error leads with the circle-alert icon (14px, compact 12px) on the caption role.",
       "The label stacks an invisible semibold layer under the visible one in one grid cell, reserving the bold width so weight changes never shift layout.",
       "Mousedown anywhere on the input container (icon, padding) focuses the input \u2014 preserving the old one-big-label behavior \u2014 while clicks on the input itself are left alone so caret placement isn't disturbed.",
       "The input container uses a fixed ladder control height (rather than py-2 around the line box) so the field sits exactly on the 36px / 28px size steps. On touch screens the text steps up to 16px inside that same height, so iOS Safari never zooms the page on focus and the row doesn't move.",
@@ -1242,6 +1321,27 @@ const [selected, setSelected] = useState(0);
       "TabsItem.icon: IconComponent. Icon displayed in the tab.",
       "TabsPanel.index: number. Index of this panel; rendered only when it matches selectedIndex.",
       "TabsPanel.idPrefix: string. Must match the Tabs idPrefix.",
+    ],
+  },
+  textarea: {
+    craft: [
+      "The Input's hairline on a multi-line box: fixed --border at rest, bg-hover on hover, neutral foreground/40 on focus that wins over aria-invalid's red.",
+      "It grows with field-sizing-content from three lines (76px, 64px compact) to ten (216px, 190px), then scrolls, with resize-none, so a long paste never pushes the form off screen; browsers without field-sizing keep the minimum and scroll.",
+      "Vertical padding puts the first line exactly where an Input's text sits: (36 - 2 - 20) / 2 = 7px, (28 - 2 - 18) / 2 = 4px compact, so a Textarea under an Input starts on the same baseline offset.",
+      "A pill shape steps down to its merged radius, because a full pill radius on a tall box reads as a blob.",
+    ],
+    usage: `import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldLabel } from "@/components/ui/field";
+
+<Field>
+  <FieldLabel htmlFor="notes">Anything else we should know?</FieldLabel>
+  <Textarea id="notes" />
+</Field>`,
+    props: [
+      "size: \"default\" | \"compact\". Pins the text and padding to one ladder step.",
+      "aria-invalid: boolean. Tints the hairline red until the field is focused.",
+      "disabled: boolean (default false). Dims the field and drops pointer events.",
+      "Every native textarea attribute passes through: value, placeholder, rows, onChange.",
     ],
   },
   "thinking-indicator": {
