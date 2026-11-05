@@ -21,7 +21,7 @@ import type { PlaygroundProps } from "./types";
 // combination of the props can be previewed, with the matching code kept in
 // sync in the doc page's Code tab.
 
-type PlayVariant = "primary" | "secondary" | "tertiary" | "ghost";
+type PlayVariant = "primary" | "secondary" | "tertiary" | "ghost" | "destructive";
 type PlaySize = "compact" | "default";
 
 // "Icon only" swaps the text sizes for their square counterparts.
@@ -146,6 +146,7 @@ export function ButtonPlayground({ children }: PlaygroundProps) {
               { value: "secondary", label: "Secondary" },
               { value: "tertiary", label: "Tertiary" },
               { value: "ghost", label: "Ghost" },
+              { value: "destructive", label: "Destructive" },
             ]}
           />
         </PlayField>

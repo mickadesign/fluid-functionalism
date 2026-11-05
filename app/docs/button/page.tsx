@@ -16,16 +16,18 @@ const variantsCode = `import { Button } from "./components";
 <Button variant="secondary">Secondary</Button>
 <Button variant="tertiary">Tertiary</Button>
 <Button variant="ghost">Ghost</Button>
+<Button variant="destructive">Delete</Button>
 
 {/* Full width: w-full stretches a button to its container. A w-fit
     container hugs the row above, so the column shares its width. */}
 <div className="flex w-fit flex-col gap-8">
-  <div className="flex items-center gap-2">{/* the 4 buttons above */}</div>
+  <div className="flex items-center gap-2">{/* the 5 buttons above */}</div>
   <div className="flex flex-col gap-2">
     <Button variant="primary" className="w-full">Primary</Button>
     <Button variant="secondary" className="w-full">Secondary</Button>
     <Button variant="tertiary" className="w-full">Tertiary</Button>
     <Button variant="ghost" className="w-full">Ghost</Button>
+    <Button variant="destructive" className="w-full">Delete</Button>
   </div>
 </div>`;
 
@@ -87,7 +89,7 @@ export default function ButtonDoc() {
 
       <DocSection title="Variants">
         <p className="text-site-body text-muted-foreground">
-          4 variants, inline or full width: add <code>className=&quot;w-full&quot;</code>{" "}
+          5 variants, inline or full width: add <code>className=&quot;w-full&quot;</code>{" "}
           to stretch one to its container.
         </p>
         <ComponentPreview code={variantsCode}>
@@ -99,12 +101,14 @@ export default function ButtonDoc() {
               <Button variant="secondary">Secondary</Button>
               <Button variant="tertiary">Tertiary</Button>
               <Button variant="ghost">Ghost</Button>
+              <Button variant="destructive">Delete</Button>
             </div>
             <div className="flex flex-col gap-2">
               <Button variant="primary" className="w-full">Primary</Button>
               <Button variant="secondary" className="w-full">Secondary</Button>
               <Button variant="tertiary" className="w-full">Tertiary</Button>
               <Button variant="ghost" className="w-full">Ghost</Button>
+              <Button variant="destructive" className="w-full">Delete</Button>
             </div>
           </div>
         </ComponentPreview>
