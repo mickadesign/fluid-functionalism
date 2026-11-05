@@ -1037,7 +1037,7 @@ const SidebarMenuButton = forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
         {Icon && (
           <Icon
             size={sizeClasses.icon}
-            strokeWidth={lit ? 2 : 1.5}
+            strokeWidth={lit ? 1.75 : 1.5}
             className={cn(
               "shrink-0 transition-[color,stroke-width] duration-80",
               lit ? "text-foreground" : "text-muted-foreground"
@@ -1155,7 +1155,7 @@ const SidebarMenuAction = forwardRef<HTMLButtonElement, SidebarMenuActionProps>(
             // icons and the section header's actions, all on the size ladder.
             // Normalize bare icons to the site's 1.5 stroke (library defaults
             // vary), thickening to 2 on hover — Button's icon-only treatment.
-            "[&_svg]:size-[var(--icon-size)] [&_svg]:shrink-0 [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 hover:[&_svg]:stroke-[2]",
+            "[&_svg]:size-[var(--icon-size)] [&_svg]:shrink-0 [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 hover:[&_svg]:stroke-[1.75]",
             shape.item,
             // Reveal on the OWN row only. A sub action must not use the
             // menu-item group — its nearest one is the parent li, which would
@@ -1496,7 +1496,7 @@ const SidebarMenuSubButton = forwardRef<HTMLAnchorElement, SidebarMenuSubButtonP
           {Icon && (
             <Icon
               size={sizeClasses.icon}
-              strokeWidth={lit ? 2 : 1.5}
+              strokeWidth={lit ? 1.75 : 1.5}
               className={cn(
                 "shrink-0 transition-[color,stroke-width] duration-80",
                 lit ? "text-foreground" : "text-muted-foreground"

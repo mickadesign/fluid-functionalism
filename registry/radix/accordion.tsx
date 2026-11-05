@@ -755,7 +755,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
             >
               <ChevronRight
                 size={sizeClasses.icon}
-                strokeWidth={isOpen || isActive ? 2 : 1.5}
+                strokeWidth={isOpen || isActive ? 1.75 : 1.5}
                 className={cn(
                   "transition-[color,stroke-width] duration-80",
                   isOpen || isActive

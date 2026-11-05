@@ -259,7 +259,7 @@ function StaticRoleItem({
     >
       <Icon
         size={18}
-        strokeWidth={checked ? 2 : 1.5}
+        strokeWidth={checked ? 1.75 : 1.5}
         className={cn(
           "shrink-0 mt-0.5 transition-colors duration-80",
           checked
@@ -894,7 +894,7 @@ function RoleItem({
     >
       <Icon
         size={18}
-        strokeWidth={highlighted ? 2 : 1.5}
+        strokeWidth={highlighted ? 1.75 : 1.5}
         className={cn(
           "shrink-0 mt-0.5 transition-[color,stroke-width] duration-80",
           highlighted ? "text-foreground" : "text-muted-foreground"

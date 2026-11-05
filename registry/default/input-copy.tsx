@@ -145,7 +145,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
 
     // A wait-mode swap on spring.fast: the copy icon shrinks out to 0.8
     // before the result grows in from 0.6, then the check or × strokes draw
-    // themselves (pathLength 0 → 1 in 0.08s). Strokes go 1.5 → 2 on hover
+    // themselves (pathLength 0 → 1 in 0.08s). Strokes go 1.5 → 1.75 on hover
     // over 80ms, with the rest of the row.
     const iconSwitch = (
       <AnimatePresence mode="wait" initial={false}>
@@ -156,7 +156,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={spring.fast}
-            className="flex items-center justify-center text-destructive [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]"
+            className="flex items-center justify-center text-destructive [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[1.75]"
           >
             <svg
               width={14}
@@ -184,7 +184,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={spring.fast}
-            className="flex items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]"
+            className="flex items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[1.75]"
           >
             <svg
               width={14}
@@ -214,7 +214,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
             transition={spring.fast}
             className="flex items-center justify-center"
           >
-            <CopyIcon size={14} strokeWidth={1.5} className="transition-[stroke-width] duration-80 group-hover:stroke-[2]" />
+            <CopyIcon size={14} strokeWidth={1.5} className="transition-[stroke-width] duration-80 group-hover:stroke-[1.75]" />
           </motion.span>
         )}
       </AnimatePresence>
@@ -314,7 +314,7 @@ const InputCopy = forwardRef<HTMLDivElement, InputCopyProps>(
               transition={spring.fast}
             >
               <span className="flex items-center justify-center">
-                <CopyIcon size={14} strokeWidth={1.5} className="transition-[stroke-width] duration-80 group-hover:stroke-[2]" />
+                <CopyIcon size={14} strokeWidth={1.5} className="transition-[stroke-width] duration-80 group-hover:stroke-[1.75]" />
               </span>
               <span className="select-none inline-grid text-left">
                 <span className="col-start-1 row-start-1 invisible" aria-hidden="true">Copied</span>

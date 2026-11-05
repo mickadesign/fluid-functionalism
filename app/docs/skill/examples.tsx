@@ -192,7 +192,7 @@ export function CopyExample() {
           // scripted cursor can't trigger, so its look is mirrored here for
           // [data-script-hover]: the value tints, the icon thickens, muted
           // text comes up to full strength.
-          className="w-full max-w-[240px] [&_button[data-script-hover]_mark]:bg-[color-mix(in_oklab,var(--fluid-accent,#6B97FF)_20%,transparent)] [&_button[data-script-hover]_svg]:stroke-[2] [&_button[data-script-hover]_.text-muted-foreground]:text-foreground"
+          className="w-full max-w-[240px] [&_button[data-script-hover]_mark]:bg-[color-mix(in_oklab,var(--fluid-accent,#6B97FF)_20%,transparent)] [&_button[data-script-hover]_svg]:stroke-[1.75] [&_button[data-script-hover]_.text-muted-foreground]:text-foreground"
         />
       }
     />

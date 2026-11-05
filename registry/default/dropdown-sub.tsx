@@ -179,7 +179,7 @@ export function SubmenuChevron({ lit }: { lit: boolean }) {
     <span aria-hidden="true" className="inline-grid shrink-0 rtl:-scale-x-100">
       <ChevronRight
         size={sizeClasses.icon}
-        strokeWidth={lit ? 2 : 1.5}
+        strokeWidth={lit ? 1.75 : 1.5}
         className={cn(
           "transition-[color,stroke-width] duration-80",
           lit ? "text-foreground" : "text-muted-foreground"

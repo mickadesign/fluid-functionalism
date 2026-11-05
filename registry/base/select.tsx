@@ -302,7 +302,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
               <Icon
                 size={sizeClasses.icon}
                 strokeWidth={1.5}
-                className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-hover:text-foreground group-hover:stroke-[2]"
+                className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-hover:text-foreground group-hover:stroke-[1.75]"
               />
             )}
             <SelectPrimitive.Value
@@ -698,7 +698,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         {Icon && (
           <Icon
             size={sizeClasses.icon}
-            strokeWidth={isActive || isChecked ? 2 : 1.5}
+            strokeWidth={isActive || isChecked ? 1.75 : 1.5}
             className="shrink-0 transition-[color,stroke-width] duration-80"
           />
         )}

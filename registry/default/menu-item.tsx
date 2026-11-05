@@ -199,7 +199,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
             </span>
             <Icon
               size={sizeClasses.icon}
-              strokeWidth={isActive || checked ? 2 : 1.5}
+              strokeWidth={isActive || checked ? 1.75 : 1.5}
               className={cn(
                 "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
                 isActive || checked

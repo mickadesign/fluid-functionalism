@@ -945,14 +945,14 @@ function CardButton({
     <Icon
       size={compact ? 12 : 14}
       strokeWidth={1.5}
-      className="shrink-0 transition-[stroke-width] duration-80 group-hover/action:stroke-[2]"
+      className="shrink-0 transition-[stroke-width] duration-80 group-hover/action:stroke-[1.75]"
     />
   ) : null;
   const externalGlyph = external ? (
     <ArrowRight
       size={13}
       strokeWidth={1.5}
-      className="shrink-0 -rotate-45 transition-[stroke-width] duration-80 group-hover/action:stroke-[2]"
+      className="shrink-0 -rotate-45 transition-[stroke-width] duration-80 group-hover/action:stroke-[1.75]"
     />
   ) : null;
 

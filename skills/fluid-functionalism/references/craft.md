@@ -151,7 +151,7 @@ Systems first — their craft applies across every component below.
 ## Accordion
 
 - The trigger label renders twice in a stacked grid: an invisible semibold copy reserves the width, so the visible label animates 'wght' 400 → 550 ('opsz' 14 → 18, holding advance width within ±0.4px) on open with zero layout shift.
-- The chevron points right when collapsed and springs 90° down on expand via spring.fast; its strokeWidth also steps 1.5 → 2 when the row is open or hovered.
+- The chevron points right when collapsed and springs 90° down on expand via spring.fast; its strokeWidth also steps 1.5 → 1.75 when the row is open or hovered.
 - Panel height animates to a self-measured offsetHeight pixel value, never `height:"auto"` — framer measures "auto" visually, so under a scaled ancestor the open would overshoot to scale× the real height and snap back.
 - Open uses spring.fast with bounce 0 so height "lands with the trigger's chevron" without overshoot; close takes the quicker 0.06s exit tween because "a close is a decision already made". Opacity runs ahead of height (0.06s in / 0.04s out) so the body dissolves rather than being sliced by the clip edge.
 - Reduced motion is read via useReducedMotion (not trusted to a consumer MotionConfig) and drops the height transition to duration 0; content resizing underneath an open panel (e.g. a nested accordion) also snaps, since a re-targeted spring would chase the child's animation and land late.
@@ -217,7 +217,7 @@ Systems first — their craft applies across every component below.
 - Press effect: the surface layer sits 1px inside the button (inset-px) and a same-color 1px box-shadow spread fills it back to full bounds; pressing collapses the spread so the surface shrinks exactly 1px per side at any width — a scale would warp (2% of a 400px button is 8px sideways but under 1px vertically). Primary's fills are opaque color-mix()es; secondary's are see-through (`--tint`, black 8% / white 25%, lighter on hover), so it takes on whatever surface or tinted banner it sits on, and still never seams because an outer shadow renders only outside the surface box.
 - The press geometry releases slowly, presses fast: box-shadow transitions at 180ms cubic-bezier(0.23,1,0.32,1) at rest, dropping to 80ms while :active; background-color always runs 80ms ease.
 - Tertiary's border is an outer 1px shadow at rest that hands off to an inset 1px shadow when pressed, so the ring moves inward with the shrinking surface.
-- Icons thicken on hover instead of the label changing: strokeWidth animates 1.5 → 2 over 80ms; icons also sit 4px closer to their edge than text (12px default / 8px compact vs 16px / 12px base padding).
+- Icons thicken on hover instead of the label changing: strokeWidth animates 1.5 → 1.75 over 80ms; icons also sit 4px closer to their edge than text (12px default / 8px compact vs 16px / 12px base padding).
 - Loading keeps label and icons mounted at opacity-0 so the button's width never changes; the spinner overlays them, its box tracking the button height (h-9 / h-7). The spinner is a figure-eight SVG path with a 15/85 dash driven by two loops: 2s linear movement + 4s ease-in-out dash.
 - `active` prop forces the pressed colors at full size — for a button holding a dropdown/popover open — and the geometric press-collapse still reacts on top.
 - Size ladder: default h-9 (36px) px-4 13px text, compact h-7 (28px) px-3 12px text; unset size follows the surrounding SizeProvider, legacy sm/md/lg resolve as aliases. asChild clones the user's element with the button's internals as children and drops `disabled` on non-button roots.
@@ -376,13 +376,13 @@ Systems first — their craft applies across every component below.
 - Status resets to idle after exactly 2000ms; "copied" and "error" deliberately occupy the same animation slot on the button.
 - Tooltip choreography (icon variant): tooltip visibility is captured on pointerdown — before Radix closes it on press — and after copying the tooltip is force-opened as "Copied" only if it was already showing; otherwise it's suppressed. Leaving the row suppresses it, re-entering re-arms normal 500ms-delay behavior.
 - Button variant renders an invisible "Copied" layer in the same grid cell behind Copy/Copied/Failed, so the label swap never shifts the row's width.
-- The entire row is one `<button>`; hovering it highlights the mono value with a `<mark>` tinted with the accent at 20% (`color-mix(in oklab, var(--fluid-accent, #6B97FF) 20%, transparent)`) and thickens icon strokes 1.5→2 over 80ms, making the whole value read as the click target.
+- The entire row is one `<button>`; hovering it highlights the mono value with a `<mark>` tinted with the accent at 20% (`color-mix(in oklab, var(--fluid-accent, #6B97FF) 20%, transparent)`) and thickens icon strokes 1.5→1.75 over 80ms, making the whole value read as the click target.
 - Accessible name reflects state ("Copied" / "Copy failed" / "Copy"), and when a field label exists `aria-labelledby` chains button-then-label so screen readers hear "Copy <label>".
 
 <a id="input-group"></a>
 ## InputGroup
 
-- A field lights up when it is the hover-nearest item OR focused (`labelActive = isActive || isFocused`): its leading icon shifts muted→foreground and stroke-width 1.5→2 over 80ms.
+- A field lights up when it is the hover-nearest item OR focused (`labelActive = isActive || isFocused`): its leading icon shifts muted→foreground and stroke-width 1.5→1.75 over 80ms.
 - State chrome is a precedence ladder: disabled → transparent/ring-border; error → transparent at rest, bg-destructive-light/60 on hover-active, bg-card when focused, with ring-destructive/50 only while focused or hover-active; focused → bg-card + ring-border; hover-active → bg-muted/50; rest → fully transparent with invisible ring.
 - The label sits one notch tighter (pl-2.5, compact pl-2) than the ladder's control padding because "the field ring is invisible at rest, so the roomier inset reads as a gap".
 - The label stacks an invisible semibold layer under the visible one in one grid cell, reserving the bold width so weight changes never shift layout.
@@ -503,7 +503,7 @@ Systems first — their craft applies across every component below.
 
 - Each step enters in two phases: an outer wrapper opens height on spring.slow (to a measured pixel height, never "auto") while the inner content fades in after a default 0.08s delay — space opens first, then content appears. Pixel targets are used because framer resolves an "auto" height from the element's visual (transformed) size, so under a scaled ancestor the whole list would overshoot and snap back.
 - Steps with `status="pending"` render nothing at all; flipping them to active/complete is what streams the list in. The active step's label gets `.shimmer-text` plus an appended "…".
-- The header trigger stacks an invisible semibold label layer to reserve bold width, animates weight normal→semibold when open, recolors muted→foreground on hover/open, thickens the chevron stroke 1.5→2, and rotates the chevron 0→90° on spring.fast.
+- The header trigger stacks an invisible semibold label layer to reserve bold width, animates weight normal→semibold when open, recolors muted→foreground on hover/open, thickens the chevron stroke 1.5→1.75, and rotates the chevron 0→90° on spring.fast.
 - The collapse panel keeps content force-mounted: Radix/Base UI would apply `hidden` (display:none) the moment it closes, freezing the exit mid-flight, so the component applies `hidden` itself only after the framer exit completes, preserving the trigger↔panel aria-controls contract.
 - A panel that is already open at mount SNAPs (duration 0) to its first measured pixel target instead of springing — the auto→pixel hand-off would otherwise animate on load; later opens spring normally with `bounce: 0` because "pure height looks better without overshoot".
 - Each step's icon column is a fixed 14px cell with a 1px connector line stretching from below the icon to the step's bottom; `isLast` hides the line so the rail terminates cleanly.

@@ -77,7 +77,7 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(
         {Icon && (
           <Icon
             size={sizeClasses.icon}
-            strokeWidth={isActiveRoute || isActive ? 2 : 1.5}
+            strokeWidth={isActiveRoute || isActive ? 1.75 : 1.5}
             className={cn(
               "shrink-0 mr-2 transition-[color,stroke-width] duration-80",
               isActiveRoute || isActive ? "text-foreground" : "text-muted-foreground"

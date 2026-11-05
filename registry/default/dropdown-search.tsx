@@ -332,7 +332,7 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
         <SearchIcon
           size={sizeClasses.icon}
           strokeWidth={1.5}
-          className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within/search:text-foreground group-focus-within/search:stroke-[2]"
+          className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within/search:text-foreground group-focus-within/search:stroke-[1.75]"
         />
         <input
           ref={(node) => {

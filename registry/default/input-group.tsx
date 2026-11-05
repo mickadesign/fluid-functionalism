@@ -242,11 +242,11 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
           )}
         >
           {/* The icon wakes with the field: muted → foreground and stroke
-              1.5 → 2 over 80ms. */}
+              1.5 → 1.75 over 80ms. */}
           {Icon && (
             <Icon
               size={sizeClasses.icon}
-              strokeWidth={labelActive ? 2 : 1.5}
+              strokeWidth={labelActive ? 1.75 : 1.5}
               className={cn(
                 "shrink-0 transition-[color,stroke-width] duration-80",
                 labelActive

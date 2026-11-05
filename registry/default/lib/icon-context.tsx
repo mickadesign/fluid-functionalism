@@ -79,7 +79,7 @@ import {
 } from "lucide-react";
 
 // The whole contract an icon has to meet. Components pass `strokeWidth` and
-// also animate stroke width through `className` (1.5 → 2 on hover is a
+// also animate stroke width through `className` (1.5 → 1.75 on hover is a
 // common cue), so an icon from another library should forward both to its
 // `<svg>`. A filled icon set ignores them and simply loses that cue.
 export interface IconComponentProps {

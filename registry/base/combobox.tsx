@@ -525,7 +525,7 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
             <Icon
               size={sizeClasses.icon}
               strokeWidth={1.5}
-              className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within:text-foreground group-focus-within:stroke-[2]"
+              className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within:text-foreground group-focus-within:stroke-[1.75]"
             />
           )}
           <ComboboxPrimitive.Input
@@ -660,7 +660,7 @@ const ComboboxChips = forwardRef<HTMLInputElement, ComboboxChipsProps>(
               <Icon
                 size={sizeClasses.icon}
                 strokeWidth={1.5}
-                className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within:text-foreground group-focus-within:stroke-[2]"
+                className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within:text-foreground group-focus-within:stroke-[1.75]"
               />
             </span>
           )}
@@ -1146,7 +1146,7 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
         {Icon && (
           <Icon
             size={sizeClasses.icon}
-            strokeWidth={isActive || isChecked ? 2 : 1.5}
+            strokeWidth={isActive || isChecked ? 1.75 : 1.5}
             className="shrink-0 transition-[color,stroke-width] duration-80"
           />
         )}

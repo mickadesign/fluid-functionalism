@@ -372,7 +372,7 @@ const TabsItem = forwardRef<HTMLButtonElement, TabsItemProps>(
         {Icon && (
           <Icon
             size={sizeClasses.icon}
-            strokeWidth={isActive ? 2 : 1.5}
+            strokeWidth={isActive ? 1.75 : 1.5}
             className={cn(
               "shrink-0 transition-[color,stroke-width] duration-80",
               isActive ? "text-foreground" : "text-muted-foreground"

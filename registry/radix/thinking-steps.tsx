@@ -118,7 +118,7 @@ const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
           >
             <ChevronRight
               size={sizeClasses.icon}
-              strokeWidth={highlighted ? 2 : 1.5}
+              strokeWidth={highlighted ? 1.75 : 1.5}
               className={cn(
                 "transition-[color,stroke-width] duration-80",
                 highlighted ? "text-foreground" : "text-muted-foreground"

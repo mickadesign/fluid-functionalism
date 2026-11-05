@@ -111,6 +111,10 @@ function inVisualOrder(trigger: HTMLElement): HTMLElement[] {
     .map(({ el }) => el);
 }
 
+/** A shortcut key's chip, as the settings rows show it in their triggers. */
+export const SHORTCUT_KEY =
+  "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-mono text-site-micro leading-none text-muted-foreground rounded-[2px] pointer-coarse:hidden";
+
 /** A shortcut key's chip, pressed: down 2px a side on its 18px. */
 const KEY_PRESS = 0.85;
 
@@ -349,7 +353,7 @@ function SettingRow({
         ref={controlRef}
         className={cn(
           "flex min-w-0 items-center [&>div]:min-w-0 [&_button:hover]:bg-transparent [&_button>span:nth-child(2)]:order-1 [&_button>span:nth-child(2)]:size-(--swatch)! [&_button>svg]:order-1",
-          "[&_button:not([data-fluid-hover-active])>span>svg]:stroke-[1.5] [&_button:not([data-fluid-hover-active])>span>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>span>svg]:stroke-[2] [&_button[data-fluid-hover-active]>span>svg]:text-foreground",
+          "[&_button:not([data-fluid-hover-active])>span>svg]:stroke-[1.5] [&_button:not([data-fluid-hover-active])>span>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>span>svg]:stroke-[1.75] [&_button[data-fluid-hover-active]>span>svg]:text-foreground",
           "[&_button:not([data-fluid-hover-active])>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>svg]:text-foreground"
         )}
         style={{ "--swatch": `${icon}px` } as CSSProperties}
@@ -365,7 +369,7 @@ function SettingRow({
               ref={keyRef}
               aria-hidden
               data-shortcut=""
-              className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-mono text-site-micro leading-none text-muted-foreground rounded-[2px] pointer-coarse:hidden"
+              className={SHORTCUT_KEY}
             >
               {shortcut}
             </kbd>,
@@ -525,8 +529,20 @@ export function Credit({ className }: { className?: string }) {
 /** The inner settings content: reused in the right column and mobile drawer.
  *  `credit={false}` where the host shows the credit elsewhere. `inset` (on
  *  by default) starts the labels 8px in, under the right panel's group
- *  label; the mobile sheet turns it off, so they start under its heading. */
-export function SettingsContent({ credit = true, inset = true }: { credit?: boolean; inset?: boolean }) {
+ *  label; the mobile sheet turns it off, so they start under its heading.
+ *  `iconLibrary={false}` drops the Icons row on pages it doesn't affect;
+ *  `starter={false}` drops the Primitive row and the install prompt. */
+export function SettingsContent({
+  credit = true,
+  inset = true,
+  iconLibrary: showIconLibrary = true,
+  starter = true,
+}: {
+  credit?: boolean;
+  inset?: boolean;
+  iconLibrary?: boolean;
+  starter?: boolean;
+}) {
   const { theme, setTheme } = useThemeContext();
   const { shape, setShape } = useShapeContext();
   const { size, setSize } = useSizeContext();
@@ -735,6 +751,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
             </SelectContent>
           </Select>
         </SettingRow>
+        {showIconLibrary && (
         <SettingRow label="Icons" hoverIndex={6} shortcut="I" index={iconOptions.findIndex((o) => o.value === iconLibrary)}>
           <Select value={iconLibrary} onValueChange={(v) => setIconLibrary(v as IconLibrary)}>
             <SelectTrigger
@@ -750,6 +767,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
             </SelectContent>
           </Select>
         </SettingRow>
+        )}
         <SettingRow label="Hover" hoverIndex={7} shortcut="H" index={HOVER_MODES.indexOf(hoverMode)}>
           <Select value={hoverMode} onValueChange={(v) => setHoverMode(v as HoverMode)}>
             <SelectTrigger
@@ -765,21 +783,23 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
             </SelectContent>
           </Select>
         </SettingRow>
-        <SettingRow label="Primitive" hoverIndex={8} index={baseOptions.findIndex((o) => o.value === base)}>
-          <Select value={base} onValueChange={(v) => setBase(v as Base)}>
-            <SelectTrigger
-              variant="borderless"
-              className="min-w-0 w-auto px-2 text-site-body"
-            />
-            <SelectContent>
-              {baseOptions.map((o, i) => (
-                <SelectItem key={o.value} value={o.value} index={i}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingRow>
+        {starter && (
+          <SettingRow label="Primitive" hoverIndex={8} index={baseOptions.findIndex((o) => o.value === base)}>
+            <Select value={base} onValueChange={(v) => setBase(v as Base)}>
+              <SelectTrigger
+                variant="borderless"
+                className="min-w-0 w-auto px-2 text-site-body"
+              />
+              <SelectContent>
+                {baseOptions.map((o, i) => (
+                  <SelectItem key={o.value} value={o.value} index={i}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingRow>
+        )}
       </div>
       </SettingHoverContext.Provider>
       </SettingInsetContext.Provider>
@@ -787,7 +807,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
       {/* The home page's install prompt, carrying everything set above.
           mt-2 + the column's gap-2: 16px under the rows, and the same 16px
           (mb-2 + gap-2) on to the credit when it follows. */}
-      <StarterPromptButton size="sm" className={cn("mt-2 w-full", credit && "mb-2")} />
+      {starter && <StarterPromptButton size="sm" className={cn("mt-2 w-full", credit && "mb-2")} />}
 
       {credit && <Credit className={inset ? undefined : "pl-0"} />}
 

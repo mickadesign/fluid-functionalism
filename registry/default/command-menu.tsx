@@ -846,7 +846,7 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
           <Icon
             size={sizeClasses.icon}
             strokeWidth={1.5}
-            className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within/command-input:text-foreground group-focus-within/command-input:stroke-[2]"
+            className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within/command-input:text-foreground group-focus-within/command-input:stroke-[1.75]"
           />
         )}
         <input
@@ -1313,7 +1313,7 @@ const CommandMenuItem = memo(forwardRef<HTMLDivElement, CommandMenuItemProps>(
         {Icon && (
           <Icon
             size={sizeClasses.icon}
-            strokeWidth={isActive ? 2 : 1.5}
+            strokeWidth={isActive ? 1.75 : 1.5}
             className="shrink-0 transition-[color,stroke-width] duration-80"
           />
         )}
