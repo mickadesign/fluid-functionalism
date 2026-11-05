@@ -460,7 +460,7 @@ import { Plus, ArrowRight } from "lucide-react";
 <Button loading>Saving</Button>
 <Button disabled>Disabled</Button>`,
     props: [
-      'variant: "primary" | "secondary" | "tertiary" | "ghost" (default "primary"). Visual style of the button.',
+      'variant: "primary" | "secondary" | "tertiary" | "ghost" | "destructive" (default "primary"). Visual style of the button.',
       'size: "default" | "compact" | "icon" | "icon-compact" (default from SizeProvider). Step on the size ladder: 36px default, 28px compact.',
       "loading: boolean (default false). Shows a spinner and disables the button.",
       "active: boolean (default false). Forces the pressed visual, e.g. while a menu the button opened is showing.",
