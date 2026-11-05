@@ -7,13 +7,26 @@ import { useShape } from "@/lib/shape-context";
 // ─── Lazy pdfjs loader ────────────────────────────────────────────────────
 // Imports pdfjs-dist on first PDF, caches the module, and points the worker
 // at the matching CDN build. Consumers don't need bundler-side worker config.
+// Sites whose CSP blocks jsDelivr call `setPdfWorkerSrc` with a worker they
+// host themselves (copy `pdfjs-dist/build/pdf.worker.min.mjs` to `public/`).
 type PdfjsModule = typeof import("pdfjs-dist");
 let pdfjsPromise: Promise<PdfjsModule> | null = null;
+let pdfWorkerSrc: string | null = null;
+
+function setPdfWorkerSrc(src: string) {
+  pdfWorkerSrc = src;
+  // Already loaded: retarget it, so the next PDF uses the new worker.
+  pdfjsPromise?.then((mod) => {
+    mod.GlobalWorkerOptions.workerSrc = src;
+  });
+}
 
 async function loadPdfjs(): Promise<PdfjsModule> {
   if (!pdfjsPromise) {
     pdfjsPromise = import("pdfjs-dist").then((mod) => {
-      if (!mod.GlobalWorkerOptions.workerSrc) {
+      if (pdfWorkerSrc) {
+        mod.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+      } else if (!mod.GlobalWorkerOptions.workerSrc) {
         mod.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${mod.version}/build/pdf.worker.min.mjs`;
       }
       return mod;
@@ -200,5 +213,5 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
   );
 }
 
-export { FileThumbnail, loadPdfjs, renderPdfFirstPage };
+export { FileThumbnail, loadPdfjs, renderPdfFirstPage, setPdfWorkerSrc };
 export type { FileThumbnailProps };
