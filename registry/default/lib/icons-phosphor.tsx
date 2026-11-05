@@ -68,6 +68,9 @@ import {
   DotsThreeVertical as PhDotsThreeVertical,
   SlidersHorizontal as PhSlidersHorizontal,
   Info as PhInfo,
+  WarningCircle as PhWarningCircle,
+  File as PhFile,
+  Minus as PhMinus,
   CalendarBlank as PhCalendarBlank,
   FolderSimple as PhFolderSimple,
 } from "@phosphor-icons/react";
@@ -152,4 +155,7 @@ export const phosphorIcons: Record<IconName, IconComponent> = {
   "folder": phosphor(PhFolderSimple),
   "sliders-horizontal": phosphor(PhSlidersHorizontal),
   "info": phosphor(PhInfo),
+  "circle-alert": phosphor(PhWarningCircle),
+  "file": phosphor(PhFile),
+  "minus": phosphor(PhMinus),
 };

@@ -118,6 +118,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Card](https://www.fluidfunctionalism.com/docs/card) | `card` | shadcn's compositional card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, and 2-D fluid hover |
 | [CarouselDots](https://www.fluidfunctionalism.com/docs/carousel-dots) | `carousel-dots` | Carousel dots, static or on autoplay, with fluid-hover click areas and a current pill that fills over each slide |
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments |
+| [Checkbox](https://www.fluidfunctionalism.com/docs/checkbox) | `checkbox` · `base/checkbox` | A single checkbox: a hairline square that darkens on hover and a check that draws itself |
 | [CheckboxGroup](https://www.fluidfunctionalism.com/docs/checkbox-group) | `checkbox-group` · `base/checkbox-group` | Checkbox group with merged backgrounds for contiguous selections |
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | `color-picker` · `base/color-picker` | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper, inline or in a popover |
 | [Combobox](https://www.fluidfunctionalism.com/docs/combobox) | `combobox` · `base/combobox` | Type-to-filter field with keyboard highlight, fluid hover, chips for multiple selection, and a create-from-query row |
@@ -125,6 +126,8 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [DatePicker](https://www.fluidfunctionalism.com/docs/date-picker) | `date-picker` · `base/date-picker` | Outline or ghost trigger for a date, a range, or a date and a time, with range presets and time slot lists that show each duration |
 | [Dialog](https://www.fluidfunctionalism.com/docs/dialog) | `dialog` · `base/dialog` | Modal with spring enter/exit and overlay in 3 widths, the largest a canvas for a sidebar |
 | [Dropdown](https://www.fluidfunctionalism.com/docs/dropdown) | `dropdown` · `base/dropdown` | Menu-style dropdown with fluid hover, animated selection, submenus that hold their row across the safe area, and an optional search field in the popup |
+| [Field](https://www.fluidfunctionalism.com/docs/field) | `field` | Label, control, help text, and error composed into one accessible field, with fieldsets, horizontal layouts, and choice cards |
+| [Input](https://www.fluidfunctionalism.com/docs/input) | `input` | Single-line text field in the Select trigger's hairline, with a neutral focus border |
 | [InputCopy](https://www.fluidfunctionalism.com/docs/input-copy) | `input-copy` · `base/input-copy` | Read-only input with copy-to-clipboard and animated feedback |
 | [InputGroup](https://www.fluidfunctionalism.com/docs/input-group) | `input-group` | Input fields with fluid hover, animated labels, and validation |
 | [InputMessage](https://www.fluidfunctionalism.com/docs/input-message) | `input-message` · `base/input-message` | Chat-style composer with auto-resizing textarea, file drop, action slots, and a built-in send button |
@@ -135,6 +138,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Switch](https://www.fluidfunctionalism.com/docs/switch) | `switch` · `base/switch` | Toggle with animated thumb and label |
 | [Table](https://www.fluidfunctionalism.com/docs/table) | `table` | Data table with fluid hover on rows and semantic markup |
 | [Tabs](https://www.fluidfunctionalism.com/docs/tabs) | `tabs` · `base/tabs` | Tab navigation with an animated pill indicator |
+| [Textarea](https://www.fluidfunctionalism.com/docs/textarea) | `textarea` | Multi-line text field with the Input's hairline that grows with its content |
 | [ThinkingIndicator](https://www.fluidfunctionalism.com/docs/thinking-indicator) | `thinking-indicator` | Animated status indicator with morphing SVG and cycling text |
 | [ThinkingSteps](https://www.fluidfunctionalism.com/docs/thinking-steps) | `thinking-steps` · `base/thinking-steps` | Chain-of-thought display with sequential animation and collapsible steps |
 | [Tooltip](https://www.fluidfunctionalism.com/docs/tooltip) | `tooltip` · `base/tooltip` | Spring-based floating tooltip with configurable placement |
