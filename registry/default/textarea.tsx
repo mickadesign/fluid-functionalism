@@ -9,8 +9,8 @@ import { useSize, type SizeVariant } from "@/lib/size-context";
 // ---------------------------------------------------------------------------
 // A multi-line text field with the Input's hairline: fixed --border at rest,
 // the hover fill, and a neutral 40% border while focused. It grows with its
-// content (field-sizing) from a three-line minimum; browsers without
-// field-sizing keep the minimum height and scroll.
+// content (field-sizing) from three lines to ten, then scrolls; browsers
+// without field-sizing keep the minimum height and scroll.
 // ---------------------------------------------------------------------------
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -44,6 +44,9 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           // = 7px of padding, (28 - 2 - 18) / 2 = 4px compact. The minimum is
           // three body lines plus that padding and the border.
           compact ? "min-h-[64px] py-1" : "min-h-[76px] py-[7px]",
+          // It stops growing at ten lines and scrolls from there, so a long
+          // paste can't push the form off screen; a className max-h overrides.
+          compact ? "max-h-[190px]" : "max-h-[216px]",
           // A full pill radius on a multi-line box reads as a blob, so the
           // pill shape steps down to its merged radius here.
           shape.variant === "pill" ? shape.mergedBg : shape.input,

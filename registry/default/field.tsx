@@ -2,7 +2,10 @@
 
 import {
   forwardRef,
+  useEffect,
+  useId,
   useMemo,
+  useRef,
   type FieldsetHTMLAttributes,
   type HTMLAttributes,
   type LabelHTMLAttributes,
@@ -27,6 +30,8 @@ import { useSize } from "@/lib/size-context";
 //
 // Labels and messages sit flush with the control's edge. `data-invalid` on
 // Field turns its label red; the control carries its own `aria-invalid`.
+// Field links its FieldDescription and FieldError to the control through
+// aria-describedby, so a screen reader reads them on focus.
 // ---------------------------------------------------------------------------
 
 const FieldSet = forwardRef<HTMLFieldSetElement, FieldsetHTMLAttributes<HTMLFieldSetElement>>(
@@ -110,6 +115,36 @@ const orientationClasses: Record<FieldOrientation, string> = {
     "flex-col gap-1 @md/field-group:flex-row @md/field-group:items-center @md/field-group:*:w-auto @md/field-group:has-[>[data-slot=field-content]]:items-start @md/field-group:has-[>[data-slot=field-content]]:[&>[data-slot=checkbox]]:mt-0.5",
 };
 
+// The control Field describes: a library control first, then any native one.
+// A hidden form mirror (aria-hidden) is never the control.
+const LIBRARY_CONTROL = "[data-slot=input], [data-slot=textarea], [data-slot=checkbox], [role=combobox]";
+const NATIVE_CONTROL = "input:not([type=hidden]):not([aria-hidden=true]), textarea, select";
+
+/** Points the field's control at its own descriptions and errors, keeping
+ *  any ids the caller passed. Nested fields are skipped: each describes only
+ *  what sits directly in it. */
+function linkDescriptions(root: HTMLElement) {
+  const own = (el: Element) => el.closest("[data-slot=field]") === root;
+  const find = (selector: string) =>
+    Array.from(root.querySelectorAll<HTMLElement>(selector)).find(own);
+  const control = find(LIBRARY_CONTROL) ?? find(NATIVE_CONTROL);
+  if (!control) return;
+  const ids = Array.from(
+    root.querySelectorAll<HTMLElement>("[data-slot=field-description], [data-slot=field-error]")
+  )
+    .filter(own)
+    .map((el) => el.id)
+    .filter(Boolean);
+  const linked = (control.dataset.fieldDescribedby ?? "").split(" ");
+  const theirs = (control.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .filter((id) => id && !linked.includes(id));
+  const next = [...theirs, ...ids].join(" ");
+  if (next) control.setAttribute("aria-describedby", next);
+  else control.removeAttribute("aria-describedby");
+  control.dataset.fieldDescribedby = ids.join(" ");
+}
+
 interface FieldProps extends HTMLAttributes<HTMLDivElement> {
   /** Stack the label above the control, put them side by side, or switch
    *  to side by side once the surrounding FieldGroup is wide enough. */
@@ -119,10 +154,26 @@ interface FieldProps extends HTMLAttributes<HTMLDivElement> {
 const Field = forwardRef<HTMLDivElement, FieldProps>(
   ({ className, orientation = "vertical", ...props }, ref) => {
     const sizeClasses = useSize();
+    const rootRef = useRef<HTMLDivElement | null>(null);
+
+    // After every render: a message that mounts or unmounts re-renders the
+    // Field that holds it, so the link stays current.
+    useEffect(() => {
+      if (rootRef.current) linkDescriptions(rootRef.current);
+    });
+
+    // A group is only announced when it has a name; an unnamed group around
+    // one label and one control would just add "group" to every field.
+    const named = props["aria-label"] || props["aria-labelledby"];
+
     return (
       <div
-        ref={ref}
-        role="group"
+        ref={(node) => {
+          rootRef.current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) ref.current = node;
+        }}
+        role={named ? "group" : undefined}
         data-slot="field"
         data-orientation={orientation}
         className={cn(
@@ -208,11 +259,14 @@ const FieldTitle = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 FieldTitle.displayName = "FieldTitle";
 
 const FieldDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, style, ...props }, ref) => {
+  ({ className, style, id, ...props }, ref) => {
     const sizeClasses = useSize();
+    // An id is what Field links into the control's aria-describedby.
+    const autoId = useId();
     return (
       <p
         ref={ref}
+        id={id ?? autoId}
         data-slot="field-description"
         className={cn(sizeClasses.type.caption, "text-pretty text-muted-foreground", className)}
         style={{ fontVariationSettings: fontWeights.normal, ...style }}
@@ -260,9 +314,10 @@ interface FieldErrorProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const FieldError = forwardRef<HTMLDivElement, FieldErrorProps>(
-  ({ className, errors, children, style, ...props }, ref) => {
+  ({ className, errors, children, style, id, ...props }, ref) => {
     const sizeClasses = useSize();
     const AlertIcon = useIcons()["circle-alert"];
+    const autoId = useId();
     const compact = sizeClasses.variant === "compact";
 
     const messages = useMemo(
@@ -270,9 +325,12 @@ const FieldError = forwardRef<HTMLDivElement, FieldErrorProps>(
       [errors]
     );
 
-    const content =
-      children ??
-      (messages.length > 1 ? (
+    // `{cond && "msg"}` hands over false; only real content stands in for
+    // the errors array.
+    const hasChildren = children != null && children !== false && children !== "";
+    const content = hasChildren
+      ? children
+      : (messages.length > 1 ? (
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
           {messages.map((m) => (
             <li key={m}>{m}</li>
@@ -287,6 +345,7 @@ const FieldError = forwardRef<HTMLDivElement, FieldErrorProps>(
     return (
       <div
         ref={ref}
+        id={id ?? autoId}
         role="alert"
         data-slot="field-error"
         className={cn(

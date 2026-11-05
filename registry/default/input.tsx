@@ -60,7 +60,14 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const step = (direction: 1 | -1) => {
       const el = inputRef.current;
       if (!el || el.disabled || el.readOnly) return;
-      if (direction === 1) el.stepUp();
+      if (el.step === "any") {
+        // stepUp/stepDown throw for step="any", so step by 1 within min and
+        // max, through the native setter React's value tracking reads.
+        const min = el.min === "" ? -Infinity : Number(el.min);
+        const max = el.max === "" ? Infinity : Number(el.max);
+        const next = Math.min(max, Math.max(min, (Number(el.value) || 0) + direction));
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(el, String(next));
+      } else if (direction === 1) el.stepUp();
       else el.stepDown();
       // stepUp/stepDown skip the value setter React tracks, so this input
       // event reaches onChange like a typed value would.

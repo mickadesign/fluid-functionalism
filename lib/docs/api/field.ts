@@ -5,7 +5,8 @@ import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 export const fieldProps: PropDef[] = [
   { name: "orientation", type: '"vertical" | "horizontal" | "responsive"', default: '"vertical"', description: "Label above the control, beside it, or beside it once the surrounding FieldGroup is wide enough." },
   { name: "data-invalid", type: "boolean", description: "Turns the label red. Put aria-invalid on the control itself too." },
-  { name: "className", type: "string", description: "Extra classes for the group wrapper." },
+  { name: "aria-label / aria-labelledby", type: "string", description: "Names the field as a group (role=group), for a field with several controls. Without one, no group role is set." },
+  { name: "className", type: "string", description: "Extra classes for the wrapper." },
 ];
 
 export const fieldSetProps: PropDef[] = [

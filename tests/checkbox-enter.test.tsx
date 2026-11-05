@@ -29,6 +29,17 @@ describe.each(flavors)("%s Checkbox and Enter", (_name, Checkbox) => {
     expect(box.getAttribute("aria-checked")).toBe("false");
   });
 
+  it("leaves Enter alone in a label that is not a card", () => {
+    render(
+      <FieldLabel>
+        <Checkbox aria-label="Remember me" /> Remember me
+      </FieldLabel>
+    );
+    const box = screen.getByRole("checkbox", { name: "Remember me" });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(box.getAttribute("aria-checked")).toBe("false");
+  });
+
   it("leaves Enter alone on a plain checkbox", () => {
     render(
       <Field orientation="horizontal">

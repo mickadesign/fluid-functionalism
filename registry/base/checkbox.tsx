@@ -45,10 +45,12 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
           onCheckedChange?.(next);
         }}
         onKeyDown={(e) => {
-          // In a choice card (a FieldLabel around the whole field) the box
-          // reads as an option to pick, so Enter toggles it like Space.
-          // A plain checkbox leaves Enter to submit its form.
-          if (e.key === "Enter" && !e.repeat && e.currentTarget.closest("[data-slot=field-label]")) {
+          // In a choice card (a FieldLabel around a whole Field) the box
+          // reads as an option to pick, so Enter toggles it like Space. A
+          // plain checkbox, even inside a label, leaves Enter to submit its
+          // form.
+          const card = e.currentTarget.closest("[data-slot=field-label]");
+          if (e.key === "Enter" && !e.repeat && card?.querySelector(":scope > [data-slot=field]")) {
             e.preventDefault();
             e.currentTarget.click();
           }

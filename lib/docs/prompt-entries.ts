@@ -642,7 +642,7 @@ const actions = <button aria-label="Copy"><Copy size={13} /></button>;
       "Hover darkens an unchecked border to foreground/40, the same neutral as the Input's focus border, and so does hovering the Field row it sits in (group-hover/field), so the label is part of the target.",
       "Keyboard focus shows the 1px --focus-ring; aria-invalid tints only the unchecked border red, and disabled dims to 50% with no pointer events.",
       "Uncontrolled use is mirrored in local state because the check's enter and exit need the value in render; onCheckedChange always reports a plain boolean in both flavors.",
-      "Space toggles, as the ARIA checkbox pattern says; inside a choice card (a FieldLabel wrapping the Field) Enter toggles too, because the card reads as an option to pick. A plain checkbox leaves Enter to submit its form.",
+      "Space toggles, as the ARIA checkbox pattern says; inside a choice card (a FieldLabel wrapping a whole Field) Enter toggles too, because the card reads as an option to pick. A plain checkbox, even one wrapped in a label, leaves Enter to submit its form.",
     ],
     usage: `import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -938,11 +938,11 @@ const [view, setView] = useState(0);
   },
   field: {
     craft: [
-      "Field is layout and type only: role=group with a data-orientation, and the control (Input, Textarea, Select, Switch) is whatever goes inside. Validation reads data-invalid on Field for the red label and aria-invalid on the control for its border.",
+      "Field is layout and type plus one link: the control (Input, Textarea, Select, Checkbox, any native field) is whatever goes inside, and after each render Field adds the ids of its own FieldDescription and FieldError to that control's aria-describedby, keeping the caller's ids. It is role=group only when named (aria-label or aria-labelledby), so single fields don't announce an empty group. Validation reads data-invalid on Field for the red label and aria-invalid on the control for its border.",
       "Labels are body text in muted-foreground above a control and full foreground beside one (orientation horizontal), where they read as the control's own text.",
       "Labels, descriptions and errors sit flush with the control's left edge; FieldError leads with the circle-alert icon nudged 1px down so it centers on the first caption line even when the message wraps or lists, the ladder's icon-to-label gap (8px, 4px compact) from its text.",
       "Spacing comes from the size rules: stacked, label, control, description and error sit 4px apart at both steps, as in InputField; fields (and a fieldset's legend block) sit 12px apart, InputGroup's step; side by side, a control and its label or label column take the ladder gap (8px, 4px compact), as in a CheckboxGroup row. A choice card pads with the ladder's px (12px, 10px compact) and takes the shape's container radius.",
-      "FieldError takes children or an errors array from a form library or Standard Schema; duplicate messages collapse and several render as a plain list, and it renders nothing when there is nothing to say, so it can stay in the tree.",
+      "FieldError takes children or an errors array from a form library or Standard Schema; duplicate messages collapse and several render as a plain list, false or empty children fall back to the array, and it renders nothing when there is nothing to say, so it can stay in the tree.",
       "FieldGroup is an @container/field-group, so orientation responsive switches to a row on the group's width, not the viewport's.",
       "Choice card: a FieldLabel wrapping a whole horizontal Field becomes one bordered, hoverable target (rounded-xl, p-3, hover:bg-hover) whose border darkens to foreground/40 once the checkbox inside is checked. Keyboard focus rings the card's outline in --focus-ring and the checkbox's own ring steps aside, so the focus mark matches the target.",
     ],
@@ -1326,7 +1326,7 @@ const [selected, setSelected] = useState(0);
   textarea: {
     craft: [
       "The Input's hairline on a multi-line box: fixed --border at rest, bg-hover on hover, neutral foreground/40 on focus that wins over aria-invalid's red.",
-      "It grows with field-sizing-content from a three-line minimum (76px, 64px compact) with resize-none; browsers without field-sizing keep the minimum and scroll.",
+      "It grows with field-sizing-content from three lines (76px, 64px compact) to ten (216px, 190px), then scrolls, with resize-none, so a long paste never pushes the form off screen; browsers without field-sizing keep the minimum and scroll.",
       "Vertical padding puts the first line exactly where an Input's text sits: (36 - 2 - 20) / 2 = 7px, (28 - 2 - 18) / 2 = 4px compact, so a Textarea under an Input starts on the same baseline offset.",
       "A pill shape steps down to its merged radius, because a full pill radius on a tall box reads as a blob.",
     ],

@@ -30,6 +30,19 @@ describe("Input type=number stepper", () => {
     expect((screen.getByLabelText("Seats") as HTMLInputElement).value).toBe("3");
   });
 
+  it("steps by 1 when step is any", () => {
+    function Any() {
+      const [value, setValue] = useState("0.5");
+      return <Input type="number" step="any" max={2} aria-label="Ratio" value={value} onChange={(e) => setValue(e.target.value)} />;
+    }
+    render(<Any />);
+    const input = screen.getByLabelText("Ratio") as HTMLInputElement;
+    fireEvent.click(screen.getByLabelText("Increase"));
+    expect(input.value).toBe("1.5");
+    fireEvent.click(screen.getByLabelText("Increase"));
+    expect(input.value).toBe("2");
+  });
+
   it("keeps its buttons out of the tab order", () => {
     render(<Seats />);
     for (const name of ["Increase", "Decrease"]) {
