@@ -887,8 +887,8 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
             style={
               variant !== "sidebar"
                 ? ({
-                    "--rail-fade-start": `${shape.bgRadius >= 20 ? 24 : 12}px`,
-                    "--rail-fade-end": `${(shape.bgRadius >= 20 ? 24 : 12) + 24}px`,
+                    "--rail-fade-start": `${shape.containerRadius}px`,
+                    "--rail-fade-end": `${shape.containerRadius + 24}px`,
                   } as CSSProperties)
                 : undefined
             }

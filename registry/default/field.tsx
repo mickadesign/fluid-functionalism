@@ -233,8 +233,9 @@ const FieldLabel = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelEle
           sizeClasses.variant === "compact" ? "has-[>[data-slot=field]]:p-2.5" : "has-[>[data-slot=field]]:p-3",
           "has-[>[data-slot=field]]:transition-[background-color,border-color] has-[>[data-slot=field]]:duration-80 has-[>[data-slot=field]]:hover:bg-hover",
           // Hovering anywhere on the card, padding included, lights the box
-          // the same way hovering its row does.
-          "has-[>[data-slot=field]]:hover:[&_[data-slot=checkbox]]:border-foreground/40",
+          // the same way hovering its row does. A disabled box stays put and an
+          // invalid one keeps its red border.
+          "has-[>[data-slot=field]]:hover:[&_[data-slot=checkbox]:not([data-disabled]):not(:disabled):not([aria-invalid=true])]:border-foreground/40",
           "has-[[data-state=checked]]:border-foreground/40 has-[[data-checked]]:border-foreground/40",
           // Keyboard focus on the control inside rings the whole card, and
           // the control's own ring steps aside.

@@ -70,7 +70,7 @@ const Checkbox = forwardRef<ElementRef<typeof CheckboxPrimitive.Root>, CheckboxP
           // on hover.
           "hover:not-data-[state=checked]:border-foreground/40 group-hover/field:not-data-[state=checked]:border-foreground/40",
           "data-[state=checked]:border-transparent",
-          "hover:data-[state=checked]:border-foreground/40 group-hover/field:data-[state=checked]:border-foreground/40",
+          "hover:data-[state=checked]:border-foreground/40 group-hover/field:enabled:data-[state=checked]:border-foreground/40",
           "aria-invalid:not-data-[state=checked]:border-destructive/50",
           "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
           "disabled:pointer-events-none disabled:opacity-50",

@@ -9,7 +9,12 @@ import {
 } from "react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { fontWeights } from "@/registry/default/lib/font-weight";
-import { useShape, usePopupShape } from "@/registry/default/lib/shape-context";
+import {
+  shapeMap,
+  useShape,
+  usePopupShape,
+  type ShapeVariant,
+} from "@/registry/default/lib/shape-context";
 import { SurfaceProvider } from "@/registry/default/lib/surface-context";
 import { Elevated } from "@/lib/elevated";
 import { Dropdown, useDropdown } from "@/components/flavored/dropdown";
@@ -41,17 +46,17 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 // outer = inner + inset + border (skill rule; sharp stays 1px at every level).
 // Layers 24px or more apart (dialog padding, the level stack) are tuned
 // independently, like the real Dialog. Rounded keeps the original radii there.
-function demoRadius(variant: "rounded" | "pill" | "sharp") {
+function demoRadius(variant: ShapeVariant) {
+  const sharp = variant === "sharp";
   return {
     panel: { rounded: "rounded-2xl", pill: "rounded-3xl", sharp: "rounded-[1px]" }[variant],
     field: { rounded: "rounded-xl", pill: "rounded-[20px]", sharp: "rounded-[1px]" }[variant],
-    // Popup container: 8px rows + 4px padding, capped at rounded like real menus.
-    menu: variant === "sharp" ? "rounded-[1px]" : "rounded-xl",
+    menu: sharp ? "rounded-[1px]" : "rounded-xl",
     button: { rounded: "rounded-lg", pill: "rounded-full", sharp: "rounded-[1px]" }[variant],
-    // Swatch chips (container radius, 12/24px) sit 16px inside their panel.
-    swatchPanel: { rounded: "rounded-[28px]", pill: "rounded-[40px]", sharp: "rounded-[1px]" }[variant],
-    // A capped menu (12px) sits 16px plus a 1px border inside its panel.
-    menuPanel: variant === "sharp" ? "rounded-[1px]" : "rounded-[29px]",
+    // Swatch chips (shape.container) sit 16px inside their panel.
+    swatchPanel: { borderRadius: sharp ? 1 : shapeMap[variant].containerRadius + 16 },
+    // A menu (popups cap at rounded) sits 16px plus a 1px border inside its panel.
+    menuPanel: { borderRadius: sharp ? 1 : shapeMap.rounded.containerRadius + 16 + 1 },
   };
 }
 
@@ -203,7 +208,7 @@ function SurfaceChip({ level }: { level: number }) {
 }
 
 function TokensDemo() {
-  const { swatchPanel: panel } = demoRadius(useShape().variant);
+  const { swatchPanel } = demoRadius(useShape().variant);
   return (
     <DarkPreview code={TOKENS_CSS} padding="compact">
       <div className="flex flex-col gap-4 w-full">
@@ -217,7 +222,8 @@ function TokensDemo() {
           <ScrollArea
             orientation="horizontal"
             viewportClassName="scroll-fade-x"
-            className={cn("bg-background", panel)}
+            className="bg-background"
+            style={swatchPanel}
           >
             <div className="flex gap-3 p-4 w-max">
               {LEVELS.map((n) => (
@@ -236,7 +242,8 @@ function TokensDemo() {
           <ScrollArea
             orientation="horizontal"
             viewportClassName="scroll-fade-x"
-            className={cn("bg-background", panel)}
+            className="bg-background"
+            style={swatchPanel}
           >
             <div className="flex gap-3 p-4 w-max">
               {LEVELS.map((n) => (
@@ -679,7 +686,7 @@ function SwatchRow({ label, hex }: { label: string; hex: string }) {
 }
 
 function SubstrateDemo() {
-  const { menuPanel: panel } = demoRadius(useShape().variant);
+  const { menuPanel } = demoRadius(useShape().variant);
   const Star = useIcon("star");
   const Clock = useIcon("clock");
   const Lock = useIcon("lock");
@@ -704,8 +711,8 @@ function SubstrateDemo() {
           return (
             <div key={substrate} className="flex flex-col gap-3">
               <div
-                className={cn("dark flex flex-col gap-3 p-4 border border-border/40", panel)}
-                style={{ backgroundColor: `var(--surface-${substrate})` }}
+                className="dark flex flex-col gap-3 p-4 border border-border/40"
+                style={{ ...menuPanel, backgroundColor: `var(--surface-${substrate})` }}
               >
                 <span
                   className="text-site-caption text-foreground"

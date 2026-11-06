@@ -465,10 +465,11 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     // True while a pointer drag owns the thumbs; the value-sync and resize
     // effects stand down so they never fight the pointer.
     const dragging = useRef(false);
-    // Where the press or drag last sent the active thumb. Release settles here,
-    // not on motionX: a quick click lets go while the press spring is still
-    // in flight, and settling on that midpoint would strand the thumb.
-    const dragTargetPx = useRef(0);
+    // The value the press or drag last emitted. Release settles on it, not on
+    // motionX: a quick click lets go while the press spring is still in
+    // flight, and settling on that midpoint would strand the thumb. Kept as a
+    // value so a track resized mid-drag still lands on the emitted value.
+    const dragTargetValue = useRef(0);
     const activeDragThumb = useRef<number>(0);
     // Latest props for the ResizeObserver callback, which subscribes once per
     // isRange and would otherwise read stale values.
@@ -747,7 +748,6 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           activeDragThumb.current
         );
         // Spring-animate thumb to clicked position
-        dragTargetPx.current = finalPx;
         animate(motionX, finalPx, spring.moderate);
 
         // Update value
@@ -761,6 +761,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           layoutWidth,
           stepValues
         );
+        dragTargetValue.current = finalValue;
         emitChange(activeDragThumb.current, finalValue);
 
         // Capture keeps the drag alive when the pointer leaves the track.
@@ -804,7 +805,6 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           snappedPx,
           activeDragThumb.current
         );
-        dragTargetPx.current = finalPx;
         motionX.set(finalPx);
 
         const finalValue = pixelToValue(
@@ -815,6 +815,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           layoutWidth,
           stepValues
         );
+        dragTargetValue.current = finalValue;
         emitChange(activeDragThumb.current, finalValue);
       },
       [min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
@@ -826,17 +827,16 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
       setIsPressed(false);
       setHoverPreview(null);
 
-      // Spring settle to final quantized position
-      // Moves already land on the grid; this catches a thumb the range clamp
-      // left between steps. Clearing the preview above keeps the stale
-      // pre-drag bar from fading back in.
+      // Spring settle onto the last emitted value, at the current track width.
+      // This also catches a thumb the range clamp left between steps.
+      // Clearing the preview above keeps the stale pre-drag bar from fading
+      // back in.
       const tw = trackWidthRef.current;
       const motionX =
         activeDragThumb.current === 0 ? motionX0 : motionX1;
-      const snapped = pixelToValue(dragTargetPx.current, min, max, step, tw, stepValues);
-      const snappedPx = valueToPixel(snapped, min, max, tw);
+      const snappedPx = valueToPixel(dragTargetValue.current, min, max, tw);
       animate(motionX, snappedPx, spring.moderate);
-    }, [min, max, step, stepValues, motionX0, motionX1]);
+    }, [min, max, motionX0, motionX1]);
 
     // --- Base UI keyboard handler ---
     // In steps mode the primitive runs on indices (0..len-1, step 1) so arrow

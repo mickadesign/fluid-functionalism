@@ -66,7 +66,7 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
           // on hover.
           "hover:not-data-checked:border-foreground/40 group-hover/field:not-data-checked:border-foreground/40",
           "data-checked:border-transparent",
-          "hover:data-checked:border-foreground/40 group-hover/field:data-checked:border-foreground/40",
+          "hover:data-checked:border-foreground/40 group-hover/field:not-data-disabled:data-checked:border-foreground/40",
           "aria-invalid:not-data-checked:border-destructive/50",
           "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
           "data-disabled:pointer-events-none data-disabled:opacity-50",
