@@ -440,6 +440,8 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     const isRange = Array.isArray(value);
     const values = toRadixValue(value);
     const shape = useShape();
+    // Sharp squares the whole control; rounded and pill keep the pill track.
+    const sharp = shape.variant === "sharp";
 
     // Non-uniform step mode: sorted, deduped list of allowed values. Keyed on
     // the joined string so inline array literals don't recompute every render.
@@ -463,6 +465,11 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     // True while a pointer drag owns the thumbs; the value-sync and resize
     // effects stand down so they never fight the pointer.
     const dragging = useRef(false);
+    // The value the press or drag last emitted. Release settles on it, not on
+    // motionX: a quick click lets go while the press spring is still in
+    // flight, and settling on that midpoint would strand the thumb. Kept as a
+    // value so a track resized mid-drag still lands on the emitted value.
+    const dragTargetValue = useRef(0);
     const activeDragThumb = useRef<number>(0);
     // Latest props for the ResizeObserver callback, which subscribes once per
     // isRange and would otherwise read stale values.
@@ -754,6 +761,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           layoutWidth,
           stepValues
         );
+        dragTargetValue.current = finalValue;
         emitChange(activeDragThumb.current, finalValue);
 
         // Capture keeps the drag alive when the pointer leaves the track.
@@ -807,6 +815,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           layoutWidth,
           stepValues
         );
+        dragTargetValue.current = finalValue;
         emitChange(activeDragThumb.current, finalValue);
       },
       [min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
@@ -818,18 +827,16 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
       setIsPressed(false);
       setHoverPreview(null);
 
-      // Spring settle to final quantized position
-      // Moves already land on the grid; this catches a thumb the range clamp
-      // left between steps. Clearing the preview above keeps the stale
-      // pre-drag bar from fading back in.
+      // Spring settle onto the last emitted value, at the current track width.
+      // This also catches a thumb the range clamp left between steps.
+      // Clearing the preview above keeps the stale pre-drag bar from fading
+      // back in.
       const tw = trackWidthRef.current;
       const motionX =
         activeDragThumb.current === 0 ? motionX0 : motionX1;
-      const currentPx = motionX.get();
-      const snapped = pixelToValue(currentPx, min, max, step, tw, stepValues);
-      const snappedPx = valueToPixel(snapped, min, max, tw);
+      const snappedPx = valueToPixel(dragTargetValue.current, min, max, tw);
       animate(motionX, snappedPx, spring.moderate);
-    }, [min, max, step, stepValues, motionX0, motionX1]);
+    }, [min, max, motionX0, motionX1]);
 
     // --- Radix keyboard handler ---
     // In steps mode the primitive runs on indices (0..len-1, step 1) so arrow
@@ -946,7 +953,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           initial={false}
         >
           <motion.span
-            className="block rounded-full"
+            className={cn("block", sharp ? "rounded-none" : "rounded-full")}
             initial={false}
             animate={{
               width: THUMB_SIZE_REST,
@@ -964,7 +971,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
               hidden thumb matches :focus-visible, so a pointer press never
               shows it. */}
           <motion.span
-            className="absolute rounded-full border border-[color:var(--focus-ring,#6B97FF)] pointer-events-none"
+            className={cn("absolute border border-[color:var(--focus-ring,#6B97FF)] pointer-events-none", sharp ? "rounded-none" : "rounded-full")}
             initial={false}
             animate={{
               opacity: focusedThumb === index ? 1 : 0,
@@ -1145,7 +1152,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
                 they inherit its rounded ends. top: py-2's 8px plus 1px to
                 center the 18px pill on the 20px thumb row. */}
             <motion.div
-              className={cn("absolute border border-border overflow-hidden rounded-full", trackClassName)}
+              className={cn("absolute border border-border overflow-hidden", sharp ? "rounded-none" : "rounded-full", trackClassName)}
               initial={false}
               animate={{
                 height: TRACK_BG_HEIGHT,
@@ -1188,7 +1195,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
                 style={{
                   left: hoverPreview ? hoverPreview.left - TRACK_INSET : 0,
                   width: hoverPreview ? hoverPreview.width : 0,
-                  borderRadius: hoverPreview && hoverPreview.cursorX > hoverPreview.left
+                  borderRadius: sharp ? 0 : hoverPreview && hoverPreview.cursorX > hoverPreview.left
                     ? "0 9999px 9999px 0"
                     : "9999px 0 0 9999px",
                   backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",

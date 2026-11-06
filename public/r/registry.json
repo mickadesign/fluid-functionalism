@@ -682,7 +682,7 @@
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
-      "description": "React context provider for runtime shape variant switching (pill or rounded). Controls border-radius across all Fluid Functionalism components.",
+      "description": "React context provider for runtime shape variant switching (rounded, pill or sharp). Controls border-radius across all Fluid Functionalism components.",
       "files": [
         {
           "path": "registry/default/lib/shape-context.tsx",
@@ -836,7 +836,7 @@
       "name": "fluid-provider",
       "type": "registry:lib",
       "title": "Fluid Provider",
-      "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded or pill), the size step (default or compact), and the icon set.",
+      "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded, pill or sharp), the size step (default or compact), and the icon set.",
       "dependencies": [
         "motion"
       ],
@@ -1343,6 +1343,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"
       ],
@@ -1369,6 +1370,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"
@@ -1986,6 +1988,7 @@
         "utils",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"
       ],
@@ -2015,6 +2018,7 @@
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/omit.json",
         "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"
       ],
@@ -2040,6 +2044,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/springs.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
         "https://www.fluidfunctionalism.com/r/tokens.json"

@@ -220,13 +220,22 @@ const FieldLabel = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelEle
           "text-muted-foreground group-data-[orientation=horizontal]/field:text-foreground",
           "group-data-[invalid=true]/field:text-destructive",
           // Choice card: a whole Field wrapped in the label becomes one
-          // bordered, hoverable target.
-          "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:border has-[>[data-slot=field]]:border-border",
+          // bordered, hoverable target. Block, since an inline label would
+          // break its border around the Field inside.
+          "has-[>[data-slot=field]]:block has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:border has-[>[data-slot=field]]:border-border",
           // The card takes the shape's container radius and the ladder's
           // control padding (12px, 10px compact) on every side.
-          shape.variant === "pill" ? "has-[>[data-slot=field]]:rounded-3xl" : "has-[>[data-slot=field]]:rounded-xl",
+          {
+            pill: "has-[>[data-slot=field]]:rounded-3xl",
+            rounded: "has-[>[data-slot=field]]:rounded-xl",
+            sharp: "has-[>[data-slot=field]]:rounded-[1px]",
+          }[shape.variant],
           sizeClasses.variant === "compact" ? "has-[>[data-slot=field]]:p-2.5" : "has-[>[data-slot=field]]:p-3",
           "has-[>[data-slot=field]]:transition-[background-color,border-color] has-[>[data-slot=field]]:duration-80 has-[>[data-slot=field]]:hover:bg-hover",
+          // Hovering anywhere on the card, padding included, lights the box
+          // the same way hovering its row does. A disabled box stays put and an
+          // invalid one keeps its red border.
+          "has-[>[data-slot=field]]:hover:[&_[data-slot=checkbox]:not([data-disabled]):not(:disabled):not([aria-invalid=true])]:border-foreground/40",
           "has-[[data-state=checked]]:border-foreground/40 has-[[data-checked]]:border-foreground/40",
           // Keyboard focus on the control inside rings the whole card, and
           // the control's own ring steps aside.

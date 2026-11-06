@@ -41,7 +41,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 /** Every value each setting accepts, in the order the site lists them. */
 export const SETTING_VALUES = {
   theme: ["system", "light", "dark"],
-  shape: ["rounded", "pill"],
+  shape: ["sharp", "rounded", "pill"],
   size: ["default", "compact"],
   icons: ["lucide", "tabler", "phosphor", "hugeicons", "untitledui"],
   base: ["radix", "base"],

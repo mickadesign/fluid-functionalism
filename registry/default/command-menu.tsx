@@ -25,7 +25,7 @@ import { animate, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
-import { shapeMap } from "@/lib/shape-context";
+import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, fieldTouchClass, type SizeVariant } from "@/lib/size-context";
 import { isDisabledRow } from "@/lib/popup";
 import {
@@ -99,12 +99,6 @@ interface CommandMenuSection {
   /** Flat index of the section's first row. */
   start: number;
 }
-
-// The list keeps the smaller "rounded" radii whatever the rest of the UI is
-// shaped, like every popup list: pill rows inside a square panel distort the
-// concentric fit of the hover fill. The dialog shell follows the global
-// shape through DialogContent.
-const listShape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
 // Shortcuts — one string syntax for both the trigger combo and the caps a row
@@ -1047,6 +1041,7 @@ export interface CommandMenuListProps extends HTMLAttributes<HTMLDivElement> {
 
 const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
   ({ className, children, renderItem, ...props }, ref) => {
+    const listShape = usePopupShape();
     const { sections, rows, listId, listRef, setActiveIndex, listHandlers } = useCommandMenu();
     const fill = useContext(CommandMenuFillContext);
     const sizeClasses = useSize();
@@ -1279,6 +1274,7 @@ const CommandMenuItem = memo(forwardRef<HTMLDivElement, CommandMenuItemProps>(
     },
     ref
   ) => {
+    const listShape = usePopupShape();
     const { itemsByValue, listId, registerItem, highlight, select } = useCommandMenu();
     const index = useContext(CommandMenuIndexContext);
     const internalRef = useRef<HTMLDivElement | null>(null);

@@ -77,13 +77,13 @@ by dashes, or is `default`. An existing app takes the same components and a
 
 | Piece | Registry name | What it does |
 |---|---|---|
-| Fluid Provider | `fluid-provider` | One wrapper for the system: reduced motion that follows the OS, the radius (rounded or pill), the size step, and the icon set. Render it from a `"use client"` file near the root, since an icon map can't cross from a server layout |
+| Fluid Provider | `fluid-provider` | One wrapper for the system: reduced motion that follows the OS, the radius (rounded, pill or sharp), the size step, and the icon set. Render it from a `"use client"` file near the root, since an icon map can't cross from a server layout |
 | Icon sets | `icons-tabler` · `icons-phosphor` · `icons-hugeicons` · `icons-untitledui` | Every icon slot filled from one library. Pass the map to `FluidProvider`'s `icons` prop (or `IconProvider`) |
 
 Other installable libs and hooks (usually arrive as dependencies):
 `font-weight` (variable weight tokens for the ghost-span pattern),
 `icon-context` (named icon slots, Lucide defaults, `IconProvider` override),
-`shape-context` (pill or rounded), `surface-context` / `surface-classes` /
+`shape-context` (rounded, pill or sharp), `surface-context` / `surface-classes` /
 `tokens` (elevation plumbing and `bg-hover`/`bg-active` state tokens),
 `popup` (shared popup chrome), `omit` (drops props before a spread),
 `use-touch-primary`, `use-keyboard-nav-gate`, `use-merge-split` (the merged

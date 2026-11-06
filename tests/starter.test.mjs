@@ -23,7 +23,7 @@ import {
 const manifest = JSON.parse(readFileSync(new URL("../registry.json", import.meta.url), "utf-8"));
 const depUrl = buildDepResolver(manifest.items);
 
-/** Every combination of the six settings (2 × 2 × 2 × 5 × 3 × 17 = 2040). */
+/** Every combination of the six settings (2 × 3 × 2 × 5 × 3 × 17 = 3060). */
 function allSettings() {
   let combos = [{}];
   for (const [key, values] of Object.entries(SETTING_VALUES)) {
@@ -38,9 +38,9 @@ describe("starter slug", () => {
     expect(parseStarterSlug(DEFAULT_SLUG)).toEqual({ ok: true, settings: STARTER_DEFAULTS });
   });
 
-  it("round-trips all 2040 combinations", () => {
+  it("round-trips all 3060 combinations", () => {
     const combos = allSettings();
-    expect(combos).toHaveLength(2040);
+    expect(combos).toHaveLength(3060);
     for (const s of combos) {
       expect(parseStarterSlug(starterSlug(s)), starterSlug(s)).toEqual({ ok: true, settings: s });
     }
@@ -48,6 +48,12 @@ describe("starter slug", () => {
 
   it("names only the settings that differ, in a fixed order", () => {
     expect(starterSlug({ ...STARTER_DEFAULTS, theme: "dark", base: "radix", shape: "pill" })).toBe("radix-pill-dark");
+  });
+
+  it("spells the sharp shape as its own word", () => {
+    const sharp = { ...STARTER_DEFAULTS, shape: "sharp" };
+    expect(starterSlug(sharp)).toBe("sharp");
+    expect(parseStarterSlug("sharp").settings).toEqual(sharp);
   });
 
   it("reads words in any order", () => {

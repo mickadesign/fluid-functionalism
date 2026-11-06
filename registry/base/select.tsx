@@ -26,7 +26,7 @@ import {
   useRegisterFluidHoverItem,
   type FluidHoverActiveStore,
 } from "@/hooks/use-fluid-hover";
-import { useShape, shapeMap } from "@/lib/shape-context";
+import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
@@ -85,13 +85,6 @@ const SelectContentContext =
 // ---------------------------------------------------------------------------
 // Select (root)
 // ---------------------------------------------------------------------------
-
-// The trigger follows the global pill/rounded shape; the popup does not.
-// Like Dropdown and Combobox, the list keeps the smaller "rounded" radii
-// whatever the rest of the UI is shaped: pill corners on a popover distort
-// its padding and break the concentric fit of the rows' hover and selection
-// backgrounds inside it.
-const popupShape = shapeMap.rounded;
 
 interface SelectProps {
   children: ReactNode;
@@ -358,7 +351,7 @@ interface SelectContentProps {
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
   ({ className, children }, ref) => {
     const { open, value, actionsRef } = useSelectContext();
-    const shape = popupShape;
+    const shape = usePopupShape();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
@@ -652,7 +645,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const selectCtx = useSelectContext();
     const contentCtx = useContext(SelectContentContext);
     const internalRef = useRef<HTMLDivElement>(null);
-    const shape = popupShape;
+    const shape = usePopupShape();
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
 

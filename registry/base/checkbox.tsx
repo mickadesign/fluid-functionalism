@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { omit } from "@/lib/omit";
 import { useSize, type SizeVariant } from "@/lib/size-context";
+import { useShape } from "@/lib/shape-context";
 
 // ---------------------------------------------------------------------------
 // A single checkbox: the CheckboxGroup square on its own. A 1.5px --border
@@ -34,6 +35,7 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
     const [uncontrolled, setUncontrolled] = useState(defaultChecked);
     const isChecked = checked ?? uncontrolled;
     const compact = useSize(size).variant === "compact";
+    const sharp = useShape().variant === "sharp";
 
     return (
       <CheckboxPrimitive.Root
@@ -60,13 +62,16 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
           "relative inline-block shrink-0 cursor-pointer border-[1.5px] border-solid border-border bg-transparent p-0 outline-none",
           "transition-[border-color] duration-80",
           // Hovering the box, or the Field row it sits in, darkens the
-          // border; a checked box keeps it clear.
+          // border; a checked box keeps it clear at rest and brings it back
+          // on hover.
           "hover:not-data-checked:border-foreground/40 group-hover/field:not-data-checked:border-foreground/40",
           "data-checked:border-transparent",
+          "hover:data-checked:border-foreground/40 group-hover/field:not-data-disabled:data-checked:border-foreground/40",
           "aria-invalid:not-data-checked:border-destructive/50",
           "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
           "data-disabled:pointer-events-none data-disabled:opacity-50",
-          compact ? "size-[14px] rounded-[4px]" : "size-4 rounded-[5px]",
+          compact ? "size-[14px]" : "size-4",
+          sharp ? "rounded-none" : compact ? "rounded-[4px]" : "rounded-[5px]",
           className
         )}
         {...props}

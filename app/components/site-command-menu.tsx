@@ -114,6 +114,7 @@ const THEMES: { value: Theme; label: string; icon: IconName }[] = [
   { value: "dark", label: "Dark", icon: "moon" },
 ];
 const SHAPES: { value: ShapeVariant; label: string; icon: IconName }[] = [
+  { value: "sharp", label: "Sharp", icon: "square" },
   { value: "rounded", label: "Rounded", icon: "rectangle-horizontal" },
   { value: "pill", label: "Pill", icon: "circle" },
 ];

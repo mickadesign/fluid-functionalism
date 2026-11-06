@@ -887,8 +887,8 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
             style={
               variant !== "sidebar"
                 ? ({
-                    "--rail-fade-start": `${shape.bgRadius >= 20 ? 24 : 12}px`,
-                    "--rail-fade-end": `${(shape.bgRadius >= 20 ? 24 : 12) + 24}px`,
+                    "--rail-fade-start": `${shape.containerRadius}px`,
+                    "--rail-fade-end": `${shape.containerRadius + 24}px`,
                   } as CSSProperties)
                 : undefined
             }
@@ -1168,9 +1168,11 @@ const SidebarInset = forwardRef<HTMLElement, SidebarInsetProps>(
           "transition-[margin] duration-80",
           // Container radius follows the shape system (literal classes so
           // Tailwind's scanner emits both).
-          shape.bgRadius >= 20
-            ? "peer-data-[variant=inset]:rounded-3xl"
-            : "peer-data-[variant=inset]:rounded-xl",
+          {
+            pill: "peer-data-[variant=inset]:rounded-3xl",
+            rounded: "peer-data-[variant=inset]:rounded-xl",
+            sharp: "peer-data-[variant=inset]:rounded-[1px]",
+          }[shape.variant],
           "peer-data-[variant=inset]:bg-surface-2 peer-data-[variant=inset]:shadow-surface-2",
           className
         )}

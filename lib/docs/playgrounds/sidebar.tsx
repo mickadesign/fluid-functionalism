@@ -1309,9 +1309,9 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
   const frameRadius =
     state.design === "sidebar"
       ? shape.container
-      : shape.bgRadius >= 20
-        ? "rounded-[32px]"
-        : "rounded-[20px]";
+      : { pill: "rounded-[32px]", rounded: "rounded-[20px]", sharp: "rounded-[1px]" }[
+          shape.variant
+        ];
   const shell = (height: string, framed = false) => (
     <div
       className={`relative flex w-full overflow-hidden bg-background ${height} ${
