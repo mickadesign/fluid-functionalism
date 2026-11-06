@@ -4,7 +4,7 @@
   "title": "Phosphor Icon Set",
   "description": "Phosphor glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Phosphor.",
   "dependencies": [
-    "@phosphor-icons/react"
+    "@phosphor-icons/react@^2.1.10"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/icon-context.json"
