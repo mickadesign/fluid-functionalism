@@ -9,7 +9,7 @@ import {
 } from "react";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { fontWeights } from "@/registry/default/lib/font-weight";
-import { useShape } from "@/registry/default/lib/shape-context";
+import { useShape, usePopupShape } from "@/registry/default/lib/shape-context";
 import { SurfaceProvider } from "@/registry/default/lib/surface-context";
 import { Elevated } from "@/lib/elevated";
 import { Dropdown, useDropdown } from "@/components/flavored/dropdown";
@@ -36,6 +36,24 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 // fills behind the (transparent) tab bar; the radius matches the active shape
 // so the dark fill doesn't poke past the preview's rounded corners.
 // ---------------------------------------------------------------------------
+
+// Demo surfaces follow the Radius setting, and nested ones stay concentric:
+// outer = inner + inset + border (skill rule; sharp stays 1px at every level).
+// Layers 24px or more apart (dialog padding, the level stack) are tuned
+// independently, like the real Dialog. Rounded keeps the original radii there.
+function demoRadius(variant: "rounded" | "pill" | "sharp") {
+  return {
+    panel: { rounded: "rounded-2xl", pill: "rounded-3xl", sharp: "rounded-[1px]" }[variant],
+    field: { rounded: "rounded-xl", pill: "rounded-[20px]", sharp: "rounded-[1px]" }[variant],
+    // Popup container: 8px rows + 4px padding, capped at rounded like real menus.
+    menu: variant === "sharp" ? "rounded-[1px]" : "rounded-xl",
+    button: { rounded: "rounded-lg", pill: "rounded-full", sharp: "rounded-[1px]" }[variant],
+    // Swatch chips (container radius, 12/24px) sit 16px inside their panel.
+    swatchPanel: { rounded: "rounded-[28px]", pill: "rounded-[40px]", sharp: "rounded-[1px]" }[variant],
+    // A capped menu (12px) sits 16px plus a 1px border inside its panel.
+    menuPanel: variant === "sharp" ? "rounded-[1px]" : "rounded-[29px]",
+  };
+}
 
 function DarkPreview(props: ComponentProps<typeof ComponentPreview>) {
   const shape = useShape();
@@ -185,6 +203,7 @@ function SurfaceChip({ level }: { level: number }) {
 }
 
 function TokensDemo() {
+  const { swatchPanel: panel } = demoRadius(useShape().variant);
   return (
     <DarkPreview code={TOKENS_CSS} padding="compact">
       <div className="flex flex-col gap-4 w-full">
@@ -198,7 +217,7 @@ function TokensDemo() {
           <ScrollArea
             orientation="horizontal"
             viewportClassName="scroll-fade-x"
-            className="rounded-2xl bg-background"
+            className={cn("bg-background", panel)}
           >
             <div className="flex gap-3 p-4 w-max">
               {LEVELS.map((n) => (
@@ -217,7 +236,7 @@ function TokensDemo() {
           <ScrollArea
             orientation="horizontal"
             viewportClassName="scroll-fade-x"
-            className="rounded-2xl bg-background"
+            className={cn("bg-background", panel)}
           >
             <div className="flex gap-3 p-4 w-max">
               {LEVELS.map((n) => (
@@ -248,7 +267,8 @@ function StaticRoleItem({
   description: string;
   checked: boolean;
 }) {
-  const shape = useShape();
+  // Rows inside a menu follow the popup shape, matching the capped panel.
+  const shape = usePopupShape();
   const CheckIcon = useIcon("check");
   return (
     <div
@@ -486,6 +506,8 @@ function ProblemAnnotations() {
 
 function ProblemDemo() {
   const XIcon = useIcon("x");
+  const radius = demoRadius(useShape().variant);
+
   const Users = useIcon("users");
   const User = useIcon("user");
   const Lock = useIcon("lock");
@@ -503,7 +525,8 @@ function ProblemDemo() {
           <SurfaceProvider value={5}>
             <div
               className={cn(
-                "absolute left-1/2 -translate-x-1/2 top-8 w-[320px] rounded-2xl p-6 flex flex-col gap-5",
+                "absolute left-1/2 -translate-x-1/2 top-8 w-[320px] p-6 flex flex-col gap-5",
+                radius.panel,
                 surfaceClasses(5)
               )}
             >
@@ -542,7 +565,7 @@ function ProblemDemo() {
                   readOnly
                   rows={2}
                   placeholder="email@gmail.com, email2@gmail.com..."
-                  className="text-site-body text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border rounded-xl px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer"
+                  className={cn("text-site-body text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer", radius.field)}
                 />
               </label>
 
@@ -556,7 +579,7 @@ function ProblemDemo() {
                 <button
                   type="button"
                   aria-expanded
-                  className="flex items-center justify-between gap-2 h-10 px-3 rounded-xl bg-active text-site-body text-foreground border border-border cursor-pointer transition-colors duration-80"
+                  className={cn("flex items-center justify-between gap-2 h-10 px-3 bg-active text-site-body text-foreground border border-border cursor-pointer transition-colors duration-80", radius.field)}
                 >
                   <span>Member</span>
                   <ChevronDown
@@ -571,7 +594,8 @@ function ProblemDemo() {
                     the body melts straight into the dialog. */}
                 <div
                   className={cn(
-                    "-mt-px rounded-2xl p-1 flex flex-col",
+                    "-mt-px p-1 flex flex-col",
+                    radius.menu,
                     surfaceClasses(5, 3)
                   )}
                 >
@@ -599,7 +623,7 @@ function ProblemDemo() {
               <div className="flex justify-end items-center gap-2 pt-2">
                 <button
                   type="button"
-                  className="h-9 px-4 rounded-full bg-transparent hover:bg-hover text-site-body text-foreground cursor-pointer transition-colors duration-80"
+                  className={cn("h-9 px-4 bg-transparent hover:bg-hover text-site-body text-foreground cursor-pointer transition-colors duration-80", radius.button)}
                   style={{ fontVariationSettings: fontWeights.normal }}
                 >
                   Cancel
@@ -607,7 +631,7 @@ function ProblemDemo() {
                 <button
                   type="button"
                   disabled
-                  className="h-9 px-4 rounded-full bg-foreground text-background text-site-body cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
+                  className={cn("h-9 px-4 bg-foreground text-background text-site-body cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none", radius.button)}
                   style={{ fontVariationSettings: fontWeights.semibold }}
                 >
                   Send invites
@@ -655,6 +679,7 @@ function SwatchRow({ label, hex }: { label: string; hex: string }) {
 }
 
 function SubstrateDemo() {
+  const { menuPanel: panel } = demoRadius(useShape().variant);
   const Star = useIcon("star");
   const Clock = useIcon("clock");
   const Lock = useIcon("lock");
@@ -679,7 +704,7 @@ function SubstrateDemo() {
           return (
             <div key={substrate} className="flex flex-col gap-3">
               <div
-                className="dark flex flex-col gap-3 rounded-2xl p-4 border border-border/40"
+                className={cn("dark flex flex-col gap-3 p-4 border border-border/40", panel)}
                 style={{ backgroundColor: `var(--surface-${substrate})` }}
               >
                 <span
@@ -727,24 +752,26 @@ function SubstrateDemo() {
 // ---------------------------------------------------------------------------
 
 function ElevatedDemo() {
+  const { panel } = demoRadius(useShape().variant);
   return (
     <DarkPreview code={ELEVATED_SOURCE} padding="compact">
       <div className="dark w-full">
         <div
           className={cn(
-            "flex flex-col gap-3 p-5 rounded-2xl w-full max-w-[480px] mx-auto",
+            "flex flex-col gap-3 p-5 w-full max-w-[480px] mx-auto",
+            panel,
             surfaceClasses(1)
           )}
         >
           <span className="text-site-caption text-muted-foreground">Page</span>
-          <Elevated offset={2} className="rounded-2xl p-5 flex flex-col gap-3">
+          <Elevated offset={2} className={cn("p-5 flex flex-col gap-3", panel)}>
             <span className="text-site-caption text-muted-foreground">Card</span>
             <Elevated
               offset={2}
-              className="rounded-2xl p-5 flex flex-col gap-3"
+              className={cn("p-5 flex flex-col gap-3", panel)}
             >
               <span className="text-site-caption text-muted-foreground">Popover</span>
-              <Elevated offset={2} className="rounded-2xl p-5">
+              <Elevated offset={2} className={cn("p-5", panel)}>
                 <span className="text-site-caption text-muted-foreground">Menu</span>
               </Elevated>
             </Elevated>
@@ -762,13 +789,15 @@ function ElevatedDemo() {
 
 // Nested stack from surface-{low} (base) up to surface-{high}, each layer
 // lifting +1 off the one it sits in via the real Elevated primitive.
-function buildStack(low: number, high: number): ReactNode {
+function buildStack(low: number, high: number, panel: string): ReactNode {
   // Each surface's label is hidden until you hover *that* surface. Because the
   // boxes nest (hovering an inner one also :hovers its ancestors), the second
   // variant hides a label whenever a descendant surface is the one being
   // hovered — so only the surface directly under the cursor shows its name.
-  const boxClass =
-    "relative rounded-2xl p-6 flex items-center justify-center [&:hover>span]:opacity-100 [&:has([data-surface]:hover)>span]:opacity-0";
+  const boxClass = cn(
+    panel,
+    "relative p-6 flex items-center justify-center [&:hover>span]:opacity-100 [&:has([data-surface]:hover)>span]:opacity-0"
+  );
   const labelClass =
     "absolute top-2 left-2.5 text-site-caption text-muted-foreground opacity-0 transition-opacity duration-150";
 
@@ -803,6 +832,7 @@ function buildStack(low: number, high: number): ReactNode {
 }
 
 function ElevationStackDemo() {
+  const { panel } = demoRadius(useShape().variant);
   const [range, setRange] = useState<[number, number]>([1, 4]);
   const [low, high] = range;
 
@@ -813,10 +843,10 @@ function ElevationStackDemo() {
             so the preview stays at its max size as you drag — no resizing. */}
         <div className="relative w-full max-w-[520px] mx-auto">
           <div className="invisible pointer-events-none" aria-hidden>
-            {buildStack(1, 8)}
+            {buildStack(1, 8, panel)}
           </div>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            {buildStack(low, high)}
+            {buildStack(low, high, panel)}
           </div>
         </div>
         <div className="w-full max-w-[520px] mx-auto px-1 pb-2">
@@ -839,12 +869,13 @@ function ElevationStackDemo() {
 // ---------------------------------------------------------------------------
 
 function ColorPickerDemo() {
+  const { panel } = demoRadius(useShape().variant);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   return (
     <DarkPreview code={COLOR_PICKER_CODE} padding="compact">
       <div
         ref={setContainerEl}
-        className="dark relative w-full rounded-2xl overflow-hidden flex items-start justify-center min-h-[520px] py-12 bg-background"
+        className={cn("dark relative w-full overflow-hidden flex items-start justify-center min-h-[520px] py-12 bg-background", panel)}
       >
         <ColorPickerPortalContainer value={containerEl}>
           <ColorPicker defaultValue="#6B97FF" formatOpen />
@@ -1123,6 +1154,7 @@ function SolutionAnnotations({
 }
 
 function InviteDialogDemo() {
+  const radius = demoRadius(useShape().variant);
   const containerRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -1136,13 +1168,14 @@ function InviteDialogDemo() {
     <DarkPreview code={INVITE_DIALOG_CODE} padding="compact">
       <div
         ref={containerRef}
-        className="dark relative w-full rounded-2xl overflow-hidden min-h-[640px] flex items-center justify-center p-6 bg-background"
+        className={cn("dark relative w-full overflow-hidden min-h-[640px] flex items-center justify-center p-6 bg-background", radius.panel)}
       >
         <SurfaceProvider value={5}>
           <div
             ref={dialogRef}
             className={cn(
-              "relative w-full max-w-[320px] rounded-2xl p-6 flex flex-col gap-5",
+              "relative w-full max-w-[320px] p-6 flex flex-col gap-5",
+              radius.panel,
               surfaceClasses(5)
             )}
           >
@@ -1181,7 +1214,7 @@ function InviteDialogDemo() {
                 readOnly
                 rows={2}
                 placeholder="email@gmail.com, email2@gmail.com..."
-                className="text-site-body text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border rounded-xl px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer"
+                className={cn("text-site-body text-foreground placeholder:text-muted-foreground bg-transparent hover:bg-hover border border-border px-3 py-2 resize-none outline-none transition-colors duration-80 cursor-pointer", radius.field)}
               />
             </label>
 
@@ -1195,7 +1228,7 @@ function InviteDialogDemo() {
               <button
                 type="button"
                 aria-expanded
-                className="flex items-center justify-between gap-2 h-10 px-3 rounded-xl bg-active text-site-body text-foreground border border-border cursor-pointer transition-colors duration-80"
+                className={cn("flex items-center justify-between gap-2 h-10 px-3 bg-active text-site-body text-foreground border border-border cursor-pointer transition-colors duration-80", radius.field)}
               >
                 <span>Member</span>
                 <ChevronDown
@@ -1234,7 +1267,7 @@ function InviteDialogDemo() {
             <div className="flex justify-end items-center gap-2 pt-2">
               <button
                 type="button"
-                className="h-9 px-4 rounded-full bg-transparent hover:bg-hover text-site-body text-foreground cursor-pointer transition-colors duration-80"
+                className={cn("h-9 px-4 bg-transparent hover:bg-hover text-site-body text-foreground cursor-pointer transition-colors duration-80", radius.button)}
                 style={{ fontVariationSettings: fontWeights.normal }}
               >
                 Cancel
@@ -1242,7 +1275,7 @@ function InviteDialogDemo() {
               <button
                 type="button"
                 disabled
-                className="h-9 px-4 rounded-full bg-foreground text-background text-site-body cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
+                className={cn("h-9 px-4 bg-foreground text-background text-site-body cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none", radius.button)}
                 style={{ fontVariationSettings: fontWeights.semibold }}
               >
                 Send invites
