@@ -98,6 +98,7 @@ export const untitleduiIcons: Record<IconName, IconComponent> = {
   "moon": untitledui(UuiMoon),
   "rectangle-horizontal": untitledui(UuiSquare),
   "circle": untitledui(UuiCircle),
+  "square": untitledui(UuiSquare),
   "square-library": untitledui(UuiBook),
   "clock": untitledui(UuiClock),
   "star": untitledui(UuiStar),

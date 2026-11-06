@@ -567,6 +567,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
   const MoonIcon = useIcon("moon");
   const RectHorizIcon = useIcon("rectangle-horizontal");
   const CircleIcon = useIcon("circle");
+  const SquareIcon = useIcon("square");
   const PaletteIcon = useIcon("palette");
   const RadixIcon = useIcon("circle");
   const BaseUiIcon = useIcon("square-library");
@@ -578,6 +579,7 @@ export function SettingsContent({ credit = true, inset = true }: { credit?: bool
   ];
 
   const shapeOptions = [
+    { label: "Sharp", value: "sharp" as ShapeVariant, icon: SquareIcon },
     { label: "Rounded", value: "rounded" as ShapeVariant, icon: RectHorizIcon },
     { label: "Pill", value: "pill" as ShapeVariant, icon: CircleIcon },
   ];

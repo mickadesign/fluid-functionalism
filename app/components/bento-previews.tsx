@@ -650,6 +650,7 @@ const askUserExampleQuestions: AskUserQuestion[] = [
     options: [
       { id: "rounded", title: "Rounded", description: "Soft, familiar corners" },
       { id: "pill", title: "Pill", description: "Fully rounded, friendly" },
+      { id: "sharp", title: "Sharp", description: "Square corners, precise" },
     ],
   },
   {

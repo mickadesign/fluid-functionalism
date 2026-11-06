@@ -83,7 +83,7 @@ const DATE_PICKER_PRESET_FIELDS_A: readonly PresetField[] = [
   { key: "clearable", values: [true, false], bits: 1 },
   { key: "disabled", values: [false, true], bits: 1 },
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
@@ -104,7 +104,7 @@ export const DATE_PICKER_PRESET_FIELDS: readonly PresetField[] = [
   { key: "clearable", values: [true, false], bits: 1 },
   { key: "disabled", values: [false, true], bits: 1 },
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

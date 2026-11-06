@@ -315,7 +315,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           <div
             className={cn(
               "absolute inset-0 border-solid transition-[border-color] duration-80",
-              compact ? "rounded-[4px]" : "rounded-[5px]",
+              shape.variant === "sharp" ? "rounded-none" : compact ? "rounded-[4px]" : "rounded-[5px]",
               checked
                 ? "border-[1.5px] border-transparent"
                 : isActive

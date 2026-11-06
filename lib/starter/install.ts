@@ -68,7 +68,7 @@ export function starterRegistryDeps(items: readonly ManifestItem[], s: StarterSe
 
 export const SETTING_LABELS = {
   theme: { system: "System", light: "Light", dark: "Dark" },
-  shape: { rounded: "Rounded", pill: "Pill" },
+  shape: { sharp: "Sharp", rounded: "Rounded", pill: "Pill" },
   size: { default: "Default", compact: "Compact" },
   icons: { lucide: "Lucide", tabler: "Tabler", phosphor: "Phosphor", hugeicons: "HugeIcons", untitledui: "Untitled UI" },
   base: { radix: "Radix", base: "Base UI" },
@@ -243,6 +243,7 @@ const THEMES = [
   { value: "dark", label: "Dark" },
 ];
 const SHAPES: { value: ShapeVariant; label: string }[] = [
+  { value: "sharp", label: "Sharp" },
   { value: "rounded", label: "Rounded" },
   { value: "pill", label: "Pill" },
 ];

@@ -11,10 +11,16 @@ describe("nested border radii", () => {
     expect(nestedRadius(8, 12)).toBe(0);
   });
 
-  it.each(Object.entries(shapeMap))(
+  it.each([shapeMap.rounded, shapeMap.pill].map((s) => [s.variant, s] as const))(
     "%s keeps the fixed popup pair concentric around p-1",
     (_variant, shape) => {
       expect(shape.containerRadius).toBe(shape.bgRadius + 4);
     }
   );
+
+  // Square on square needs no concentric offset: sharp is 1px all the way out.
+  it("keeps every sharp radius at 1px", () => {
+    const { bgRadius, containerRadius, mergedRadius } = shapeMap.sharp;
+    expect([bgRadius, containerRadius, mergedRadius]).toEqual([1, 1, 1]);
+  });
 });

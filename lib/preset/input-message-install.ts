@@ -395,12 +395,12 @@ function composerFile(p: InputMessagePreset): string {
 function pageFile(p: InputMessagePreset): string {
   const l: string[] = [];
   const providers: [string, string][] = [];
-  if (p.shape === "pill") providers.push(["ShapeProvider", ` defaultShape="pill"`]);
+  if (p.shape !== "rounded") providers.push(["ShapeProvider", ` defaultShape="${p.shape}"`]);
   if (p.size === "compact") providers.push(["SizeProvider", ` size="compact"`]);
   l.push(`"use client";`);
   l.push(``);
   l.push(`import { ChatComposer } from "@/components/chat-composer";`);
-  if (p.shape === "pill") l.push(`import { ShapeProvider } from "@/lib/shape-context";`);
+  if (p.shape !== "rounded") l.push(`import { ShapeProvider } from "@/lib/shape-context";`);
   if (p.size === "compact") l.push(`import { SizeProvider } from "@/lib/size-context";`);
   l.push(``);
   l.push(`// Generated from a fluidfunctionalism.com playground preset.`);

@@ -35,6 +35,7 @@ const MATRIX = [
   { footerCallout: "inline", footerCalloutStacked: true, footerStack: "vertical" },
   { sectionActions: 3, sectionsCollapsible: false, l1Actions: 0, footerActions: 1 },
   { shape: "pill", size: "compact", flavor: "base", collapsedBehavior: "click" },
+  { shape: "sharp" },
 ];
 
 describe("preset install generator", () => {

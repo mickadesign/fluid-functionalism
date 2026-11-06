@@ -15,17 +15,13 @@ import type { IconComponent } from "@/lib/icon-context";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
-import { shapeMap } from "@/lib/shape-context";
+import { usePopupShape } from "@/lib/shape-context";
 import { useSize } from "@/lib/size-context";
 import {
   useFluidHoverSelect,
   useRegisterFluidHoverItem,
   type FluidHoverActiveStore,
 } from "@/hooks/use-fluid-hover";
-
-// MenuItem is only used inside Dropdown, which opts out of the global pill
-// shape — see dropdown.tsx for the rationale.
-const shape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
 // Dropdown context — the single shared context for every Dropdown build.
@@ -157,6 +153,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
     },
     ref
   ) => {
+    const shape = usePopupShape();
     const internalRef = useRef<HTMLDivElement>(null);
     const {
       registerItem,

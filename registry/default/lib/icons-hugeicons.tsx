@@ -23,6 +23,7 @@ import HiMonitor from "@hugeicons/core-free-icons/ComputerIcon";
 import HiSun from "@hugeicons/core-free-icons/Sun01Icon";
 import HiMoon from "@hugeicons/core-free-icons/Moon01Icon";
 import HiRectangle from "@hugeicons/core-free-icons/DashboardCircleIcon";
+import HiSquare from "@hugeicons/core-free-icons/SquareIcon";
 import HiLibrary from "@hugeicons/core-free-icons/LibraryIcon";
 import HiClock from "@hugeicons/core-free-icons/Clock01Icon";
 import HiStar from "@hugeicons/core-free-icons/StarIcon";
@@ -102,6 +103,7 @@ export const hugeiconsIcons: Record<IconName, IconComponent> = {
   "moon": hugeicons(HiMoon),
   "rectangle-horizontal": hugeicons(HiRectangle),
   "circle": hugeicons(HiDot),
+  "square": hugeicons(HiSquare),
   "square-library": hugeicons(HiLibrary),
   "clock": hugeicons(HiClock),
   "star": hugeicons(HiStar),

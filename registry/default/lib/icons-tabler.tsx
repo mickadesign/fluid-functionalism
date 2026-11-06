@@ -97,6 +97,7 @@ export const tablerIcons: Record<IconName, IconComponent> = {
   "moon": tabler(IconMoon),
   "rectangle-horizontal": tabler(IconSquare),
   "circle": tabler(IconCircle),
+  "square": tabler(IconSquare),
   "square-library": tabler(IconLibrary),
   "clock": tabler(IconClock),
   "star": tabler(IconStar),

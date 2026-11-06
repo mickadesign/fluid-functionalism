@@ -28,6 +28,7 @@ import {
   Moon,
   RectangleHorizontal,
   Circle,
+  Square,
   SquareLibrary,
   Clock,
   Star,
@@ -98,7 +99,7 @@ export type IconComponent = ComponentType<IconComponentProps>;
 // Ellipsis).
 export type IconName =
   | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
-  | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
+  | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle" | "square"
   | "square-library" | "clock" | "star" | "settings"
   | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "arrow-down"
   | "search" | "loader"
@@ -125,6 +126,7 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "moon": Moon,
   "rectangle-horizontal": RectangleHorizontal,
   "circle": Circle,
+  "square": Square,
   "square-library": SquareLibrary,
   "clock": Clock,
   "star": Star,

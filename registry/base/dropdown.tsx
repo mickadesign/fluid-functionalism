@@ -35,7 +35,7 @@ import {
   useSelectionRuns,
   SelectionBackgrounds,
 } from "@/hooks/use-merge-split";
-import { shapeMap } from "@/lib/shape-context";
+import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
@@ -61,12 +61,6 @@ import {
   SubmenuChevron,
   type DropdownSubTriggerProps,
 } from "@/components/ui/dropdown-sub";
-
-// Dropdown opts out of the global pill/rounded shape context — popover surfaces
-// look cleaner with the smaller "rounded" radii regardless of how the rest of
-// the UI is shaped (the heavy pill bubbling distorts perceived padding at this
-// scale and produces the corner-shadow asymmetry).
-const shape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
@@ -105,6 +99,7 @@ interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
   ({ children, checkedIndex, checkedIndices, size, className, ...props }, ref) => {
+    const shape = usePopupShape();
     const containerRef = useRef<HTMLDivElement>(null);
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
@@ -428,6 +423,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     },
     ref
   ) => {
+    const shape = usePopupShape();
     const { open, actionsRef, sub } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
 

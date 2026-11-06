@@ -36,7 +36,7 @@ export function usePresetGlobals(): PresetGlobals {
   const sizeVariant = useSizeVariant();
   return {
     flavor: base === "base" ? "base" : "radix",
-    shape: shape.bgRadius >= 20 ? "pill" : "rounded",
+    shape: shape.variant,
     size: sizeVariant === "compact" ? "compact" : "default",
   };
 }

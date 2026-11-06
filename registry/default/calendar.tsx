@@ -141,6 +141,7 @@ interface CalendarContextValue {
   compact: boolean;
   fill: boolean;
   pill: boolean;
+  sharp: boolean;
   mode: "single" | "range";
   /** Single mode: the selected day number. */
   selectedDay: number | null;
@@ -662,7 +663,11 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
             "z-[3] bg-transparent",
             cellRadius,
             "before:pointer-events-none before:absolute before:inset-px before:border before:border-background before:transition-opacity before:duration-80",
-            cal.pill ? "before:rounded-full" : "before:rounded-[7px]",
+            cal.pill
+              ? "before:rounded-full"
+              : cal.sharp
+                ? "before:rounded-none"
+                : "before:rounded-[7px]",
             !(litFilled || previewGlides)
               ? "before:opacity-0"
               : pressed
@@ -1507,7 +1512,7 @@ function Day({ day, modifiers, className, style, children, ...props }: DayProps)
                 className={cn(
                   "relative bg-foreground",
                   cal.fill ? "aspect-square h-full max-w-full" : "size-[var(--cell-size)]",
-                  cal.pill ? "rounded-full" : "rounded-lg"
+                  cal.pill ? "rounded-full" : cal.sharp ? "rounded-[1px]" : "rounded-lg"
                 )}
               />
             )}
@@ -1597,7 +1602,7 @@ function DayButton({ day, modifiers, className, style, children, ...props }: Day
               "transition-none"
             : "transition-[color,background-color,font-variation-settings] duration-80",
         cal.fill ? "aspect-square h-full max-w-full" : "size-[var(--cell-size)]",
-        cal.pill ? "rounded-full" : "rounded-lg",
+        cal.pill ? "rounded-full" : cal.sharp ? "rounded-[1px]" : "rounded-lg",
         typeClass("body", compact ? "compact" : "default"),
         isEnd
           ? "bg-foreground text-background"
@@ -1869,6 +1874,7 @@ function Calendar(props: CalendarProps) {
       compact,
       fill,
       pill: shape.variant === "pill",
+      sharp: shape.variant === "sharp",
       mode,
       selectedDay:
         mode === "single" && value instanceof Date ? dayNumber(value) : null,
