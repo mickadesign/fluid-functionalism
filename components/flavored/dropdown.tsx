@@ -32,6 +32,10 @@ export const DropdownMenu = flavored(
 interface FlavoredDropdownTriggerProps {
   render?: ReactElement;
   className?: string;
+  /** Both flavors: Base UI natively, Radix through the menu's hover timer. */
+  openOnHover?: boolean;
+  delay?: number;
+  closeDelay?: number;
 }
 export const DropdownTrigger = flavored(
   Base.DropdownTrigger as unknown as ComponentType<FlavoredDropdownTriggerProps>,
