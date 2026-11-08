@@ -356,10 +356,15 @@ function DropdownMenu({
 
 DropdownMenu.displayName = "DropdownMenu";
 
+/** How long after the hover timer asks to open an open still counts as the
+ *  hover's: one commit, with room for a slow frame. */
+const HOVER_CLAIM_MS = 100;
+
 /** One timer shared by a hover-opening trigger and its popup. A menu opened
  *  by hover closes when the pointer leaves both; one opened by click, the
- *  keyboard, or pinned by a click stays until dismissed as usual. */
-function useHoverControl(
+ *  keyboard, or pinned by a click stays until dismissed as usual. Exported for
+ *  the unit test. */
+export function useHoverControl(
   open: boolean,
   setOpen: (open: boolean) => void
 ): HoverControl {
@@ -368,6 +373,9 @@ function useHoverControl(
   const closeDelayRef = useRef<number | null>(null);
   const justPinned = useRef(false);
   const byHover = useRef(false);
+  // When the hover timer last asked to open. A controlled parent can turn
+  // that request down; an open arriving long after it is someone else's.
+  const hoverAskedAt = useRef(0);
   const openRef = useRef(open);
   const setOpenRef = useRef(setOpen);
   useEffect(() => {
@@ -378,8 +386,18 @@ function useHoverControl(
   // keyboard), focus moves as usual.
   useEffect(() => {
     openRef.current = open;
-    if (!open) hoverOpened.current = false;
-    else if (!hoverOpened.current) byHover.current = false;
+    if (!open) {
+      // byHover outlives the close on purpose: the close autofocus reads it
+      // after this, when the popup unmounts.
+      hoverOpened.current = false;
+      return;
+    }
+    const fromHover =
+      hoverOpened.current && performance.now() - hoverAskedAt.current < HOVER_CLAIM_MS;
+    if (!fromHover) {
+      hoverOpened.current = false;
+      byHover.current = false;
+    }
   }, [open]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -399,6 +417,7 @@ function useHoverControl(
           if (openRef.current) return;
           hoverOpened.current = true;
           byHover.current = true;
+          hoverAskedAt.current = performance.now();
           setOpenRef.current(true);
         }, delay);
       },
@@ -412,7 +431,13 @@ function useHoverControl(
       },
       pin: () => {
         cancel();
-        if (!hoverOpened.current) return false;
+        // Only a menu the hover actually opened is pinned; a request the
+        // parent turned down leaves nothing to pin, and the press opens it.
+        if (!hoverOpened.current || !openRef.current) {
+          hoverOpened.current = false;
+          byHover.current = false;
+          return false;
+        }
         hoverOpened.current = false;
         byHover.current = false;
         justPinned.current = true;

@@ -92,8 +92,10 @@ function assignRef<T>(target: Ref<T> | undefined, node: T | null) {
 }
 
 /** Merges two prop bags onto one element: `outer` wins on plain values,
- *  classes and styles combine, and duplicated handlers both run, `inner`'s
- *  first (it owns the element). */
+ *  classes and styles combine, and duplicated handlers both run, `outer`'s
+ *  first: it is the element the app handed in (a `render` element, an
+ *  `asChild` child) or the wrapper cloning the crumb (a Tooltip trigger), so
+ *  its handlers see the event before the crumb's own. */
 function mergeSlotProps(inner: SlotProps, outer: SlotProps): SlotProps {
   const merged: SlotProps = {
     ...inner,
@@ -390,9 +392,11 @@ function useCrumbClasses() {
     sizeClasses.segmentItem,
     sizeClasses.itemPx,
     compact ? "gap-1" : "gap-1.5",
+    // Not on the last item, where the separator is hidden and the crumb
+    // keeps its full padding.
     compact
-      ? "has-[>[data-slot=breadcrumb-separator]]:pr-1"
-      : "has-[>[data-slot=breadcrumb-separator]]:pr-1.5",
+      ? "[li:not(:last-child)_&]:has-[>[data-slot=breadcrumb-separator]]:pr-1"
+      : "[li:not(:last-child)_&]:has-[>[data-slot=breadcrumb-separator]]:pr-1.5",
     compact
       ? "[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5"
       : "[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -477,6 +481,9 @@ const BreadcrumbButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTML
   ({ className, style, type = "button", children, onPointerEnter, onFocus, ...props }, ref) => {
     const classes = useTargetClasses();
     const { cut, check } = useCutLabel();
+    // An ellipsis-only button still gets a name when the app leaves out its
+    // aria-label: the sr-only "More" alone doesn't say what it opens.
+    const onlyEllipsis = isValidElement(children) && children.type === BreadcrumbEllipsis;
     return (
       <FullName text={textOf(children)} cut={cut} menuOpen={isMenuOpen(props)}>
         <button
@@ -486,6 +493,7 @@ const BreadcrumbButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTML
           data-slot="breadcrumb-button"
           className={cn(classes, className)}
           style={{ fontVariationSettings: fontWeights.normal, ...style }}
+          aria-label={onlyEllipsis ? "Show hidden steps" : undefined}
           {...props}
           onPointerEnter={(e) => {
             onPointerEnter?.(e);
@@ -574,9 +582,10 @@ function CrumbSeparator() {
   );
 }
 
-/** The collapsed middle of a long trail. Put it in a BreadcrumbButton (with
- *  an aria-label) to open the hidden steps in a Dropdown or reveal them in
- *  place. */
+/** The collapsed middle of a long trail. Put it in a BreadcrumbButton to open
+ *  the hidden steps in a Dropdown or reveal them in place. The button is
+ *  named "Show hidden steps" unless you pass an aria-label, ideally with the
+ *  count ("Show 3 hidden steps"). */
 const BreadcrumbEllipsis = forwardRef<HTMLSpanElement, HTMLAttributes<HTMLSpanElement>>(
   ({ className, ...props }, ref) => {
     const icons = useIcons();
@@ -632,7 +641,10 @@ interface UseBreadcrumbCollapseOptions {
  *   <BreadcrumbList ref={listRef}>…</BreadcrumbList>
  *
  * Widths are read in a layout effect, before paint, and remembered per step,
- * so a hidden step comes back as soon as its width fits again.
+ * so a hidden step comes back as soon as its width fits again. A hidden
+ * step's width is the one it had when last shown: if its label changes while
+ * hidden (data loading, a language switch), the decision catches up once it
+ * is shown again.
  */
 function useBreadcrumbCollapse({ count, enabled = true }: UseBreadcrumbCollapseOptions) {
   // A callback ref with the node in state, so a list that mounts after the
