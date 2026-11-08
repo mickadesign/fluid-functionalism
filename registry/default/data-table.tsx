@@ -207,7 +207,9 @@ interface DataTableProps<TData> {
   /** What the body says with no rows. Defaults to "No results". */
   empty?: DataTableEmpty;
   /** Makes body rows clickable. Clicks on a control inside the row (the
-   *  selection box, a row menu) don't count. */
+   *  selection box, a row menu) don't count. A row isn't a keyboard stop:
+   *  put the same action on a control in the row too (a link in a cell, or
+   *  a row menu item), so it can be reached without a pointer. */
   onRowClick?: (row: Row<TData>) => void;
   /** Adds a handle on each header's right edge: drag it, or focus it and
    *  press ← / →, to set the column's width. Columns start at the widths the
@@ -695,6 +697,9 @@ function DataTable<TData>({
       size={size}
       // Selected rows on this page get CheckboxGroup's merged fill.
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
+      // The skeleton rows are aria-hidden; this tells assistive tech the
+      // table is loading rather than empty.
+      aria-busy={loading || undefined}
       onKeyDown={onBodyKeyDown}
       // Fixed layout keeps the widths you set. The min width is every
       // column's width summed, so past the box the table scrolls instead of
@@ -818,8 +823,9 @@ function DataTable<TData>({
       <TableBody>
         {loading ? (
           // Loading: a page of rows the real rows' size, each cell holding a
-          // skeleton bar in a reveal-swap. Keyed by position, so the rows
-          // that replace them reuse these cells (see the swap below).
+          // skeleton bar in a reveal-swap (the reveal's delayed fade-in and
+          // pulse). The rows that replace them draw their own fading
+          // skeleton (see the swap below).
           Array.from({ length: skeletonRows }, (_, i) => (
             <TableRow key={`row-${i}`} aria-hidden>
               {visible.map((column, c) => (
@@ -838,17 +844,20 @@ function DataTable<TData>({
         ) : rows.length > 0 ? (
           rows.map((row, i) => (
             <TableRow
-              // Keyed by position, like the skeleton rows: when data lands,
-              // React keeps each skeleton row's cells (and their skeletons)
-              // for the hand-over, and nothing remounts after it. Rows hold
-              // no state of their own, and moves animate by data-row-id.
-              key={`row-${i}`}
+              // Keyed by record, so state in a cell (an open row menu, a
+              // consumer's own input, focus) stays with its row through a
+              // sort, a search or a page turn.
+              key={row.id}
               data-row-id={row.id}
               index={i}
               data-state={row.getIsSelected() ? "selected" : undefined}
               onClick={
                 onRowClick
                   ? (e: MouseEvent<HTMLTableRowElement>) => {
+                      // React carries clicks up from portals (the row menu's
+                      // popup) to this row; only clicks inside the row's own
+                      // DOM count, and not those on a control in it.
+                      if (!e.currentTarget.contains(e.target as Node)) return;
                       if ((e.target as Element).closest(CONTROL)) return;
                       onRowClick(row);
                     }
@@ -891,15 +900,15 @@ function DataTable<TData>({
                     )}
                   >
                     {swapping && (
-                      // The hand-over: the loading skeleton (the same element,
-                      // still pulsing) lifts over the cell's content box and
-                      // fades out as the content fades in under it, so the
-                      // cell is never empty and the content keeps its real
-                      // layout the whole time.
+                      // The hand-over: a skeleton over the cell's content box,
+                      // shown at once (its delayed reveal and pulse turned
+                      // off, since this row is new) and fading out as the
+                      // content fades in under it, so the cell is never empty
+                      // and the content keeps its real layout the whole time.
                       <span
                         key="skeleton"
                         aria-hidden
-                        className="reveal-swap pointer-events-none absolute inset-0 animate-[reveal-out_120ms_ease-in_forwards]"
+                        className="pointer-events-none absolute inset-0 animate-[reveal-out_120ms_ease-in_forwards] [&_[data-slot=skeleton]]:animate-none"
                         style={{ padding: "inherit" }}
                       >
                         {skeletonFor(cell.column.id, i, c, shape.variant, sizeClasses.variant === "compact")}
@@ -1021,7 +1030,12 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        // Plain arrows only: Alt + arrow belongs to the header (it moves the
+        // column), and ⌘ / Ctrl / Shift stay with the browser and the OS.
+        if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
         e.preventDefault();
+        // Handled here, so the header's own keys don't see it too.
+        e.stopPropagation();
         onStep(e.key === "ArrowLeft" ? -RESIZE_STEP : RESIZE_STEP);
       }}
       className="group/resize absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none select-none outline-none"
