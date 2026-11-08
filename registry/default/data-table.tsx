@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
@@ -207,9 +208,9 @@ interface DataTableProps<TData> {
   /** What the body says with no rows. Defaults to "No results". */
   empty?: DataTableEmpty;
   /** Makes body rows clickable. Clicks on a control inside the row (the
-   *  selection box, a row menu) don't count. A row isn't a keyboard stop:
-   *  put the same action on a control in the row too (a link in a cell, or
-   *  a row menu item), so it can be reached without a pointer. */
+   *  selection box, a row menu) don't count. The rows also become one tab
+   *  stop: ↑ / ↓ and Home / End move between them, Enter or Space opens
+   *  one. */
   onRowClick?: (row: Row<TData>) => void;
   /** Adds a handle on each header's right edge: drag it, or focus it and
    *  press ← / →, to set the column's width. Columns start at the widths the
@@ -394,6 +395,9 @@ function DataTable<TData>({
     return () => clearTimeout(id);
   }, [swapping]);
   const skeletonRows = loadingRows ?? table.getState().pagination.pageSize;
+
+  // The clickable row that holds the body's tab stop.
+  const [focusRowId, setFocusRowId] = useState<string | null>(null);
 
   // The header being dragged, and where it would land.
   const [drag, setDrag] = useState<{ id: string; refId: string; place: "before" | "after" } | null>(
@@ -649,6 +653,31 @@ function DataTable<TData>({
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
   const onBodyKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     const target = e.target as HTMLElement;
+    // A clickable row focused as a whole (see the row's tabIndex): arrows
+    // and Home / End move between rows, Enter or Space opens it.
+    if (onRowClick && target.matches("tbody tr[data-row-id]")) {
+      const bodyRows = Array.from(
+        (target.parentElement as HTMLTableSectionElement).querySelectorAll<HTMLElement>("tr[data-row-id]")
+      );
+      const at = bodyRows.indexOf(target);
+      const to =
+        e.key === "ArrowDown" ? at + 1
+        : e.key === "ArrowUp" ? at - 1
+        : e.key === "Home" ? 0
+        : e.key === "End" ? bodyRows.length - 1
+        : null;
+      if (to !== null && !e.altKey && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        bodyRows[Math.max(0, Math.min(bodyRows.length - 1, to))]?.focus();
+        return;
+      }
+      if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
+        e.preventDefault();
+        const row = rows.find((r) => r.id === target.dataset.rowId);
+        if (row) onRowClick(row);
+        return;
+      }
+    }
     const td = target.closest("td");
     if (!td || target.closest("input, textarea, select, [contenteditable=true]")) return;
     const mod = e.metaKey || e.ctrlKey;
@@ -863,7 +892,23 @@ function DataTable<TData>({
                     }
                   : undefined
               }
-              className={cn(onRowClick && "cursor-pointer")}
+              // Clickable rows are one tab stop for the whole body (roving:
+              // the row last focused, else the first) so the action has a
+              // keyboard path without a stop per row.
+              tabIndex={onRowClick ? (row.id === (focusRowId ?? rows[0]?.id) ? 0 : -1) : undefined}
+              onFocus={
+                onRowClick
+                  ? (e: FocusEvent<HTMLTableRowElement>) => {
+                      if (e.target === e.currentTarget) setFocusRowId(row.id);
+                    }
+                  : undefined
+              }
+              className={cn(
+                onRowClick && "cursor-pointer outline-none",
+                // The keyboard ring for a focused row: the row's own box,
+                // inset so the next row's rule doesn't cut through it.
+                onRowClick && "focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
+              )}
             >
               {row.getVisibleCells().map((cell, c) => {
                 const meta = cell.column.columnDef.meta;

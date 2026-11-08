@@ -100,7 +100,13 @@ export function PaymentsTable() {
         <DataTableSearch table={table} column="email" placeholder="Search emails…" />
         <DataTableViewOptions table={table} className="ml-auto" />
       </div>
-      <DataTable table={table} resizeColumns reorderColumns />
+      {/* A click anywhere in a row (or Enter on a focused row) selects it. */}
+      <DataTable
+        table={table}
+        resizeColumns
+        reorderColumns
+        onRowClick={(row) => row.toggleSelected()}
+      />
       <DataTablePagination table={table} />
     </div>
   );

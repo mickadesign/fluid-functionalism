@@ -57,7 +57,12 @@ const table = useDataTable({ data: payments, columns, pageSize: 5 });
     <DataTableSearch table={table} column="email" placeholder="Search emails…" />
     <DataTableViewOptions table={table} className="ml-auto" />
   </div>
-  <DataTable table={table} resizeColumns reorderColumns />
+  <DataTable
+    table={table}
+    resizeColumns
+    reorderColumns
+    onRowClick={(row) => row.toggleSelected()}
+  />
   <DataTablePagination table={table} />
 </div>`;
 
@@ -194,6 +199,7 @@ export default function DataTableDoc() {
           <li>↑ / ↓ move to the same column in the row above or below; Home / End jump to the first or last row.</li>
           <li>Shift + ↑ / ↓ carries the selection along, like Shift-clicking a box selects every row since the last one clicked.</li>
           <li>⌘A / Ctrl+A selects every row on the page; Esc clears the selection.</li>
+          <li>With onRowClick, the rows are one Tab stop: ↑ / ↓ and Home / End move between them, Enter or Space opens one.</li>
           <li>Alt + ← / → on a focused header moves its column; ← / → on a focused resize handle steps its width by 16px.</li>
         </ul>
       </DocSection>
