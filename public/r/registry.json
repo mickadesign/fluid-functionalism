@@ -2125,7 +2125,7 @@
       "title": "Data Table",
       "description": "TanStack Table drawn with the library's Table: the fluid hover row highlight plus resizable, draggable columns, sorting headers with an animated sort glyph, a ghost search field with a magnifying glass, an icon Columns menu that shows and hides columns, a checkbox selection column with a select-all dash, a row actions menu, pagination with arrow buttons, and skeleton loading rows that hand over cell by cell. A useDataTable hook wires the row models; every part reads and sets TanStack state, so each one is optional.",
       "dependencies": [
-        "@tanstack/react-table",
+        "@tanstack/react-table@^8.21.3",
         "motion"
       ],
       "registryDependencies": [
