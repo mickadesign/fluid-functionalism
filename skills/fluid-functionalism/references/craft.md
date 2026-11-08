@@ -25,6 +25,7 @@ Systems first — their craft applies across every component below.
 - [AskUserQuestions](#ask-user-questions)
 - [Badge](#badge)
 - [Banner](#banner)
+- [Breadcrumb](#breadcrumb)
 - [Button](#button)
 - [Calendar](#calendar)
 - [Card](#card)
@@ -215,6 +216,19 @@ Systems first — their craft applies across every component below.
 - Appear and dismiss start from wherever the banner is: re-opening mid-dismiss continues the scale and fade instead of snapping, and a dismiss mid-appear fades from the current opacity and never lets the banner outgrow the closing row.
 - A banner that is mostly faded (under 50%) takes no clicks, so one appearing can't catch clicks meant for what's under it and one leaving can't be clicked twice. When a banner closes with keyboard focus inside, focus moves to the next focusable element after it (else the one before), not back to the top of the page.
 - Errors and warnings get `role="alert"` and interrupt a screen reader; the rest get `role="status"`. Uncontrolled, the ✕ hides the banner on its own; pass `open` to bring a dismissed banner back.
+
+<a id="breadcrumb"></a>
+## Breadcrumb
+
+- One fluid hover scope on the <nav> covers every crumb in the trail, the current page included. The separator is each crumb's trailing icon, inside the crumb, so crumbs sit flush (no gap) and the highlight glides along the trail without going dark between items.
+- Targets register by DOM order (a data attribute read in a layout effect after each render), so parts compose freely with no index props; only slots whose element changed re-register, so a re-render costs no measurement pass. Dropdown popups are portalled out of the nav and never join the scope.
+- Crumbs are one segment item high (28px, 24px compact) with the ladder's row padding (8px, 6px compact), so the highlight has room around the text; the current page keeps the same padding so its text lines up with the links. A crumb with a trailing separator steps its right padding down (6px, 4px compact) because the chevron glyph carries its own side bearing.
+- Links and buttons are muted-foreground at rest and turn foreground while the highlight sits on them (data-fluid-hover-active), while their menu is open (data-state=open, data-popup-open), or on keyboard focus, which also draws the 1px --focus-ring. The current page is foreground at the normal weight: color, not weight, marks where you are.
+- The separator is the icon set's chevron-right, 2px under the glyph size, in muted-foreground and aria-hidden, hidden on the last item (li:last-child). On a step that opens a Dropdown (aria-haspopup) the same chevron turns 90deg to point down while the highlight sits on it, on keyboard focus, and while the menu is open (data-state=open / data-popup-open, 150ms ease-out, off under reduced motion), so the step needs no second chevron. Breadcrumb separator swaps the glyph (a slash) without the turn, or null drops it.
+- The trail stays on one row. Links and buttons stop at 12rem (10rem compact), so a long middle step truncates at that cap with an ellipsis while short steps are never cut; the item holding the current page is the only one that shrinks, taking whatever room is left. Text children are wrapped in a truncate span (a bare text node in a flex row cannot take an ellipsis). A crumb whose label is cut shows its full name in the library Tooltip (side bottom); whether it is cut is read as the pointer or keyboard focus arrives, the tooltip is forced closed while the name fits and while the crumb's own menu is open.
+- useBreadcrumbCollapse({ count }) hides middle steps while the trail is wider than its Breadcrumb: steps go from the second on, the first step, the last link and the page always stay, and past that the page truncates. Widths are read in a layout effect before paint and cached per step (the page's cut overflow added back), so a hidden step returns as soon as its width fits; a ResizeObserver on the nav re-runs the pass.
+- Breadcrumb menus open on hover by default in the docs and playground: DropdownTrigger openOnHover (100ms rest; Base UI natively, Radix through a timer the trigger and popup share, 150ms close delay to cross the gap; a click pins it open). Pass nothing for click-only menus, the Dropdown default. The collapsed ellipsis shows what it hides in one way at a time: on hover the menu itself opens (no tooltip, it would stack on the menu); with click-only menus a Tooltip counts the hidden steps ("3 hidden steps", side bottom), forced closed while the menu is open. The button's aria-label carries the count either way. Breadcrumb menus pass DropdownContent className w-max with min-w-[max(8rem, trigger width)]: the menu fits its rows instead of the default 288px, keeps 8rem so a checked row's check has room, and never gets narrower than its trigger (Radix --radix-dropdown-menu-trigger-width, Base UI --anchor-width).
+- Polymorphism is a local slot (render or asChild), so the component installs the same into Radix and Base UI projects.
 
 <a id="button"></a>
 ## Button

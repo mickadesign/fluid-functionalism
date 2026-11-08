@@ -32,6 +32,7 @@ export const COMPONENTS = [
   ["ask-user-questions", "AskUserQuestions"],
   ["badge", "Badge"],
   ["banner", "Banner"],
+  ["breadcrumb", "Breadcrumb"],
   ["button", "Button"],
   ["calendar", "Calendar"],
   ["card", "Card"],

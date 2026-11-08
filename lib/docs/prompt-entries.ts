@@ -437,6 +437,44 @@ const questions: AskUserQuestion[] = [
       "BannerAction: the library Button at its compact size (takes Button props). variant: \"primary\" | \"secondary\" | \"ghost\" (default \"secondary\"), laid out by variant; href renders a link; external opens it in a new tab.",
     ],
   },
+  breadcrumb: {
+    craft: [
+      "One fluid hover scope on the <nav> covers every crumb in the trail, the current page included. The separator is each crumb's trailing icon, inside the crumb, so crumbs sit flush (no gap) and the highlight glides along the trail without going dark between items.",
+      "Targets register by DOM order (a data attribute read in a layout effect after each render), so parts compose freely with no index props; only slots whose element changed re-register, so a re-render costs no measurement pass. Dropdown popups are portalled out of the nav and never join the scope.",
+      "Crumbs are one segment item high (28px, 24px compact) with the ladder's row padding (8px, 6px compact), so the highlight has room around the text; the current page keeps the same padding so its text lines up with the links. A crumb with a trailing separator steps its right padding down (6px, 4px compact) because the chevron glyph carries its own side bearing.",
+      "Links and buttons are muted-foreground at rest and turn foreground while the highlight sits on them (data-fluid-hover-active), while their menu is open (data-state=open, data-popup-open), or on keyboard focus, which also draws the 1px --focus-ring. The current page is foreground at the normal weight: color, not weight, marks where you are.",
+      "The separator is the icon set's chevron-right, 2px under the glyph size, in muted-foreground and aria-hidden, hidden on the last item (li:last-child). On a step that opens a Dropdown (aria-haspopup) the same chevron turns 90deg to point down while the highlight sits on it, on keyboard focus, and while the menu is open (data-state=open / data-popup-open, 150ms ease-out, off under reduced motion), so the step needs no second chevron. Breadcrumb separator swaps the glyph (a slash) without the turn, or null drops it.",
+      "The trail stays on one row. Links and buttons stop at 12rem (10rem compact), so a long middle step truncates at that cap with an ellipsis while short steps are never cut; the item holding the current page is the only one that shrinks, taking whatever room is left. Text children are wrapped in a truncate span (a bare text node in a flex row cannot take an ellipsis). A crumb whose label is cut shows its full name in the library Tooltip (side bottom); whether it is cut is read as the pointer or keyboard focus arrives, the tooltip is forced closed while the name fits and while the crumb's own menu is open.",
+      "useBreadcrumbCollapse({ count }) hides middle steps while the trail is wider than its Breadcrumb: steps go from the second on, the first step, the last link and the page always stay, and past that the page truncates. Widths are read in a layout effect before paint and cached per step (the page's cut overflow added back), so a hidden step returns as soon as its width fits; a ResizeObserver on the nav re-runs the pass.",
+      "Breadcrumb menus open on hover by default in the docs and playground: DropdownTrigger openOnHover (100ms rest; Base UI natively, Radix through a timer the trigger and popup share, 150ms close delay to cross the gap; a click pins it open). Pass nothing for click-only menus, the Dropdown default. The collapsed ellipsis shows what it hides in one way at a time: on hover the menu itself opens (no tooltip, it would stack on the menu); with click-only menus a Tooltip counts the hidden steps (\"3 hidden steps\", side bottom), forced closed while the menu is open. The button's aria-label carries the count either way. Breadcrumb menus pass DropdownContent className w-max with min-w-[max(8rem, trigger width)]: the menu fits its rows instead of the default 288px, keeps 8rem so a checked row's check has room, and never gets narrower than its trigger (Radix --radix-dropdown-menu-trigger-width, Base UI --anchor-width).",
+      "Polymorphism is a local slot (render or asChild), so the component installs the same into Radix and Base UI projects.",
+    ],
+    usage: `import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+
+<Breadcrumb>
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink href="/">Home</BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbItem>
+      <BreadcrumbLink href="/docs">Docs</BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbItem>
+      <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>`,
+    props: [
+      "Breadcrumb size: \"default\" | \"compact\". Pins the trail to 28px or 24px crumbs.",
+      "BreadcrumbLink render: ReactElement, or asChild: boolean. Renders a framework link instead of <a>.",
+      "BreadcrumbButton: a <button> crumb. Pass it to a DropdownTrigger's render prop to open a menu from a step; its chevron points down while open.",
+      "Breadcrumb separator: ReactNode | null (default chevron-right). The trailing glyph of every crumb but the last.",
+      "BreadcrumbEllipsis: the collapsed middle; wrap it in a BreadcrumbButton with an aria-label.",
+    ],
+  },
   "button": {
     craft: [
       "Press effect: the surface layer sits 1px inside the button (inset-px) and a same-color 1px box-shadow spread fills it back to full bounds; pressing collapses the spread so the surface shrinks exactly 1px per side at any width \u2014 a scale would warp (2% of a 400px button is 8px sideways but under 1px vertically). Primary's fills are opaque color-mix()es; secondary's are see-through (`--tint`, black 8% / white 25%, lighter on hover), so it takes on whatever surface or tinted banner it sits on, and still never seams because an outer shadow renders only outside the surface box.",
