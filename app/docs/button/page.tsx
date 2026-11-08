@@ -131,7 +131,7 @@ export default function ButtonDoc() {
               setLoading(true);
               setTimeout(() => setLoading(false), 2000);
             }}>
-              {loading ? "Loading" : "Click me"}
+              Click me
             </Button>
             <Button variant="secondary" loading leadingIcon={Loader}>Saving</Button>
             <Button disabled>Disabled</Button>

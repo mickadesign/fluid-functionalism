@@ -1159,17 +1159,19 @@
         }
       ],
       "css": {
-        "@keyframes spinner-move": {
+        "@keyframes spinner-turn": {
           "to": {
-            "stroke-dashoffset": "-100"
+            "transform": "rotate(360deg)"
           }
         },
-        "@keyframes spinner-dash": {
+        "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "15 85"
+            "stroke-dasharray": "0 50",
+            "stroke-dashoffset": "-25"
           },
           "50%": {
-            "stroke-dasharray": "40 60"
+            "stroke-dasharray": "26 24",
+            "stroke-dashoffset": "-12"
           }
         }
       },
@@ -1207,17 +1209,19 @@
         }
       ],
       "css": {
-        "@keyframes spinner-move": {
+        "@keyframes spinner-turn": {
           "to": {
-            "stroke-dashoffset": "-100"
+            "transform": "rotate(360deg)"
           }
         },
-        "@keyframes spinner-dash": {
+        "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "15 85"
+            "stroke-dasharray": "0 50",
+            "stroke-dashoffset": "-25"
           },
           "50%": {
-            "stroke-dasharray": "40 60"
+            "stroke-dasharray": "26 24",
+            "stroke-dashoffset": "-12"
           }
         }
       },

@@ -1151,13 +1151,13 @@ html.transitioning *::after {
 
 /* ── Spinner keyframes ── */
 
-@keyframes spinner-move {
-  to { stroke-dashoffset: -100; }
+@keyframes spinner-turn {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes spinner-dash {
-  0%, 100% { stroke-dasharray: 15 85; }
-  50%      { stroke-dasharray: 40 60; }
+@keyframes spinner-breathe {
+  0%, 100% { stroke-dasharray: 0 50; stroke-dashoffset: -25; }
+  50%      { stroke-dasharray: 26 24; stroke-dashoffset: -12; }
 }
 
 /* ── Responsive side-panel cross-fade ──
