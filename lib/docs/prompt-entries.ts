@@ -364,6 +364,7 @@ const questions: AskUserQuestion[] = [
       "Solid non-gray badges derive their tint at runtime: `color-mix(in srgb, <color> 15%, var(--background))` with plain `var(--foreground)` text, so one hex per color adapts to light and dark themes.",
       "Solid gray is special-cased to the theme's `--accent` background instead of a mixed tint.",
       "The dot variant keeps a neutral `border-border` outline and foreground text; only the dot itself carries the color \u2014 full-strength hex, or `--muted-foreground` for gray.",
+      "The ghost variant drops the outline and the side padding and inherits the text color, so in a table the dot lines up with the column edge and the label stays muted until its row lights.",
       "Two sizes on the shared ladder: default h-6, px-2.5, 12px text, gap-1.5; compact h-5, px-2, 11px text, gap-1. Legacy sm/md/lg still compile as aliases (sm \u2192 compact, md/lg \u2192 default).",
       "Size resolves explicit prop > surrounding SizeProvider > default, so badges inside a compact region shrink automatically.",
       "The label sits in its own span with `text-box: trim-both cap alphabetic`; the badge height is fixed, so trimming only recenters the letterforms vertically.",
@@ -373,10 +374,10 @@ const questions: AskUserQuestion[] = [
 
 <Badge color="violet">Fiction</Badge>
 <Badge color="amber">Science</Badge>
-<Badge variant="dot" color="green">Philosophy</Badge>
+<Badge variant="ghost" color="green">Philosophy</Badge>
 <Badge size="compact" color="blue">History</Badge>`,
     props: [
-      "variant: \"solid\" | \"dot\" (default \"solid\"). Solid uses a tinted background; dot shows a colored indicator.",
+      "variant: \"solid\" | \"dot\" | \"ghost\" (default \"solid\"). Solid uses a tinted background; dot shows a colored indicator in an outline; ghost is the indicator and label alone, for tables.",
       "size: \"default\" | \"compact\" (default from SizeProvider). Step on the size ladder; legacy sm/md/lg values resolve as aliases.",
       "color: BadgeColor (default \"gray\"). accent (the app's --fluid-accent), or a Tailwind palette name: gray, red, orange, amber, yellow, lime, green, emerald, teal, cyan, blue, indigo, violet, purple, fuchsia, pink, rose.",
     ],
@@ -654,6 +655,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
     props: [
       "checked: boolean. Controlled state; pair it with onCheckedChange.",
       "defaultChecked: boolean (default false). Initial state when uncontrolled.",
+      "indeterminate: boolean (default false). Draws a dash instead of the check, for a partly selected set; clicking reports true.",
       "onCheckedChange: (checked: boolean) => void. Called on every toggle.",
       "size: \"default\" | \"compact\". Pins the box to 16px or 14px.",
       "aria-invalid: boolean. Tints the unchecked box red.",
@@ -768,6 +770,77 @@ const [value, setValue] = useState("");
       "disabled: boolean (default false). Disables the field and the popup.",
       'size: "default" | "compact". Pins field and popup to one size step; otherwise follows the SizeProvider.',
       'ComboboxInput variant: "bordered" | "borderless" (default "bordered"). Also takes icon, placeholder, error, clearable.',
+    ],
+  },
+  "data-table": {
+    craft: [
+      "TanStack Table owns every bit of state (sorting, filters, visibility, order, sizing, selection, page); the parts only read and set it, so each one is optional and any can be swapped for your own. useDataTable adds only the Columns menu's per-column text fitting, beside TanStack's state.",
+      "The body is the library's Table: rows get its fluid hover highlight (rounded by the shape setting) and border fade; body rows pass their page index, header rows none.",
+      "Headers read `text-muted-foreground`, content `text-foreground`, so the data leads. Every column is left-aligned. `meta.icon` puts a 14px icon 4px before a header's title, in the same muted color; DataTableColumnHeader draws it inside its sort button, so the icon sorts too.",
+      "A header that sorts or moves behaves like a ghost Button: its label lifts from muted to foreground on hover, and a surface 1px inside the cell fills with `--hover`, spread back out by a same-color 1px ring; pressed it turns `--active` and the ring collapses (1px smaller a side).",
+      "The sort glyph is one 14px cell: chevrons-up-down crossfades (blur 4px, scale 0.6) with an arrow on `spring.fast`, and the arrow turns over 180\u00b0 on `spring.moderate` for descending rather than swapping glyphs. Every column sorts ascending first, numbers included; sorted headers carry `aria-sort`.",
+      "Selected rows get CheckboxGroup's merged fill through Table's `selectedIndices`: contiguous rows share one `bg-active` block with the merge/split animation (use-merge-split), drawn under the hover highlight, and the rules through and above a selected run step aside. A row background would sit above the highlight and hide it.",
+      "The selection column is 32px: 8px either side of the 16px box, so its focus ring never clips. The whole cell is the box's hit area (padding and row height included, via negative margins put back as padding), and `group/field` darkens the box while it's hovered. The select-all box selects the current page, shows the Checkbox `indeterminate` dash for a partial page, and its tooltip names the next click (Select all / Unselect all).",
+      "Checkboxes, badges and the \u22ef button sit in a `h-[1lh]` cell and overhang it evenly, so nothing pushes a row off the 36px / 28px ladder. Status badges use Badge `variant=\"ghost\"`: no outline or side padding, so the dot lines up with the column and the label reads as row text.",
+      "Edges line up: the search icon, the selection checkbox and the row count all sit 8px in; the Columns icon, the \u22ef row icons (rowActionsColumn: 40px, `pl-2 pr-1`) and the next-page arrow share one center line 18px from the right (14px compact).",
+      "The toolbar is all ghost: the search field drops Input's hairline (hover fill on hover and while focused) with the magnifying glass 8px in (`pl-8`); the Columns menu and the page arrows are icon-only ghost buttons with aria-labels and tooltips. \"Page n of m\" sits 4px from its arrows, and Rows per page is a borderless Select sized to its value, so it reads as one sentence.",
+      "Typing in the search jumps back to page 1, so a shrinking result never strands you past the last page. An empty body holds a page of height (pageSize rows, capped at the data's length, row rules counted), so a search that runs dry doesn't move the pagination.",
+      "The Columns menu opens with a Wrap text switch for the whole table (every column with `meta.lines`), kept even while those columns are hidden so rows never shift under their selection fills. Below it, columns in display order, each with a grip (MenuItem `leading`), its icon and name: dragging a row by its grip (motion Reorder; rows swap on spring.fast, the order kept in the menu until release, then applied to the table once; a dragged row can't leave the list (`dragConstraints` on the list, no elastic); the drop settles on spring.fast without momentum: the row's y is animated by hand on drag end, because motion's own drag release ignores `transition` for a 750ms inertia glide) or Alt + \u2191 / \u2193 reorders the table. The menu's tooltip is forced closed while it's open, because React carries the portalled menu's pointer events up to the tooltip's wrapper.",
+      "Text columns choose `meta.lines`: `1` truncates, `2` line-clamps, `\"wrap\"` runs free and breaks anywhere (`overflow-wrap: anywhere`, so a URL can't run out of its column); each adds `max-w-0` so long text takes only the room the column gets (pair with `className: \"w-full\"`). `cellAlign=\"auto\"` aligns to the top while any visible column runs past one line, centered otherwise.",
+      "Column resizing is opt-in (`resizeColumns`): columns start at the widths the table lays out on its own, then the table switches to fixed layout. An 8px grab strip over each header's right edge shows a 1px rule on hover and follows the pointer (`columnResizeMode: \"onChange\"`); it's a focusable separator (\u2190 / \u2192 step 16px, double-click resets). The last resizable column takes the remaining width and its handle sets the least it takes; fixed columns (selection, row menu) keep theirs; past the box the table scrolls sideways.",
+      "Column reordering is opt-in (`reorderColumns`): a header drag starts after 4px of travel, so a click still sorts. The slot empties (the label is hidden, not dimmed) and the ghost carries the label and its icon: the pressed header's `--active` fill made opaque over `--background`, at 80%, no border or shadow, padded like the header so it lifts out in place. The ghost stays within the table's visible box (it stops at the left and right edges, and the landing spot follows where it stopped). Held within 48px of an edge (the edge fade's band), the table scrolls that way, up to 720px a second and faster nearer the edge (time-based, so a slow frame rate scrolls as far), so a column can travel to one out of view on a narrow screen. A 2px accent bar marks where it lands, and the click that ends the drag is swallowed. Alt + \u2190 / \u2192 moves a focused header. Only data columns move.",
+      "Layout changes animate from a snapshot (FLIP): a reorder, a column shown or hidden, a change to how text wraps. Whatever makes the change first calls `captureLayout()`, which records header lefts (`offsetLeft`, which ignores transforms), row tops and the box's height; the next commit slides moved headers and cells to 0 on `spring.moderate`, fades a new column in, slides rows to their new tops, and springs the box's height (`overflow-y-hidden` while it does). Nothing is measured on other renders.",
+      "The table sits in the library's ScrollArea (horizontal; both axes under `fill`) with `scroll-fade-x` on its viewport: wider than its box it scrolls sideways under the system thumb (4px at rest, widening on hover, native on touch screens), and each edge fades while there's more to that side. `fill` makes the box `min-h-0 flex-1 overflow-auto` for fixed-height panels: header cells stick (`sticky top-0` on the page background, header row lifted to z-20) and gain an inset 1px hairline in the rows' rule color once the rows scroll (`data-scrolled` set from onScroll, no re-render).",
+      "`loading` shows a page of skeleton rows the size of real ones, each cell a shadcn Skeleton (the checkbox's square, a text-height bar elsewhere, nothing for the row menu) in a `reveal-swap`, timed by `@fluid/reveal`: skeletons wait 160ms, so fast data never shows one. When it turns false, the real rows reuse those cells (rows are keyed by position, so nothing remounts then or after): the same skeleton lifts over the cell's content box and fades out while the content fades in under it in its real layout, so no cell blinks empty and no row changes height. Text sits in a block that carries the cell's fitting (clipped sideways only, so badges still overhang); control columns are left unwrapped so their hit areas aren't clipped.",
+      "Keys inside the body: \u2191 / \u2193 move to the same column's control (checkbox, link, row menu) in the next row that has one, Home / End to the first / last; Shift + \u2191 / \u2193 carries the selection along; \u2318A / Ctrl+A selects the page; Esc clears the selection. Shift-click on a box (or its cell) selects every row since the last one clicked; with that row on another page it's a plain toggle.",
+      "`onRowClick` ignores clicks that land on a control in the row (button, link, input, checkbox, menu item, the selection cell), so those keep their own clicks.",
+      "Every part that reads the table opts out of the React Compiler (`\"use no memo\"`), and useDataTable hands out a fresh view of the same table on each state change, because TanStack mutates one table object for its whole life.",
+    ],
+    usage: `import { useMemo } from "react";
+import {
+  useDataTable, DataTable, DataTableColumnHeader,
+  DataTableSearch, DataTableViewOptions, DataTablePagination,
+  selectColumn, type ColumnDef,
+} from "@/components/ui/data-table";
+
+type Payment = { id: string; email: string; amount: number };
+
+const columns: ColumnDef<Payment>[] = [
+  selectColumn<Payment>(),
+  { accessorKey: "email", header: ({ column }) => <DataTableColumnHeader column={column} title="Email" /> },
+  { accessorKey: "amount", header: "Amount" },
+];
+
+// payments and isLoading come from your data request.
+const table = useDataTable({ data: payments, columns, pageSize: 5 });
+
+<div className="flex flex-col gap-3">
+  <div className="flex gap-2">
+    <DataTableSearch table={table} column="email" placeholder="Search emails…" />
+    <DataTableViewOptions table={table} className="ml-auto" />
+  </div>
+  <DataTable table={table} loading={isLoading} />
+  <DataTablePagination table={table} />
+</div>`,
+    props: [
+      "useDataTable({ data, columns, pageSize = 10, ...TableOptions }). useReactTable with the sorted, filtered and paginated row models set.",
+      "DataTable.table: Table<TData>. What useDataTable returns.",
+      "DataTable.size: \"default\" | \"compact\" (default from SizeProvider). Pins the rows to one ladder step.",
+      "DataTable.empty: { title?, description?, action? } (default title \"No results\"). The empty body.",
+      "DataTable.onRowClick: (row) => void. Clickable rows; clicks on controls in the row are ignored.",
+      "DataTable.resizeColumns: boolean (default false). Drag or arrow-key handles on header edges; fixed columns set enableResizing: false and a size.",
+      "DataTable.cellAlign: \"auto\" | \"center\" | \"top\" (default \"auto\"). Auto aligns to the top while text wraps.",
+      "DataTable.loading: boolean (default false). Skeleton rows the size of real ones; set false with the data in place and each cell crossfades in. loadingRows: number (default the page size).",
+      "DataTable.fill: boolean (default false). Fills a flex-column parent's height: rows scroll under a sticky header.",
+      "DataTable.reorderColumns: boolean (default false). Drag headers, or Alt + arrow keys, to move data columns.",
+      "ColumnDef.meta: { label?, className?, lines?: 1 | 2 | \"wrap\", icon? }. Columns menu name, cell classes, how text fits, and a header icon. Every column is left-aligned.",
+      "DataTableColumnHeader: { column, title }. Click sorts asc, desc, then clears; shift-click adds to the sort.",
+      "DataTableSearch: { table, column?, placeholder = \"Search…\" }. A ghost search field with a magnifying glass over one column, or every column when column is omitted.",
+      "DataTableViewOptions: { table, label = \"Columns\" }. Icon button menu, with a tooltip, that shows and hides columns.",
+      "DataTableRowActions: { children, label = \"Row actions\" }. The ⋯ menu for a row; children are MenuItems.",
+      "DataTablePagination: { table, pageSizes = [10, 20, 50] }. Row or selection count, a rows-per-page select, page, and previous / next arrow buttons.",
+      "selectColumn<TData>(): ColumnDef. Checkbox column with a select-page header box.",
+      "rowActionsColumn<TData>(row => MenuItems, { label? }): ColumnDef. The \u22ef column, sized to line up with the toolbar icons.",
     ],
   },
   "date-picker": {
@@ -1246,13 +1319,14 @@ const [checked, setChecked] = useState(false);
   },
   "table": {
     craft: [
-      "Row hover is the shared fluid-hover highlight drawn once behind the whole `<table>`; body rows opt in by passing `index`, header rows omit it.",
+      "Row hover is the shared fluid-hover highlight drawn once behind the whole `<table>`, rounded by the shape setting (`shape.bg`) like the selection under it; body rows opt in by passing `index`, header rows omit it.",
       "The active row's bottom border AND the border of the row above it (`index === activeIdx - 1`) go transparent while hovered, so the highlight sits on a clean pill; the header row's border hides when row 0 is active.",
       "Borders never pop: they transition border-color from `border-accent/40` to `border-transparent` with `transition-[border-color] duration-80`.",
       "Cell text lifts from `text-muted-foreground` to `text-foreground` when its row is active, via an `is-active` class on the row and `group-[.is-active]/row:text-foreground` on cells, over the same `duration-80`.",
       "Header rows render semibold and body rows normal through `fontVariationSettings` (variable-font axis, not a font-weight class).",
       "Rows sit on the size ladder \u2014 36px default, 28px compact \u2014 via cell padding (`px-3 py-2` vs `px-2.5 py-[5px]`); the comment states \"py + line box lands the row on the ladder (36px / 28px)\".",
       "A `size` prop pins every cell to one ladder step by wrapping the table in a SizeProvider (\"cells read the context\"); omitted, cells follow the surrounding provider.",
+      "`selectedIndices` draws CheckboxGroup's selection: contiguous selected rows share one merged `bg-active` block (use-merge-split, with its merge/split animation) under the hover highlight, and a selected row and the row above it hide their rules.",
     ],
     usage: `import {
   Table, TableHeader, TableBody,
@@ -1280,6 +1354,7 @@ const [checked, setChecked] = useState(false);
     props: [
       "children: ReactNode. TableHeader and TableBody children.",
       "size: \"default\" | \"compact\" (default from SizeProvider). Pins the rows to one step of the size ladder.",
+      "selectedIndices: number[]. Selected body rows; contiguous ones share one merged background like CheckboxGroup.",
       "TableRow.index: number. Row index for fluid hover; omit for header rows.",
       "TableRow.children: ReactNode. TableCell or TableHead children.",
     ],

@@ -136,6 +136,8 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      // A component already used this key (a DataTable resize handle).
+      if (e.defaultPrevented) return;
 
       const tag = (e.target as HTMLElement).tagName;
       const role = (e.target as HTMLElement).getAttribute("role");
@@ -145,6 +147,7 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
         tag === "SELECT" ||
         (e.target as HTMLElement).isContentEditable ||
         role === "slider" ||
+        role === "separator" ||
         role === "tablist" ||
         role === "radiogroup" ||
         role === "listbox" ||

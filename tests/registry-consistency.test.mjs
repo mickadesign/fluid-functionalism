@@ -307,8 +307,9 @@ describe("shipped imports reach installers", () => {
   // install writes: the payload's own files plus everything its
   // registryDependencies chain installs. Files the installer's project already
   // has don't count (a stock components/ui/button.tsx would satisfy the import
-  // and quietly stand in for ours), except lib/utils.ts, which the plain
-  // "utils" dep installs from ui.shadcn.com.
+  // and quietly stand in for ours), except the stock shadcn items a payload
+  // names on purpose: lib/utils.ts from the plain "utils" dep, and shadcn's
+  // unchanged Skeleton from "skeleton" (installed with @fluid/reveal).
   //
   // The shadcn CLI (4.21: resolveFilePath, transformImport,
   // resolveModuleByProbablePath) resolves an import in three steps:
@@ -323,7 +324,10 @@ describe("shipped imports reach installers", () => {
   //     registry:component at components/fluid-hover-highlight.tsx.
   // Anything else is "Cannot find module" in the installer's tsc and build.
   const EXTENSIONS = [".tsx", ".ts", ".js", ".jsx", ".css"];
-  const SHADCN_DEFAULT_FILES = { utils: ["lib/utils.ts"] };
+  const SHADCN_DEFAULT_FILES = {
+    utils: ["lib/utils.ts"],
+    skeleton: ["components/ui/skeleton.tsx"],
+  };
   const TYPE_DIRS = { "registry:ui": "components/ui", "registry:lib": "lib", "registry:hook": "hooks" };
 
   function installPath(file) {

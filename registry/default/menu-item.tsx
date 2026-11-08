@@ -135,6 +135,9 @@ export interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   /** Popup-only (inside DropdownContent): whether activating the item closes
    *  the menu. Ignored in the inline Dropdown panel. @default true */
   closeOnClick?: boolean;
+  /** Content before the icon, e.g. a drag handle. Its clicks are its own:
+   *  they don't activate the item. */
+  leading?: ReactNode;
 }
 
 const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
@@ -147,6 +150,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       onSelect,
       disabled,
       closeOnClick,
+      leading,
       className,
       onClick,
       ...props
@@ -195,6 +199,14 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
 
     const content = (
       <>
+        {leading && (
+          <span
+            className="flex shrink-0 items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {leading}
+          </span>
+        )}
         {Icon && (
           <span className="inline-grid shrink-0">
             <span className="col-start-1 row-start-1 invisible">

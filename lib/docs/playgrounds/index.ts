@@ -6,6 +6,7 @@ import { CalendarPlayground } from "./calendar";
 import { CardPlayground } from "./card";
 import { ComboboxPlayground } from "./combobox";
 import { CommandMenuPlayground } from "./command-menu";
+import { DataTablePlayground } from "./data-table";
 import { DatePickerPlayground } from "./date-picker";
 import { DropdownPlayground } from "./dropdown";
 import { InputMessagePlayground } from "./input-message";
@@ -34,6 +35,7 @@ export const playgroundMap: Record<string, PlaygroundComponent> = {
   card: CardPlayground,
   combobox: ComboboxPlayground,
   "command-menu": CommandMenuPlayground,
+  "data-table": DataTablePlayground,
   "date-picker": DatePickerPlayground,
   dropdown: DropdownPlayground,
   "input-message": InputMessagePlayground,

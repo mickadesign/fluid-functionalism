@@ -42,6 +42,7 @@ export const COMPONENTS = [
   ["color-picker", "ColorPicker"],
   ["combobox", "Combobox"],
   ["command-menu", "CommandMenu"],
+  ["data-table", "DataTable"],
   ["date-picker", "DatePicker"],
   ["dialog", "Dialog"],
   ["dropdown", "Dropdown"],

@@ -4,6 +4,7 @@ import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 
 export const tableProps: PropDef[] = [
   { name: "children", type: "ReactNode", description: "TableHeader and TableBody children." },
+  { name: "selectedIndices", type: "number[]", description: "Selected body rows, by index. Contiguous ones share one merged background, drawn like CheckboxGroup's under the hover highlight, and the rules through and above them step aside." },
 ];
 
 export const rowProps: PropDef[] = [

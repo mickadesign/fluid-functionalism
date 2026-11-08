@@ -5,9 +5,9 @@ import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 export const badgeProps: PropDef[] = [
   {
     name: "variant",
-    type: '"solid" | "dot"',
+    type: '"solid" | "dot" | "ghost"',
     default: '"solid"',
-    description: "Visual style. Solid uses a tinted background; dot shows a colored indicator.",
+    description: "Visual style. Solid uses a tinted background; dot shows a colored indicator in a neutral outline; ghost keeps the indicator and drops the outline and side padding, for rows and tables.",
   },
   {
     name: "size",

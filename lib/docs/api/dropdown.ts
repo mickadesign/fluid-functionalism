@@ -90,6 +90,7 @@ export const menuItemProps: PropDef[] = [
   { name: "onSelect", type: "() => void", description: "Called on select." },
   { name: "disabled", type: "boolean", default: "false", description: "Disables the row." },
   { name: "closeOnClick", type: "boolean", default: "true", description: "Popup only: close on select. Defaults to false under checkedIndices." },
+  { name: "leading", type: "ReactNode", description: "Content before the icon, e.g. a drag handle. Its clicks don't activate the item." },
 ];
 
 /** The page's tables in page order, titled as on the page. */

@@ -101,6 +101,7 @@ export const CUSTOM_ITEMS = new Set([
   "chat-message",
   "color-picker",
   "command-menu",
+  "data-table",
   "dropdown",
   "field",
   "file-thumbnail",

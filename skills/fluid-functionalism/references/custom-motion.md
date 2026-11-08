@@ -226,6 +226,51 @@ collapsed, snap (`{ duration: 0 }`) — otherwise the outer wrapper chases a
 moving target every frame, lags its own child, and lands ~100ms late; each
 nesting level multiplies the sludge.
 
+## Layout changes: measure, change, play
+
+When something moves because the layout changed (a column reordered, rows
+that wrap, a panel that expands), animate from a snapshot (FLIP) instead of
+animating layout properties:
+
+```tsx
+const snapshot = useRef<Map<string, number> | null>(null);
+
+// 1. Right before the change: read where things are.
+const capture = () => {
+  snapshot.current = new Map(
+    [...list.children].map((el) => [el.dataset.id!, (el as HTMLElement).offsetTop])
+  );
+};
+
+// 2. The change commits; 3. each element starts where it was and springs to 0.
+useLayoutEffect(() => {
+  const before = snapshot.current;
+  if (!before) return;
+  snapshot.current = null;
+  for (const el of list.children as HTMLCollectionOf<HTMLElement>) {
+    const dy = (before.get(el.dataset.id!) ?? el.offsetTop) - el.offsetTop;
+    if (dy) animate(el, { y: [dy, 0] }, spring.moderate).then(() => (el.style.transform = ""));
+  }
+});
+```
+
+- Measure only when a change is coming, from the code that makes it. A
+  layout effect that reads positions after every render forces a layout on
+  every keystroke.
+- Read `offsetTop` / `offsetLeft`, not `getBoundingClientRect()`: they
+  ignore transforms, so a measurement taken mid-animation is still true.
+- An element that just appeared fades in; one that left lets its neighbors
+  slide into its place.
+- A container that expands or collapses swaps its content first (more
+  rows, a fill mode), without its own layout spring, so it never outgrows
+  the box while the box moves. The way in rides the tier's spring; the way
+  back is the tier's `.exit` tween, which can't overshoot the slot.
+- Clear the inline styles when it lands, and once more a frame later:
+  motion commits a finished animation's last values after its promise
+  resolves. Guard anything that must finish (unlocking scroll, restoring
+  state) with a timer a beat after the animation's length: background tabs
+  stall animation frames.
+
 ## Page reveals (`@fluid/reveal`)
 
 Appear and scroll animation for whole pages: 2 presets for the page, each

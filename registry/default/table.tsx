@@ -22,6 +22,12 @@ import {
   type FluidHoverActiveStore,
 } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { useShape } from "@/lib/shape-context";
+import {
+  SelectionBackgrounds,
+  useMergeSplitBlocks,
+  useSelectionRuns,
+} from "@/hooks/use-merge-split";
 
 // ---------------------------------------------------------------------------
 // Table is a plain HTML table with one fluid hover highlight drawn behind all
@@ -38,6 +44,9 @@ interface TableContextValue {
   /** Read per row, so a highlight change re-renders only the rows whose
    *  borders or text change, not the whole table. */
   activeStore: FluidHoverActiveStore;
+  /** Selected body rows: their borders, and the border above a run, step
+   *  aside so a merged selection reads as one block. */
+  selected: ReadonlySet<number>;
 }
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -49,10 +58,15 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Pins the table's rows to one step of the size ladder (default 36px,
    *  compact 28px). Omitted, it follows the surrounding SizeProvider. */
   size?: SizeVariant;
+  /** Selected body rows, by `index`. Contiguous ones share one merged
+   *  background, drawn like CheckboxGroup's, under the hover highlight. */
+  selectedIndices?: readonly number[];
 }
 
+const NO_SELECTION: readonly number[] = [];
+
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
@@ -61,11 +75,23 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       activeStore,
       handlers,
       registerItem,
+      itemRects,
     } = hover;
 
+    // The same merged, merge/split-animated selection CheckboxGroup draws.
+    const shape = useShape();
+    const runs = useSelectionRuns(selectedIndices);
+    const blocks = useMergeSplitBlocks(runs, itemRects, shape.mergedRadius);
+
+    const selectedKey = selectedIndices.join(",");
+    const selected = useMemo(
+      () => new Set(selectedKey ? selectedKey.split(",").map(Number) : []),
+      [selectedKey]
+    );
+
     const contextValue = useMemo(
-      () => ({ registerItem, activeStore }),
-      [registerItem, activeStore]
+      () => ({ registerItem, activeStore, selected }),
+      [registerItem, activeStore, selected]
     );
 
     const table = (
@@ -80,8 +106,12 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onMouseLeave={handlers.onMouseLeave}
           onClick={handlers.onClick}
         >
-          {/* Hover background */}
-          <FluidHoverHighlight hover={hover} />
+          {/* Selected backgrounds, merged per contiguous run */}
+          <SelectionBackgrounds blocks={blocks} />
+
+          {/* Hover background, rounded by the shape setting like the
+              selection under it. */}
+          <FluidHoverHighlight hover={hover} className={shape.bg} />
 
           <table
             ref={ref}
@@ -154,7 +184,13 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
       if (index === active) return 2;
       return index === active - 1 ? 1 : 0;
     });
-    const hideBorder = litState > 0;
+    // A selected row, and the row above it, drop their rule too, so a
+    // selected run is one block with no lines through or over it.
+    const selected = ctx?.selected;
+    const nextIndex = isBodyRow ? index + 1 : 0;
+    const bySelection =
+      !!selected && ((isBodyRow && selected.has(index)) || selected.has(nextIndex));
+    const hideBorder = litState > 0 || bySelection;
 
     return (
       <tr
@@ -260,10 +296,11 @@ const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
     return (
       <tr ref={ref} data-slot="table-empty" className={className} {...props}>
         <td colSpan={columns} className="p-0">
-          {/* A body row is one line box plus the cells' padding, so `rows` of
-              them stay in step with TableCell whatever the ladder step. */}
+          {/* A body row is one line box plus the cells' padding and its 1px
+              bottom border, so `rows` of them stay in step with TableCell
+              whatever the ladder step. */}
           <div
-            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
             style={{ "--table-empty-rows": rows } as CSSProperties}
           >
             {title && (

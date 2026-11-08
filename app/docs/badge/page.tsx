@@ -14,6 +14,14 @@ const solidCode = `import { Badge } from "./components";
 <Badge color="blue">History</Badge>
 <Badge color="rose">Poetry</Badge>`;
 
+const ghostCode = `import { Badge } from "./components";
+
+{/* No outline, no side padding, the surrounding text color: for tables. */}
+<Badge variant="ghost" color="green">Success</Badge>
+<Badge variant="ghost" color="blue">Processing</Badge>
+<Badge variant="ghost" color="gray">Pending</Badge>
+<Badge variant="ghost" color="red">Failed</Badge>`;
+
 const dotCode = `import { Badge } from "./components";
 
 <Badge variant="dot" color="violet">Fiction</Badge>
@@ -39,7 +47,7 @@ export default function BadgeDoc() {
     <DocPage
       title="Badge"
       slug="badge"
-      description="Compact label for status, category, or metadata. Supports solid and dot variants with Tailwind colors."
+      description="Compact label for status, category, or metadata. Supports solid, dot, and ghost variants with Tailwind colors."
     >
       <DocSection title="Solid">
         <ComponentPreview code={solidCode}>
@@ -61,6 +69,17 @@ export default function BadgeDoc() {
             <Badge variant="dot" color="green">Philosophy</Badge>
             <Badge variant="dot" color="blue">History</Badge>
             <Badge variant="dot" color="rose">Poetry</Badge>
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Ghost">
+        <ComponentPreview code={ghostCode}>
+          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+            <Badge variant="ghost" color="green">Success</Badge>
+            <Badge variant="ghost" color="blue">Processing</Badge>
+            <Badge variant="ghost" color="gray">Pending</Badge>
+            <Badge variant="ghost" color="red">Failed</Badge>
           </div>
         </ComponentPreview>
       </DocSection>

@@ -236,7 +236,7 @@ function DocumentBody() {
               <TableCell className="text-foreground">{it.name}</TableCell>
               <TableCell className="text-muted-foreground">{it.owner}</TableCell>
               <TableCell>
-                <Badge variant="dot" size="sm" color={it.status.color}>
+                <Badge variant="ghost" size="sm" color={it.status.color}>
                   {it.status.label}
                 </Badge>
               </TableCell>

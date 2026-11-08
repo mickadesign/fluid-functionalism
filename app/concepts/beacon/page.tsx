@@ -133,7 +133,7 @@ function IssueTable({ rows }: { rows: Issue[] }) {
         {rows.map((issue, i) => (
           <TableRow key={issue.key} index={i}>
             <TableCell>
-              <Badge variant="dot" size="sm" color={STATUS[issue.status].color}>
+              <Badge variant="ghost" size="sm" color={STATUS[issue.status].color}>
                 {STATUS[issue.status].label}
               </Badge>
             </TableCell>

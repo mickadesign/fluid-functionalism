@@ -30,7 +30,7 @@ export const systemList: SystemEntry[] = [
 export const componentList: ComponentEntry[] = [
   { slug: "accordion", name: "Accordion", description: "Collapsible sections with animated expand/collapse and fluid hover in grouped mode.", gridSize: "medium" },
   { slug: "ask-user-questions", name: "AskUserQuestions", description: "Stepped question flow with single/multi-select, optional 'other' input, and skip.", gridSize: "large" },
-  { slug: "badge", name: "Badge", description: "Compact label with solid and dot variants, Tailwind color palette, and the two-step size ladder.", gridSize: "small" },
+  { slug: "badge", name: "Badge", description: "Compact label with solid, dot, and ghost variants, Tailwind color palette, and the two-step size ladder.", gridSize: "small" },
   { slug: "banner", name: "Banner", description: "Status message in 5 statuses and 2 contrasts: a status icon, a title, up to 3 actions, and a dismiss that collapses its height. Inline, or fixed full-bleed at the top of the page.", gridSize: "medium" },
   { slug: "button", name: "Button", description: "Versatile button with variants, sizes, loading state, and icon support.", gridSize: "small" },
   { slug: "calendar", name: "Calendar", description: "Month grid for a day or a range: one fluid hover across both months, a range band that follows the pointer, booked and unavailable days, and week numbers.", gridSize: "medium" },
@@ -42,6 +42,7 @@ export const componentList: ComponentEntry[] = [
   { slug: "color-picker", name: "ColorPicker", description: "Color picker with HEX/RGB/HSL/OKLCH formats, alpha, swatches, and popover trigger.", gridSize: "large" },
   { slug: "combobox", name: "Combobox", description: "Type-to-filter field with keyboard highlight, fluid hover, and a spring-animated list — items are data, rows are yours.", gridSize: "small" },
   { slug: "command-menu", name: "CommandMenu", description: "Type to filter a list of actions, arrow through them, press Enter to run: rows with shortcut caps, groups, suggestions, and a dialog shell on a global shortcut.", gridSize: "large" },
+  { slug: "data-table", name: "DataTable", description: "TanStack Table on the fluid hover Table: sorting, search, column resizing and reordering, row selection, and pagination, each part optional.", gridSize: "large" },
   { slug: "date-picker", name: "DatePicker", description: "Outline or ghost trigger for a date, a range, or a date and a time: a calendar popover with presets, and time slot lists that show each duration.", gridSize: "small" },
   { slug: "dialog", name: "Dialog", description: "Modal dialog with smooth enter/exit animations and overlay — three widths, the largest a canvas for a sidebar.", gridSize: "small" },
   { slug: "dropdown", name: "Dropdown", description: "Menu-style dropdown with fluid hover, animated backgrounds, and an optional search field inside the popup.", gridSize: "small" },
