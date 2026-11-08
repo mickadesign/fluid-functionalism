@@ -96,6 +96,7 @@ export const CUSTOM_ITEMS = new Set([
   // primitive-agnostic UI components (single source under @fluid)
   "badge",
   "banner",
+  "breadcrumb",
   "calendar",
   "carousel-dots",
   "chat-message",

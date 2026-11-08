@@ -21,6 +21,9 @@ export const dropdownTriggerProps: PropDef[] = [
   { name: "render", type: "ReactElement", description: "The element that becomes the trigger, e.g. a Button." },
   { name: "children", type: "ReactNode", description: "Trigger content when there is no render element." },
   { name: "disabled", type: "boolean", default: "false", description: "Disables the trigger." },
+  { name: "openOnHover", type: "boolean", default: "false", description: "Opens the menu when a mouse rests on the trigger and closes it once the pointer leaves the trigger and the menu. A click pins it open; touch and the keyboard open it as usual." },
+  { name: "delay", type: "number", default: "100", description: "With openOnHover: ms the pointer rests before the menu opens." },
+  { name: "closeDelay", type: "number", default: "150 (Radix), 0 (Base UI)", description: "With openOnHover: ms before the menu closes once the pointer has left. Base UI keeps a safe area toward the menu instead." },
 ];
 
 export const dropdownContentProps: PropDef[] = [

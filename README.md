@@ -60,7 +60,7 @@ Every component that touches a primitive has both a Radix and a Base UI flavor. 
 npx shadcn@latest add @fluid/base/button
 ```
 
-The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Calendar, ColorPicker, CommandMenu, DataTable, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
+The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Breadcrumb, Calendar, ColorPicker, CommandMenu, DataTable, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
 
 ### Overwrite the stock files
 
@@ -113,6 +113,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [AskUserQuestions](https://www.fluidfunctionalism.com/docs/ask-user-questions) | `ask-user-questions` · `base/ask-user-questions` | Stepped question flow with single/multi-select, an inline "other" input, skip, and multi-question navigation |
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | `badge` | Compact label with solid, dot, and ghost variants, the Tailwind color palette, and 2 sizes |
 | [Banner](https://www.fluidfunctionalism.com/docs/banner) | `banner` · `base/banner` | Status message in 5 statuses and 2 contrasts with a status icon, up to 3 actions, a dismiss that collapses its height, and a fixed full-bleed variant |
+| [Breadcrumb](https://www.fluidfunctionalism.com/docs/breadcrumb) | `breadcrumb` · `base/breadcrumb` | Trail of links to the current page with one fluid hover across every crumb, icons, a Dropdown on a step, and a collapsed middle |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | `button` · `base/button` | Variants, sizes, loading state, icon slots, and a weight shift on hover |
 | [Calendar](https://www.fluidfunctionalism.com/docs/calendar) | `calendar` · `base/calendar` | Month grid for a day or a range with one fluid hover across 2 months, a range band that follows the pointer, booked days, and ISO week numbers |
 | [Card](https://www.fluidfunctionalism.com/docs/card) | `card` | shadcn's compositional card with stacked, inline, and grid layouts, borderless dividers, media/logo/feature slots, and 2-D fluid hover |

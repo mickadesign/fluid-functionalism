@@ -1721,6 +1721,36 @@
       ]
     },
     {
+      "name": "breadcrumb",
+      "type": "registry:ui",
+      "title": "Breadcrumb",
+      "description": "A trail of links to the current page with one fluid hover across every crumb. Steps can lead with an icon, open a Dropdown, or collapse behind an ellipsis.",
+      "dependencies": [
+        "motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/font-weight.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
+        "https://www.fluidfunctionalism.com/r/tooltip.json",
+        "https://www.fluidfunctionalism.com/r/tokens.json",
+        "https://www.fluidfunctionalism.com/r/type-scale.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/breadcrumb.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/breadcrumb. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#breadcrumb.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "textarea",
       "type": "registry:ui",
       "title": "Textarea",

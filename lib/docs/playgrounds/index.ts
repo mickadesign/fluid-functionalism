@@ -1,6 +1,7 @@
 import { AccordionPlayground } from "./accordion";
 import { AskUserQuestionsPlayground } from "./ask-user-questions";
 import { BannerPlayground } from "./banner";
+import { BreadcrumbPlayground } from "./breadcrumb";
 import { ButtonPlayground } from "./button";
 import { CalendarPlayground } from "./calendar";
 import { CardPlayground } from "./card";
@@ -30,6 +31,7 @@ export const playgroundMap: Record<string, PlaygroundComponent> = {
   accordion: AccordionPlayground,
   "ask-user-questions": AskUserQuestionsPlayground,
   banner: BannerPlayground,
+  breadcrumb: BreadcrumbPlayground,
   button: ButtonPlayground,
   calendar: CalendarPlayground,
   card: CardPlayground,

@@ -6,6 +6,7 @@ import { apiReference as accordionApi } from "@/lib/docs/api/accordion";
 import { apiReference as askUserQuestionsApi } from "@/lib/docs/api/ask-user-questions";
 import { apiReference as badgeApi } from "@/lib/docs/api/badge";
 import { apiReference as bannerApi } from "@/lib/docs/api/banner";
+import { apiReference as breadcrumbApi } from "@/lib/docs/api/breadcrumb";
 import { apiReference as buttonApi } from "@/lib/docs/api/button";
 import { apiReference as calendarApi } from "@/lib/docs/api/calendar";
 import { apiReference as cardApi } from "@/lib/docs/api/card";
@@ -46,6 +47,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   "ask-user-questions": askUserQuestionsApi,
   badge: badgeApi,
   banner: bannerApi,
+  breadcrumb: breadcrumbApi,
   button: buttonApi,
   calendar: calendarApi,
   card: cardApi,

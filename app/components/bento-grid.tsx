@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * left/right band by band.
  *
  * The size mix is balanced so the grid fills with NO holes at xl:
- * smalls needed = 2·(larges) + 1·(mediums) = 2·5 + 7 = 17 = smalls available.
+ * smalls needed = 2·(larges) + 1·(mediums) = 2·6 + 6 = 18 = smalls available.
  * At md (2 cols) only smalls take one column, so an odd small count leaves a
  * half row: the last small then spans the full row there (and goes back to
  * one column at xl). Adding a card or changing a gridSize breaks the xl
@@ -46,8 +46,9 @@ const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "input-copy" },
   { slug: "accordion" },                      // band 9 · medium left
   { slug: "input-group" },
-  { slug: "carousel-dots", side: "right" },   // band 10 · medium right
+  { slug: "carousel-dots", side: "right" },   // band 10 · large right
   { slug: "button" },
+  { slug: "breadcrumb" },
   { slug: "table" },                          // band 11 · medium left
   { slug: "dialog" },
   { slug: "calendar", side: "right" },        // band 12 · medium right

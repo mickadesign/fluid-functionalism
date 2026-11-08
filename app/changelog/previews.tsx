@@ -21,6 +21,7 @@ export const SHOWCASE_PREVIEW_SLUGS = new Set([
   "ask-user-questions",
   "badge",
   "banner",
+  "breadcrumb",
   "button",
   "calendar",
   "card",
