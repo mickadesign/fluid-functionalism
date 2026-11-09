@@ -50,6 +50,8 @@ interface TableContextValue {
   /** Selected body rows: their borders, and the border above a run, step
    *  aside so a merged selection reads as one block. */
   selected: ReadonlySet<number>;
+  /** Header cells with a hoverIndex join their own fluid hover scope. */
+  registerHead: (index: number, element: HTMLElement | null) => void;
 }
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -69,16 +71,24 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
    *  highlight jump with the rows for that one commit instead of springing
    *  after them. */
   snapKey?: string | number;
+  /** Hides the header cells' fluid hover highlight, e.g. while a header
+   *  is dragged. */
+  hideHeadHighlight?: boolean;
 }
 
 const NO_SELECTION: readonly number[] = [];
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, selectedIndices = NO_SELECTION, snapKey, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
     const hover = useFluidHover(containerRef);
+    // Header cells that act (sort, move) share a second scope: one fill
+    // glides along the header row the way the row highlight runs down the
+    // body. Only the cell under the pointer lights.
+    const headHover = useFluidHover(containerRef, { axis: "x" });
+    const registerHead = headHover.registerItem;
     const {
       activeStore,
       handlers,
@@ -141,8 +151,8 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     );
 
     const contextValue = useMemo(
-      () => ({ registerItem, activeStore, selected }),
-      [registerItem, activeStore, selected]
+      () => ({ registerItem, activeStore, selected, registerHead }),
+      [registerItem, activeStore, selected, registerHead]
     );
 
     const table = (
@@ -152,9 +162,18 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         <div
           ref={containerRef}
           className="relative"
-          onMouseEnter={(e) => fromPointer(e) && handlers.onMouseEnter()}
-          onMouseMove={(e) => fromPointer(e) && handlers.onMouseMove(e)}
-          onMouseLeave={(e) => fromPointer(e) && handlers.onMouseLeave()}
+          onMouseEnter={(e) => {
+            headHover.handlers.onMouseEnter();
+            if (fromPointer(e)) handlers.onMouseEnter();
+          }}
+          onMouseMove={(e) => {
+            headHover.handlers.onMouseMove(e);
+            if (fromPointer(e)) handlers.onMouseMove(e);
+          }}
+          onMouseLeave={(e) => {
+            headHover.handlers.onMouseLeave();
+            if (fromPointer(e)) handlers.onMouseLeave();
+          }}
           onClick={handlers.onClick}
           onKeyDown={(e) => {
             if (e.repeat && !repeating && e.key.startsWith("Arrow")) setRepeating(true);
@@ -186,6 +205,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           {/* Hover background, rounded by the shape setting like the
               selection under it. */}
           <FluidHoverHighlight hover={hover} className={shape.bg} transition={repeating || snap.on ? false : undefined} />
+          <FluidHoverHighlight hover={headHover} hidden={hideHeadHighlight} className={shape.bg} />
 
           <table
             ref={ref}
@@ -300,14 +320,24 @@ TableRow.displayName = "TableRow";
 
 // ── TableHead ────────────────────────────────────────────
 
-const TableHead = forwardRef<
-  HTMLTableCellElement,
-  ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => {
+interface TableHeadProps extends ThHTMLAttributes<HTMLTableCellElement> {
+  /** Joins the header row's fluid hover: give each header cell that acts
+   *  (sorts, moves) its position. */
+  hoverIndex?: number;
+}
+
+const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(({ hoverIndex, className, ...props }, ref) => {
   const sizeClasses = useSize();
+  const ctx = useContext(TableContext);
+  const internalRef = useRef<HTMLTableCellElement>(null);
+  useRegisterFluidHoverItem(ctx?.registerHead, hoverIndex, internalRef);
   return (
     <th
-      ref={ref}
+      ref={(node) => {
+        internalRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      }}
       className={cn(
         "text-left text-foreground",
         // py + line box lands the row on the ladder (36px / 28px).

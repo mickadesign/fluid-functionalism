@@ -1071,6 +1071,7 @@ function DataTable<TData>({
       // Selected rows on this page get CheckboxGroup's merged fill.
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
       snapKey={expandTick}
+      hideHeadHighlight={!!drag}
       // The skeleton rows are aria-hidden; this tells assistive tech the
       // table is loading rather than empty.
       aria-busy={loading || undefined}
@@ -1086,7 +1087,7 @@ function DataTable<TData>({
           // Sticky header rows ride above the body rows (both z-10 by
           // default, and later rows would paint over earlier ones).
           <TableRow key={group.id} ref={headRowRef} className={fill ? "z-20" : undefined}>
-            {group.headers.map((header) => {
+            {group.headers.map((header, headerIndex) => {
               const column = header.column;
               const meta = column.columnDef.meta;
               const sorted = column.getIsSorted();
@@ -1100,6 +1101,10 @@ function DataTable<TData>({
                 <TableHead
                   key={header.id}
                   colSpan={header.colSpan}
+                  // Headers that act join the header row's gliding fill (a
+                  // filled table's sticky headers paint over it, so they
+                  // keep a fill of their own).
+                  hoverIndex={!fill && (movable || column.getCanSort()) ? headerIndex : undefined}
                   aria-sort={
                     sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
                   }
@@ -1146,7 +1151,8 @@ function DataTable<TData>({
                     (movable || column.getCanSort()) && [
                       "hover:text-foreground transition-colors duration-80",
                       "after:pointer-events-none after:absolute after:inset-px after:-z-10 after:bg-transparent after:shadow-[0_0_0_1px_transparent] after:transition-[background-color,box-shadow] after:duration-80",
-                      "not-data-dragging:hover:after:bg-hover not-data-dragging:hover:after:shadow-[0_0_0_1px_var(--hover)]",
+                      fill &&
+                        "not-data-dragging:hover:after:bg-hover not-data-dragging:hover:after:shadow-[0_0_0_1px_var(--hover)]",
                       "not-data-dragging:active:after:bg-active not-data-dragging:active:after:shadow-[0_0_0_0px_var(--active)]",
                       PRESS_RADIUS[shape.variant],
                     ],
