@@ -1,12 +1,22 @@
 import type { MetadataRoute } from "next";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import { UNLISTED_SLUGS } from "@/lib/docs/components";
 
 const SITE_URL = "https://www.fluidfunctionalism.com";
 
 // Internal/dev-only routes, plus noindex pages (see robots metadata in
 // app/concepts/layout.tsx and app/stars/layout.tsx), kept out of the sitemap.
-const EXCLUDE = ["/demo", "/compare-bases", "/slider", "/table", "/concepts", "/stars"];
+const EXCLUDE = [
+  "/demo",
+  "/compare-bases",
+  "/slider",
+  "/table",
+  "/concepts",
+  "/stars",
+  // Live but not launched yet (see UNLISTED_SLUGS).
+  ...[...UNLISTED_SLUGS].map((slug) => `/docs/${slug}`),
+];
 
 function collectRoutes(dir: string, base = ""): string[] {
   const routes: string[] = [];

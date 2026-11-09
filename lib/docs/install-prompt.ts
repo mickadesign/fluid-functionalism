@@ -1,4 +1,4 @@
-import { componentList, systemList } from "@/lib/docs/components";
+import { componentEntries, systemList } from "@/lib/docs/components";
 import { installUrl, DUAL_FLAVOR_SLUGS, FLUID_HOVER_SLUGS, type Base } from "@/lib/install-url";
 import { PROMPT_ENTRIES, type PromptEntry } from "@/lib/docs/prompt-entries";
 import { decodePreset, type PresetComponentDef } from "@/lib/preset/components";
@@ -19,7 +19,7 @@ import {
 } from "@/lib/docs/install-brief";
 
 interface BuildInstallPromptOptions {
-  /** Doc page slug (matches `componentList` / `systemList`). */
+  /** Doc page slug (matches `componentEntries` / `systemList`). */
   slug: string;
   /** Registry slug the install command advertises. Defaults to `slug`. */
   installSlug?: string;
@@ -40,7 +40,7 @@ interface BuildInstallPromptOptions {
 export function buildInstallPrompt({ slug, installSlug, base, hover = "fluid" }: BuildInstallPromptOptions): string {
   const registrySlug = installSlug ?? slug;
   const system = systemList.find((c) => c.slug === slug);
-  const entry = system ?? componentList.find((c) => c.slug === slug);
+  const entry = system ?? componentEntries.find((c) => c.slug === slug);
   const name = entry?.name ?? slug;
   const description = plainDescription(entry?.description ?? "");
   const details: PromptEntry | undefined = PROMPT_ENTRIES[slug];
@@ -115,7 +115,7 @@ interface BuildPresetPromptOptions {
  *  agent only has to import and render it. */
 export function buildPresetPrompt({ def, code, base, hover = "fluid" }: BuildPresetPromptOptions): string {
   const slug = def.docsPath.split("/").pop() ?? "";
-  const entry = componentList.find((c) => c.slug === slug);
+  const entry = componentEntries.find((c) => c.slug === slug);
   const name = entry?.name ?? def.label;
   const description = plainDescription(entry?.description ?? "");
   const details = PROMPT_ENTRIES[slug];

@@ -10,7 +10,8 @@
 //   - lib/docs/install-brief.ts: the lines every install brief shares
 // Server-safe on purpose: no React, no "use client" imports.
 import {
-  componentList,
+  componentEntries,
+  UNLISTED_SLUGS,
   systemList,
   skillEntry,
   type ComponentEntry,
@@ -50,8 +51,12 @@ export const MARKDOWN_PAGES: DocEntry[] = [
   ...[...systemList, skillEntry]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((e) => ({ ...e, kind: e === skillEntry ? ("skill" as const) : ("system" as const) })),
-  ...componentList.map((e) => ({ ...e, kind: "component" as const })),
+  ...componentEntries.map((e) => ({ ...e, kind: "component" as const })),
 ];
+
+/** The pages the indexes (llms.txt, llms-full.txt) list: unlisted ones keep
+ *  their own Markdown but stay out of them. */
+const LISTED_PAGES = MARKDOWN_PAGES.filter((p) => !UNLISTED_SLUGS.has(p.slug));
 
 export function markdownUrl(slug: string): string {
   return `${SITE}/docs/${slug}.md`;
@@ -112,11 +117,11 @@ export function llmsTxt(): string {
   lines.push("");
 
   lines.push("## System", "");
-  for (const e of MARKDOWN_PAGES.filter((p) => p.kind !== "component")) {
+  for (const e of LISTED_PAGES.filter((p) => p.kind !== "component")) {
     lines.push(`- [${e.name}](${markdownUrl(e.slug)}): ${plainDescription(e.description)}`);
   }
   lines.push("", "## Components", "");
-  for (const e of MARKDOWN_PAGES.filter((p) => p.kind === "component")) {
+  for (const e of LISTED_PAGES.filter((p) => p.kind === "component")) {
     lines.push(`- [${e.name}](${markdownUrl(e.slug)}): ${plainDescription(e.description)}`);
   }
   lines.push("", "## Optional", "");
@@ -129,7 +134,7 @@ export function llmsTxt(): string {
 /** /llms-full.txt: the index, then every page, for agents that want the
  *  whole library in one request. */
 export function llmsFullTxt(): string {
-  const pages = MARKDOWN_PAGES.map((e) => docMarkdown(e.slug)!.trimEnd());
+  const pages = LISTED_PAGES.map((e) => docMarkdown(e.slug)!.trimEnd());
   return [llmsTxt().trimEnd(), ...pages].join("\n\n---\n\n") + "\n";
 }
 
