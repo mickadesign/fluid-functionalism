@@ -6,7 +6,12 @@ import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { apiReference } from "@/lib/docs/api/data-table";
 import { PlaygroundLayout } from "@/lib/docs/playground";
-import { DataTablePlayground } from "@/lib/docs/playgrounds/data-table";
+import {
+  DATA_TABLE_PRESETS,
+  DataTablePlayground,
+  loadDataTablePreset,
+} from "@/lib/docs/playgrounds/data-table";
+import { CardGroup, Card, CardHeader, CardTitle, CardDescription } from "@/registry/default/card";
 import { PaymentsTable, SortableTable, SearchTable, LoadingTable } from "./demo-data";
 
 const fullCode = `import {
@@ -111,6 +116,33 @@ const table = useDataTable({ data: data ?? [], columns });
 
 // ── Playground ───────────────────────────────────────────
 
+// ── Presets ──────────────────────────────────────────────
+
+/** Popular setups: a click loads one into the playground and scrolls to it. */
+function PresetCards() {
+  return (
+    <CardGroup columns={2} orientation="inline" border="outlined">
+      {DATA_TABLE_PRESETS.map((preset) => (
+        <Card
+          key={preset.name}
+          label={`Load the ${preset.name} preset into the playground`}
+          onClick={() => {
+            loadDataTablePreset(preset);
+            document
+              .getElementById("data-table-playground")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        >
+          <CardHeader>
+            <CardTitle>{preset.name}</CardTitle>
+            <CardDescription>{preset.description}</CardDescription>
+          </CardHeader>
+        </Card>
+      ))}
+    </CardGroup>
+  );
+}
+
 function DataTablePlaygroundSection() {
   const ReloadIcon = useIcon("rotate-ccw");
   return (
@@ -144,10 +176,20 @@ export default function DataTableDoc() {
     <DocPage
       title="DataTable"
       slug="data-table"
-      description="TanStack Table on the fluid hover Table: sorting, search, column resizing and reordering, row selection, and pagination, each part optional."
+      description="TanStack Table on the fluid hover Table: sorting, search, resizable and movable columns, selection with spreadsheet keys, editable cells, sub-rows and pagination, each part optional."
     >
       <DocSection title="Playground">
-        <DataTablePlaygroundSection />
+        <div id="data-table-playground" className="scroll-mt-6">
+          <DataTablePlaygroundSection />
+        </div>
+      </DocSection>
+
+      <DocSection title="Presets">
+        <p className="text-site-body text-muted-foreground">
+          4 common setups, built from the playground&apos;s own settings. Pick one to load it above, then
+          adjust it and copy its code.
+        </p>
+        <PresetCards />
       </DocSection>
 
       <DocSection title="All parts">
@@ -195,11 +237,17 @@ export default function DataTableDoc() {
       </DocSection>
 
       <DocSection title="Keyboard">
+        <p className="text-site-body text-muted-foreground">
+          The rows work like a spreadsheet&apos;s. A row under the pointer counts as focused, so you can point
+          at one and carry on from the keyboard.
+        </p>
         <ul className="text-site-body text-muted-foreground flex list-disc flex-col gap-1 pl-5">
-          <li>↑ / ↓ move to the same column in the row above or below; Home / End jump to the first or last row.</li>
-          <li>Shift + ↑ / ↓ carries the selection along, like Shift-clicking a box selects every row since the last one clicked.</li>
-          <li>⌘A / Ctrl+A selects every row on the page; Esc clears the selection.</li>
-          <li>With onRowClick, the rows are one Tab stop: ↑ / ↓ and Home / End move between them, Enter or Space opens one.</li>
+          <li>↓ from the search or a header steps into the first row; ↑ / ↓ and Home / End move between rows.</li>
+          <li>X or Enter selects or clears a row; Shift + ↑ / ↓ grows or shrinks the selection from where it started.</li>
+          <li>⌘A / Ctrl+A selects every row, on every page; Esc clears the selection.</li>
+          <li>With sub-rows, → opens a row or steps into it and ← closes it or steps back to its parent.</li>
+          <li>In an editable cell, Enter or Esc leaves the field and keeps what you typed; F2 edits a link.</li>
+          <li>With a selection, ⌘K opens its actions.</li>
           <li>Alt + ← / → on a focused header moves its column; ← / → on a focused resize handle steps its width by 16px.</li>
         </ul>
       </DocSection>

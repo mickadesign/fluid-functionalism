@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useDataTable,
   DataTable,
@@ -480,6 +480,58 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   ].join("\n");
 }
 
+// ── Presets ──────────────────────────────────────────────
+// Popular setups, as changes from the rail's defaults. The page lists them
+// and loads one into the playground through PRESET_EVENT.
+
+export interface DataTablePreset {
+  name: string;
+  description: string;
+  state: Partial<PlayState>;
+}
+
+export const DATA_TABLE_PRESETS: DataTablePreset[] = [
+  {
+    name: "Admin list",
+    description:
+      "Search by name, the Columns menu, selection with its action bar, a row menu and pages of 10.",
+    state: {},
+  },
+  {
+    name: "Spreadsheet",
+    description:
+      "Every cell editable, search across all columns and pages of 20, built for the keyboard.",
+    state: { editable: true, filter: "all", rowActions: false, pageSize: "20" },
+  },
+  {
+    name: "Tree",
+    description: "Rows that open into their parts, with a chevron and an indent for each level.",
+    state: { expandable: true, rowActions: false },
+  },
+  {
+    name: "Report",
+    description: "Read only: no selection or menus, the summary wrapped in full, every row on one page.",
+    state: {
+      filter: "all",
+      viewMenu: false,
+      selection: false,
+      rowActions: false,
+      pagination: false,
+      resize: false,
+      reorder: false,
+      lines: "wrap",
+    },
+  },
+];
+
+/** Window event that loads a preset into the playground. */
+export const PRESET_EVENT = "data-table:preset";
+
+/** Loads a preset into the playground on this page. */
+export function loadDataTablePreset(preset: DataTablePreset) {
+  window.dispatchEvent(new CustomEvent(PRESET_EVENT, { detail: preset.state }));
+}
+
 // ── Playground ───────────────────────────────────────────
 
 export function DataTablePlayground({ children }: PlaygroundProps) {
@@ -562,6 +614,18 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   };
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
     apply({ ...stateRef.current, [key]: value });
+
+  // A preset from the page: the defaults with its changes on top.
+  const applyRef = useRef(apply);
+  useLayoutEffect(() => {
+    applyRef.current = apply;
+  });
+  useEffect(() => {
+    const onPreset = (e: Event) =>
+      applyRef.current({ ...DEFAULT_STATE, ...(e as CustomEvent<Partial<PlayState>>).detail });
+    window.addEventListener(PRESET_EVENT, onPreset);
+    return () => window.removeEventListener(PRESET_EVENT, onPreset);
+  }, []);
 
   // ── Get code (presets) ─────────────────────────────────
   const globals = usePresetGlobals();
