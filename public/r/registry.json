@@ -2148,7 +2148,9 @@
         "skeleton",
         "https://www.fluidfunctionalism.com/r/reveal.json",
         "https://www.fluidfunctionalism.com/r/combobox.json",
-        "https://www.fluidfunctionalism.com/r/date-picker.json"
+        "https://www.fluidfunctionalism.com/r/date-picker.json",
+        "https://www.fluidfunctionalism.com/r/command-menu.json",
+        "https://www.fluidfunctionalism.com/r/elevated.json"
       ],
       "files": [
         {

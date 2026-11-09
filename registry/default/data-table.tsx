@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type HTMLAttributes,
   type FocusEvent,
   type KeyboardEvent,
@@ -36,6 +37,7 @@ import {
 } from "@tanstack/react-table";
 import { createPortal, flushSync } from "react-dom";
 import {
+  AnimatePresence,
   animate,
   motion,
   Reorder,
@@ -84,6 +86,17 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
+import {
+  CommandMenu,
+  CommandMenuDialog,
+  CommandMenuEmpty,
+  CommandMenuFooter,
+  CommandMenuInput,
+  CommandMenuList,
+  CommandMenuShortcut,
+  type CommandMenuItemData,
+} from "@/components/ui/command-menu";
+import { Elevated } from "@/lib/elevated";
 
 // ---------------------------------------------------------------------------
 // DataTable is TanStack Table drawn with the library's Table: the same fluid
@@ -189,6 +202,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // DataTable installs this, so a part outside it (the search field's ↓)
   // can hand focus to the rows.
   const focusRef = useRef<() => boolean>(() => false);
+  const rootRef = useRef<() => HTMLElement | null>(() => null);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -201,6 +215,10 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           focusRef.current = focus;
         },
         focusFirstRow: () => focusRef.current(),
+        _registerRoot: (get: () => HTMLElement | null) => {
+          rootRef.current = get;
+        },
+        getRootElement: () => rootRef.current(),
         setColumnLines: (id: string, lines: ColumnLines | undefined) => {
           captureRef.current();
           setLines((old) => {
@@ -232,6 +250,10 @@ interface DataTableExtras {
   focusFirstRow: () => boolean;
   /** @internal DataTable installs focusFirstRow here. */
   _registerFocus: (focus: () => boolean) => void;
+  /** The table's outer box, once DataTable has mounted. */
+  getRootElement: () => HTMLElement | null;
+  /** @internal DataTable installs getRootElement here. */
+  _registerRoot: (get: () => HTMLElement | null) => void;
   /** Overrides a column's `meta.lines`; `undefined` hands it back. */
   setColumnLines: (id: string, lines: ColumnLines | undefined) => void;
 }
@@ -944,8 +966,10 @@ function DataTable<TData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- table is one object for its life
   }, [rowsFocusable, hasSelection]);
   const registerFocus = (table as Partial<DataTableExtras>)._registerFocus;
+  const registerRoot = (table as Partial<DataTableExtras>)._registerRoot;
   useLayoutEffect(() => {
     registerFocus?.(focusFirstRow);
+    registerRoot?.(() => wrapRef.current);
   });
 
   // What a body row's cells depend on beyond the row itself: the visible
@@ -2542,6 +2566,196 @@ function DataTablePagination<TData>({
   return size ? <SizeProvider size={size}>{bar}</SizeProvider> : bar;
 }
 
+// ── DataTableSelectionBar ────────────────────────────────
+
+const subscribeNever = () => () => {};
+
+/** How far the bar floats above the table's bottom edge, or the window's. */
+const BAR_INSET = 16;
+
+interface DataTableSelectionBarProps<TData> {
+  table: TanStackTable<TData>;
+  /** The actions its menu lists, or a function that builds them from the
+   *  selected rows. Without any, the bar shows the count and the clear
+   *  button only. */
+  actions?: CommandMenuItemData[] | ((rows: Row<TData>[]) => CommandMenuItemData[]);
+  /** The combo that opens the actions while rows are selected. null binds
+   *  nothing. @default "mod+k" */
+  shortcut?: string | null;
+  /** The menu field's placeholder. @default "Act on 3 rows…" */
+  placeholder?: string;
+  /** Pins the bar to one step of the size ladder. */
+  size?: SizeVariant;
+  className?: string;
+}
+
+/** A bar that floats over the table while rows are selected: how many, an
+ *  Actions button that opens a CommandMenu of what to do with them (⌘K),
+ *  and a button that clears the selection (Esc). It sits centered on the
+ *  table, near the window's bottom edge while the table runs past it, or
+ *  its own bottom edge once that's in view, and takes no room in the page. */
+function DataTableSelectionBar<TData>({
+  table,
+  actions,
+  shortcut = "mod+k",
+  placeholder,
+  size,
+  className,
+}: DataTableSelectionBarProps<TData>) {
+  "use no memo";
+  const sizeClasses = useSize(size);
+  const compact = sizeClasses.variant === "compact";
+  const shape = useShape();
+  const icons = useIcons();
+  const XIcon = icons.x;
+  const reduceMotion = useReducedMotion();
+  const selected = table.getSelectedRowModel().rows;
+  const count = selected.length;
+  // The last count shown, so the bar keeps its number while it leaves.
+  const [shown, setShown] = useState(count);
+  if (count > 0 && count !== shown) setShown(count);
+  const items = typeof actions === "function" ? actions(selected) : (actions ?? []);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const getRoot = (table as Partial<DataTableExtras>).getRootElement;
+
+  // Placed by hand over the table (fixed, so it takes no room and needs no
+  // particular parent), written straight to the element on scroll and
+  // resize while the bar is up.
+  const barRef = useRef<HTMLDivElement>(null);
+  // The portal needs document.body: false on the server and in hydration,
+  // true once in the browser.
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
+  useLayoutEffect(() => {
+    if (count === 0) return;
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const bar = barRef.current;
+      const root = getRoot?.();
+      if (!bar || !root) return;
+      const r = root.getBoundingClientRect();
+      const bottom = Math.min(r.bottom, window.innerHeight) - BAR_INSET;
+      bar.style.left = `${r.left + r.width / 2}px`;
+      bar.style.top = `${bottom}px`;
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    place();
+    window.addEventListener("scroll", schedule, { capture: true, passive: true });
+    window.addEventListener("resize", schedule);
+    const root = getRoot?.();
+    const ro = root ? new ResizeObserver(schedule) : null;
+    if (root) ro?.observe(root);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule, { capture: true });
+      window.removeEventListener("resize", schedule);
+      ro?.disconnect();
+    };
+  }, [count > 0, getRoot]); // eslint-disable-line react-hooks/exhaustive-deps -- placed while up
+
+  const clear = () => {
+    setMenuOpen(false);
+    table.resetRowSelection();
+  };
+  const noun = shown === 1 ? "row" : "rows";
+
+  const bar = (
+    <AnimatePresence>
+      {count > 0 && (
+        <motion.div
+          key="bar"
+          ref={barRef}
+          // Grows up from its bottom center, the edge it's anchored by.
+          className="pointer-events-auto fixed z-[var(--z-sticky,30)] -translate-x-1/2 -translate-y-full"
+          style={{ transformOrigin: "50% 100%" }}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={
+            reduceMotion
+              ? { opacity: 0, transition: spring.moderate.exit }
+              : { opacity: 0, y: 8, scale: 0.96, transition: spring.moderate.exit }
+          }
+          transition={spring.moderate}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !menuOpen) {
+              e.preventDefault();
+              clear();
+            }
+          }}
+        >
+          <Elevated
+            offset={2}
+            shadowLevel={3}
+            role="toolbar"
+            aria-label="Selected rows"
+            className={cn(
+              "flex items-center whitespace-nowrap",
+              compact ? "gap-1 p-1 pl-3" : "gap-1.5 p-1.5 pl-4",
+              shape.variant === "sharp" ? "rounded-[1px]" : shape.variant === "pill" ? "rounded-full" : "rounded-xl",
+              sizeClasses.text,
+              className
+            )}
+          >
+            <span aria-live="polite" className="tabular-nums text-foreground">
+              {shown} selected
+            </span>
+            {items.length > 0 && (
+              <Button
+                variant="secondary"
+                size={compact ? "compact" : "default"}
+                onClick={() => setMenuOpen(true)}
+                aria-keyshortcuts={shortcut ?? undefined}
+                className="ml-1"
+              >
+                Actions
+                {shortcut && <CommandMenuShortcut keys={shortcut} className="ml-1" />}
+              </Button>
+            )}
+            <Tooltip content="Clear selection (Esc)">
+              <Button
+                variant="ghost"
+                size={compact ? "icon-compact" : "icon"}
+                aria-label="Clear selection"
+                aria-keyshortcuts="Escape"
+                onClick={clear}
+              >
+                <XIcon />
+              </Button>
+            </Tooltip>
+          </Elevated>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  return (
+    <>
+      {mounted && createPortal(bar, document.body)}
+      {items.length > 0 && (
+        <CommandMenuDialog
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          // Bound only while rows are selected, so ⌘K reaches the page's
+          // own palette the rest of the time.
+          shortcut={count > 0 ? shortcut : null}
+          title="Selection actions"
+          description={`Actions for the ${shown} selected ${noun}.`}
+        >
+          <CommandMenu items={items}>
+            <CommandMenuInput placeholder={placeholder ?? `Act on ${shown} ${noun}…`} />
+            <CommandMenuList>
+              <CommandMenuEmpty>No action matches.</CommandMenuEmpty>
+            </CommandMenuList>
+            <CommandMenuFooter />
+          </CommandMenu>
+        </CommandMenuDialog>
+      )}
+    </>
+  );
+}
+
 // ── Exports ──────────────────────────────────────────────
 
 export {
@@ -2552,6 +2766,7 @@ export {
   DataTableViewOptions,
   DataTableRowActions,
   DataTablePagination,
+  DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
 };
@@ -2569,5 +2784,6 @@ export type {
   DataTableViewOptionsProps,
   DataTableRowActionsProps,
   DataTablePaginationProps,
+  DataTableSelectionBarProps,
 };
 export type { ColumnDef } from "@tanstack/react-table";

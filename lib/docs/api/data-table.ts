@@ -59,6 +59,14 @@ export const paginationProps: PropDef[] = [
   { name: "size", type: '"default" | "compact"', description: "Pins the text and arrow buttons to one step of the size ladder." },
 ];
 
+export const selectionBarProps: PropDef[] = [
+  { name: "table", type: "Table<TData>", description: "The table from useDataTable. The bar shows while any row is selected, on any page." },
+  { name: "actions", type: "CommandMenuItemData[] | (rows: Row<TData>[]) => CommandMenuItemData[]", description: "What the Actions menu lists, or a function that builds it from the selected rows. Without any, the bar shows the count and the clear button only." },
+  { name: "shortcut", type: "string | null", default: '"mod+k"', description: "Opens the actions while rows are selected; the page's own palette keeps the combo otherwise. null binds nothing." },
+  { name: "placeholder", type: "string", default: '"Act on 3 rows…"', description: "The menu field's placeholder." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the bar to one step of the size ladder." },
+];
+
 export const rowActionsColumnProps: PropDef[] = [
   { name: "rowActionsColumn<TData>(items, { label? })", type: "ColumnDef<TData>", description: "A last column for DataTableRowActions. items(row) returns its MenuItems. Sized and padded so the \u22ef lines up with the Columns button and the page arrows; never sorted, hidden or resized." },
 ];
@@ -77,6 +85,7 @@ export const apiReference: ApiTable[] = [
   { title: "DataTableViewOptions", props: viewOptionsProps },
   { title: "DataTableRowActions", props: rowActionsProps },
   { title: "DataTablePagination", props: paginationProps },
+  { title: "DataTableSelectionBar", props: selectionBarProps },
   { title: "selectColumn", props: selectColumnProps },
   { title: "rowActionsColumn", props: rowActionsColumnProps },
 ];

@@ -2148,7 +2148,9 @@
         "skeleton",
         "reveal",
         "combobox",
-        "date-picker"
+        "date-picker",
+        "command-menu",
+        "elevated"
       ],
       "files": [
         {

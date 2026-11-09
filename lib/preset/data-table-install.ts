@@ -34,6 +34,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.filter !== "none" ? ["DataTableSearch"] : []),
     ...(p.viewMenu ? ["DataTableViewOptions"] : []),
     ...(p.pagination ? ["DataTablePagination"] : []),
+    ...(p.selection ? ["DataTableSelectionBar"] : []),
     ...(p.selection ? ["selectColumn"] : []),
     ...(p.rowActions ? ["rowActionsColumn"] : []),
     "type ColumnDef",
@@ -194,6 +195,24 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`      />`);
   } else l.push(`      <DataTable ${tableProps.join(" ")} />`);
   if (p.pagination) l.push(`      <DataTablePagination table={table} />`);
+  if (p.selection) {
+    l.push(`      {/* Floats over the table while rows are selected: \u2318K opens the actions. */}`);
+    l.push(`      <DataTableSelectionBar`);
+    l.push(`        table={table}`);
+    l.push(`        actions={(rows) => [`);
+    l.push(`          {`);
+    l.push(`            value: "slugs",`);
+    l.push(`            label: "Copy slugs",`);
+    l.push(`            onSelect: () => navigator.clipboard?.writeText(rows.map((r) => r.original.slug).join("\\n")),`);
+    l.push(`          },`);
+    l.push(`          {`);
+    l.push(`            value: "names",`);
+    l.push(`            label: "Copy names",`);
+    l.push(`            onSelect: () => navigator.clipboard?.writeText(rows.map((r) => r.original.name).join("\\n")),`);
+    l.push(`          },`);
+    l.push(`        ]}`);
+    l.push(`      />`);
+  }
   l.push(`    </div>`);
   l.push(`  );`);
   l.push(`}`);

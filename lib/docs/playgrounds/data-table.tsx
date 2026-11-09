@@ -8,6 +8,7 @@ import {
   DataTableSearch,
   DataTableViewOptions,
   DataTablePagination,
+  DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
   type ColumnDef,
@@ -287,6 +288,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.viewMenu ? ["DataTableViewOptions"] : []),
     ...(o.rowActions ? ["rowActionsColumn"] : []),
     ...(o.pagination ? ["DataTablePagination"] : []),
+    ...(o.selection ? ["DataTableSelectionBar"] : []),
     ...(o.selection ? ["selectColumn"] : []),
     "type ColumnDef",
   ];
@@ -404,6 +406,17 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
         ]),
     ...(o.pagination ? [`  <DataTablePagination table={table} />`] : []),
+    ...(o.selection
+      ? [
+          `  <DataTableSelectionBar`,
+          `    table={table}`,
+          `    actions={(rows) => [`,
+          `      { value: "install", label: "Copy install command", onSelect: () => copyInstall(rows) },`,
+          `      { value: "names", label: "Copy names", onSelect: () => copyNames(rows) },`,
+          `    ]}`,
+          `  />`,
+        ]
+      : []),
     `</div>`,
   ].join("\n");
 }
@@ -544,6 +557,28 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         }
       />
       {state.pagination && <DataTablePagination table={table} />}
+      {state.selection && (
+        <DataTableSelectionBar
+          table={table}
+          actions={(rows) => [
+            {
+              value: "install",
+              label: "Copy install command",
+              icon: icons.copy,
+              onSelect: () =>
+                navigator.clipboard?.writeText(
+                  `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
+                ),
+            },
+            {
+              value: "names",
+              label: "Copy names",
+              icon: icons.file,
+              onSelect: () => navigator.clipboard?.writeText(rows.map((r) => r.original.name).join("\n")),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 
