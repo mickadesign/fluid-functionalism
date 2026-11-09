@@ -4,7 +4,7 @@
   "title": "Breadcrumb",
   "description": "A trail of links to the current page with one fluid hover across every crumb. Steps can lead with an icon, open a Dropdown, or collapse behind an ellipsis.",
   "dependencies": [
-    "motion"
+    "motion@^14.11.1"
   ],
   "registryDependencies": [
     "utils",
