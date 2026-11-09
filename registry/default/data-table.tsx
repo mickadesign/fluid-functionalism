@@ -1051,6 +1051,32 @@ function DataTable<TData>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- table is one object for its life
   }, [rowsFocusable, hasSelection]);
+  // The table scrolling sideways while an editor's popup is open (a menu,
+  // a list, a calendar) closes the popup, as Esc would, rather than let it
+  // ride its trigger out of the table's box. The reveal's own scroll (an
+  // editor bringing its cell into view) doesn't count.
+  useEffect(() => {
+    const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!viewport) return;
+    let x = viewport.scrollLeft;
+    const onScroll = () => {
+      if (viewport.scrollLeft === x) return;
+      x = viewport.scrollLeft;
+      if (holds.current === 0) return;
+      if (performance.now() - Number(viewport.dataset.revealedAt ?? 0) < 400) return;
+      const active = document.activeElement;
+      if (!active || wrapRef.current?.contains(active)) {
+        // Focus on the trigger (a menu that keeps focus there) or nowhere.
+        const open = wrapRef.current?.querySelector<HTMLElement>("tbody [aria-expanded=true]");
+        open?.dispatchEvent(new globalThis.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        return;
+      }
+      active.dispatchEvent(new globalThis.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    };
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  });
+
   const registerFocus = (table as Partial<DataTableExtras>)._registerFocus;
   const registerRoot = (table as Partial<DataTableExtras>)._registerRoot;
   useLayoutEffect(() => {
@@ -2045,8 +2071,18 @@ function revealCell(e: FocusEvent<HTMLElement> | PointerEvent<HTMLElement>) {
   if (!td || !viewport) return;
   const r = td.getBoundingClientRect();
   const v = viewport.getBoundingClientRect();
-  if (r.left < v.left) viewport.scrollLeft -= v.left - r.left;
-  else if (r.right > v.right) viewport.scrollLeft += Math.min(r.right - v.right, r.left - v.left);
+  // Clear of the edge fade too, on a side the table can still scroll to:
+  // a cell under the fade reads as out of view.
+  const fade = parseFloat(getComputedStyle(viewport).getPropertyValue("--scroll-fade-size")) || 48;
+  const max = viewport.scrollWidth - viewport.clientWidth;
+  const left = v.left + (viewport.scrollLeft > 0 ? fade : 0);
+  const right = v.right - (viewport.scrollLeft < max - 1 ? fade : 0);
+  let delta = 0;
+  if (r.left < left) delta = r.left - left;
+  else if (r.right > right) delta = Math.min(r.right - right, r.left - left);
+  if (!delta) return;
+  viewport.dataset.revealedAt = String(performance.now());
+  viewport.scrollLeft = Math.max(0, Math.min(max, viewport.scrollLeft + delta));
 }
 
 function EditableCell<TData>(props: Parameters<typeof EditorBody<TData>>[0]) {
