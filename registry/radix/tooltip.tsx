@@ -100,7 +100,7 @@ interface TooltipProps {
   className?: string;
   /** Extra classes for the portalled content element — Radix copies its
    *  z-index onto the popper wrapper, so pass a z utility here to lift the
-   *  whole tooltip above other fixed layers (default z-50). */
+   *  whole tooltip above other fixed layers (default: the --z-tooltip step, 70). */
   contentClassName?: string;
   /** When true, forces the tooltip open. When false, forces it closed. When undefined, uses default hover/focus behavior. */
   forceOpen?: boolean;
@@ -203,7 +203,7 @@ function Tooltip({
             side={side}
             sideOffset={sideOffset}
             forceMount
-            className={cn("z-50", contentClassName)}
+            className={cn("z-[var(--z-tooltip,70)]", contentClassName)}
           >
             <motion.div
               style={

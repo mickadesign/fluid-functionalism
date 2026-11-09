@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { Fragment, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { slideVariants, useSlideDirection } from "@/lib/docs/slide-direction";
 import { useCardArt } from "@/lib/docs/playgrounds/card";
@@ -41,6 +41,21 @@ import {
   AccordionContent,
 } from "@/registry/radix/accordion";
 import { Badge } from "@/registry/default/badge";
+import {
+  Breadcrumb,
+  BreadcrumbButton,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  useBreadcrumbCollapse,
+} from "@/registry/default/breadcrumb";
+import { BREADCRUMB_MENU_CLASS, EllipsisMenu } from "@/lib/docs/playgrounds/breadcrumb";
+import {
+  DropdownMenu as FlavoredDropdownMenu,
+  DropdownTrigger as FlavoredDropdownTrigger,
+  DropdownContent as FlavoredDropdownContent,
+} from "@/components/flavored/dropdown";
 import {
   Banner,
   BannerTitle,
@@ -159,6 +174,7 @@ import {
   AskUserQuestions,
   type AskUserQuestion,
 } from "@/registry/default/ask-user-questions";
+import { demoToday } from "@/lib/demo-today";
 
 function InputMessagePreview() {
   const [value, setValue] = useState("");
@@ -336,6 +352,63 @@ function DialogPreview() {
   );
 }
 
+const BREADCRUMB_STEPS = ["Home", "Projects", "Website", "Design"];
+const BREADCRUMB_SECTIONS = ["Drafts", "Published", "Archive"];
+
+/** The trail fits its tile: middle steps fold behind the ellipsis as the
+ *  tile narrows, and the last step opens a menu on hover. */
+function BreadcrumbPreview() {
+  const [section, setSection] = useState(0);
+  const { listRef, hidden } = useBreadcrumbCollapse({ count: BREADCRUMB_STEPS.length + 2 });
+  const shown = BREADCRUMB_STEPS.filter((_, i) => i === 0 || i > hidden);
+  const stay = (e: React.MouseEvent<HTMLAnchorElement>) => e.preventDefault();
+  return (
+    <div className="w-full max-w-[420px]">
+      <Breadcrumb>
+        <BreadcrumbList ref={listRef} className="justify-center">
+          {shown.map((label, i) => (
+            <Fragment key={label}>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="#" onClick={stay}>{label}</BreadcrumbLink>
+              </BreadcrumbItem>
+              {i === 0 && hidden > 0 && (
+                <BreadcrumbItem>
+                  <EllipsisMenu hidden={BREADCRUMB_STEPS.slice(1, hidden + 1)} />
+                </BreadcrumbItem>
+              )}
+            </Fragment>
+          ))}
+          <BreadcrumbItem>
+            <FlavoredDropdownMenu>
+              <FlavoredDropdownTrigger
+                openOnHover
+                render={<BreadcrumbButton>{BREADCRUMB_SECTIONS[section]}</BreadcrumbButton>}
+              />
+              <FlavoredDropdownContent
+                checkedIndex={section}
+                className={BREADCRUMB_MENU_CLASS}
+              >
+                {BREADCRUMB_SECTIONS.map((label, i) => (
+                  <MenuItem
+                    key={label}
+                    index={i}
+                    label={label}
+                    checked={section === i}
+                    onSelect={() => setSection(i)}
+                  />
+                ))}
+              </FlavoredDropdownContent>
+            </FlavoredDropdownMenu>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Roadmap.md</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    </div>
+  );
+}
+
 function DropdownPreview() {
   const icons = useIcons();
   const [selected, setSelected] = useState<number | null>(0);
@@ -428,7 +501,7 @@ function addDays(date: Date, days: number) {
 function CalendarPreview() {
   const narrow = useNarrowFrame();
   const [range, setRange] = useState<DateRange | undefined>(() => {
-    const today = new Date();
+    const today = demoToday();
     return { from: addDays(today, 3), to: addDays(today, 8) };
   });
   return (
@@ -444,7 +517,7 @@ function CalendarPreview() {
 }
 
 function DatePickerPreview() {
-  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  const [date, setDate] = useState<Date | undefined>(demoToday);
   return (
     <div className="flex w-full max-w-[280px] justify-center">
       <DatePicker value={date} onValueChange={setDate} />
@@ -649,6 +722,7 @@ const askUserExampleQuestions: AskUserQuestion[] = [
     options: [
       { id: "rounded", title: "Rounded", description: "Soft, familiar corners" },
       { id: "pill", title: "Pill", description: "Fully rounded, friendly" },
+      { id: "sharp", title: "Sharp", description: "Square corners, precise" },
     ],
   },
   {
@@ -953,6 +1027,7 @@ export const previewMap: Record<string, React.FC> = {
   accordion: AccordionPreview,
   "ask-user-questions": AskUserQuestionsPreview,
   badge: BadgePreview,
+  breadcrumb: BreadcrumbPreview,
   "carousel-dots": CarouselDotsPreview,
   button: ButtonPreview,
   calendar: CalendarPreview,

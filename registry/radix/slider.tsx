@@ -235,15 +235,18 @@ function ValueDisplay({
     if (editingIndex === index) {
       return (
         <span className="inline-grid text-[length:var(--fs-body,13px)] leading-[var(--lh-body,20px)]">
-          {/* Ghost for layout stability — widest possible value */}
-          <span
-            className="col-start-1 row-start-1 invisible"
-            style={{ fontVariationSettings: fontWeights.normal }}
-            aria-hidden="true"
-          >
-            {label ? `${label}: ` : ""}
-            {formatValue(max)}
-          </span>
+          {/* Ghosts for layout stability: the widest possible value */}
+          {[min, max].map((v) => (
+            <span
+              key={v}
+              className="col-start-1 row-start-1 invisible"
+              style={{ fontVariationSettings: fontWeights.normal }}
+              aria-hidden="true"
+            >
+              {label ? `${label}: ` : ""}
+              {formatValue(v)}
+            </span>
+          ))}
           <span className="col-start-1 row-start-1 flex items-center gap-1">
             {label && (
               <span className="text-muted-foreground">{label}:</span>
@@ -294,11 +297,26 @@ function ValueDisplay({
   };
 
 
-  // Assumes formatValue(max) is the longest string. Range mode reserves both
-  // ends plus the separator.
-  const widestValue = isRange
-    ? `${label ? `${label}: ` : ""}${formatValue(max)} — ${formatValue(max)}`
-    : `${label ? `${label}: ` : ""}${formatValue(max)}`;
+  // Either end of the scale can print the widest string (a negative min
+  // carries a minus sign), so both are stacked as ghosts and the grid cell
+  // takes the wider one. Range mode reserves both ends plus the separator.
+  // The separator copies the visible one's markup so the widths match.
+  const ghostFor = (v: number) => {
+    const text = formatValue(v);
+    return (
+      <>
+        {label ? `${label}: ` : ""}
+        {text}
+        {isRange && (
+          <>
+            <span className="mx-1">–</span>
+            {text}
+          </>
+        )}
+      </>
+    );
+  };
+  const ghostValues = [ghostFor(min), ghostFor(max)];
 
   // Weight, not color, signals interaction: normal → semibold over 100ms while
   // hovered or pressed. tabular-nums plus a ghost set at semibold (the
@@ -315,14 +333,17 @@ function ValueDisplay({
           : fontWeights.normal,
       }}
     >
-      {/* Invisible ghost — reserves width of widest possible value */}
-      <span
-        className="col-start-1 row-start-1 invisible whitespace-nowrap"
-        style={{ fontVariationSettings: fontWeights.semibold }}
-        aria-hidden="true"
-      >
-        {widestValue}
-      </span>
+      {/* Invisible ghosts: they reserve the width of the widest possible value */}
+      {ghostValues.map((ghost, i) => (
+        <span
+          key={i}
+          className="col-start-1 row-start-1 invisible whitespace-nowrap"
+          style={{ fontVariationSettings: fontWeights.semibold }}
+          aria-hidden="true"
+        >
+          {ghost}
+        </span>
+      ))}
       <span className="col-start-1 row-start-1 whitespace-nowrap">
         {/* While editing, the edit slot draws its own label beside the input. */}
         {label && editingIndex === null && (
@@ -331,7 +352,7 @@ function ValueDisplay({
         {isRange ? (
           <>
             {renderValue(0)}
-            <span className="mx-1 text-muted-foreground">—</span>
+            <span className="mx-1 text-muted-foreground">–</span>
             {renderValue(1)}
           </>
         ) : (
@@ -419,6 +440,8 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     const isRange = Array.isArray(value);
     const values = toRadixValue(value);
     const shape = useShape();
+    // Sharp squares the whole control; rounded and pill keep the pill track.
+    const sharp = shape.variant === "sharp";
 
     // Non-uniform step mode: sorted, deduped list of allowed values. Keyed on
     // the joined string so inline array literals don't recompute every render.
@@ -442,6 +465,11 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
     // True while a pointer drag owns the thumbs; the value-sync and resize
     // effects stand down so they never fight the pointer.
     const dragging = useRef(false);
+    // The value the press or drag last emitted. Release settles on it, not on
+    // motionX: a quick click lets go while the press spring is still in
+    // flight, and settling on that midpoint would strand the thumb. Kept as a
+    // value so a track resized mid-drag still lands on the emitted value.
+    const dragTargetValue = useRef(0);
     const activeDragThumb = useRef<number>(0);
     // Latest props for the ResizeObserver callback, which subscribes once per
     // isRange and would otherwise read stale values.
@@ -733,6 +761,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           layoutWidth,
           stepValues
         );
+        dragTargetValue.current = finalValue;
         emitChange(activeDragThumb.current, finalValue);
 
         // Capture keeps the drag alive when the pointer leaves the track.
@@ -786,6 +815,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           layoutWidth,
           stepValues
         );
+        dragTargetValue.current = finalValue;
         emitChange(activeDragThumb.current, finalValue);
       },
       [min, max, step, stepValues, motionX0, motionX1, clampForRange, emitChange]
@@ -797,18 +827,16 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
       setIsPressed(false);
       setHoverPreview(null);
 
-      // Spring settle to final quantized position
-      // Moves already land on the grid; this catches a thumb the range clamp
-      // left between steps. Clearing the preview above keeps the stale
-      // pre-drag bar from fading back in.
+      // Spring settle onto the last emitted value, at the current track width.
+      // This also catches a thumb the range clamp left between steps.
+      // Clearing the preview above keeps the stale pre-drag bar from fading
+      // back in.
       const tw = trackWidthRef.current;
       const motionX =
         activeDragThumb.current === 0 ? motionX0 : motionX1;
-      const currentPx = motionX.get();
-      const snapped = pixelToValue(currentPx, min, max, step, tw, stepValues);
-      const snappedPx = valueToPixel(snapped, min, max, tw);
+      const snappedPx = valueToPixel(dragTargetValue.current, min, max, tw);
       animate(motionX, snappedPx, spring.moderate);
-    }, [min, max, step, stepValues, motionX0, motionX1]);
+    }, [min, max, motionX0, motionX1]);
 
     // --- Radix keyboard handler ---
     // In steps mode the primitive runs on indices (0..len-1, step 1) so arrow
@@ -925,7 +953,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
           initial={false}
         >
           <motion.span
-            className="block rounded-full"
+            className={cn("block", sharp ? "rounded-none" : "rounded-full")}
             initial={false}
             animate={{
               width: THUMB_SIZE_REST,
@@ -943,7 +971,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
               hidden thumb matches :focus-visible, so a pointer press never
               shows it. */}
           <motion.span
-            className="absolute rounded-full border border-[color:var(--focus-ring,#6B97FF)] pointer-events-none"
+            className={cn("absolute border border-[color:var(--focus-ring,#6B97FF)] pointer-events-none", sharp ? "rounded-none" : "rounded-full")}
             initial={false}
             animate={{
               opacity: focusedThumb === index ? 1 : 0,
@@ -1124,7 +1152,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
                 they inherit its rounded ends. top: py-2's 8px plus 1px to
                 center the 18px pill on the 20px thumb row. */}
             <motion.div
-              className={cn("absolute border border-border overflow-hidden rounded-full", trackClassName)}
+              className={cn("absolute border border-border overflow-hidden", sharp ? "rounded-none" : "rounded-full", trackClassName)}
               initial={false}
               animate={{
                 height: TRACK_BG_HEIGHT,
@@ -1167,7 +1195,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
                 style={{
                   left: hoverPreview ? hoverPreview.left - TRACK_INSET : 0,
                   width: hoverPreview ? hoverPreview.width : 0,
-                  borderRadius: hoverPreview && hoverPreview.cursorX > hoverPreview.left
+                  borderRadius: sharp ? 0 : hoverPreview && hoverPreview.cursorX > hoverPreview.left
                     ? "0 9999px 9999px 0"
                     : "9999px 0 0 9999px",
                   backgroundColor: "color-mix(in srgb, var(--color-accent) 40%, transparent)",
@@ -1274,6 +1302,9 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
     },
     ref
   ) => {
+    // The value slot's reserved width, in ch: the longer of the scale's two
+    // ends, since a negative min prints a minus sign max doesn't have.
+    const valueCh = Math.max(String(formatValue(min)).length, String(formatValue(max)).length);
     const containerRef = useRef<HTMLDivElement>(null);
     // Row presses and the scrubber's handle strip track their drags apart.
     const dragging = useRef(false);
@@ -1710,7 +1741,7 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
             )}
             <span
               className="text-[length:var(--fs-body,13px)] leading-[var(--lh-body,20px)] tabular-nums ml-auto px-2 bg-background text-transparent select-none"
-              style={{ minWidth: `${String(formatValue(max)).length}ch` }}
+              style={{ minWidth: `${valueCh}ch` }}
             >
               {formatValue(value)}
             </span>
@@ -1766,14 +1797,14 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
                 {label}
               </motion.span>
             )}
-            {/* minWidth reserves formatValue(max)'s length in ch, so the value
+            {/* minWidth reserves the widest end's length in ch, so the value
                 slot keeps its width as the number changes. */}
             <motion.span
               className="text-[length:var(--fs-body,13px)] leading-[var(--lh-body,20px)] tabular-nums ml-auto px-2"
               initial={false}
               animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
               transition={spring.fast}
-              style={{ minWidth: `${String(formatValue(max)).length}ch`, textAlign: "right" }}
+              style={{ minWidth: `${valueCh}ch`, textAlign: "right" }}
             >
               {formatValue(value)}
             </motion.span>
@@ -1836,7 +1867,7 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
               initial={false}
               animate={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)" }}
               transition={spring.fast}
-              style={{ minWidth: `${String(formatValue(max)).length}ch` }}
+              style={{ minWidth: `${valueCh}ch` }}
             >
               {formatValue(value)}
             </motion.span>

@@ -12,7 +12,7 @@ import {
   type InputHTMLAttributes,
 } from "react";
 import { Field } from "@base-ui/react/field";
-import type { IconComponent } from "@/lib/icon-context";
+import { useIcons, type IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
@@ -21,10 +21,10 @@ import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hove
 
 // ---------------------------------------------------------------------------
 // InputGroup stacks labelled text fields that share one fluid hover scope.
-// At rest a field has no fill and no visible ring. The field nearest the
-// pointer shows a faint fill and its ring; the focused field lifts to the
-// card surface. There is no separate highlight element: each field draws its
-// own state.
+// Each field keeps the Select trigger's hairline: a fixed --border ring at
+// rest, the hover fill on the field under the pointer, and a darker neutral
+// ring while focused. There is no separate highlight element: each field
+// draws its own state.
 // ---------------------------------------------------------------------------
 
 interface InputGroupContextValue {
@@ -130,6 +130,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
     const shape = useShape();
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
+    const AlertIcon = useIcons()["circle-alert"];
 
     useRegisterFluidHoverItem(registerItem, index, internalRef);
 
@@ -146,29 +147,15 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
       setIsFocused(false);
     };
 
-    // Input container classes. The first match wins: disabled, error,
-    // focused, hovered, rest. An error stays frameless at rest (the red label
-    // and message already carry it) and shows its red ring on hover or focus.
-    // Focus lifts the field to the card surface; hover only tints it.
-    let bgClass: string;
-    let ringClass: string;
-
-    if (disabled) {
-      bgClass = "bg-transparent";
-      ringClass = "ring-border";
-    } else if (error) {
-      bgClass = isFocused ? "bg-card" : isActive ? "bg-destructive-light/60" : "bg-transparent";
-      ringClass = isFocused || isActive ? "ring-destructive/50" : "ring-transparent";
-    } else if (isFocused) {
-      bgClass = "bg-card";
-      ringClass = "ring-border";
-    } else if (isActive) {
-      bgClass = "bg-muted/50";
-      ringClass = "ring-border";
-    } else {
-      bgClass = "bg-transparent";
-      ringClass = "ring-transparent";
-    }
+    // The ring never moves at rest, like the Select trigger's border. Focus
+    // darkens it to a neutral 40% and wins over the error tint while the
+    // value is being fixed; hover only adds the fill.
+    const ringClass = isFocused && !disabled
+      ? "ring-foreground/40"
+      : error
+        ? "ring-destructive/50"
+        : "ring-border";
+    const bgClass = isActive && !isFocused && !disabled ? "bg-hover" : "bg-transparent";
 
     return (
       // Base UI Field wires the accessibility plumbing: Field.Label's htmlFor
@@ -193,10 +180,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
         <Field.Label
           className={cn(
             labelHidden ? "sr-only" : "inline-grid",
-            sizeClasses.text,
-            // One notch tighter than the ladder's control padding — the field
-            // ring is invisible at rest, so the roomier inset reads as a gap.
-            !labelHidden && (compact ? "pl-2" : "pl-2.5")
+            sizeClasses.text
           )}
         >
           {/* An invisible semibold copy shares the grid cell and reserves the
@@ -234,9 +218,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
           className={cn(
             // Fixed height (was py-2 around the line box) so the field sits
             // exactly on the ladder's control height.
-            `flex items-center ${sizeClasses.gap} ${shape.input} ${
-              compact ? "px-2" : "px-2.5"
-            } ${sizeClasses.control} ring-1 transition-all duration-80`,
+            `flex items-center ${sizeClasses.gap} ${shape.input} ${sizeClasses.px} ${sizeClasses.control} ring-1 ring-inset transition-[color,background-color,border-radius,box-shadow] duration-80`,
             bgClass,
             ringClass
           )}
@@ -273,16 +255,18 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
         </div>
 
         {/* Error message: `match` pins it visible while the controlled
-            `error` prop stands. Same inset as the label above. */}
+            `error` prop stands. Flush with the label above. */}
         {error && (
           <Field.Error
             match
             className={cn(
-              "text-destructive",
-              compact ? "text-[length:var(--fs-caption-compact,11px)] leading-[var(--lh-caption-compact,14px)] pl-2" : "text-[length:var(--fs-caption,12px)] leading-[var(--lh-caption,16px)] pl-2.5"
+              "flex items-center text-destructive",
+              sizeClasses.gap,
+              sizeClasses.type.caption
             )}
             style={{ fontVariationSettings: fontWeights.normal }}
           >
+            <AlertIcon size={compact ? 12 : 14} strokeWidth={1.75} className="shrink-0" aria-hidden />
             {error}
           </Field.Error>
         )}

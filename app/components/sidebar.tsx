@@ -24,9 +24,8 @@ interface NavEntry {
   name: string;
 }
 
-/** The New dot, in the accent (the changelog's New color): on pages landed
- *  since the latest release (AHEAD_OF_RELEASE), so the dots only mark what
- *  is new this month. */
+/** The New dot, in the accent (the changelog's New color): on every page
+ *  added since NEW_SINCE (recentNew in lib/changelog/load.ts). */
 function NewDot() {
   // Rendered as a flex sibling of the weight-animated label (the row's gap
   // provides the spacing), matching the old NavItem dot's visual position.
@@ -49,7 +48,7 @@ function NavGroup({
   ariaLabel: string;
 }) {
   // Landed since the latest release and listed ahead of the next.
-  const { isNew } = useReleaseMarks();
+  const { isRecent } = useReleaseMarks();
   return (
     // A labelled group (System, Components) gets 16px above it instead of
     // the group's 8px, so each section starts clear of the one before.
@@ -78,7 +77,7 @@ function NavGroup({
             <SidebarMenuItem key={entry.slug}>
               <SidebarMenuButton render={<Link href={href} />} isActive={pathname === href}>
                 {entry.name}
-                {isNew(entry.slug) && <NewDot />}
+                {isRecent(entry.slug) && <NewDot />}
               </SidebarMenuButton>
             </SidebarMenuItem>
           );
@@ -140,7 +139,7 @@ export function SiteSidebar() {
               <SidebarMenuButton render={<Link href="/changelog" />} isActive={pathname === "/changelog"}>
                 Changelog
                 {/* The page itself is new: dotted by hand, unlike the docs
-                    rows, which follow the latest release. */}
+                    rows, which follow the changelog. */}
                 <NewDot />
               </SidebarMenuButton>
             </SidebarMenuItem>

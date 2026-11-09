@@ -350,7 +350,7 @@ function BannerMotion({ fixed, reduceMotion, config, children }: BannerMotionPro
       // f² (0.5fr renders a quarter). The grid's height is the space the
       // banner takes, so clipping there keeps what is shown and what is
       // pushed down the same box.
-      className={cn("grid w-full", fixed && "sticky top-0 z-40")}
+      className={cn("grid w-full", fixed && "sticky top-0 z-[var(--z-sticky,30)]")}
     >
       <div className="min-h-0">
         <motion.div style={{ opacity: shown, scale, y, pointerEvents, transformOrigin: "top" }}>

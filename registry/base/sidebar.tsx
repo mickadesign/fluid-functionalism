@@ -117,7 +117,7 @@ function SidebarSheet({ side, open, onClose, children }: SidebarSheetProps) {
             return (
               <motion.div
                 {...(rest as MotionSafeDivProps)}
-                className="fixed inset-0 bg-black/40 dark:bg-black/80 z-40"
+                className="fixed inset-0 bg-black/40 dark:bg-black/80 z-[var(--z-overlay,40)]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: visible ? 1 : 0 }}
                 transition={visible ? { duration: spring.moderate.duration } : spring.moderate.exit}
@@ -151,7 +151,7 @@ function SidebarSheet({ side, open, onClose, children }: SidebarSheetProps) {
                 data-mobile="true"
                 data-side={side}
                 className={cn(
-                  "fixed inset-y-0 z-50 flex flex-col overflow-hidden outline-none",
+                  "fixed inset-y-0 z-[var(--z-modal,50)] flex flex-col overflow-hidden outline-none",
                   !visible && "pointer-events-none",
                   side === "left" ? "left-0" : "right-0",
                   surfaceClasses(level, 3)

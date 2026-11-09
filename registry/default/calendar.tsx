@@ -10,6 +10,7 @@ import {
   useRef,
   useId,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type FocusEvent,
   type HTMLAttributes,
@@ -140,6 +141,7 @@ interface CalendarContextValue {
   compact: boolean;
   fill: boolean;
   pill: boolean;
+  sharp: boolean;
   mode: "single" | "range";
   /** Single mode: the selected day number. */
   selectedDay: number | null;
@@ -661,7 +663,11 @@ function Months({ className, style, children, ...props }: HTMLAttributes<HTMLDiv
             "z-[3] bg-transparent",
             cellRadius,
             "before:pointer-events-none before:absolute before:inset-px before:border before:border-background before:transition-opacity before:duration-80",
-            cal.pill ? "before:rounded-full" : "before:rounded-[7px]",
+            cal.pill
+              ? "before:rounded-full"
+              : cal.sharp
+                ? "before:rounded-none"
+                : "before:rounded-[7px]",
             !(litFilled || previewGlides)
               ? "before:opacity-0"
               : pressed
@@ -1506,7 +1512,7 @@ function Day({ day, modifiers, className, style, children, ...props }: DayProps)
                 className={cn(
                   "relative bg-foreground",
                   cal.fill ? "aspect-square h-full max-w-full" : "size-[var(--cell-size)]",
-                  cal.pill ? "rounded-full" : "rounded-lg"
+                  cal.pill ? "rounded-full" : cal.sharp ? "rounded-[1px]" : "rounded-lg"
                 )}
               />
             )}
@@ -1596,7 +1602,7 @@ function DayButton({ day, modifiers, className, style, children, ...props }: Day
               "transition-none"
             : "transition-[color,background-color,font-variation-settings] duration-80",
         cal.fill ? "aspect-square h-full max-w-full" : "size-[var(--cell-size)]",
-        cal.pill ? "rounded-full" : "rounded-lg",
+        cal.pill ? "rounded-full" : cal.sharp ? "rounded-[1px]" : "rounded-lg",
         typeClass("body", compact ? "compact" : "default"),
         isEnd
           ? "bg-foreground text-background"
@@ -1741,6 +1747,29 @@ interface CalendarRangeProps extends CalendarBaseProps {
 
 type CalendarProps = CalendarSingleProps | CalendarRangeProps;
 
+// "Today" depends on the clock's time zone: a server in UTC and a viewer west
+// of it sit on different days for part of every day. Marking the server's
+// day in the HTML and the viewer's in the browser fails hydration, and React
+// then re-renders the whole page. So until hydration ends both sides read
+// today in UTC, then the viewer's own day takes over. Keys are numbers
+// (yyyymmdd) so the store snapshot stays stable between reads.
+const subscribeNever = () => () => {};
+function localDayKey() {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+function utcDayKey() {
+  const d = new Date();
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+function useToday(): Date {
+  const key = useSyncExternalStore(subscribeNever, localDayKey, utcDayKey);
+  return useMemo(
+    () => new Date(Math.floor(key / 10000), (Math.floor(key / 100) % 100) - 1, key % 100),
+    [key]
+  );
+}
+
 function Calendar(props: CalendarProps) {
   const {
     mode = "single",
@@ -1773,6 +1802,7 @@ function Calendar(props: CalendarProps) {
   const sizeClasses = useSize(size);
   const compact = sizeClasses.variant === "compact";
   const shape = useShape();
+  const today = useToday();
   const cellSize = cellSizeProp ?? (compact ? 32 : 36);
   const twoMonths = numberOfMonths > 1;
   const showOutsideDays = twoMonths ? false : (showOutsideDaysProp ?? true);
@@ -1844,6 +1874,7 @@ function Calendar(props: CalendarProps) {
       compact,
       fill,
       pill: shape.variant === "pill",
+      sharp: shape.variant === "sharp",
       mode,
       selectedDay:
         mode === "single" && value instanceof Date ? dayNumber(value) : null,
@@ -1873,6 +1904,7 @@ function Calendar(props: CalendarProps) {
 
   const shared = {
     ...rest,
+    today: rest.today ?? today,
     numberOfMonths,
     showOutsideDays,
     showWeekNumber,

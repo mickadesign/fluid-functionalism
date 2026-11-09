@@ -11,6 +11,9 @@ export interface ReleaseMarks {
   /** Landed after the latest release: badged New until the release that
    *  lists them (AHEAD_OF_RELEASE in lib/changelog/load.ts). */
   ahead: string[];
+  /** Added since NEW_SINCE, across releases (recentNew in
+   *  lib/changelog/load.ts): the sidebar's dots. */
+  recent?: string[];
 }
 
 interface MarkLookup {
@@ -19,9 +22,12 @@ interface MarkLookup {
    *  what is new this month. */
   isNew: (slug: string) => boolean;
   isUpdated: (slug: string) => boolean;
+  /** Added since NEW_SINCE, so the sidebar keeps dotting a page for a
+   *  while after the release that lists it. */
+  isRecent: (slug: string) => boolean;
 }
 
-const NONE: MarkLookup = { isNew: () => false, isUpdated: () => false };
+const NONE: MarkLookup = { isNew: () => false, isUpdated: () => false, isRecent: () => false };
 
 const ReleaseMarksContext = createContext<MarkLookup>(NONE);
 
@@ -29,9 +35,11 @@ export function ReleaseMarksProvider({ marks, children }: { marks: ReleaseMarks;
   const lookup = useMemo<MarkLookup>(() => {
     const ahead = new Set(marks.ahead);
     const updated = new Set(marks.updated);
+    const recent = new Set(marks.recent);
     return {
       isNew: (slug) => ahead.has(slug),
       isUpdated: (slug) => updated.has(slug),
+      isRecent: (slug) => recent.has(slug),
     };
   }, [marks]);
   return <ReleaseMarksContext.Provider value={lookup}>{children}</ReleaseMarksContext.Provider>;

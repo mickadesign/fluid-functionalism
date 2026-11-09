@@ -124,7 +124,7 @@ export function MobileDrawer({
             return (
               <motion.div
                 {...(rest as MotionSafeDivProps)}
-                className="fixed inset-0 bg-black/40 dark:bg-black/80 z-40"
+                className="fixed inset-0 bg-black/40 dark:bg-black/80 z-[var(--z-overlay,40)]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: open ? 1 : 0 }}
                 transition={open ? { duration: 0.16 } : spring.moderate.exit}
@@ -145,7 +145,7 @@ export function MobileDrawer({
             return (
               <motion.div
                 {...(rest as MotionSafeDivProps)}
-                className={`fixed top-0 left-0 bottom-0 w-64 ${surfaceClasses(level, 3)} z-50 overflow-y-auto p-4`}
+                className={`fixed top-0 left-0 bottom-0 w-64 ${surfaceClasses(level, 3)} z-[var(--z-modal,50)] overflow-y-auto p-4`}
                 style={baseStyle as React.CSSProperties | undefined}
                 initial={{ x: "-100%" }}
                 animate={{ x: open ? 0 : "-100%" }}
