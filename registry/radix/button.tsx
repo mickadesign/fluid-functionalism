@@ -142,6 +142,19 @@ const bgVariants: Record<string, string> = {
     "[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_15%,transparent),color-mix(in_oklab,var(--btn-red)_20%,transparent))] group-hover:[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_25%,transparent),color-mix(in_oklab,var(--btn-red)_30%,transparent))] group-active:[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_15%,transparent),color-mix(in_oklab,var(--btn-red)_20%,transparent))] bg-[var(--btn-bg)] shadow-[0_0_0_1px_var(--btn-bg)] group-active:shadow-[0_0_0_0px_var(--btn-bg)]",
 };
 
+/* A loading button's fill: each variant above minus its group-hover: and
+   group-active: overrides, so it holds the rest colors while the pointer is
+   still over the button that was just clicked. */
+const loadingBgVariants: Record<string, string> = Object.fromEntries(
+  Object.entries(bgVariants).map(([variant, classes]) => [
+    variant,
+    classes
+      .split(" ")
+      .filter((c) => !c.startsWith("group-hover:") && !c.startsWith("group-active:"))
+      .join(" "),
+  ])
+);
+
 /* Forced-active (`active` prop): pressed colors at full size; the
    geometric press-collapse still reacts on top. */
 const activeBgVariants: Record<string, string> = {
@@ -209,13 +222,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const isCompact =
       resolvedSize === "compact" || resolvedSize === "icon-compact";
     const iconSize = isCompact ? 14 : 16;
-    // Spinner box tracks the button height so the loading glyph stays
-    // proportionate across sizes.
-    const spinnerSizeClass = isCompact ? "h-7 w-7" : "h-9 w-9";
     const shape = useShape();
     const bgClass = active
       ? activeBgVariants[variant ?? "primary"]
-      : bgVariants[variant ?? "primary"];
+      : loading
+        ? loadingBgVariants[variant ?? "primary"]
+        : bgVariants[variant ?? "primary"];
 
     const internals = (
       <>
@@ -239,22 +251,28 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 )}
               </span>
               <span className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  className={spinnerSizeClass}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <path
-                    d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
-                    stroke="currentColor"
-                    strokeWidth="1.125"
-                    strokeLinecap="round"
-                    pathLength="100"
-                    style={{
-                      strokeDasharray: "15 85",
-                      animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
-                    }}
-                  />
+                {/* Two arcs on one eased lap per second: they stretch while
+                    turning fast and shrink back into 2 dots as they settle.
+                    The offset moves half the growth so both ends move. The
+                    dashes sit at 25% and 75% of the path so neither crosses
+                    its start: a dash split there gets 2 extra caps and draws
+                    1.5px too long. rotate(-90) puts the dots back at 3 and
+                    9 o'clock. The 0.01 dash (not 0) keeps Safari drawing
+                    the round caps as dots. */}
+                <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none">
+                  <g className="origin-center [transform-box:fill-box] animate-[spinner-turn_1s_cubic-bezier(0.65,0,0.35,1)_infinite] motion-reduce:[animation-duration:2s]">
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6.25"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      pathLength="100"
+                      transform="rotate(-90 8 8)"
+                      className="animate-[spinner-breathe_1s_cubic-bezier(0.65,0,0.35,1)_infinite] motion-reduce:[animation-duration:2s]"
+                    />
+                  </g>
                 </svg>
               </span>
             </>
