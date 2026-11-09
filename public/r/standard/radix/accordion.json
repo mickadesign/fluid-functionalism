@@ -6,7 +6,7 @@
   "dependencies": [
     "motion",
     "@radix-ui/react-accordion",
-    "lucide-react"
+    "lucide-react@^1.70.0"
   ],
   "registryDependencies": [
     "utils",

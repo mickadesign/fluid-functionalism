@@ -4,7 +4,7 @@
   "title": "Field",
   "description": "Compose a label, a control, helper text, and a validation message into one accessible field: fieldsets, legends, groups, separators, and vertical, horizontal, or responsive layouts.",
   "dependencies": [
-    "lucide-react"
+    "lucide-react@^1.70.0"
   ],
   "registryDependencies": [
     "utils",
