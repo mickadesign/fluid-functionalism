@@ -114,7 +114,25 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"taFU9"`);
+    expect(code).toMatchInlineSnapshot(`"tbO0f"`);
+  });
+
+  // Version "a" codes were published before editable cells joined the
+  // table; they must keep decoding, with editable at its default.
+  it("a version-a code still decodes", () => {
+    const back = decodeDataTablePreset("taFU9");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("a");
+    expect(back.preset).toEqual({
+      ...DEFAULT_DATA_TABLE_PRESET,
+      filter: "all",
+      selection: false,
+      pageSize: "20",
+      lines: "wrap",
+      align: "top",
+      headerIcons: false,
+      flavor: "base",
+    });
   });
 });
 
@@ -138,6 +156,8 @@ const MATRIX = [
   { lines: "wrap", align: "center", pageSize: "5" },
   { selection: false, rowActions: true, pageSize: "20", filter: "all" },
   { shape: "pill", size: "compact", flavor: "base", headerIcons: false },
+  { editable: true },
+  { editable: true, headerIcons: false, selection: false, rowActions: false, pagination: false },
 ];
 
 describe("data table preset install generator", () => {

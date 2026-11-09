@@ -10,7 +10,13 @@
 
 import type { PresetFile } from "./sidebar-install";
 import type { PresetGenerator } from "./generators";
-import { type DataTablePreset, DATA_TABLE_SAMPLE_ROWS } from "./data-table-options";
+import {
+  type DataTablePreset,
+  DATA_TABLE_PROPS_OPTIONS,
+  DATA_TABLE_SAMPLE_ROWS,
+  DATA_TABLE_TAG_OPTIONS,
+  dataTableTagsFor,
+} from "./data-table-options";
 
 const PRIMITIVE_COLOR: Record<string, string> = {
   "Radix + Base UI": "blue",
@@ -35,8 +41,10 @@ function dataTableDemoFile(p: DataTablePreset): string {
   const icon = (name: string) => (icons ? `, icon: ${name}` : "");
   const l: string[] = [];
 
+  const edit = p.editable;
   l.push(`"use client";`);
   l.push(``);
+  if (edit) l.push(`import { useState } from "react";`);
   l.push(`import {`);
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`} from "@/components/ui/data-table";`);
@@ -55,13 +63,14 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  primitives: string;`);
   l.push(`  props: number;`);
   l.push(`  added: string;`);
+  if (edit) l.push(`  tags: string[];`);
   l.push(`};`);
   l.push(``);
   l.push(`// Sample rows in the playground's shape. Replace with your own data.`);
   l.push(`const ROWS: Row[] = [`);
   for (const r of DATA_TABLE_SAMPLE_ROWS) {
     l.push(
-      `  { slug: ${JSON.stringify(r.slug)}, name: ${JSON.stringify(r.name)}, summary: ${JSON.stringify(r.summary)}, primitives: ${JSON.stringify(r.primitives)}, props: ${r.props}, added: ${JSON.stringify(r.added)} },`
+      `  { slug: ${JSON.stringify(r.slug)}, name: ${JSON.stringify(r.name)}, summary: ${JSON.stringify(r.summary)}, primitives: ${JSON.stringify(r.primitives)}, props: ${r.props}, added: ${JSON.stringify(r.added)}${edit ? `, tags: ${JSON.stringify(dataTableTagsFor(r.slug))}` : ""} },`
     );
   }
   l.push(`];`);
@@ -76,7 +85,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    accessorKey: "name",`);
   l.push(`    header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,`);
   l.push(`    enableHiding: false,`);
-  l.push(`    meta: { label: "Component"${icon("SquareLibrary")} },`);
+  l.push(`    meta: { label: "Component"${icon("SquareLibrary")}${edit ? `, editor: "text"` : ""} },`);
   l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "primitives",`);
@@ -97,13 +106,25 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  {`);
   l.push(`    accessorKey: "props",`);
   l.push(`    header: ({ column }) => <DataTableColumnHeader column={column} title="Props" />,`);
-  l.push(`    meta: { label: "Props", className: "tabular-nums"${icon("SlidersHorizontal")} },`);
+  l.push(
+    `    meta: { label: "Props", className: "tabular-nums"${icon("SlidersHorizontal")}${edit ? `, editor: { type: "number", options: ${JSON.stringify(DATA_TABLE_PROPS_OPTIONS).replace(/,/g, ", ")} }` : ""} },`
+  );
   l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "added",`);
   l.push(`    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,`);
-  l.push(`    meta: { label: "Added", className: "tabular-nums whitespace-nowrap"${icon("Calendar")} },`);
+  l.push(`    meta: { label: "Added", className: "tabular-nums whitespace-nowrap"${icon("Calendar")}${edit ? `, editor: "date"` : ""} },`);
   l.push(`  },`);
+  if (edit) {
+    l.push(`  {`);
+    l.push(`    accessorKey: "tags",`);
+    l.push(`    header: "Tags",`);
+    l.push(`    enableSorting: false,`);
+    l.push(
+      `    meta: { label: "Tags", className: "min-w-56", editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true } },`
+    );
+    l.push(`  },`);
+  }
   l.push(`  {`);
   l.push(`    accessorKey: "slug",`);
   l.push(`    header: "Website",`);
@@ -134,8 +155,12 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`];`);
   l.push(``);
   l.push(`export function DataTableDemo() {`);
+  if (edit) {
+    l.push(`  // The table shows what your data holds: each edit writes back here.`);
+    l.push(`  const [rows, setRows] = useState(ROWS);`);
+  }
   l.push(`  const table = useDataTable({`);
-  l.push(`    data: ROWS,`);
+  l.push(`    data: ${edit ? "rows" : "ROWS"},`);
   l.push(`    columns,`);
   l.push(`    pageSize: ${p.pagination ? p.pageSize : "ROWS.length"},`);
   l.push(`    getRowId: (row) => row.slug,`);
@@ -160,7 +185,14 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.reorder ? ["reorderColumns"] : []),
     ...(p.align !== "auto" ? [`cellAlign="${p.align}"`] : []),
   ];
-  l.push(`      <DataTable ${tableProps.join(" ")} />`);
+  if (edit) {
+    l.push(`      <DataTable`);
+    for (const prop of tableProps) l.push(`        ${prop}`);
+    l.push(`        onCellEdit={({ row, columnId, value }) =>`);
+    l.push(`          setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`);
+    l.push(`        }`);
+    l.push(`      />`);
+  } else l.push(`      <DataTable ${tableProps.join(" ")} />`);
   if (p.pagination) l.push(`      <DataTablePagination table={table} />`);
   l.push(`    </div>`);
   l.push(`  );`);

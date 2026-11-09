@@ -2146,7 +2146,9 @@
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/scroll-area.json",
         "skeleton",
-        "https://www.fluidfunctionalism.com/r/reveal.json"
+        "https://www.fluidfunctionalism.com/r/reveal.json",
+        "https://www.fluidfunctionalism.com/r/combobox.json",
+        "https://www.fluidfunctionalism.com/r/date-picker.json"
       ],
       "files": [
         {

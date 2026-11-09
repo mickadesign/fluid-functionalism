@@ -38,6 +38,9 @@ export interface DataTablePlayState {
   lines: DataTableLines;
   align: "auto" | "center" | "top";
   headerIcons: boolean;
+  /** Editable cells: Component (text), Props (number), Added (date) and a
+   *  Tags column. */
+  editable: boolean;
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -54,6 +57,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   lines: "1",
   align: "auto",
   headerIcons: true,
+  editable: false,
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -63,7 +67,8 @@ export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
 
 // Value arrays are ordered DEFAULT-FIRST (pageSize [10, 5, 20]). The three
 // site-global fields stay LAST, mirroring SIDEBAR_PRESET_FIELDS exactly.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version a, before editable cells: kept so its codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_A: readonly PresetField[] = [
   { key: "filter", values: ["column", "all", "none"], bits: 2 },
   { key: "viewMenu", values: [true, false], bits: 1 },
   { key: "selection", values: [true, false], bits: 1 },
@@ -80,14 +85,33 @@ export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
+// Version b adds editable cells.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  { key: "filter", values: ["column", "all", "none"], bits: 2 },
+  { key: "viewMenu", values: [true, false], bits: 1 },
+  { key: "selection", values: [true, false], bits: 1 },
+  { key: "rowActions", values: [true, false], bits: 1 },
+  { key: "pagination", values: [true, false], bits: 1 },
+  { key: "pageSize", values: ["10", "5", "20"], bits: 2 },
+  { key: "resize", values: [true, false], bits: 1 },
+  { key: "reorder", values: [true, false], bits: 1 },
+  { key: "lines", values: ["1", "2", "wrap"], bits: 2 },
+  { key: "align", values: ["auto", "center", "top"], bits: 2 },
+  { key: "headerIcons", values: [true, false], bits: 1 },
+  { key: "editable", values: [false, true], bits: 1 },
+  { key: "flavor", values: ["radix", "base"], bits: 3 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
+  { key: "size", values: ["default", "compact"], bits: 2 },
+];
+
 // ── Registration (tag "t") ──────────────────────────────────────────────────
 
 export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "a",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "b",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
@@ -134,3 +158,52 @@ export const DATA_TABLE_SAMPLE_ROWS = [
   { slug: "tabs", name: "Tabs", summary: "Tab navigation with smooth pill animations.", primitives: "Radix + Base UI", props: 12, added: "2026-04-05" },
   { slug: "button", name: "Button", summary: "Versatile button with variants, sizes, loading state, and icon support.", primitives: "Radix + Base UI", props: 14, added: "2026-02-16" },
 ] as const;
+
+// ── Editable cells ──────────────────────────────────────────────────────────
+// The Tags column the editable preset adds, and the lists its editors offer.
+
+export const DATA_TABLE_TAG_OPTIONS = ["Data", "Feedback", "Form", "Layout", "Navigation", "Overlay"] as const;
+
+export const DATA_TABLE_PROPS_OPTIONS = [5, 10, 20, 30, 40, 50] as const;
+
+const TAGS: Record<string, readonly string[]> = {
+  accordion: ["Layout"],
+  "ask-user-questions": ["Form"],
+  badge: ["Data"],
+  banner: ["Feedback"],
+  breadcrumb: ["Navigation"],
+  button: ["Form"],
+  calendar: ["Form", "Data"],
+  card: ["Layout"],
+  "carousel-dots": ["Navigation"],
+  "chat-message": ["Data"],
+  checkbox: ["Form"],
+  "checkbox-group": ["Form"],
+  "color-picker": ["Form", "Overlay"],
+  combobox: ["Form", "Overlay"],
+  "command-menu": ["Navigation", "Overlay"],
+  "data-table": ["Data"],
+  "date-picker": ["Form", "Overlay"],
+  dialog: ["Overlay"],
+  dropdown: ["Overlay"],
+  field: ["Form"],
+  input: ["Form"],
+  "input-copy": ["Form"],
+  "input-group": ["Form"],
+  "input-message": ["Form"],
+  "radio-group": ["Form"],
+  select: ["Form", "Overlay"],
+  sidebar: ["Navigation", "Layout"],
+  slider: ["Form"],
+  switch: ["Form"],
+  table: ["Data"],
+  tabs: ["Navigation"],
+  textarea: ["Form"],
+  "thinking-indicator": ["Feedback"],
+  "thinking-steps": ["Feedback"],
+  tooltip: ["Overlay"],
+};
+
+export function dataTableTagsFor(slug: string): string[] {
+  return [...(TAGS[slug] ?? [])];
+}

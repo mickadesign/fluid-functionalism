@@ -83,6 +83,7 @@ import {
   Maximize2,
   Minimize2,
   GripVertical,
+  Tag,
 } from "lucide-react";
 
 // The whole contract an icon has to meet. Components pass `strokeWidth` and
@@ -115,7 +116,7 @@ export type IconName =
   | "pencil" | "scaling" | "skip-forward" | "corner-down-right" | "corner-down-left"
   | "panel-left" | "panel-right" | "chevrons-up-down" | "more-horizontal" | "more-vertical" | "calendar" | "folder"
   | "sliders-horizontal" | "info" | "circle-alert" | "file" | "minus"
-  | "maximize" | "minimize" | "grip-vertical";
+  | "maximize" | "minimize" | "grip-vertical" | "tag";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
   "chevron-right": ChevronRight,
@@ -184,6 +185,7 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "maximize": Maximize2,
   "minimize": Minimize2,
   "grip-vertical": GripVertical,
+  tag: Tag,
 };
 
 const IconContext = createContext<Record<IconName, IconComponent> | null>(null);

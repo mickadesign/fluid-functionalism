@@ -2146,7 +2146,9 @@
         "shape-context",
         "scroll-area",
         "skeleton",
-        "reveal"
+        "reveal",
+        "combobox",
+        "date-picker"
       ],
       "files": [
         {

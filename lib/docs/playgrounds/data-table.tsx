@@ -34,6 +34,9 @@ import { cn } from "@/lib/utils";
 import type { PlaygroundProps } from "./types";
 import {
   DATA_TABLE_DEFAULT_CODE,
+  DATA_TABLE_PROPS_OPTIONS,
+  DATA_TABLE_TAG_OPTIONS,
+  dataTableTagsFor,
   DATA_TABLE_PRESET_DEF,
   DEFAULT_DATA_TABLE_STATE,
   decodeDataTablePreset,
@@ -102,6 +105,7 @@ export type ComponentRow = {
   props: number;
   fluidHover: boolean;
   added: string;
+  tags: string[];
 };
 
 const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
@@ -118,6 +122,7 @@ export function buildRows(): ComponentRow[] {
     props: (API_REFERENCE[slug] ?? []).reduce((sum, table) => sum + table.props.length, 0),
     fluidHover: fluid.has(slug),
     added: ADDED[slug] ?? "",
+    tags: dataTableTagsFor(slug),
   }));
 }
 
@@ -144,6 +149,7 @@ function buildColumns(o: {
   lines: Lines;
   /** The icon set, when headers show icons. */
   icons: Icons | null;
+  editable: boolean;
 }): ColumnDef<ComponentRow>[] {
   const icon = (name: keyof Icons) => (o.icons ? o.icons[name] : undefined);
   return [
@@ -151,7 +157,7 @@ function buildColumns(o: {
     {
       accessorKey: "name",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,
-      meta: { label: "Component", icon: icon("square-library") },
+      meta: { label: "Component", icon: icon("square-library"), editor: o.editable ? "text" : undefined },
       enableHiding: false,
     },
     {
@@ -176,14 +182,39 @@ function buildColumns(o: {
     {
       accessorKey: "props",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Props" />,
-      meta: { label: "Props", className: "tabular-nums", icon: icon("sliders-horizontal") },
+      meta: {
+        label: "Props",
+        className: "tabular-nums",
+        icon: icon("sliders-horizontal"),
+        editor: o.editable ? { type: "number", options: DATA_TABLE_PROPS_OPTIONS } : undefined,
+      },
     },
     {
       accessorKey: "added",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,
       cell: ({ row }) => formatDay(row.original.added),
-      meta: { label: "Added", className: "tabular-nums whitespace-nowrap", icon: icon("calendar") },
+      meta: {
+        label: "Added",
+        className: "tabular-nums whitespace-nowrap",
+        icon: icon("calendar"),
+        editor: o.editable ? "date" : undefined,
+      },
     },
+    ...(o.editable
+      ? [
+          {
+            accessorKey: "tags",
+            header: "Tags",
+            enableSorting: false,
+            meta: {
+              label: "Tags",
+              className: "min-w-56",
+              icon: icon("tag"),
+              editor: { type: "tags", options: DATA_TABLE_TAG_OPTIONS, creatable: true },
+            },
+          } satisfies ColumnDef<ComponentRow>,
+        ]
+      : []),
     {
       accessorKey: "website",
       header: "Website",
@@ -270,7 +301,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
     ...(o.headerIcons
-      ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, Link, File } from "lucide-react";`]
+      ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
       : []),
     ``,
     `const columns: ColumnDef<ComponentRow>[] = [`,
@@ -279,7 +310,9 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    accessorKey: "name",`,
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,`,
     `    enableHiding: false,`,
-    ...(o.headerIcons ? [`    meta: { icon: SquareLibrary },`] : []),
+    ...(o.headerIcons || o.editable
+      ? [`    meta: { ${[o.headerIcons && "icon: SquareLibrary", o.editable && `editor: "text"`].filter(Boolean).join(", ")} },`]
+      : []),
     `  },`,
     `  {`,
     `    accessorKey: "primitives",`,
@@ -291,13 +324,29 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  {`,
     `    accessorKey: "props",`,
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Props" />,`,
-    ...(o.headerIcons ? [`    meta: { icon: SlidersHorizontal },`] : []),
+    ...(o.headerIcons || o.editable
+      ? [
+          `    meta: { ${[o.headerIcons && "icon: SlidersHorizontal", o.editable && `editor: { type: "number", options: [${DATA_TABLE_PROPS_OPTIONS.join(", ")}] }`].filter(Boolean).join(", ")} },`,
+        ]
+      : []),
     `  },`,
     `  {`,
     `    accessorKey: "added",`,
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,`,
-    ...(o.headerIcons ? [`    meta: { icon: Calendar },`] : []),
+    ...(o.headerIcons || o.editable
+      ? [`    meta: { ${[o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`]
+      : []),
     `  },`,
+    ...(o.editable
+      ? [
+          `  {`,
+          `    accessorKey: "tags",`,
+          `    header: "Tags",`,
+          `    enableSorting: false,`,
+          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
+          `  },`,
+        ]
+      : []),
     `  {`,
     `    accessorKey: "website",`,
     `    header: "Website",`,
@@ -321,8 +370,9 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       : []),
     `];`,
     ``,
+    ...(o.editable ? [`const [rows, setRows] = useState(components);`, ``] : []),
     `const table = useDataTable({`,
-    `  data: components,`,
+    `  data: ${o.editable ? "rows" : "components"},`,
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     `  initialState: {`,
@@ -340,7 +390,19 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  </div>`,
         ]
       : []),
-    `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
+    ...(o.editable
+      ? [
+          `  <DataTable`,
+          `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}`,
+          `    // Each edit writes back to your data; the table shows what it holds.`,
+          `    onCellEdit={({ row, columnId, value }) =>`,
+          `      setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`,
+          `    }`,
+          `  />`,
+        ]
+      : [
+          `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
+        ]),
     ...(o.pagination ? [`  <DataTablePagination table={table} />`] : []),
     `</div>`,
   ].join("\n");
@@ -365,7 +427,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // Expanded, the table fills the layer's height (search and pagination
   // pinned, the rows scrolling between them).
   const [expanded, setExpanded] = useState(false);
-  const [data] = useState(buildRows);
+  const [data, setData] = useState(buildRows);
   const icons = useIcons();
   const columns = useMemo(
     () =>
@@ -374,8 +436,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         rowActions: state.rowActions,
         lines: state.lines,
         icons: state.headerIcons ? icons : null,
+        editable: state.editable,
       }),
-    [state.selection, state.rowActions, state.lines, state.headerIcons, icons]
+    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons]
   );
 
   const table = useDataTable({
@@ -406,7 +469,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     }
     if (!next.selection) table.resetRowSelection();
     if (!next.viewMenu) table.resetColumnVisibility();
-    if (!next.resize) table.resetColumnSizing();
+    // The Tags column comes and goes with editing: the widths are read
+    // again, so it starts at its own width rather than none.
+    if (!next.resize || next.editable !== prev.editable) table.resetColumnSizing();
     if (!next.reorder) table.resetColumnOrder();
     // The Summary control sets the column's own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
@@ -440,6 +505,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       lines: pick(["1", "2", "wrap"] as const),
       align: pick(["auto", "auto", "center", "top"] as const),
       headerIcons: Math.random() > 0.3,
+      editable: Math.random() > 0.5,
     });
 
   const toolbar = (state.filter !== "none" || state.viewMenu) && (
@@ -468,6 +534,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         fill={expanded}
         loading={loading}
         empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
+        onCellEdit={
+          state.editable
+            ? ({ row, columnId, value }) =>
+                setData((old) =>
+                  old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r))
+                )
+            : undefined
+        }
       />
       {state.pagination && <DataTablePagination table={table} />}
     </div>
@@ -502,6 +576,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         label="Row actions"
         checked={state.rowActions}
         onToggle={() => set("rowActions", !state.rowActions)}
+        className={PLAY_SWITCH}
+      />
+      <Switch
+        label="Editable cells"
+        checked={state.editable}
+        onToggle={() => set("editable", !state.editable)}
         className={PLAY_SWITCH}
       />
       <PlayField label="Summary">

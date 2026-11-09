@@ -2,7 +2,9 @@
 
 import {
   Fragment,
+  createContext,
   forwardRef,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -71,6 +73,16 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import {
+  Combobox,
+  ComboboxChips,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
 
 // ---------------------------------------------------------------------------
 // DataTable is TanStack Table drawn with the library's Table: the same fluid
@@ -100,7 +112,34 @@ declare module "@tanstack/react-table" {
     /** An icon before the header's title. DataTable draws it for a string
      *  `header`; DataTableColumnHeader draws it inside its sort button. */
     icon?: IconComponent;
+    /** Makes the column's cells editable when DataTable has `onCellEdit`:
+     *  `"text"` a text field, `"number"` a field with a list of `options`
+     *  that also takes any number typed, `"date"` a date picker, `"tags"` a
+     *  chips field over `options` (`creatable` adds what's typed). The
+     *  editor draws the cell, in place of the column's `cell`. */
+    editor?: DataTableEditor;
   }
+}
+
+type DataTableEditor =
+  | "text"
+  | "number"
+  | "date"
+  | "tags"
+  | { type: "text"; placeholder?: string }
+  | { type: "number"; options?: readonly number[]; placeholder?: string }
+  | { type: "date"; placeholder?: string }
+  | { type: "tags"; options?: readonly string[]; creatable?: boolean; placeholder?: string };
+
+/** One edit, as DataTable's `onCellEdit` receives it. Write `value` into
+ *  your data: the table shows what your data holds. */
+interface DataTableCellEdit<TData> {
+  row: Row<TData>;
+  columnId: string;
+  /** A string for text, a number (or null when emptied) for number, a Date
+   *  (an ISO "YYYY-MM-DD" when the cell held a string) or null for date,
+   *  a string[] for tags. */
+  value: unknown;
 }
 
 // ── useDataTable ─────────────────────────────────────────
@@ -146,6 +185,9 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // DataTable installs its layout snapshot here, so a change made outside
   // it (the Columns menu, Wrap text) can be animated.
   const captureRef = useRef<() => void>(() => {});
+  // DataTable installs this, so a part outside it (the search field's ↓)
+  // can hand focus to the rows.
+  const focusRef = useRef<() => boolean>(() => false);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -154,6 +196,10 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           captureRef.current = capture;
         },
         captureLayout: () => captureRef.current(),
+        _registerFocus: (focus: () => boolean) => {
+          focusRef.current = focus;
+        },
+        focusFirstRow: () => focusRef.current(),
         setColumnLines: (id: string, lines: ColumnLines | undefined) => {
           captureRef.current();
           setLines((old) => {
@@ -180,6 +226,11 @@ interface DataTableExtras {
   captureLayout: () => void;
   /** @internal DataTable installs its layout snapshot here. */
   _registerLayout: (capture: () => void) => void;
+  /** Moves focus to the first body row (or its first control). False when
+   *  there is no row to focus. */
+  focusFirstRow: () => boolean;
+  /** @internal DataTable installs focusFirstRow here. */
+  _registerFocus: (focus: () => boolean) => void;
   /** Overrides a column's `meta.lines`; `undefined` hands it back. */
   setColumnLines: (id: string, lines: ColumnLines | undefined) => void;
 }
@@ -239,6 +290,13 @@ interface DataTableProps<TData> {
    *  sticks to the top. For a table in a fixed-height panel, with the
    *  search above and the pagination below staying in view. */
   fill?: boolean;
+  /** Turns on the editors of columns with `meta.editor`, and receives each
+   *  change as it's made (a keystroke, a pick). While an editor has focus
+   *  or an open popup, the rows hold their order, so a sorted column
+   *  doesn't move the row from under you; they settle into place once
+   *  focus leaves the table's editors. Escape puts back the value the
+   *  editor started with. */
+  onCellEdit?: (edit: DataTableCellEdit<TData>) => void;
   className?: string;
 }
 
@@ -355,10 +413,21 @@ function DataTable<TData>({
   fill = false,
   loading = false,
   loadingRows,
+  onCellEdit,
   className,
 }: DataTableProps<TData>) {
   "use no memo";
-  const rows = table.getRowModel().rows;
+  // While a cell is being edited the rows hold the order they had when the
+  // editing began (each one read fresh, so edits still show); the sort,
+  // search and paging catch up once focus leaves the editors.
+  const [heldOrder, setHeldOrder] = useState<string[] | null>(null);
+  const liveRows = table.getRowModel().rows;
+  const rows = heldOrder
+    ? heldOrder.flatMap((id) => {
+        const row = table.getCoreRowModel().rowsById[id];
+        return row ? [row] : [];
+      })
+    : liveRows;
   const visible = table.getVisibleLeafColumns();
   const columnCount = visible.length;
   // The last resizable column takes whatever width is left, so fixed
@@ -476,6 +545,24 @@ function DataTable<TData>({
       root.removeAttribute("data-scrolled");
     };
   }, [fill]);
+
+  // Editors hold the row order while they have focus (see heldOrder). A
+  // count, so moving from one editor to the next keeps the hold; the last
+  // one out records the layout, so the rows glide to their sorted places.
+  const holds = useRef(0);
+  const editing: EditContextValue = {
+    hold: () => {
+      if (holds.current++ === 0) setHeldOrder(rows.map((r) => r.id));
+    },
+    release: () => {
+      if (--holds.current > 0) return;
+      holds.current = 0;
+      captureLayout();
+      setHeldOrder(null);
+    },
+    commit: (row, columnId, value) =>
+      onCellEdit?.({ row: row as Row<TData>, columnId, value }),
+  };
 
   const registerLayout = (table as Partial<DataTableExtras>)._registerLayout;
   useLayoutEffect(() => {
@@ -642,65 +729,102 @@ function DataTable<TData>({
     table.setColumnSizing((old) => ({ ...widths, ...old }));
   }, [resizeColumns, seeded, table]);
   const sized = resizeColumns && seeded;
-  // Keys inside the table body:
-  //   ↑ / ↓        the same column in the row above / below
-  //   Home / End   the same column in the first / last row
-  //   Shift + ↑ ↓  also carries the selection along, like Shift-click
-  //   ⌘A / Ctrl+A  selects every row on the page
-  //   Esc          clears the selection
-  // "The same column" is its first focusable control: the selection box,
-  // a link, the row menu. Rows without one are skipped.
+  // Keys, like a spreadsheet's rows (Google Sheets, Gmail):
+  //   ↓ on a header  the first row
+  //   ↑ / ↓          the row above / below; Home / End the first / last.
+  //                  From a control (checkbox, link, row menu) it's the same
+  //                  column's control in that row
+  //   Shift + ↑ ↓    grows or shrinks the selection from where it started
+  //   X              selects or clears the focused row (Space too, when
+  //                  rows don't open with onRowClick)
+  //   Enter          opens the row (onRowClick)
+  //   ⌘A / Ctrl+A    selects every row, on every page
+  //   Esc            clears the selection
+  // Rows are focusable whenever they can be selected or opened: one tab
+  // stop for the body (the row last focused, else the first).
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
+  const rowsFocusable = hasSelection || !!onRowClick;
+  // The far end of a Shift + arrow range, so the next step can shrink it.
+  const rangeHead = useRef<string | null>(null);
+  const extendTo = (fromId: string, toId: string) => {
+    const anchor = selectionAnchors.get(table.getState) ?? fromId;
+    const ids = rows.map((r) => r.id);
+    const span = (a: string, b: string) => {
+      const i = ids.indexOf(a);
+      const j = ids.indexOf(b);
+      return i === -1 || j === -1 ? [] : ids.slice(Math.min(i, j), Math.max(i, j) + 1);
+    };
+    const before = new Set(span(anchor, rangeHead.current ?? fromId));
+    const after = new Set(span(anchor, toId));
+    table.setRowSelection((old) => {
+      const next = { ...old };
+      for (const id of before) if (!after.has(id)) delete next[id];
+      for (const id of after) next[id] = true;
+      return next;
+    });
+    selectionAnchors.set(table.getState, anchor);
+    rangeHead.current = toId;
+  };
+  const toggleRow = (id: string) => {
+    const row = rows.find((r) => r.id === id);
+    if (!row?.getCanSelect()) return;
+    row.toggleSelected();
+    selectionAnchors.set(table.getState, id);
+    rangeHead.current = null;
+  };
+  const focusFirstRow = () => {
+    const tr = wrapRef.current?.querySelector<HTMLElement>("tbody tr[data-row-id]");
+    if (!tr) return false;
+    const target = rowsFocusable
+      ? tr
+      : tr.querySelector<HTMLElement>('button, a[href], input, [role=checkbox], [tabindex]:not([tabindex="-1"])');
+    if (!target) return false;
+    target.focus();
+    return true;
+  };
   const onBodyKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     const target = e.target as HTMLElement;
-    // A clickable row focused as a whole (see the row's tabIndex): arrows
-    // and Home / End move between rows, Enter or Space opens it.
-    if (onRowClick && target.matches("tbody tr[data-row-id]")) {
-      const bodyRows = Array.from(
-        (target.parentElement as HTMLTableSectionElement).querySelectorAll<HTMLElement>("tr[data-row-id]")
-      );
-      const at = bodyRows.indexOf(target);
-      const to =
-        e.key === "ArrowDown" ? at + 1
-        : e.key === "ArrowUp" ? at - 1
-        : e.key === "Home" ? 0
-        : e.key === "End" ? bodyRows.length - 1
-        : null;
-      if (to !== null && !e.altKey && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        bodyRows[Math.max(0, Math.min(bodyRows.length - 1, to))]?.focus();
-        return;
-      }
-      if ((e.key === "Enter" || e.key === " ") && !e.repeat) {
-        e.preventDefault();
-        const row = rows.find((r) => r.id === target.dataset.rowId);
-        if (row) onRowClick(row);
-        return;
-      }
-    }
-    const td = target.closest("td");
-    if (!td || target.closest("input, textarea, select, [contenteditable=true]")) return;
+    // Typing in a field (a search, an editable cell) keeps its keys.
+    if (target.closest("input, textarea, select, [contenteditable=true]")) return;
     const mod = e.metaKey || e.ctrlKey;
-    if (hasSelection && mod && e.key.toLowerCase() === "a") {
+    if (hasSelection && mod && !e.altKey && e.key.toLowerCase() === "a") {
       e.preventDefault();
-      table.toggleAllPageRowsSelected(true);
+      table.toggleAllRowsSelected(true);
       return;
     }
     if (hasSelection && e.key === "Escape" && Object.keys(table.getState().rowSelection).length) {
       e.preventDefault();
       table.resetRowSelection();
+      rangeHead.current = null;
       return;
     }
-    if (mod || e.altKey || !["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
-    const tr = td.parentElement as HTMLTableRowElement;
+    if (mod || e.altKey) return;
+    if (target.closest("thead")) {
+      // A header steps down into the rows.
+      if (e.key === "ArrowDown" && focusFirstRow()) e.preventDefault();
+      return;
+    }
+    const tr = target.closest<HTMLTableRowElement>("tbody tr[data-row-id]");
+    if (!tr) return;
+    const id = tr.dataset.rowId!;
+    const onRow = target === tr;
+    if (onRow && hasSelection && e.key.toLowerCase() === "x" && !e.repeat) {
+      e.preventDefault();
+      toggleRow(id);
+      return;
+    }
+    if (onRow && (e.key === "Enter" || e.key === " ") && !e.repeat) {
+      if (e.key === "Enter" && !onRowClick) return;
+      e.preventDefault();
+      const row = rows.find((r) => r.id === id);
+      if (onRowClick && row) onRowClick(row);
+      else toggleRow(id);
+      return;
+    }
+    if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
     const bodyRows = Array.from((tr.parentElement as HTMLTableSectionElement).rows).filter(
       (r) => r.dataset.rowId
     );
-    const col = td.cellIndex;
-    const control = (r: HTMLTableRowElement) =>
-      r.cells[col]?.querySelector<HTMLElement>(
-        'button, a[href], input, [role=checkbox], [tabindex]:not([tabindex="-1"])'
-      );
     const from = bodyRows.indexOf(tr);
     const order =
       e.key === "ArrowUp"
@@ -710,18 +834,32 @@ function DataTable<TData>({
           : e.key === "Home"
             ? bodyRows.slice(0, from)
             : bodyRows.slice(from + 1).reverse();
+    // From the row itself, the next row; from a control, the same column's
+    // control in the next row that has one.
+    const col = target.closest("td")?.cellIndex ?? -1;
+    const control = (r: HTMLTableRowElement): HTMLElement | null =>
+      onRow
+        ? r
+        : (r.cells[col]?.querySelector<HTMLElement>(
+            'button, a[href], input, [role=checkbox], [tabindex]:not([tabindex="-1"])'
+          ) ?? null);
     const next = order.find((r) => control(r));
     if (!next) return;
     e.preventDefault();
     control(next)!.focus();
     if (hasSelection && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      const value = table.getRow(tr.dataset.rowId!).getIsSelected();
-      selectRange(table, tr.dataset.rowId!, next.dataset.rowId!, value);
-      selectionAnchors.set(table.getState, next.dataset.rowId!);
+      extendTo(id, next.dataset.rowId!);
+    } else if (!e.shiftKey) {
+      rangeHead.current = null;
     }
   };
+  const registerFocus = (table as Partial<DataTableExtras>)._registerFocus;
+  useLayoutEffect(() => {
+    registerFocus?.(focusFirstRow);
+  });
 
   const tableEl = (
+    <EditContext.Provider value={editing}>
     <Table
       size={size}
       // Selected rows on this page get CheckboxGroup's merged fill.
@@ -892,28 +1030,40 @@ function DataTable<TData>({
                     }
                   : undefined
               }
-              // Clickable rows are one tab stop for the whole body (roving:
-              // the row last focused, else the first) so the action has a
-              // keyboard path without a stop per row.
-              tabIndex={onRowClick ? (row.id === (focusRowId ?? rows[0]?.id) ? 0 : -1) : undefined}
+              // Rows that select or open are one tab stop for the whole body
+              // (roving: the row last focused, else the first), so they have
+              // a keyboard path without a stop per row.
+              tabIndex={rowsFocusable ? (row.id === (focusRowId ?? rows[0]?.id) ? 0 : -1) : undefined}
               onFocus={
-                onRowClick
+                rowsFocusable
                   ? (e: FocusEvent<HTMLTableRowElement>) => {
                       if (e.target === e.currentTarget) setFocusRowId(row.id);
                     }
                   : undefined
               }
               className={cn(
-                onRowClick && "cursor-pointer outline-none",
+                onRowClick && "cursor-pointer",
+                rowsFocusable && "outline-none",
                 // The keyboard ring for a focused row: the row's own box,
                 // inset so the next row's rule doesn't cut through it.
-                onRowClick && "focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
+                rowsFocusable && "focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
               )}
             >
               {row.getVisibleCells().map((cell, c) => {
                 const meta = cell.column.columnDef.meta;
                 const lines = linesOf(table, cell.column);
-                const rendered = flexRender(cell.column.columnDef.cell, cell.getContext());
+                const editor = onCellEdit ? meta?.editor : undefined;
+                const rendered = editor ? (
+                  <EditableCell
+                    editor={editor}
+                    row={row}
+                    columnId={cell.column.id}
+                    label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
+                    value={cell.getValue()}
+                  />
+                ) : (
+                  flexRender(cell.column.columnDef.cell, cell.getContext())
+                );
                 // line-clamp needs a block of its own; a cell isn't one.
                 const content =
                   lines === 2 ? (
@@ -959,7 +1109,7 @@ function DataTable<TData>({
                         {skeletonFor(cell.column.id, i, c, shape.variant, sizeClasses.variant === "compact")}
                       </span>
                     )}
-                    {textCell(cell.column.id) ? (
+                    {textCell(cell.column.id) && !editor ? (
                       // Text sits in a block that carries the cell's fitting
                       // (a block child escapes the cell's own ellipsis), so
                       // it can fade in on landing. Clipped sideways only, so
@@ -997,6 +1147,7 @@ function DataTable<TData>({
         )}
       </TableBody>
     </Table>
+    </EditContext.Provider>
   );
 
   return (
@@ -1272,11 +1423,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
     meta: { className: "w-0 px-2" },
     header: ({ table }) => {
       const all = table.getIsAllPageRowsSelected();
+      // The rows the click acts on: this page's, counted so "all" never
+      // reads as more (or fewer) than it is.
+      const count = table.getRowModel().rows.filter((r) => r.getCanSelect()).length;
       return (
         // The tooltip names what the next click does: a dash selects the
         // rest of the page, a check clears it. Its trigger is the hit area,
         // not the box, so it works whichever primitive the box is built on.
-        <Tooltip content={all ? "Unselect all" : "Select all"} side="top">
+        <Tooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top">
           <SelectHit onToggle={() => table.toggleAllPageRowsSelected(!all)}>
             <Checkbox
               aria-label="Select all rows on this page"
@@ -1316,6 +1470,394 @@ function selectColumn<TData>(): ColumnDef<TData> {
       </SelectHit>
     ),
   };
+}
+
+// ── Editable cells ───────────────────────────────────────
+
+interface EditContextValue {
+  hold: () => void;
+  release: () => void;
+  commit: (row: Row<unknown>, columnId: string, value: unknown) => void;
+}
+
+const EditContext = createContext<EditContextValue | null>(null);
+
+/** Holds the table's row order while the editor has focus, or a popup of
+ *  its open (a calendar, a list). React carries focus events up from
+ *  portals, so focus moving into the editor's popup reads as staying in.
+ *  Leaving is checked a beat later: a closing popup hands focus back to
+ *  its trigger after it has left. */
+function useEditHold(ctx: EditContextValue, ref: RefObject<HTMLDivElement | null>) {
+  "use no memo";
+  const active = useRef(false);
+  const open = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const enter = () => {
+    clearTimeout(timer.current);
+    if (active.current) return;
+    active.current = true;
+    ctx.hold();
+  };
+  const check = () => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const inside = !!ref.current?.contains(document.activeElement);
+      if (!active.current || open.current || inside) return;
+      active.current = false;
+      ctx.release();
+    }, 60);
+  };
+  // An editor that goes away mid-edit (its row filtered or paged out)
+  // gives its hold back.
+  const release = ctx.release;
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      if (active.current) release();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on unmount
+    []
+  );
+  return {
+    onFocus: enter,
+    onBlur: check,
+    onOpenChange: (next: boolean) => {
+      open.current = next;
+      if (next) enter();
+      else check();
+    },
+  };
+}
+
+const editorType = (e: DataTableEditor) => (typeof e === "string" ? e : e.type);
+interface EditorOptions {
+  placeholder?: string;
+  options?: readonly (number | string)[];
+  creatable?: boolean;
+}
+const editorOptions = (e: DataTableEditor): EditorOptions =>
+  typeof e === "string" ? {} : (e as EditorOptions);
+const itemText = (item: string | { value: string }) => (typeof item === "string" ? item : item.value);
+
+/** "YYYY-MM-DD" read as that day where the viewer is (not UTC midnight,
+ *  which lands on the day before west of Greenwich), or a Date as is. */
+function toDate(value: unknown): Date | undefined {
+  if (value instanceof Date) return value;
+  if (typeof value !== "string" || !value) return undefined;
+  const [y, m, d] = value.split("-").map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : undefined;
+}
+
+function toIsoDay(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+// The in-cell text field is the cell's text itself: no border, no fill,
+// only the text cursor on hover and the caret once focused. It spans the
+// row's height, so a click anywhere in the cell lands in it.
+const CELL_FIELD = [
+  "-my-(--table-cell-py) block h-[calc(1lh+2*var(--table-cell-py))] w-full min-w-0",
+  "cursor-text bg-transparent p-0 text-foreground outline-none",
+  "placeholder:text-muted-foreground text-ellipsis",
+];
+
+// Controls that carry their own field (Combobox, DatePicker) sit in the
+// row's full height, reaching into the cell's padding just far enough that
+// their text (or first chip) starts where the column's text does. The reach
+// is each control's own inset less the cell's (12px, 10px compact).
+const CELL_CONTROL = "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1";
+// The Combobox editors drop their field's ring and fills, like the text
+// field: the cell's own text, with the text cursor.
+const BARE_FIELD =
+  "ring-transparent hover:ring-transparent hover:bg-transparent focus-within:ring-transparent focus-within:bg-transparent cursor-text";
+
+const CELL_REACH = {
+  // Combobox field: 10px in (8px compact).
+  number: { default: "-mx-2.5", compact: "-mx-2" },
+  // Ghost date trigger: 8px in (6px compact).
+  date: { default: "-mx-2", compact: "-mx-1.5" },
+  // Chips field: 10px in, the first chip pulled 4px back (8px, 4px compact).
+  tags: { default: "-mx-1.5", compact: "-mx-1" },
+} as const;
+
+function EditableCell<TData>({
+  editor,
+  row,
+  columnId,
+  label,
+  value,
+}: {
+  editor: DataTableEditor;
+  row: Row<TData>;
+  columnId: string;
+  /** The editor's name: its column's (the table gives the row). */
+  label: string;
+  value: unknown;
+}) {
+  "use no memo";
+  const ctx = useContext(EditContext)!;
+  const boxRef = useRef<HTMLDivElement>(null);
+  const hold = useEditHold(ctx, boxRef);
+  const sizeClasses = useSize();
+  const step = sizeClasses.variant === "compact" ? "compact" : "default";
+  const commit = (next: unknown) => ctx.commit(row as Row<unknown>, columnId, next);
+  // The value the editor started with, for Escape.
+  const start = useRef<unknown>(value);
+  const type = editorType(editor);
+  const options = editorOptions(editor);
+
+  // A session runs from the editor's first focus until the hold lets go;
+  // its first value is what Escape puts back.
+  const inSession = useRef(false);
+  const onFocus = () => {
+    if (!inSession.current) start.current = value;
+    inSession.current = true;
+    hold.onFocus();
+  };
+  const onBlur = () => {
+    hold.onBlur();
+    setTimeout(() => {
+      if (!boxRef.current?.contains(document.activeElement)) inSession.current = false;
+    }, 80);
+  };
+  const revert = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key !== "Escape") return;
+    commit(start.current);
+    (e.target as HTMLElement).blur();
+  };
+
+  if (type === "text") {
+    return (
+      <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className="min-w-0">
+        <input
+          type="text"
+          aria-label={label}
+          value={value == null ? "" : String(value)}
+          placeholder={options.placeholder}
+          onChange={(e) => commit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            else revert(e);
+          }}
+          // The touch size keeps iOS from zooming into the field.
+          className={cn(CELL_FIELD, sizeClasses.field)}
+        />
+      </div>
+    );
+  }
+
+  if (type === "number") {
+    return (
+      <NumberEditor
+        reach={CELL_REACH.number[step]}
+        boxRef={boxRef}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        value={typeof value === "number" ? value : null}
+        options={options.options as readonly number[] | undefined}
+        placeholder={options.placeholder}
+        label={label}
+        onChange={commit}
+      />
+    );
+  }
+
+  if (type === "date") {
+    const date = toDate(value);
+    return (
+      <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className={cn(CELL_CONTROL, CELL_REACH.date[step])}>
+        <DatePicker
+          variant="ghost"
+          aria-label={label}
+          value={date}
+          placeholder={options.placeholder}
+          onOpenChange={hold.onOpenChange}
+          onValueChange={(next) => {
+            const day = next instanceof Date ? next : undefined;
+            commit(day ? (typeof start.current === "string" || typeof value === "string" ? toIsoDay(day) : day) : null);
+          }}
+          className="min-w-0"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <TagsEditor
+      reach={CELL_REACH.tags[step]}
+      boxRef={boxRef}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      value={Array.isArray(value) ? (value as string[]) : []}
+      options={(options.options as readonly string[] | undefined) ?? []}
+      creatable={!!options.creatable}
+      placeholder={options.placeholder}
+      label={label}
+      onChange={commit}
+    />
+  );
+}
+
+function NumberEditor({
+  reach,
+  boxRef,
+  onFocus,
+  onBlur,
+  value,
+  options = [],
+  placeholder,
+  label,
+  onChange,
+}: {
+  reach: string;
+  boxRef: RefObject<HTMLDivElement | null>;
+  onFocus: () => void;
+  onBlur: () => void;
+  value: number | null;
+  options?: readonly number[];
+  placeholder?: string;
+  label: string;
+  onChange: (value: number | null) => void;
+}) {
+  "use no memo";
+  // The list: the column's options, plus the cell's own value when it's
+  // one of none of them, so the field can show it.
+  const items = [...new Set([...options, ...(value === null ? [] : [value])])]
+    .sort((a, b) => a - b)
+    .map(String);
+  return (
+    <div
+      ref={boxRef}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      className={cn(
+        CELL_CONTROL,
+        reach,
+        // The text field takes the column's width rather than setting it.
+        "[&_input]:w-0",
+        // No chevron: the list opens as you type or press ↓.
+        "[&_[aria-label=Open]]:hidden"
+      )}
+    >
+      <Combobox
+        items={items}
+        value={value === null ? "" : String(value)}
+        onValueChange={(v) => {
+          const s = Array.isArray(v) ? v[0] : v;
+          onChange(s === "" || s === undefined ? null : Number(s));
+        }}
+        // Any number typed is taken, not just the listed ones.
+        onCreate={(query) => {
+          const n = Number(query.replace(",", "."));
+          return Number.isFinite(n) ? String(n) : undefined;
+        }}
+        createLabel={(query) => `Use ${query}`}
+        // The whole list while the field still shows its own value (on
+        // opening); numbers that start with what's typed after that.
+        filter={(item, query) => {
+          const q = query.trim();
+          return q === "" || (value !== null && q === String(value)) || itemText(item).startsWith(q);
+        }}
+      >
+        <ComboboxInput
+          variant="borderless"
+          aria-label={label}
+          inputMode="decimal"
+          // Typing replaces the number rather than adding to it.
+          onFocus={(e) => e.currentTarget.select()}
+          placeholder={placeholder ?? ""}
+          className={cn("w-full min-w-0 tabular-nums", BARE_FIELD)}
+        />
+        <ComboboxContent>
+          <ComboboxEmpty>Type a number</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => (
+              <ComboboxItem key={itemText(item)} value={itemText(item)}>
+                {itemText(item)}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </div>
+  );
+}
+
+function TagsEditor({
+  reach,
+  boxRef,
+  onFocus,
+  onBlur,
+  value,
+  options,
+  creatable,
+  placeholder,
+  label,
+  onChange,
+}: {
+  reach: string;
+  boxRef: RefObject<HTMLDivElement | null>;
+  onFocus: () => void;
+  onBlur: () => void;
+  value: string[];
+  options: readonly string[];
+  creatable: boolean;
+  placeholder?: string;
+  label: string;
+  onChange: (value: string[]) => void;
+}) {
+  "use no memo";
+  // Tags made here join the list for this table's life.
+  const [made, setMade] = useState<string[]>([]);
+  const items = [...new Set([...options, ...made, ...value])];
+  return (
+    <div
+      ref={boxRef}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      className={cn(
+        CELL_CONTROL,
+        reach,
+        // One line of chips, as tall as the row: the chip row scrolls
+        // sideways instead of wrapping (the field follows its caret).
+        "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+        "[&_[aria-label=Open]]:hidden"
+      )}
+    >
+      <Combobox
+        multiple
+        items={items}
+        value={value}
+        onValueChange={(v) => onChange(Array.isArray(v) ? v : v ? [v] : [])}
+        onCreate={
+          creatable
+            ? (query) => {
+                setMade((old) => [...old, query]);
+                return query;
+              }
+            : undefined
+        }
+      >
+        <ComboboxChips
+          variant="borderless"
+          aria-label={label}
+          placeholder={placeholder ?? ""}
+          className={cn("w-full min-w-0", BARE_FIELD)}
+        />
+        <ComboboxContent>
+          <ComboboxEmpty>No tags match</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => (
+              <ComboboxItem key={itemText(item)} value={itemText(item)}>
+                {itemText(item)}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </div>
+  );
 }
 
 // ── DataTableSearch ──────────────────────────────────────
@@ -1369,6 +1911,11 @@ function DataTableSearch<TData>({
           else table.setGlobalFilter(next);
           // A search that shrinks the rows starts over on the first page.
           table.setPageIndex(0);
+        }}
+        // ↓ steps from the search into the rows.
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowDown" || e.altKey || e.metaKey || e.ctrlKey) return;
+          if ((table as Partial<DataTableExtras>).focusFirstRow?.()) e.preventDefault();
         }}
         // The icon sits 8px in, on the selection checkbox's line; then the
         // icon and an 8px gap (16 + 8, 14 + 6 compact).
@@ -1801,6 +2348,8 @@ export {
 };
 export type {
   DataTableInstance,
+  DataTableEditor,
+  DataTableCellEdit,
   DataTableExtras,
   ColumnLines,
   UseDataTableOptions,
