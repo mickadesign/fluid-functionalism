@@ -344,7 +344,9 @@ body[data-scroll-locked][data-scroll-locked] {
 html, body {
   margin: 0;
   min-height: 100vh;
-  overscroll-behavior-y: none;
+  /* No overscroll-behavior on the root: in Safari (WebKit) any value but
+     auto there (none, contain) stops a mouse wheel from scrolling the page
+     at all. The bounce at the ends is the price. */
   background-color: var(--background);
   /* Explicit text color so unstyled text follows the theme (and so the UA's
      color-scheme-driven canvastext default never shows through). */
