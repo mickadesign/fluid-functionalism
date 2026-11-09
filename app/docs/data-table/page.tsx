@@ -97,7 +97,7 @@ export default function DataTableDoc() {
     <DocPage
       title="DataTable"
       slug="data-table"
-      description="TanStack Table on the fluid hover Table: sorting, search, resizable and movable columns, selection with spreadsheet keys, editable cells, sub-rows and pagination, each part optional."
+      description="A table you can sort, search, select from and edit in place. Turn on only the parts you need."
     >
       <DocSection title="Playground">
         <DataTablePlaygroundSection />
