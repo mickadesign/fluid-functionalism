@@ -159,6 +159,8 @@ export function formatDay(iso: string) {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
+const PRIMITIVE_OPTIONS: readonly Primitives[] = ["Radix + Base UI", "Built on both", "None"];
+
 export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", "Built on both": "purple", None: "gray" } as const;
 
 const INSTALL_URL = "https://www.fluidfunctionalism.com/r";
@@ -195,7 +197,11 @@ function buildColumns(o: {
           </Badge>
         </span>
       ),
-      meta: { label: "Primitives", icon: icon("folder") },
+      meta: {
+        label: "Primitives",
+        icon: icon("folder"),
+        editor: o.editable ? { type: "select", options: PRIMITIVE_OPTIONS } : undefined,
+      },
     },
     {
       accessorKey: "fluidHover",
@@ -251,7 +257,13 @@ function buildColumns(o: {
         </a>
       ),
       // Room for most of the URL before it cuts short.
-      meta: { label: "Website", lines: 1, className: "min-w-60", icon: icon("link") },
+      meta: {
+        label: "Website",
+        lines: 1,
+        className: "min-w-60",
+        icon: icon("link"),
+        editor: o.editable ? "text" : undefined,
+      },
     },
     {
       accessorKey: "summary",
@@ -355,7 +367,11 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    accessorKey: "primitives",`,
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Primitives" />,`,
     `    cell: ({ row }) => <Badge variant="ghost" color="blue">{row.original.primitives}</Badge>,`,
-    ...(o.headerIcons ? [`    meta: { icon: Folder },`] : []),
+    ...(o.headerIcons || o.editable
+      ? [
+          `    meta: { ${[o.headerIcons && "icon: Folder", o.editable && `editor: { type: "select", options: ["Radix + Base UI", "Built on both", "None"] }`].filter(Boolean).join(", ")} },`,
+        ]
+      : []),
     `  },`,
     `  { accessorKey: "fluidHover", header: "Fluid hover"${o.headerIcons ? ", meta: { icon: Star }" : ""} },`,
     `  {`,
@@ -388,7 +404,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    accessorKey: "website",`,
     `    header: "Website",`,
     `    cell: ({ row }) => <a href={row.original.href}>{row.original.website}</a>,`,
-    `    meta: { className: "min-w-60", lines: 1${o.headerIcons ? ", icon: Link" : ""} },`,
+    `    meta: { className: "min-w-60", lines: 1${o.headerIcons ? ", icon: Link" : ""}${o.editable ? `, editor: "text"` : ""} },`,
     `  },`,
     `  {`,
     `    accessorKey: "summary",`,

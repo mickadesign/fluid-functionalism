@@ -130,8 +130,10 @@ declare module "@tanstack/react-table" {
     /** Makes the column's cells editable when DataTable has `onCellEdit`:
      *  `"text"` a text field, `"number"` a field with a list of `options`
      *  that also takes any number typed, `"date"` a date picker, `"tags"` a
-     *  chips field over `options` (`creatable` adds what's typed). The
-     *  editor draws the cell, in place of the column's `cell`. */
+     *  chips field over `options` (`creatable` adds what's typed),
+     *  `"select"` one of `options` from a menu. The editor draws the cell in
+     *  place of the column's `cell`, except a select: its trigger shows the
+     *  column's own cell (a badge stays a badge). */
     editor?: DataTableEditor;
   }
 }
@@ -144,7 +146,8 @@ type DataTableEditor =
   | { type: "text"; placeholder?: string }
   | { type: "number"; options?: readonly number[]; placeholder?: string }
   | { type: "date"; placeholder?: string }
-  | { type: "tags"; options?: readonly string[]; creatable?: boolean; placeholder?: string };
+  | { type: "tags"; options?: readonly string[]; creatable?: boolean; placeholder?: string }
+  | { type: "select"; options: readonly string[] };
 
 /** One edit, as DataTable's `onCellEdit` receives it. Write `value` into
  *  your data: the table shows what your data holds. */
@@ -1760,6 +1763,11 @@ const DataTableBodyRow = memo(
             label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
             lines={lines}
             value={cell.getValue()}
+            display={
+              typeof editor === "object" && editor.type === "select"
+                ? flexRender(cell.column.columnDef.cell, cell.getContext())
+                : undefined
+            }
           />
         ) : (
           flexRender(cell.column.columnDef.cell, cell.getContext())
@@ -2001,6 +2009,7 @@ function EditableCell<TData>({
   label,
   lines,
   value,
+  display,
 }: {
   editor: DataTableEditor;
   row: Row<TData>;
@@ -2010,6 +2019,8 @@ function EditableCell<TData>({
   /** The column's text fitting: 2 lines or "wrap" edit in a textarea. */
   lines: ColumnLines | undefined;
   value: unknown;
+  /** A select's trigger: the column's own cell. */
+  display?: ReactNode;
 }) {
   "use no memo";
   const ctx = useContext(EditContext)!;
@@ -2081,6 +2092,22 @@ function EditableCell<TData>({
           className={cn(CELL_FIELD, sizeClasses.field)}
         />
       </div>
+    );
+  }
+
+  if (type === "select") {
+    return (
+      <SelectEditor
+        boxRef={boxRef}
+        hold={hold}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        value={value == null ? "" : String(value)}
+        options={(options.options as readonly string[] | undefined) ?? []}
+        label={label}
+        display={display}
+        onChange={commit}
+      />
     );
   }
 
@@ -2182,6 +2209,63 @@ function WrappingField({
         sizeClasses.field
       )}
     />
+  );
+}
+
+/** One of a list, from a menu: the trigger is the column's own cell (so a
+ *  badge stays a badge, with the text cursor's place taken by the pointer),
+ *  the menu checks the current option. The open menu holds the row order. */
+function SelectEditor({
+  boxRef,
+  hold,
+  onFocus,
+  onBlur,
+  value,
+  options,
+  label,
+  display,
+  onChange,
+}: {
+  boxRef: RefObject<HTMLDivElement | null>;
+  hold: ReturnType<typeof useEditHold>;
+  onFocus: () => void;
+  onBlur: () => void;
+  value: string;
+  options: readonly string[];
+  label: string;
+  display: ReactNode;
+  onChange: (value: string) => void;
+}) {
+  "use no memo";
+  const checked = options.indexOf(value);
+  return (
+    <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className={CELL_CONTROL}>
+      <DropdownMenu onOpenChange={hold.onOpenChange}>
+        <DropdownTrigger
+          render={
+            <button
+              type="button"
+              aria-label={`${label}: ${value}`}
+              // The row's full height, so a click anywhere in the cell opens it.
+              className="flex h-[calc(1lh+2*var(--table-cell-py))] w-full min-w-0 cursor-pointer items-center text-left outline-none"
+            >
+              {display ?? value}
+            </button>
+          }
+        />
+        <DropdownContent align="start" checkedIndex={checked === -1 ? undefined : checked} className="w-56">
+          {options.map((option, i) => (
+            <MenuItem
+              key={option}
+              index={i}
+              label={option}
+              checked={option === value}
+              onSelect={() => onChange(option)}
+            />
+          ))}
+        </DropdownContent>
+      </DropdownMenu>
+    </div>
   );
 }
 

@@ -115,7 +115,9 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`        </Badge>`);
   l.push(`      </span>`);
   l.push(`    ),`);
-  l.push(`    meta: { label: "Primitives"${icon("Folder")} },`);
+  l.push(
+    `    meta: { label: "Primitives"${icon("Folder")}${edit ? `, editor: { type: "select", options: ${JSON.stringify(Object.keys(PRIMITIVE_COLOR)).replace(/,/g, ", ")} }` : ""} },`
+  );
   l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "props",`);

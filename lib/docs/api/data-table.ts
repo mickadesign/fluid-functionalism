@@ -27,7 +27,7 @@ export const columnMetaProps: PropDef[] = [
   { name: "label", type: "string", description: "The column's name in the Columns menu. Defaults to a string header, then the column id." },
   { name: "className", type: "string", description: "Classes for the column's header and body cells, e.g. a width." },
   { name: "icon", type: "IconComponent", description: "An icon before the header's title, 14px in the header's muted color. Drawn for a string header and inside DataTableColumnHeader's sort button." },
-  { name: "editor", type: '"text" | "number" | "date" | "tags" | { type, options?, creatable?, placeholder? }', description: 'Makes the column editable when DataTable has onCellEdit: a text field, a number field with a list of options that takes any number typed, a date picker, or a chips field over options (creatable adds what is typed). The editor draws the cell in place of cell.' },
+  { name: "editor", type: '"text" | "number" | "date" | "tags" | { type, options?, creatable?, placeholder? } | { type: "select", options }', description: 'Makes the column editable when DataTable has onCellEdit: a text field, a number field with a list of options that takes any number typed, a date picker, a chips field over options (creatable adds what is typed), or a select: the cell itself becomes the trigger of a menu of options. The editor draws the cell in place of cell.' },
   { name: "lines", type: '1 | 2 | "wrap"', description: 'How text fits the column: 1 cuts it to one line with an ellipsis, 2 stops it after two, "wrap" lets it run. Give the column room with className: "w-full".' },
 ];
 
