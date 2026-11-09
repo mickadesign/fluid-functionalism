@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// The "Make them yours" settings (theme, radius, size, icons, primitive) and
-// where the browser keeps them: one cookie each, so the server layout renders
-// the visitor's last choice on the first paint. localStorage would only be
-// readable after hydration, and every reload would flash the defaults first
-// (a light page before dark, rounded corners before pill, the default ladder
-// before compact).
+// The "Make them yours" settings (theme, radius, size, icons, primitive,
+// accent) and where the browser keeps them: one cookie each, so the server
+// layout renders the visitor's last choice on the first paint. localStorage
+// would only be readable after hydration, and every reload would flash the
+// defaults first (a light page before dark, rounded corners before pill, the
+// default ladder before compact, blue before the picked accent).
 //
 // Server-safe on purpose: no "use client", and the value lists live here
 // rather than in the client modules that own each setting, because a server
@@ -17,6 +17,7 @@ import type { ShapeVariant } from "@/registry/default/lib/shape-context";
 import type { SizeVariant } from "@/registry/default/lib/size-context";
 import type { IconLibrary } from "@/lib/docs/icon-map";
 import type { Base } from "@/lib/base-context";
+import { ACCENT_ORDER, isAccentHex, type AccentPreset } from "@/lib/accent";
 
 export interface SiteSettings {
   theme: Theme;
@@ -24,24 +25,27 @@ export interface SiteSettings {
   size: SizeVariant;
   icons: IconLibrary;
   base: Base;
+  accent: AccentPreset;
 }
 
 /** What a first visit sees. */
 export const DEFAULT_SETTINGS: SiteSettings = {
   theme: "system",
-  shape: "rounded",
+  shape: "sharp",
   size: "default",
   icons: "untitledui",
   base: "base",
+  accent: "blue",
 };
 
 /** Every value each setting accepts, in the order the site lists them. */
 export const SETTING_VALUES = {
   theme: ["system", "light", "dark"],
-  shape: ["rounded", "pill"],
+  shape: ["sharp", "rounded", "pill"],
   size: ["default", "compact"],
   icons: ["lucide", "tabler", "phosphor", "hugeicons", "untitledui"],
   base: ["radix", "base"],
+  accent: ACCENT_ORDER,
 } as const satisfies { [K in keyof SiteSettings]: readonly SiteSettings[K][] };
 
 export const SETTINGS_COOKIES: Record<keyof SiteSettings, string> = {
@@ -50,6 +54,7 @@ export const SETTINGS_COOKIES: Record<keyof SiteSettings, string> = {
   size: "ff_size",
   icons: "ff_icons",
   base: "ff_base",
+  accent: "ff_accent",
 };
 
 /** One year: a preference, not a session. */
@@ -69,6 +74,7 @@ export function readSettings(get: (name: string) => string | undefined): SiteSet
     size: pick("size"),
     icons: pick("icons"),
     base: pick("base"),
+    accent: pick("accent"),
   };
 }
 
@@ -78,14 +84,41 @@ export function settingCookie<K extends keyof SiteSettings>(key: K, value: SiteS
 }
 
 // ---------------------------------------------------------------------------
+// The custom accent: site-only, like the heading font. A preset is the
+// "accent" setting above; a color of the visitor's own overrides it here and
+// travels to installs through the copied prompt.
+// ---------------------------------------------------------------------------
+
+export const CUSTOM_ACCENT_COOKIE = "ff_accent_custom";
+
+/** The saved custom accent, a 6-digit hex, or null. */
+export function readCustomAccent(get: (name: string) => string | undefined): string | null {
+  const raw = get(CUSTOM_ACCENT_COOKIE);
+  let value: string | undefined;
+  try {
+    value = raw ? decodeURIComponent(raw) : undefined;
+  } catch {
+    value = undefined;
+  }
+  return isAccentHex(value) ? value.toUpperCase() : null;
+}
+
+/** Stores the custom accent; `null` (back to a preset) clears the cookie. */
+export function customAccentCookie(hex: string | null): string {
+  return hex === null
+    ? `${CUSTOM_ACCENT_COOKIE}=; path=/; max-age=0; samesite=lax`
+    : `${CUSTOM_ACCENT_COOKIE}=${encodeURIComponent(hex)}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+// ---------------------------------------------------------------------------
 // The heading font: site-only, so it sits outside SiteSettings and never
 // travels in a starter slug. Same cookie recipe, read by the root layout into
 // <html data-font> so a saved serif paints on the first frame.
 // ---------------------------------------------------------------------------
 
-export type HeadingFont = "inter" | "source-serif" | "custom";
+export type HeadingFont = "inter" | "geist-serif" | "custom";
 
-export const HEADING_FONTS = ["inter", "source-serif", "custom"] as const satisfies readonly HeadingFont[];
+export const HEADING_FONTS = ["inter", "geist-serif", "custom"] as const satisfies readonly HeadingFont[];
 
 export const DEFAULT_HEADING_FONT: HeadingFont = "inter";
 
@@ -133,4 +166,35 @@ export function customWeightCookie(weight: number | null): string {
   return weight === null
     ? `${CUSTOM_WEIGHT_COOKIE}=; path=/; max-age=0; samesite=lax`
     : `${CUSTOM_WEIGHT_COOKIE}=${weight}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+// ---------------------------------------------------------------------------
+// Hover: fluid (the highlight glides between items) or standard (it sits on
+// the item under the pointer). Outside SiteSettings, like the heading font:
+// it travels to installs through the install URL (`r/standard/…`), not a
+// starter slug.
+// ---------------------------------------------------------------------------
+
+export type HoverMode = "fluid" | "standard";
+
+export const HOVER_MODES = ["fluid", "standard"] as const satisfies readonly HoverMode[];
+
+export const HOVER_COOKIE = "ff_hover";
+
+/** The saved hover mode, fluid when missing or unknown. */
+export function readHoverMode(get: (name: string) => string | undefined): HoverMode {
+  return get(HOVER_COOKIE) === "standard" ? "standard" : "fluid";
+}
+
+export function hoverModeCookie(value: HoverMode): string {
+  return `${HOVER_COOKIE}=${value}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+/** Whether the request comes from a Mac (or iPhone/iPad), from the
+ *  `Sec-CH-UA-Platform` hint where the browser sends one, the User-Agent
+ *  otherwise. Seeds CommandMenuPlatform so shortcut caps paint as ⌘ or Ctrl
+ *  from the first frame. */
+export function readMacPlatform(platformHint: string | null, userAgent: string | null): boolean {
+  if (platformHint) return /mac|ios/i.test(platformHint);
+  return /mac|iphone|ipad|ipod/i.test(userAgent ?? "");
 }

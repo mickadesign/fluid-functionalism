@@ -83,6 +83,14 @@ function menuRows(from: HTMLElement | null): HTMLElement[] {
   return menu ? Array.from(menu.querySelectorAll<HTMLElement>(ROW_SELECTOR)) : [];
 }
 
+/** The box the rows sit in: the search field's parent, skipping
+ *  display:contents wrappers (the menu's radio group) that have no box. */
+function rowsBox(from: HTMLElement | null): HTMLElement | null {
+  let el = from?.closest<HTMLElement>(".group\\/search")?.parentElement ?? null;
+  while (el && getComputedStyle(el).display === "contents") el = el.parentElement;
+  return el;
+}
+
 /** Scroll the menu's scrolling list back to its top. The walk stops at the
  *  menu, so a list that fits never scrolls the page. */
 function scrollToTop(row: HTMLElement) {
@@ -247,6 +255,24 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
       autoFocusRef.current = autoFocus;
     });
 
+    // No results keeps the height the last results showed (what was on
+    // screen of it, not what scrolled), so DropdownEmpty sits where the rows
+    // were and the menu doesn't jump on each keystroke into and out of an
+    // empty query. Runs after every commit: the query and the rows it
+    // filters change together.
+    const shownHeightRef = useRef(0);
+    useIsoLayoutEffect(() => {
+      const list = rowsBox(inputRef.current);
+      if (!list) return;
+      if (menuRows(inputRef.current).length > 0) {
+        list.style.minHeight = "";
+        const viewport = list.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+        shownHeightRef.current = Math.min(list.offsetHeight, viewport?.clientHeight ?? Infinity);
+      } else if (shownHeightRef.current) {
+        list.style.minHeight = `${shownHeightRef.current}px`;
+      }
+    });
+
     useEffect(() => {
       if (!host) return;
       return host.register({
@@ -382,7 +408,8 @@ const DropdownEmpty = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>
         role="status"
         aria-live="polite"
         className={cn(
-          "px-2 py-6 text-center text-muted-foreground",
+          // my-auto centers the message in the height the rows left.
+          "my-auto px-2 py-6 text-center text-muted-foreground",
           sizeClasses.text,
           className
         )}

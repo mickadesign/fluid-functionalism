@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type ReactNode, type CSSProperties, createContext } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/registry/default/lib/utils";
+import { useShape } from "@/lib/shape-context";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { Badge } from "@/registry/default/badge";
@@ -37,11 +38,13 @@ interface BentoCardProps {
 }
 
 export function BentoCard({ slug, name, isNew, animateLayout = false, action, className: extraClassName, previewClassName, style, children }: BentoCardProps) {
+  // Sharp squares the card and its footer; rounded and pill keep 12px.
+  const sharp = useShape().variant === "sharp";
   // No click-to-focus wiring here. Previously a mousedown on empty space
   // inside the card routed focus to the preview's first interactive element
   // (so the user could keyboard-drive the demo afterwards). In practice it
   // caused unintended visual focus state on the first item — the
-  // checked-state on radios, the selected tab on TabsSubtle, the open
+  // checked-state on radios, the selected tab on Tabs, the open
   // accordion section, etc. — making cards look "primed" the moment a user
   // clicked anywhere in them. Now clicking only focuses what the user
   // actually clicked; Tab still routes into the card naturally.
@@ -61,7 +64,7 @@ export function BentoCard({ slug, name, isNew, animateLayout = false, action, cl
         {name}
       </span>
       {isNew && (
-        <Badge variant="dot" color="blue" size="sm">
+        <Badge variant="dot" color="accent" size="sm">
           New
         </Badge>
       )}
@@ -83,7 +86,8 @@ export function BentoCard({ slug, name, isNew, animateLayout = false, action, cl
         // overflow-clip, not -hidden: hidden makes the card a scroll
         // container, which would capture the view() timeline of the
         // reveal-scroll content inside it on the Showcase.
-        "relative flex flex-col rounded-xl border overflow-clip outline-none transition-[shadow,border-color] duration-80 bento-card-border",
+        "relative flex flex-col border overflow-clip outline-none transition-[shadow,border-color] duration-80 bento-card-border",
+        sharp ? "rounded-[1px]" : "rounded-xl",
         extraClassName,
       )}
       style={style}
@@ -113,7 +117,7 @@ export function BentoCard({ slug, name, isNew, animateLayout = false, action, cl
           <Link
             href={`/docs/${slug}`}
             aria-label={`View ${name} documentation`}
-            className="group/link flex items-center gap-2 px-4 py-3 rounded-b-xl transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
+            className={cn("group/link flex items-center gap-2 px-4 py-3 transition-colors duration-80 hover:bg-hover outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]", sharp ? "rounded-b-[1px]" : "rounded-b-xl")}
           >
             {footerLabel}
           </Link>

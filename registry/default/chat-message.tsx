@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, useState, type ReactNode } from "react";
 import { motion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
@@ -37,6 +37,9 @@ interface ChatMessageProps
 // A single transcript entry with baked-in entrance + layout motion. Pairs with
 // InputMessage's onSend: render one per sent/received message. `layout="position"`
 // lets earlier messages slide up smoothly when a new one is appended.
+// Messages already sent when the transcript first renders shouldn't play the
+// entrance: wrap the list in <AnimatePresence initial={false}> and only the
+// ones added later animate in.
 const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
   (
     { from, files, thumbnailSize = 64, time, actions, children, size, className, ...props },
@@ -49,14 +52,19 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
     const isTouch = useTouchPrimary();
     // Timestamps are a user-message affordance; assistant replies show actions only.
     const showTime = isUser && time != null;
+    // Layout motion waits for the entrance to finish. Page load still moves
+    // things (the column settles to its width, fonts swap), and a message
+    // mid-entrance would glide sideways on top of its own rise.
+    const [entered, setEntered] = useState(false);
 
     return (
       <motion.div
         ref={ref}
-        layout="position"
+        layout={entered ? "position" : false}
         initial={{ opacity: 0, y: 8, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={spring.moderate}
+        onAnimationComplete={() => setEntered(true)}
         style={{ transformOrigin: isUser ? "bottom right" : "bottom left" }}
         className={cn(
           "group flex max-w-[80%] flex-col gap-1.5",

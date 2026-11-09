@@ -23,7 +23,7 @@ import {
 const manifest = JSON.parse(readFileSync(new URL("../registry.json", import.meta.url), "utf-8"));
 const depUrl = buildDepResolver(manifest.items);
 
-/** Every combination of the five settings (2 × 2 × 2 × 5 × 3 = 120). */
+/** Every combination of the six settings (2 × 3 × 2 × 5 × 3 × 17 = 3060). */
 function allSettings() {
   let combos = [{}];
   for (const [key, values] of Object.entries(SETTING_VALUES)) {
@@ -38,9 +38,9 @@ describe("starter slug", () => {
     expect(parseStarterSlug(DEFAULT_SLUG)).toEqual({ ok: true, settings: STARTER_DEFAULTS });
   });
 
-  it("round-trips all 120 combinations", () => {
+  it("round-trips all 3060 combinations", () => {
     const combos = allSettings();
-    expect(combos).toHaveLength(120);
+    expect(combos).toHaveLength(3060);
     for (const s of combos) {
       expect(parseStarterSlug(starterSlug(s)), starterSlug(s)).toEqual({ ok: true, settings: s });
     }
@@ -48,6 +48,12 @@ describe("starter slug", () => {
 
   it("names only the settings that differ, in a fixed order", () => {
     expect(starterSlug({ ...STARTER_DEFAULTS, theme: "dark", base: "radix", shape: "pill" })).toBe("radix-pill-dark");
+  });
+
+  it("spells the sharp shape as its own word", () => {
+    const sharp = { ...STARTER_DEFAULTS, shape: "sharp" };
+    expect(starterSlug(sharp)).toBe("sharp");
+    expect(parseStarterSlug("sharp").settings).toEqual(sharp);
   });
 
   it("reads words in any order", () => {
@@ -73,8 +79,9 @@ describe("starter item", () => {
     expect(new Set(deps).size).toBe(deps.length);
     expect(deps.filter((d) => d.endsWith("-base"))).toEqual([]);
     expect(deps.filter((d) => d.startsWith("icons-"))).toEqual(["icons-phosphor"]);
+    expect(deps.filter((d) => d.endsWith("-standard"))).toEqual([]);
     for (const name of names) {
-      if (name.endsWith("-base") || name.startsWith("icons-") || name === "sidebar-app") continue;
+      if (name.endsWith("-base") || name.endsWith("-standard") || name.startsWith("icons-") || name === "sidebar-app") continue;
       expect(deps, name).toContain(name);
     }
     expect(starterRegistryDeps(manifest.items, { ...STARTER_DEFAULTS, icons: "lucide" }).some((d) => d.startsWith("icons-"))).toBe(false);
@@ -90,10 +97,12 @@ describe("starter item", () => {
     }
   });
 
-  it("writes the settings into the providers, and the layout loads Inter with opsz", () => {
-    const s = { base: "radix", shape: "pill", size: "compact", icons: "phosphor", theme: "dark" };
+  it("writes the settings into the providers, and the layout loads Inter with opsz and sets the accent", () => {
+    const s = { base: "radix", shape: "pill", size: "compact", icons: "phosphor", theme: "dark", accent: "violet" };
     const files = Object.fromEntries(starterFiles(s).map((f) => [f.target, f.content]));
     expect(files["app/layout.tsx"]).toContain(`axes: ["opsz"]`);
+    expect(files["app/layout.tsx"]).toContain(`"--fluid-accent": "light-dark(#7F22FE, #A684FF)"`);
+    expect(starterFiles(STARTER_DEFAULTS).find((f) => f.target === "app/layout.tsx").content).toContain(`"--fluid-accent": "#6B97FF"`);
     expect(files["components/providers.tsx"]).toContain(`defaultTheme="dark"`);
     expect(files["components/providers.tsx"]).toContain(`<FluidProvider shape="pill" size="compact" icons={phosphorIcons}>`);
     expect(files["components/sidebar-app/app-sidebar.tsx"]).toContain(`@/components/sidebar-app/nav-data`);
@@ -128,10 +137,10 @@ describe("generated starter files compile", () => {
 
   const MATRIX = [
     STARTER_DEFAULTS,
-    { base: "radix", shape: "pill", size: "compact", icons: "lucide", theme: "dark" },
-    { base: "base", shape: "rounded", size: "default", icons: "tabler", theme: "light" },
-    { base: "radix", shape: "rounded", size: "compact", icons: "phosphor", theme: "system" },
-    { base: "base", shape: "pill", size: "default", icons: "hugeicons", theme: "dark" },
+    { base: "radix", shape: "pill", size: "compact", icons: "lucide", theme: "dark", accent: "violet" },
+    { base: "base", shape: "rounded", size: "default", icons: "tabler", theme: "light", accent: "violet" },
+    { base: "radix", shape: "rounded", size: "compact", icons: "phosphor", theme: "system", accent: "red" },
+    { base: "base", shape: "pill", size: "default", icons: "hugeicons", theme: "dark", accent: "red" },
   ];
 
   for (const s of MATRIX) {

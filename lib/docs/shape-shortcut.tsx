@@ -2,9 +2,11 @@
 
 import { useEffect } from "react";
 
-import { useShapeContext, shapeMap, type ShapeVariant } from "@/lib/shape-context";
+import { useShapeContext } from "@/lib/shape-context";
+import { SETTING_VALUES } from "@/lib/docs/site-settings";
 
-const shapeOrder = Object.keys(shapeMap) as ShapeVariant[];
+// Cycles in the order the settings panel lists the shapes.
+const shapeOrder = SETTING_VALUES.shape;
 
 /**
  * Docs-site-only global shortcut: R cycles the radius variant. Mount once

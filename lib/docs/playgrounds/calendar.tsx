@@ -29,6 +29,7 @@ import {
 import { omit } from "@/lib/omit";
 import { PRESET_GLOBAL_KEYS } from "@/lib/preset/sidebar-options";
 import type { PlaygroundProps } from "./types";
+import { demoToday } from "@/lib/demo-today";
 
 // ── Calendar playground ──────────────────────────────────
 // One calendar, driven by the questions a booking or scheduling screen
@@ -44,7 +45,7 @@ function addDays(date: Date, days: number) {
 }
 
 /** Booked nights a few days out, so the demo always shows some. */
-export function demoBookedDays(today = new Date()): Date[] {
+export function demoBookedDays(today = demoToday()): Date[] {
   return CALENDAR_BOOKED_OFFSETS.map((n) => addDays(today, n));
 }
 
@@ -79,7 +80,7 @@ export function CalendarPlayground({ children }: PlaygroundProps) {
   const [state, setState] = useState<PlayState>(DEFAULT_STATE);
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
-  const [date, setDate] = useState<Date | undefined>(() => new Date());
+  const [date, setDate] = useState<Date | undefined>(demoToday);
   const [range, setRange] = useState<DateRange | undefined>(undefined);
   const booked = useMemo(() => demoBookedDays(), []);
 
@@ -106,7 +107,7 @@ export function CalendarPlayground({ children }: PlaygroundProps) {
 
   const dayProps: { booked?: Matcher[]; disabled?: Matcher; available?: Matcher } =
     state.days === "booked"
-      ? { booked, disabled: { before: new Date() } }
+      ? { booked, disabled: { before: demoToday() } }
       : state.days === "weekdays"
         ? { available: { dayOfWeek: [...CALENDAR_WEEKDAYS] } }
         : {};
@@ -196,7 +197,7 @@ export function CalendarPlayground({ children }: PlaygroundProps) {
   );
 
   return children({
-    preview: <div className="flex w-full justify-center px-6 py-10">{calendar}</div>,
+    preview: <div className="flex w-full justify-center px-4 py-10 sm:px-6">{calendar}</div>,
     demoPreview: <div className="flex w-full justify-center">{calendar}</div>,
     demoMaxWidth: 640,
     controls,

@@ -105,6 +105,11 @@ describe("custom heading weight", () => {
 
 describe("Google Fonts catalog", () => {
   it("matches the font metadata of the installed Next (npm run google-fonts)", () => {
-    expect(serializeCatalog(buildCatalog(readNextFontData()))).toBe(serializeCatalog(catalog));
+    // Categories come from Google's feed at generation time; the committed
+    // ones stand in for it here, so the test stays offline.
+    const categories = Object.fromEntries(
+      (catalog as { n: string; c?: string }[]).filter((f) => f.c).map((f) => [f.n, f.c])
+    );
+    expect(serializeCatalog(buildCatalog(readNextFontData(), categories))).toBe(serializeCatalog(catalog));
   });
 });

@@ -1,6 +1,7 @@
 export {
   ShapeProvider,
   useShape,
+  usePopupShape,
   useShapeContext,
   shapeMap,
   nestedRadius,

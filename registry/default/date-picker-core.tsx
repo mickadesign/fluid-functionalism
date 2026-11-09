@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -18,7 +19,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
-import { useShape, nestedRadius } from "@/lib/shape-context";
+import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { useIcons } from "@/lib/icon-context";
 import { Elevated } from "@/lib/elevated";
@@ -28,10 +29,13 @@ import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Calendar,
+  WEEK_COL_RATIO,
   type CalendarOrientation,
   type CalendarProps,
   type DateRange,
 } from "@/components/ui/calendar";
+
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // ---------------------------------------------------------------------------
 // Date picker core
@@ -318,7 +322,9 @@ export const DatePickerPopupFrame = forwardRef<
     className?: string;
     children: ReactNode;
   }
->(({ open, onExitComplete, className, children }, ref) => (
+>(({ open, onExitComplete, className, children }, ref) => {
+  const shape = usePopupShape();
+  return (
   <motion.div
     className={cn("outline-none", popupMotionClass)}
     initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
@@ -337,12 +343,13 @@ export const DatePickerPopupFrame = forwardRef<
       offset={2}
       shadowLevel={3}
       data-slot="date-picker-popup"
-      className={cn("rounded-xl outline-none select-none", className)}
+      className={cn(shape.container, "outline-none select-none", className)}
     >
       {children}
     </Elevated>
   </motion.div>
-));
+  );
+});
 DatePickerPopupFrame.displayName = "DatePickerPopupFrame";
 
 // ---------------------------------------------------------------------------
@@ -402,6 +409,7 @@ function TimeField({
   prefix,
   suffix,
 }: TimeFieldProps) {
+  const popupShape = usePopupShape();
   const sizeClasses = useSize();
   const compact = sizeClasses.variant === "compact";
   const listId = useId();
@@ -659,7 +667,7 @@ function TimeField({
           onMouseLeave={onMouseLeave}
           onClick={onClick}
         >
-          <FluidHoverHighlight hover={hover} hidden={!open} className="rounded-lg" />
+          <FluidHoverHighlight hover={hover} hidden={!open} className={popupShape.bg} />
           {slots.map((slot, i) => (
             <TimeRow
               key={slot.minutes}
@@ -711,6 +719,7 @@ function TimeRow({
   const ref = useRef<HTMLDivElement>(null);
   useRegisterFluidHoverItem(registerItem, index, ref);
   const sizeClasses = useSize();
+  const shape = usePopupShape();
   return (
     <div
       ref={ref}
@@ -720,7 +729,8 @@ function TimeRow({
       data-fluid-hover-index={index}
       className={cn(
         // The duration hugs the time: start-aligned, a small gap.
-        "relative z-10 flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg tabular-nums",
+        "relative z-10 flex shrink-0 cursor-pointer items-center gap-1.5 tabular-nums",
+        shape.bg,
         sizeClasses.control,
         sizeClasses.itemPx,
         typeClass("body", compact ? "compact" : "default"),
@@ -788,6 +798,7 @@ function PresetList({
   value: DateRange | undefined;
   onPick: (preset: DatePickerPreset) => void;
 }) {
+  const shape = usePopupShape();
   const ref = useRef<HTMLDivElement>(null);
   const hover = useFluidHover(ref, { axis: "xy" });
   const { setActiveIndex } = hover;
@@ -807,7 +818,7 @@ function PresetList({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setActiveIndex(null);
       }}
     >
-      <FluidHoverHighlight hover={hover} className="rounded-lg" />
+      <FluidHoverHighlight hover={hover} className={shape.bg} />
       {presets.map((preset, i) => (
         <PresetRow
           key={preset.label}
@@ -841,6 +852,7 @@ function PresetRow({
   const ref = useRef<HTMLButtonElement>(null);
   useRegisterFluidHoverItem(registerItem, index, ref);
   const sizeClasses = useSize();
+  const shape = usePopupShape();
   return (
     <button
       ref={ref}
@@ -849,7 +861,8 @@ function PresetRow({
       aria-pressed={selected}
       onClick={onPick}
       className={cn(
-        "relative z-10 flex shrink-0 cursor-pointer items-center rounded-lg text-left whitespace-nowrap outline-none",
+        "relative z-10 flex shrink-0 cursor-pointer items-center text-left whitespace-nowrap outline-none",
+        shape.bg,
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
         sizeClasses.control,
         sizeClasses.itemPx,
@@ -1032,6 +1045,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   );
 
   const shape = useShape();
+  const popupShape = usePopupShape();
   const sizeClasses = useSize(size);
   const compact = sizeClasses.variant === "compact";
   const icons = useIcons();
@@ -1072,7 +1086,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       setMonth(anchor ?? new Date());
       if (orientation === "auto" && numberOfMonths > 1 && typeof window !== "undefined") {
         const needed =
-          (7 + (calendarProps?.showWeekNumber ? 1 : 0)) * cellSize * 2 + 24 + 24 +
+          (7 + (calendarProps?.showWeekNumber ? WEEK_COL_RATIO : 0)) * cellSize * 2 + 24 + 24 +
           (presets?.length ? PRESETS_WIDTH : 0);
         setLayout(window.innerWidth - 16 >= needed ? "horizontal" : "vertical");
       }
@@ -1129,7 +1143,38 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
 
   // Segment hover scope: date, time(s), clear.
   const segmentsRef = useRef<HTMLDivElement>(null);
-  const segmentHover = useFluidHover(segmentsRef, { axis: "x", gapClick: false });
+  // Too narrow for date and time on one row (a phone, a side panel), the
+  // time moves to a second row under the date. The one-row width is measured
+  // while on one row; the segments size to their widest value, so it holds.
+  const [twoRows, setTwoRows] = useState(false);
+  const rowWidthRef = useRef(0);
+  const timed = hasTime || hasTimeRange;
+  useIsoLayoutEffect(() => {
+    const el = segmentsRef.current;
+    const parent = el?.parentElement;
+    if (!el || !parent || !timed) {
+      setTwoRows(false);
+      return;
+    }
+    const measure = () => {
+      // The content's width, not the box's: the field's min-width lets a
+      // flex parent shrink the box under its content.
+      if (el.dataset.twoRows === undefined) {
+        rowWidthRef.current = el.scrollWidth + el.offsetWidth - el.clientWidth;
+      }
+      const cs = getComputedStyle(parent);
+      const room =
+        parent.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      setTwoRows(rowWidthRef.current > room + 0.5);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [timed]);
+  const segmentHover = useFluidHover(segmentsRef, { axis: twoRows ? "xy" : "x", gapClick: false });
   const scope = useMemo(() => ({ registerItem: segmentHover.registerItem }), [segmentHover.registerItem]);
   const dateRef = useSegment(scope, 0);
   // The clear button mounts only once there is a value, after the scope's
@@ -1143,17 +1188,19 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
 
   const field = variant === "outline";
   // Segments sit 2px inside the field (plus its 1px border); their corners
-  // nest inside its radius: 8 - 3 = 5px rounded, 20 - 3 = 17px pill.
+  // nest inside its radius: 8 - 3 = 5px rounded, 20 - 3 = 17px pill, 0 sharp.
   const innerRadius = field
-    ? nestedRadius(shape.bgRadius, 3) === 5
-      ? "rounded-[5px]"
-      : "rounded-[17px]"
+    ? { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[
+        shape.variant
+      ]
     : shape.bg;
   const segmentClass = cn(
     "relative z-[1] inline-flex h-full items-center outline-none",
     "transition-[color] duration-80",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
-    compact ? "px-1.5" : "px-2",
+    // Two rows take the compact inset, so the time row still fits a phone
+    // inside the roomier field padding.
+    compact || twoRows ? "px-1.5" : "px-2",
     innerRadius
   );
 
@@ -1312,8 +1359,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         {/* Presets sit beside the calendar, or below it when the months
             stack (the calendar stays first in reading and tab order). */}
         {showPresets && !stacked && presetList}
-        {/* 4px in from the popup's 12px corners: 8px keeps them concentric. */}
-        <div className="rounded-lg bg-inherit">{calendar}</div>
+        {/* 4px in from the popup's corners: the popup's bg radius keeps them
+            concentric (8px in 12px, 1px when sharp). */}
+        <div className={cn(popupShape.bg, "bg-inherit")}>{calendar}</div>
         {showPresets && stacked && presetList}
       </div>
     </Popover>
@@ -1327,6 +1375,17 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     () => buildSlots(step, startMinutes ?? nowMinutes - (nowMinutes % step)),
     [step, startMinutes, nowMinutes]
   );
+  const duration =
+    startMinutes !== null && endMinutes !== null && endMinutes > startMinutes ? (
+      // Body size even where the time inputs grow to 16px on touch: it's a
+      // note, not a field, and the smaller size keeps the row on a phone.
+      <span
+        data-slot="date-picker-duration"
+        className={cn("whitespace-nowrap text-muted-foreground", sizeClasses.text)}
+      >
+        {formatDuration(endMinutes - startMinutes)}
+      </span>
+    ) : null;
   const timeSegments = hasTime ? (
     <TimeField
       Popover={Popover}
@@ -1388,20 +1447,16 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         segmentClass={segmentClass}
         fallback={(startMinutes ?? nowMinutes) + 60}
         prefix={timeIcon(ArrowIcon)}
-        suffix={
-          startMinutes !== null && endMinutes !== null && endMinutes > startMinutes ? (
-            <span
-              data-slot="date-picker-duration"
-              className="whitespace-nowrap text-muted-foreground"
-            >
-              {formatDuration(endMinutes - startMinutes)}
-            </span>
-          ) : undefined
-        }
+        suffix={duration}
       />
     </>
   ) : null;
 
+  // Stacked, each row keeps the one-row height (inside the field's 1px
+  // border and 2px padding), so the segments' h-full still resolves.
+  const rowStyle = twoRows
+    ? { height: sizeClasses.controlHeight - (field ? 6 : 0) }
+    : undefined;
   const clearable_ = field && clearable && (hasValue || (hasTime && !!time) || (hasTimeRange && !!timeRange));
   const content = (
     <div
@@ -1410,13 +1465,16 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       aria-label={ariaLabel}
       data-slot="date-picker"
       data-variant={variant}
+      data-two-rows={twoRows || undefined}
       className={cn(
         "group/date-picker relative inline-flex items-center",
-        sizeClasses.control,
+        twoRows ? "flex-wrap" : sizeClasses.control,
         sizeClasses.text,
         field
           ? cn(
-              "border border-border bg-transparent p-0.5",
+              "border border-border bg-transparent",
+              // Two rows get more room around them than the one-row field.
+              twoRows ? "p-1" : "p-0.5",
               shape.input,
               compact ? "min-w-[128px]" : "min-w-[160px]"
             )
@@ -1438,11 +1496,29 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
           )}
         />
       )}
-      {datePopover}
-      {(hasTime || hasTimeRange) && (
+      <span
+        className={cn(
+          "inline-flex h-full items-center",
+          // A lone date field fills the box, so its hover spans the width.
+          field && !timed && "flex-1",
+          twoRows && "order-1"
+        )}
+        style={rowStyle}
+      >
+        {datePopover}
+      </span>
+      {timed && !twoRows && (
         <span aria-hidden className="relative z-[1] mx-0.5 h-4 w-px shrink-0 bg-border" />
       )}
-      {timeSegments}
+      {twoRows && (
+        // The line between the date row and the time row.
+        <span aria-hidden className="order-3 my-1 h-px basis-full bg-border" />
+      )}
+      {timed && (
+        <span className={cn("inline-flex h-full items-center", twoRows && "order-4")} style={rowStyle}>
+          {timeSegments}
+        </span>
+      )}
       <AnimatePresence initial={false}>
         {clearable_ && (
           <motion.button
@@ -1453,10 +1529,13 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
             data-slot="date-picker-clear"
             className={cn(
               "relative z-[1] ml-auto inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
+              // Two rows: the clear sits right after the date it clears.
+              twoRows && "order-2 ml-0",
               "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
               compact ? "w-6" : "w-7",
               innerRadius
             )}
+            style={rowStyle}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: spring.fast }}
             exit={{ opacity: 0, transition: spring.fast.exit }}

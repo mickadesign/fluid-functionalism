@@ -19,7 +19,7 @@ import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
-import { BANNER, CardPlayground, THUMB } from "@/lib/docs/playgrounds/card";
+import { CardPlayground, useCardArt } from "@/lib/docs/playgrounds/card";
 import { groupProps, cardProps, partProps, buttonProps } from "@/lib/docs/api/card";
 
 // ── Code snippets ────────────────────────────────────────
@@ -48,7 +48,7 @@ const basicCode = `import {
 </div>`;
 
 const gridCode = `// Two-column grid of image tiles — columns > 1 turns on 2-D
-// fluid hover: the highlight springs to the nearest card across rows AND columns.
+// fluid hover: the highlight springs from card to card across rows AND columns.
 <div className="w-full max-w-[560px]">
   <CardGroup columns={2} border="outlined" separated>
     <Card onClick={() => open(item)}>
@@ -189,15 +189,16 @@ function BasicDemo() {
 }
 
 // Two-column grid of image tiles with primary + secondary actions; the magnetic
-// highlight resolves the nearest card across both rows and columns.
+// highlight follows the card under the pointer across rows and columns.
 function GridDemo() {
+  const art = useCardArt();
   const features = useFeatures();
   return (
     <div className="w-full max-w-[560px]">
       <CardGroup columns={2} border="outlined" separated>
         {features.map((f) => (
           <Card key={f.title} onClick={() => {}}>
-            <CardImage src={BANNER} />
+            <CardImage src={art.banner} />
             <CardHeader>
               <CardTitle>{f.title}</CardTitle>
               <CardDescription>{f.description}</CardDescription>
@@ -215,13 +216,14 @@ function GridDemo() {
 
 // One shared outlined frame, rows split by dividers: leading logo, primary action.
 function OutlinedDemo() {
+  const art = useCardArt();
   const features = useFeatures();
   return (
     <div className="w-full max-w-[520px]">
       <CardGroup orientation="inline" border="outlined">
         {features.map((f) => (
           <Card key={f.title} onClick={() => {}}>
-            <CardMedia logo={THUMB} />
+            <CardMedia logo={art.thumb} />
             <CardHeader>
               <CardTitle>{f.title}</CardTitle>
               <CardDescription>{f.description}</CardDescription>
@@ -239,13 +241,14 @@ function OutlinedDemo() {
 // Separated inline tiles with a full-height image and a full action row that
 // drops below the text (primary, secondary, ghost).
 function SeparatedDemo() {
+  const art = useCardArt();
   const features = useFeatures();
   return (
     <div className="w-full max-w-[560px]">
       <CardGroup orientation="inline" separated>
         {features.map((f) => (
           <Card key={f.title} onClick={() => {}}>
-            <CardImage src={BANNER} />
+            <CardImage src={art.banner} />
             <CardHeader>
               <CardTitle>{f.title}</CardTitle>
               <CardDescription>{f.description}</CardDescription>
@@ -263,6 +266,7 @@ function SeparatedDemo() {
 }
 
 function PromoDemo() {
+  const art = useCardArt();
   const Paintbrush = useIcon("paintbrush");
   const SquareLibrary = useIcon("square-library");
   const [dismissed, setDismissed] = useState(false);
@@ -284,7 +288,7 @@ function PromoDemo() {
         onDismiss={() => setDismissed(true)}
         className="border border-border/60 overflow-hidden rounded-xl"
       >
-        <CardImage src={BANNER} />
+        <CardImage src={art.banner} />
         <CardHeader>
           <CardTitle>Meet the new Card component</CardTitle>
         </CardHeader>

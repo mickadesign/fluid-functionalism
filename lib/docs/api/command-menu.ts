@@ -67,7 +67,7 @@ export const itemProps: PropDef[] = [
 ];
 
 export const tabsProps: PropDef[] = [
-  { name: "tabs", type: "{ value: string; label: string; icon?: IconComponent }[]", description: "1 subtle tab each." },
+  { name: "tabs", type: "{ value: string; label: string; icon?: IconComponent }[]", description: "1 tab each." },
   { name: "value", type: "string", description: "The selected tab's value." },
   { name: "onValueChange", type: "(value: string) => void", description: "Called on a pick. Derive items from the value." },
 ];
@@ -81,6 +81,11 @@ export const shortcutProps: PropDef[] = [
   { name: "keys", type: "string | string[]", description: 'The combo, in the trigger syntax ("mod+shift+p") or pre-formatted ("⌘⇧P"). A list draws 1 cap per entry. Modifiers draw as symbols on a Mac and words elsewhere.' },
 ];
 
+export const platformProps: PropDef[] = [
+  { name: "mac", type: "boolean", description: "Whether the visitor is on a Mac, read on the server from the Sec-CH-UA-Platform or User-Agent header. Shortcut caps then paint as ⌘ or Ctrl from the first frame instead of swapping after hydration. Without it the server draws ⌘." },
+  { name: "children", type: "ReactNode", description: "The tree holding command menus." },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "Item data", props: itemDataProps },
@@ -92,4 +97,5 @@ export const apiReference: ApiTable[] = [
   { title: "CommandMenuItem", props: itemProps },
   { title: "CommandMenuFooter", props: footerProps },
   { title: "CommandMenuShortcut", props: shortcutProps },
+  { title: "CommandMenuPlatform", props: platformProps },
 ];

@@ -102,14 +102,16 @@ export function revealRules(presets, springs) {
     [".reveal-swap > :first-child:not(:last-child)", { "pointer-events": "none", animation: `reveal-out ${ease} forwards` }],
     [".reveal-swap > .reveal-items:not(:only-child)", { animation: "none" }],
     [".reveal-swap > .reveal-items:first-child:not(:last-child) > *", { "animation-name": "reveal-out", "animation-fill-mode": "forwards" }],
-    `Skeletons fade in over the slow tier's 250ms on an even curve, then pulse
-   like shadcn's \`animate-pulse\`, on keyframes of their own so the block
-   works without Tailwind's. A skeleton that has been swapped out stops
-   pulsing: it is fading away and would otherwise animate unseen forever.`,
+    `Skeletons wait 160ms, so data that lands sooner never shows one, then fade
+   in over the slow tier's 250ms on an even curve and pulse like shadcn's
+   \`animate-pulse\`, on keyframes of their own so the block works without
+   Tailwind's. A skeleton that has been swapped out pauses where it is: it
+   fades away from the opacity it had, instead of jumping back to full, and
+   stops animating unseen. Swapped out during the wait, it never shows.`,
     ["@keyframes reveal-skeleton-in", { from: { opacity: "0" } }],
     ["@keyframes reveal-pulse", { "50%": { opacity: "0.5" } }],
-    [SKELETON, { animation: "reveal-skeleton-in 250ms ease-in-out both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 250ms infinite" }],
-    [`.reveal-swap > :first-child:not(:last-child) [data-slot="skeleton"]`, { animation: "none" }],
+    [SKELETON, { animation: "reveal-skeleton-in 250ms ease-in-out 160ms both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 410ms infinite" }],
+    [`.reveal-swap > :first-child:not(:last-child) [data-slot="skeleton"]`, { "animation-play-state": "paused" }],
     `Leaving at the top mirrors the way in: it fades out, lifts, and scales down.`,
     ["@keyframes reveal-leave", { to: { opacity: "0", transform: "translateY(calc(var(--reveal-distance, 0px) * -1)) scale(var(--reveal-scale, 1))" } }],
     ["@supports (animation-timeline: view())", [
@@ -146,7 +148,7 @@ export function revealRules(presets, springs) {
       // Matches the nested rule's specificity, so nested content keeps its
       // step after its card instead of taking that rule's 3-value list.
       [`${L} .reveal-scroll .reveal-scroll`, { "animation-delay": "calc(var(--reveal-load-delay, 0s) + var(--reveal-step))" }],
-      [SKELETON, { animation: "reveal-skeleton-in 250ms ease-in-out both" }],
+      [SKELETON, { animation: "reveal-skeleton-in 250ms ease-in-out 160ms both" }],
     ]],
   ];
 }

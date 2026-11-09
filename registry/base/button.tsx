@@ -23,7 +23,9 @@ const buttonVariants = cva(
     // button (or overflows) instead of squeezing it.
     "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer select-none whitespace-nowrap",
     "transition-colors duration-80",
-    "disabled:opacity-50 disabled:pointer-events-none",
+    // A loading button is disabled too, but stays at full strength: aria-busy
+    // marks it as working, not unavailable.
+    "disabled:not-aria-busy:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
   ],
   {
@@ -33,6 +35,11 @@ const buttonVariants = cva(
         secondary: "text-foreground",
         tertiary: "text-foreground",
         ghost: "text-muted-foreground hover:text-foreground",
+        // Tailwind reds, with their values as fallbacks for projects that
+        // haven't emitted them. A red-500 wash in both themes under a
+        // red-700 label (light) or a red-400 label (dark).
+        destructive:
+          "[--btn-red:var(--color-red-500,oklch(63.7%_0.237_25.331))] text-[color:light-dark(var(--color-red-700,oklch(50.5%_0.213_27.518)),var(--color-red-400,oklch(70.4%_0.191_22.216)))]",
       },
       // The two-step size ladder shared by every control — see /docs/sizes.
       // default = 36px control height, compact = 28px for dense surfaces.
@@ -129,7 +136,25 @@ const bgVariants: Record<string, string> = {
   // render only outside the surface box.
   ghost:
     "bg-transparent shadow-[0_0_0_1px_transparent] group-hover:bg-hover group-hover:shadow-[0_0_0_1px_var(--hover)] group-active:bg-active group-active:shadow-[0_0_0_0px_var(--active)]",
+  // shadcn's destructive, a red wash under red text, a step stronger:
+  // 15% at rest and 25% on hover, 20/30 in dark mode. Pressing returns
+  // to the rest wash, as secondary does.
+  destructive:
+    "[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_15%,transparent),color-mix(in_oklab,var(--btn-red)_20%,transparent))] group-hover:[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_25%,transparent),color-mix(in_oklab,var(--btn-red)_30%,transparent))] group-active:[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_15%,transparent),color-mix(in_oklab,var(--btn-red)_20%,transparent))] bg-[var(--btn-bg)] shadow-[0_0_0_1px_var(--btn-bg)] group-active:shadow-[0_0_0_0px_var(--btn-bg)]",
 };
+
+/* A loading button's fill: each variant above minus its group-hover: and
+   group-active: overrides, so it holds the rest colors while the pointer is
+   still over the button that was just clicked. */
+const loadingBgVariants: Record<string, string> = Object.fromEntries(
+  Object.entries(bgVariants).map(([variant, classes]) => [
+    variant,
+    classes
+      .split(" ")
+      .filter((c) => !c.startsWith("group-hover:") && !c.startsWith("group-active:"))
+      .join(" "),
+  ])
+);
 
 /* Forced-active (`active` prop): pressed colors at full size; the
    geometric press-collapse still reacts on top. */
@@ -142,6 +167,8 @@ const activeBgVariants: Record<string, string> = {
     "bg-active shadow-[0_0_0_1px_var(--border),inset_0_0_0_0px_var(--border)] group-active:shadow-[0_0_0_0px_var(--border),inset_0_0_0_1px_var(--border)]",
   ghost:
     "bg-active shadow-[0_0_0_1px_var(--active)] group-active:shadow-[0_0_0_0px_var(--active)]",
+  destructive:
+    "[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_25%,transparent),color-mix(in_oklab,var(--btn-red)_30%,transparent))] bg-[var(--btn-bg)] shadow-[0_0_0_1px_var(--btn-bg)] group-active:shadow-[0_0_0_0px_var(--btn-bg)]",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -202,13 +229,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const isCompact =
       resolvedSize === "compact" || resolvedSize === "icon-compact";
     const iconSize = isCompact ? 14 : 16;
-    // Spinner box tracks the button height so the loading glyph stays
-    // proportionate across sizes.
-    const spinnerSizeClass = isCompact ? "h-7 w-7" : "h-9 w-9";
     const shape = useShape();
     const bgClass = active
       ? activeBgVariants[variant ?? "primary"]
-      : bgVariants[variant ?? "primary"];
+      : loading
+        ? loadingBgVariants[variant ?? "primary"]
+        : bgVariants[variant ?? "primary"];
 
     const internals = (
       <>
@@ -232,22 +258,28 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 )}
               </span>
               <span className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  className={spinnerSizeClass}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <path
-                    d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
-                    stroke="currentColor"
-                    strokeWidth="1.125"
-                    strokeLinecap="round"
-                    pathLength="100"
-                    style={{
-                      strokeDasharray: "15 85",
-                      animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
-                    }}
-                  />
+                {/* Two arcs on one eased lap per second: they stretch while
+                    turning fast and shrink back into 2 dots as they settle.
+                    The offset moves half the growth so both ends move. The
+                    dashes sit at 25% and 75% of the path so neither crosses
+                    its start: a dash split there gets 2 extra caps and draws
+                    1.5px too long. rotate(-90) puts the dots back at 3 and
+                    9 o'clock. The 0.01 dash (not 0) keeps Safari drawing
+                    the round caps as dots. */}
+                <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none">
+                  <g className="origin-center [transform-box:fill-box] animate-[spinner-turn_1s_cubic-bezier(0.65,0,0.35,1)_infinite] motion-reduce:[animation-duration:2s]">
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6.25"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      pathLength="100"
+                      transform="rotate(-90 8 8)"
+                      className="animate-[spinner-breathe_1s_cubic-bezier(0.65,0,0.35,1)_infinite] motion-reduce:[animation-duration:2s]"
+                    />
+                  </g>
                 </svg>
               </span>
             </>
@@ -314,6 +346,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref as React.Ref<HTMLButtonElement>}
         className={rootClassName}
         disabled={disabled || loading}
+        aria-busy={loading || undefined}
         style={style}
         {...props}
       >

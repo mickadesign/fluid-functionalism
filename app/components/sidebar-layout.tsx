@@ -74,8 +74,10 @@ function DesktopReopenTrigger() {
   return (
     <AnimatePresence>
       {!open && (
+        // One step over sticky chrome, so a fixed Banner scrolling under the
+        // corner never ties with the trigger; still under a dialog's scrim.
         <motion.div
-          className="max-xl:hidden fixed top-4 left-4 z-50"
+          className="max-xl:hidden fixed top-4 left-4 z-[calc(var(--z-sticky,30)+1)]"
           initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{
@@ -101,7 +103,7 @@ function CloseSheetOnNavigate() {
   return null;
 }
 
-const NO_MARKS: ReleaseMarks = { new: [], updated: [], ahead: [] };
+const NO_MARKS: ReleaseMarks = { updated: [], ahead: [] };
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -197,9 +199,11 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
         <SiteSidebar />
         <CloseSheetOnNavigate />
 
-        {/* Mobile trigger for the sheet; desktop collapse uses [ or the rail */}
+        {/* Mobile trigger for the sheet; desktop collapse uses [ or the rail.
+            It floats over the page, so a blurred page-colored ground keeps
+            the icon legible over headings scrolling under it. */}
         <SidebarTrigger
-          className="xl:hidden fixed top-4 left-4 z-50"
+          className="xl:hidden fixed top-4 left-4 z-[calc(var(--z-sticky,30)+1)] bg-background/70 backdrop-blur-md"
           aria-label="Open navigation"
         />
         <DesktopReopenTrigger />

@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useId,
+  useSyncExternalStore,
   forwardRef,
   isValidElement,
   Children,
@@ -128,6 +129,14 @@ function useIsMobile(breakpoint: number): boolean {
     return () => mql.removeEventListener("change", onChange);
   }, [breakpoint]);
   return !!isMobile;
+}
+
+const subscribeNever = () => () => {};
+
+/** False on the server and while hydrating, true after: a client-only value
+ *  without a hydration mismatch. */
+function useIsClient() {
+  return useSyncExternalStore(subscribeNever, () => true, () => false);
 }
 
 // ─── SidebarProvider ─────────────────────────────────────────────────────────
@@ -513,14 +522,23 @@ export function SlotElement({
 // snapping it away: opacity fades while `display` rides the same transition
 // with allow-discrete, so none applies only once the fade lands (and
 // @starting-style fades it back in when the window grows). Literal classes
-// per breakpoint — Tailwind's scanner can't see composed strings.
+// per breakpoint — Tailwind's scanner can't see composed strings. The fade
+// classes only join after hydration: the server-rendered rail is there on
+// first paint and must not fade in with it (a bare duration is enough to fade
+// it, since transition-property starts at `all`).
 const BREAKPOINT_FADE_BASE =
   "transition-[opacity,display] ease-out [transition-behavior:allow-discrete] motion-reduce:transition-none";
 const BREAKPOINT_HIDDEN: Record<number, string> = {
-  640: "max-sm:hidden max-sm:opacity-0 max-sm:duration-160 sm:duration-240 sm:starting:opacity-0",
-  768: "max-md:hidden max-md:opacity-0 max-md:duration-160 md:duration-240 md:starting:opacity-0",
-  1024: "max-lg:hidden max-lg:opacity-0 max-lg:duration-160 lg:duration-240 lg:starting:opacity-0",
-  1280: "max-xl:hidden max-xl:opacity-0 max-xl:duration-160 xl:duration-240 xl:starting:opacity-0",
+  640: "max-sm:hidden max-sm:opacity-0",
+  768: "max-md:hidden max-md:opacity-0",
+  1024: "max-lg:hidden max-lg:opacity-0",
+  1280: "max-xl:hidden max-xl:opacity-0",
+};
+const BREAKPOINT_FADE: Record<number, string> = {
+  640: "max-sm:duration-160 sm:duration-240 sm:starting:opacity-0",
+  768: "max-md:duration-160 md:duration-240 md:starting:opacity-0",
+  1024: "max-lg:duration-160 lg:duration-240 lg:starting:opacity-0",
+  1280: "max-xl:duration-160 xl:duration-240 xl:starting:opacity-0",
 };
 
 // Props Motion redefines with incompatible signatures; they must not
@@ -669,6 +687,11 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
       return () => clearTimeout(id);
     }, [pinFromPeekHold]);
     const pinnedFromPeek = pinFromPeekHold;
+    const isClient = useIsClient();
+    // Below the drawer breakpoint the rail also gives its width back, on the
+    // same exit tween as the CSS dissolve (slow.exit = 160ms), so the inset
+    // slides into the space instead of snapping when display:none lands.
+    const shown = open && !isMobile;
     const widthTransition = reduceMotion
       ? { duration: 0 }
       : isResizing
@@ -677,7 +700,7 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
             ? spring.moderate
             : spring.moderate.exit
           : { duration: 0 }
-        : open
+        : shown
           ? spring.slow
           : spring.slow.exit;
 
@@ -702,22 +725,22 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
           // strip or the overlay card — and the shell must rise above the
           // inset (a later sibling) so the card paints over it. Pinning from
           // a peek keeps both through the width spring for the same reason.
-          peekEnabled || pinnedFromPeek ? "z-40" : "overflow-hidden",
+          peekEnabled || pinnedFromPeek ? "z-[var(--z-sticky,30)]" : "overflow-hidden",
           // Flex order (not DOM order) decides the side, so consumers can
           // keep Sidebar before SidebarInset regardless of `side`.
           side === "right" && "order-last",
           // The inset rail has no card edge of its own, so its scroll hairline
           // hugs the rows' 8px gutter instead of running panel-wide.
           variant === "inset" && "[--scroll-divider-inset:8px]",
-          BREAKPOINT_FADE_BASE,
           BREAKPOINT_HIDDEN[mobileBreakpoint],
+          isClient && [BREAKPOINT_FADE_BASE, BREAKPOINT_FADE[mobileBreakpoint]],
           // A non-standard breakpoint has no literal utility in the map, so
           // JS hides the shell (no fade, but never rail + drawer at once).
           !BREAKPOINT_HIDDEN[mobileBreakpoint] && isMobile && "hidden",
           className
         )}
         initial={false}
-        animate={{ width: open ? width : "0rem" }}
+        animate={{ width: shown ? width : "0rem" }}
         transition={widthTransition}
         // Hover-mode dismissal lives on the shell root: the pointer can land
         // on the overlay without ever crossing it (the card slides in under
@@ -864,8 +887,8 @@ const SidebarShell = forwardRef<HTMLDivElement, SidebarShellProps>(
             style={
               variant !== "sidebar"
                 ? ({
-                    "--rail-fade-start": `${shape.bgRadius >= 20 ? 24 : 12}px`,
-                    "--rail-fade-end": `${(shape.bgRadius >= 20 ? 24 : 12) + 24}px`,
+                    "--rail-fade-start": `${shape.containerRadius}px`,
+                    "--rail-fade-end": `${shape.containerRadius + 24}px`,
                   } as CSSProperties)
                 : undefined
             }
@@ -1145,9 +1168,11 @@ const SidebarInset = forwardRef<HTMLElement, SidebarInsetProps>(
           "transition-[margin] duration-80",
           // Container radius follows the shape system (literal classes so
           // Tailwind's scanner emits both).
-          shape.bgRadius >= 20
-            ? "peer-data-[variant=inset]:rounded-3xl"
-            : "peer-data-[variant=inset]:rounded-xl",
+          {
+            pill: "peer-data-[variant=inset]:rounded-3xl",
+            rounded: "peer-data-[variant=inset]:rounded-xl",
+            sharp: "peer-data-[variant=inset]:rounded-[1px]",
+          }[shape.variant],
           "peer-data-[variant=inset]:bg-surface-2 peer-data-[variant=inset]:shadow-surface-2",
           className
         )}

@@ -73,7 +73,7 @@ function DatePickerPopover({
             onPointerDownOutside={guardAnchor}
             onInteractOutside={guardAnchor}
             className={cn(
-              "z-50 outline-none",
+              "z-[var(--z-popover,60)] outline-none",
               "[--popup-available-height:var(--radix-popover-content-available-height)]"
             )}
           >

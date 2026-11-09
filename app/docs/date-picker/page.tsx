@@ -12,7 +12,7 @@ import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
 import { DatePickerPlayground, demoPresets } from "@/lib/docs/playgrounds/date-picker";
 import { apiReference } from "@/lib/docs/api/date-picker";
-import { fontWeights } from "@/lib/font-weight";
+import { demoToday } from "@/lib/demo-today";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -43,16 +43,13 @@ const eventCode = `import { DatePicker, type TimeRange } from "./components";
 const [date, setDate] = useState<Date | undefined>(new Date());
 const [time, setTime] = useState<TimeRange | null>({ start: "11:00", end: "12:45" });
 
-<div className="flex items-center gap-2">
-  <span className="w-20 text-muted-foreground">When</span>
-  <DatePicker
-    variant="ghost"
-    value={date}
-    onValueChange={setDate}
-    timeRange={time}
-    onTimeRangeChange={setTime}
-  />
-</div>`;
+<DatePicker
+  variant="ghost"
+  value={date}
+  onValueChange={setDate}
+  timeRange={time}
+  onTimeRangeChange={setTime}
+/>`;
 
 const timeCode = `import { DatePicker } from "./components";
 
@@ -97,12 +94,12 @@ export default function DatePickerDoc() {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [range, setRange] = useState<DateRange | undefined>(undefined);
   const [presets] = useState(() => demoPresets());
-  const [eventDate, setEventDate] = useState<Date | undefined>(() => new Date());
+  const [eventDate, setEventDate] = useState<Date | undefined>(demoToday);
   const [eventTime, setEventTime] = useState<TimeRange | null>({ start: "11:00", end: "12:45" });
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const [deadlineTime, setDeadlineTime] = useState<string | null>(null);
   const [stay, setStay] = useState<DateRange | undefined>(undefined);
-  const [booked] = useState(() => [3, 4, 5, 11, 12].map((n) => addDays(new Date(), n)));
+  const [booked] = useState(() => [3, 4, 5, 11, 12].map((n) => addDays(demoToday(), n)));
 
   return (
     <DocPage
@@ -141,23 +138,14 @@ export default function DatePickerDoc() {
           2 segments, 2 popovers. Type <code>1130</code> or <code>11:30am</code> in a time, or arrow through the slots. The end list counts the duration from the start.
         </p>
         <ComponentPreview code={eventCode} minHeightClass="min-h-[420px]" align="top">
-          <div className="flex w-full flex-col gap-1">
-            <div
-              className="px-2 text-site-title text-foreground"
-              style={{ fontVariationSettings: fontWeights.semibold }}
-            >
-              Design review
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-20 px-2 text-site-body text-muted-foreground">When</span>
-              <DatePicker
-                variant="ghost"
-                value={eventDate}
-                onValueChange={setEventDate}
-                timeRange={eventTime}
-                onTimeRangeChange={setEventTime}
-              />
-            </div>
+          <div className="w-full">
+            <DatePicker
+              variant="ghost"
+              value={eventDate}
+              onValueChange={setEventDate}
+              timeRange={eventTime}
+              onTimeRangeChange={setEventTime}
+            />
           </div>
         </ComponentPreview>
         <p className="text-site-body text-muted-foreground">
@@ -187,7 +175,7 @@ export default function DatePickerDoc() {
               value={stay}
               onValueChange={setStay}
               placeholder="Check in → check out"
-              calendarProps={{ booked, disabled: { before: new Date() } }}
+              calendarProps={{ booked, disabled: { before: demoToday() } }}
             />
           </div>
         </ComponentPreview>

@@ -68,6 +68,18 @@ export const TYPESET_SUB_INDENT = { default: 20, compact: 16 } as const;
  *  library draws it. tests/type-scale.test.mjs keeps it equal to theirs. */
 export const TICK_PATH = "M6 12L10 16L18 8";
 
+/** A ticked to-do's strike-through, drawn: Inter's OS/2 strikeout (top
+ *  671 and size 140 of 2048 units), its top measured down from the ascent
+ *  (1984), where an inline background starts. */
+const STRIKE_TOP = "0.641em";
+const STRIKE_SIZE = "max(1px, 0.0684em)";
+/** Button's release curve, for the checkbox press. */
+const PRESS_EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
+
+/** The fast tier (`spring.fast`, 0.08s) to draw it. CSS can't spring, so
+ *  it eases. Unticking takes it away at once. */
+const STRIKE_ENTER = "color 80ms ease-out, background-size 80ms ease-out";
+
 /** Split a selector list at its top-level commas (not the ones inside
  *  `:is(…)`). Also used by the docs inspector to name the rule it traced. */
 export function selectorList(sel: string): string[] {
@@ -128,6 +140,8 @@ function stepDecls(scale: TypeScaleData, step: Step): Decls {
   d["--typeset-check"] = `${TYPESET_CHECK.box[step]}px`;
   d["--typeset-check-radius"] = `${TYPESET_CHECK.radius[step]}px`;
   d["--typeset-check-gap"] = `${TYPESET_CHECK.gap[step]}px`;
+  // Pressed, the box comes in 1px a side, as a button's surface does.
+  d["--typeset-check-press"] = `${+((TYPESET_CHECK.box[step] - 2) / TYPESET_CHECK.box[step]).toFixed(4)}`;
   d["--typeset-indent"] = `${TYPESET_CHECK.box[step] + TYPESET_CHECK.gap[step]}px`;
   d["--typeset-sub-indent"] = `${TYPESET_SUB_INDENT[step]}px`;
   return d;
@@ -266,10 +280,15 @@ export function typesetRules(scale: TypeScaleData): Rule[] {
         "border-radius": v("check-radius"),
         background: "none",
         cursor: "pointer",
-        transition: "border-color 80ms ease-out",
+        // Button's press timings: in at 80ms, back out on its 180ms curve.
+        transition: `border-color 80ms ease-out, scale 180ms ${PRESS_EASE}`,
       },
     ],
     [el("input[type=checkbox]:not(:disabled):hover"), { "border-color": BORDER_HOVER }],
+    [
+      el("input[type=checkbox]:not(:disabled):active"),
+      { scale: v("check-press"), "transition-duration": "80ms, 80ms" },
+    ],
     [el("input[type=checkbox]:checked"), { "border-color": "transparent" }],
     // Hovered, a checked box brings its outline back around the tick, in the
     // same color as an unchecked one: still no fill, and plainly clickable.
@@ -287,7 +306,14 @@ export function typesetRules(scale: TypeScaleData): Rule[] {
         "background-color": FOREGROUND,
         "-webkit-mask": TICK,
         mask: TICK,
+        transition: `scale 180ms ${PRESS_EASE}`,
       },
+    ],
+    // Only the outline presses: the tick scales back up by as much, on the
+    // same timing, so it holds its size.
+    [
+      `${el("input[type=checkbox]:checked:not(:disabled):active")}::before`,
+      { scale: `calc(1 / ${v("check-press")})`, "transition-duration": "80ms" },
     ],
     // GFM puts the box inline, centered on the first line, straight in the
     // item or, in a loose list, in its paragraph. Its renderers (remark-gfm,
@@ -306,10 +332,31 @@ export function typesetRules(scale: TypeScaleData): Rule[] {
     [el('ul[data-type="taskList"] > li > div'), { flex: "1 1 auto", "min-width": "0" }],
     // Only the checked item's own text: a nested list of sub-tasks keeps its
     // own state, since a strike-through can't be undone by descendants.
+    // Checking fades the text in the fast tier; unchecking snaps back.
     [
       el('ul[data-type="taskList"] > li[data-checked="true"] > div > :not(ul, ol)'),
       // The line takes the text color: a faded one all but vanishes on dark.
-      { color: MUTED, "text-decoration-line": "line-through" },
+      { color: MUTED, "text-decoration-line": "line-through", transition: STRIKE_ENTER },
+    ],
+    // The first paragraph draws its line instead, so it can sweep left to
+    // right: inline, a background runs line after line, and a ticked item's
+    // line grows across its text, then on to the next line. Where and how
+    // thick come from Inter's own strike-through, from the top of the
+    // inline box: it lands on the line the browser would draw. Already
+    // ticked on load, it's simply there: only a change transitions.
+    [
+      el('ul[data-type="taskList"] > li > div > p:first-child'),
+      {
+        display: "inline",
+        "background-image": "linear-gradient(currentColor, currentColor)",
+        "background-repeat": "no-repeat",
+        "background-position": `0 ${STRIKE_TOP}`,
+        "background-size": `0% ${STRIKE_SIZE}`,
+      },
+    ],
+    [
+      el('ul[data-type="taskList"] > li[data-checked="true"] > div > p:first-child'),
+      { "text-decoration-line": "none", "background-size": `100% ${STRIKE_SIZE}` },
     ],
 
     [
@@ -404,6 +451,13 @@ export function forcedColorsRules(): Rule[] {
   ];
 }
 
+/** Reduced motion keeps the fade and drops the sweep: the line is just
+ *  there, or gone, as the text dims. */
+export const REDUCED_MOTION = "@media (prefers-reduced-motion: reduce)";
+export function reducedMotionRules(): Rule[] {
+  return [[el('ul[data-type="taskList"] > li > div > :not(ul, ol)'), { "transition-property": "color" }]];
+}
+
 const cssBlock = (rules: Rule[], indent: string) =>
   rules
     .map(([sel, decls]) => {
@@ -416,9 +470,10 @@ const cssBlock = (rules: Rule[], indent: string) =>
 export function generateTypesetCss(scale: TypeScaleData): string {
   const body = cssBlock(typesetRules(scale), "  ");
   const forced = cssBlock(forcedColorsRules(), "    ");
+  const reduced = cssBlock(reducedMotionRules(), "    ");
   return (
     "/* Fluid Functionalism typeset: https://www.fluidfunctionalism.com/docs/typography */\n" +
-    `@layer components {\n${body}\n\n  ${FORCED_COLORS} {\n${forced}\n  }\n}\n`
+    `@layer components {\n${body}\n\n  ${FORCED_COLORS} {\n${forced}\n  }\n\n  ${REDUCED_MOTION} {\n${reduced}\n  }\n}\n`
   );
 }
 
@@ -431,5 +486,6 @@ export function typesetRegistryCss(
     layer[sel] = { ...((layer[sel] as Decls | undefined) ?? {}), ...decls };
   }
   layer[FORCED_COLORS] = Object.fromEntries(forcedColorsRules());
+  layer[REDUCED_MOTION] = Object.fromEntries(reducedMotionRules());
   return { "@layer components": layer };
 }

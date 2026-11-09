@@ -100,6 +100,9 @@
         "animation": "sf-divider-end both linear",
         "animation-timeline": "--sf-scroller",
         "animation-range": "calc(100% - var(--scroll-divider-size)) 100%"
+      },
+      ".scroll-divider:last-child::after": {
+        "content": "none"
       }
     },
     "@supports (animation-timeline: scroll())": {

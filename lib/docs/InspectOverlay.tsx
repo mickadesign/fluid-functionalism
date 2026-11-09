@@ -14,6 +14,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { useSizeVariant } from "@/lib/size-context";
 import { Tooltip } from "@/registry/radix/tooltip";
+import { ACCENT_VAR } from "@/lib/accent";
 
 // ---------------------------------------------------------------------------
 // Inspect overlay — a design-inspector layer for ComponentPreview. It sits
@@ -30,14 +31,18 @@ import { Tooltip } from "@/registry/radix/tooltip";
 // element wherever they overlap the content region.
 // ---------------------------------------------------------------------------
 
-const BLUE = "#6B97FF"; // --focus-ring "clarity" blue
+// The rulers, guides and bands follow the site accent (right panel >
+// Accent). SVG attributes can't read var(), so the rulers set it as their
+// CSS color and draw with currentColor.
+const ACCENT = ACCENT_VAR;
 const GREEN = "rgba(153, 255, 201, 0.35)"; // #99FFC9, subtle
 const GREEN_LINE = "rgba(83, 214, 145, 0.9)";
 // Near-black green for the strip labels — the mint fill reads as pale mint in
 // light mode but a medium sea-green over dark surfaces, so a dark label keeps
 // contrast in both.
-const CONTENT_FILL = "rgba(120, 132, 232, 0.20)";
-const BAND = "rgba(107, 151, 255, 0.16)";
+const CONTENT_FILL = "color-mix(in oklab, var(--fluid-accent, #6B97FF) 20%, transparent)";
+/** The ruler band under the target, as an opacity of the accent. */
+const BAND_OPACITY = 0.16;
 
 /** Space reserved at the top/left of the frame for the rulers. */
 export const RULER_TOP = 18;
@@ -602,13 +607,13 @@ export function InspectOverlay({
         exit={{ y: -4, transition: spring.moderate.exit }}
         transition={spring.moderate}
       >
-        <svg width={w} height={RULER_TOP} className="absolute left-0" style={{ top: capTop, overflow: "visible" }}>
-          {target && <rect x={Math.max(target.left, leftStripEnd)} y={0} width={target.width - Math.max(0, leftStripEnd - target.left)} height={RULER_TOP} fill={BAND} />}
+        <svg width={w} height={RULER_TOP} className="absolute left-0" style={{ top: capTop, overflow: "visible", color: ACCENT }}>
+          {target && <rect x={Math.max(target.left, leftStripEnd)} y={0} width={target.width - Math.max(0, leftStripEnd - target.left)} height={RULER_TOP} fill="currentColor" fillOpacity={BAND_OPACITY} />}
           {xTicks.filter((t) => t.pos >= leftStripEnd).map((t, i) => (
-            <line key={i} x1={t.pos} y1={-6} x2={t.pos} y2={6} stroke={BLUE} strokeWidth={1} opacity={t.inComp ? (t.labeled ? 0.9 : 0.45) : 0.16} />
+            <line key={i} x1={t.pos} y1={-6} x2={t.pos} y2={6} stroke="currentColor" strokeWidth={1} opacity={t.inComp ? (t.labeled ? 0.9 : 0.45) : 0.16} />
           ))}
           {xTicks.filter((t) => t.labeled && t.pos >= leftStripEnd).map((t, i) => (
-            <text key={`l${i}`} x={t.pos} y={16} fontSize={9} fill={BLUE} fontFamily="monospace" textAnchor="middle">
+            <text key={`l${i}`} x={t.pos} y={16} fontSize={9} fill="currentColor" fontFamily="monospace" textAnchor="middle">
               {t.value}
             </text>
           ))}
@@ -625,10 +630,10 @@ export function InspectOverlay({
         exit={{ x: -4, transition: spring.moderate.exit }}
         transition={spring.moderate}
       >
-        <svg width={RULER_LEFT} height={h} className="absolute top-0" style={{ left: capLeft, overflow: "visible" }}>
-          {target && <rect x={0} y={Math.max(target.top, topStripEnd)} width={RULER_LEFT} height={target.height - Math.max(0, topStripEnd - target.top)} fill={BAND} />}
+        <svg width={RULER_LEFT} height={h} className="absolute top-0" style={{ left: capLeft, overflow: "visible", color: ACCENT }}>
+          {target && <rect x={0} y={Math.max(target.top, topStripEnd)} width={RULER_LEFT} height={target.height - Math.max(0, topStripEnd - target.top)} fill="currentColor" fillOpacity={BAND_OPACITY} />}
           {yTicks.filter((t) => t.pos >= topStripEnd).map((t, i) => (
-            <line key={i} x1={0} y1={t.pos} x2={6} y2={t.pos} stroke={BLUE} strokeWidth={1} opacity={t.inComp ? (t.labeled ? 0.9 : 0.45) : 0.16} />
+            <line key={i} x1={0} y1={t.pos} x2={6} y2={t.pos} stroke="currentColor" strokeWidth={1} opacity={t.inComp ? (t.labeled ? 0.9 : 0.45) : 0.16} />
           ))}
           {yTicks.filter((t) => t.labeled && t.pos >= topStripEnd).map((t, i) => (
             <text
@@ -636,7 +641,7 @@ export function InspectOverlay({
               x={16}
               y={t.pos}
               fontSize={9}
-              fill={BLUE}
+              fill="currentColor"
               fontFamily="monospace"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -711,10 +716,10 @@ export function InspectOverlay({
           ))}
           {/* Crosshair guides at the four box edges */}
           {[target.left, target.left + target.width].map((x, i) => (
-            <div key={`vx${i}`} className="absolute top-0 bottom-0" style={{ left: x, width: 1, background: BLUE, opacity: 0.55 }} />
+            <div key={`vx${i}`} className="absolute top-0 bottom-0" style={{ left: x, width: 1, background: ACCENT, opacity: 0.55 }} />
           ))}
           {[target.top, target.top + target.height].map((y, i) => (
-            <div key={`hy${i}`} className="absolute left-0 right-0" style={{ top: y, height: 1, background: BLUE, opacity: 0.55 }} />
+            <div key={`hy${i}`} className="absolute left-0 right-0" style={{ top: y, height: 1, background: ACCENT, opacity: 0.55 }} />
           ))}
         </>
       )}

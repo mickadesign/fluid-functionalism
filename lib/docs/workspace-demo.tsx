@@ -32,7 +32,7 @@ export function WorkspaceMenuItems() {
         >
           <span
             className={`absolute top-1/2 left-1/2 flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[10px] ${
-              shape.bgRadius >= 20 ? "rounded-full" : "rounded-md"
+              { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" }[shape.variant]
             } ${colorClasses}`}
             style={{ fontVariationSettings: fontWeights.semibold }}
           >

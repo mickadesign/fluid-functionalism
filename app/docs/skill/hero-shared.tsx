@@ -111,7 +111,7 @@ function FakeCursor({
 const GLIDE_MS = 500;
 
 /** How long the cursor rests on its target before it presses: long enough
- *  to read the hover it lands on, which on TabsSubtle is a faint pill that
+ *  to read the hover it lands on, which on Tabs is a faint pill that
  *  a quicker click would replace before anyone sees it. */
 const HOVER_MS = 450;
 

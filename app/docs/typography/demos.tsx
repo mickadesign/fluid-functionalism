@@ -28,7 +28,7 @@ import { HeadingWeightSelect, headingFontLabel, useHeadingFont } from "@/lib/doc
 import { HEADING_FONTS } from "@/lib/docs/site-settings";
 import { nearestGoogleFontWeight } from "@/lib/docs/google-fonts";
 import { Button } from "@/components/ui/button";
-import { TabsSubtle, TabsSubtleItem } from "@/components/flavored/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/flavored/tabs";
 
 /** One side of a before/after: a framed specimen with its verdict under it,
  *  as on the fluid hover page. */
@@ -286,7 +286,7 @@ function WeightItem({
       {marks && (
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-2 z-20 w-px bg-[#6B97FF]"
+          className="pointer-events-none absolute inset-y-2 z-20 w-px bg-[var(--fluid-accent,#6B97FF)]"
           style={{ left: marks.edge }}
         />
       )}
@@ -517,7 +517,7 @@ function CountRow({
       {marks && (
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-2 z-20 w-px bg-[#6B97FF]"
+          className="pointer-events-none absolute inset-y-2 z-20 w-px bg-[var(--fluid-accent,#6B97FF)]"
           style={{ left: marks.left + rest }}
         />
       )}
@@ -671,7 +671,7 @@ function TrimChip({ trimmed, onAbove }: { trimmed: boolean; onAbove: (px: number
           <span
             key={i}
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 z-20 h-px -translate-y-1/2 bg-[#6B97FF]"
+            className="pointer-events-none absolute inset-x-0 z-20 h-px -translate-y-1/2 bg-[var(--fluid-accent,#6B97FF)]"
             style={{ top: y }}
           />
         ))}
@@ -768,26 +768,52 @@ export function PrettyDemo() {
   );
 }
 
+/** Runs a change that resizes the page above `el` (a heading font swap
+ *  grows the title and the scale specimen), then scrolls by however far
+ *  `el` moved, so what was clicked stays under the pointer. Scroll
+ *  anchoring is off meanwhile: it picks some other anchor and adds its own
+ *  shift on top. Corrects again once the new face has loaded, as the
+ *  fallback's metrics differ. */
+function keepInPlace(el: HTMLElement | null, change: () => void) {
+  if (!el) return change();
+  const root = document.documentElement;
+  const top = el.getBoundingClientRect().top;
+  const settle = () => {
+    const moved = el.getBoundingClientRect().top - top;
+    if (moved !== 0) window.scrollBy(0, moved);
+  };
+  root.style.overflowAnchor = "none";
+  change();
+  settle();
+  // Skipped if the visitor scrolled meanwhile: the page is theirs again.
+  const scrollY = window.scrollY;
+  void document.fonts.ready.then(() => {
+    if (window.scrollY === scrollY) settle();
+    requestAnimationFrame(() => root.style.removeProperty("overflow-anchor"));
+  });
+}
+
 /** The heading font switch: the same global setting as the right panel, so
  *  picking here also restyles every heading on the page. The third tab is
  *  the custom Google Fonts family: picked once through Browse, it stays,
  *  with its heading weight beside Browse. */
 export function HeadingFontDemo() {
   const { font, custom, setFont, browse } = useHeadingFont();
+  const rowRef = useRef<HTMLDivElement>(null);
   return (
     <ComponentPreview hideHeader inspectable={false}>
       <div className="flex w-full flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <TabsSubtle
+        <div ref={rowRef} className="flex flex-wrap items-center justify-between gap-2">
+          <Tabs
             selectedIndex={HEADING_FONTS.indexOf(font)}
-            onSelect={(i) => setFont(HEADING_FONTS[i])}
+            onSelect={(i) => keepInPlace(rowRef.current, () => setFont(HEADING_FONTS[i]))}
             idPrefix="heading-font-tabs"
             aria-label="Heading font"
           >
             {HEADING_FONTS.map((f, i) => (
-              <TabsSubtleItem key={f} index={i} label={headingFontLabel(f, custom)} />
+              <TabsItem key={f} index={i} label={headingFontLabel(f, custom)} />
             ))}
-          </TabsSubtle>
+          </Tabs>
           <div className="flex items-center gap-1">
             <HeadingWeightSelect triggerClassName="min-w-0 w-auto" />
             <Button variant="secondary" size="sm" onClick={browse}>

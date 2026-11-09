@@ -70,6 +70,9 @@ import {
   IconFolder,
   IconAdjustmentsHorizontal,
   IconInfoCircle,
+  IconAlertCircle,
+  IconFile,
+  IconMinus,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import type { IconComponent, IconComponentProps, IconName } from "@/lib/icon-context";
@@ -94,6 +97,7 @@ export const tablerIcons: Record<IconName, IconComponent> = {
   "moon": tabler(IconMoon),
   "rectangle-horizontal": tabler(IconSquare),
   "circle": tabler(IconCircle),
+  "square": tabler(IconSquare),
   "square-library": tabler(IconLibrary),
   "clock": tabler(IconClock),
   "star": tabler(IconStar),
@@ -141,4 +145,7 @@ export const tablerIcons: Record<IconName, IconComponent> = {
   "folder": tabler(IconFolder),
   "sliders-horizontal": tabler(IconAdjustmentsHorizontal),
   "info": tabler(IconInfoCircle),
+  "circle-alert": tabler(IconAlertCircle),
+  "file": tabler(IconFile),
+  "minus": tabler(IconMinus),
 };
