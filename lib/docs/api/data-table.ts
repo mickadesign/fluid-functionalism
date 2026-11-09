@@ -74,7 +74,7 @@ export const rowActionsColumnProps: PropDef[] = [
 ];
 
 export const selectColumnProps: PropDef[] = [
-  { name: "selectColumn()", type: "ColumnDef<TData>", description: "A first column of checkboxes. The header box selects the page and counts it in its tooltip." },
+  { name: "selectColumn()", type: "ColumnDef<TData>", description: "A first column of checkboxes. The header box selects every row the search leaves, on every page, and counts them in its tooltip." },
 ];
 
 /** The page's tables in page order, titled as on the page. */

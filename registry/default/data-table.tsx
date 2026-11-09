@@ -886,7 +886,7 @@ function DataTable<TData>({
     const mod = e.metaKey || e.ctrlKey;
     if (hasSelection && mod && !e.altKey && e.key.toLowerCase() === "a") {
       e.preventDefault();
-      table.toggleAllRowsSelected(true);
+      selectAllRows(table, true);
       return;
     }
     if (hasSelection && e.key === "Escape" && Object.keys(table.getState().rowSelection).length) {
@@ -1573,8 +1573,27 @@ const SelectHit = forwardRef<HTMLSpanElement, SelectHitProps>(
 );
 SelectHit.displayName = "SelectHit";
 
+/** The selectable rows the search leaves, sub-rows included, on every page. */
+function selectableRows<TData>(table: TanStackTable<TData>) {
+  return table.getFilteredRowModel().flatRows.filter((r) => r.getCanSelect());
+}
+
+/** One state update for the whole result, whatever its size. */
+function selectAllRows<TData>(table: TanStackTable<TData>, value: boolean) {
+  const rows = selectableRows(table);
+  table.setRowSelection((prev) => {
+    const next = { ...prev };
+    for (const r of rows) {
+      if (value) next[r.id] = true;
+      else delete next[r.id];
+    }
+    return next;
+  });
+}
+
 /** A ready-made first column of checkboxes: one per row, and a header box
- *  that selects every row on the page (a dash while only some are). Each
+ *  that selects every row the search leaves, on every page (a dash while
+ *  only some are). Each
  *  box answers a click anywhere in its cell. Put it first in your
  *  `columns`. */
 function selectColumn<TData>(): ColumnDef<TData> {
@@ -1589,21 +1608,25 @@ function selectColumn<TData>(): ColumnDef<TData> {
     // w-0 shrinks the column to the box and its 8px either side.
     meta: { className: "w-0 px-2" },
     header: ({ table }) => {
-      const all = table.getIsAllPageRowsSelected();
-      // The rows the click acts on: this page's, counted so "all" never
-      // reads as more (or fewer) than it is.
-      const count = table.getRowModel().rows.filter((r) => r.getCanSelect()).length;
+      // Every row the search leaves, on every page: a page is a view, not
+      // a scope, so "all" means the whole result.
+      const rows = selectableRows(table);
+      const all = rows.length > 0 && rows.every((r) => r.getIsSelected());
+      const some = !all && rows.some((r) => r.getIsSelected());
+      // Counted so "all" never reads as more (or fewer) than it is: the
+      // top-level rows, the number the footer shows.
+      const count = table.getFilteredRowModel().rows.filter((r) => r.getCanSelect()).length;
       return (
         // The tooltip names what the next click does: a dash selects the
-        // rest of the page, a check clears it. Its trigger is the hit area,
-        // not the box, so it works whichever primitive the box is built on.
+        // rest, a check clears it. Its trigger is the hit area, not the
+        // box, so it works whichever primitive the box is built on.
         <Tooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top">
-          <SelectHit onToggle={() => table.toggleAllPageRowsSelected(!all)}>
+          <SelectHit onToggle={() => selectAllRows(table, !all)}>
             <Checkbox
-              aria-label="Select all rows on this page"
+              aria-label="Select all rows"
               checked={all}
-              indeterminate={table.getIsSomePageRowsSelected()}
-              onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+              indeterminate={some}
+              onCheckedChange={(checked) => selectAllRows(table, checked)}
             />
           </SelectHit>
         </Tooltip>
@@ -1658,7 +1681,7 @@ function ExpandToggle({
 }: {
   expanded: boolean;
   /** How many sub-rows it opens: the tooltip names the next click with
-   *  it, as the select-all box does with its page. */
+   *  it, as the select-all box does with its rows. */
   count: number;
   sharp: boolean;
   onToggle: () => void;

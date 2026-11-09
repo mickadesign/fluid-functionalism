@@ -58,7 +58,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   reorder: true,
   lines: "1",
   align: "auto",
-  headerIcons: true,
+  headerIcons: false,
   editable: false,
   expandable: false,
 };
@@ -107,8 +107,8 @@ export const DATA_TABLE_PRESET_FIELDS_B: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
-// Version c adds sub-rows.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version c adds sub-rows: kept so its codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_C: readonly PresetField[] = [
   { key: "filter", values: ["column", "all", "none"], bits: 2 },
   { key: "viewMenu", values: [true, false], bits: 1 },
   { key: "selection", values: [true, false], bits: 1 },
@@ -127,14 +127,34 @@ export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
+// Version d turns header icons off by default.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  { key: "filter", values: ["column", "all", "none"], bits: 2 },
+  { key: "viewMenu", values: [true, false], bits: 1 },
+  { key: "selection", values: [true, false], bits: 1 },
+  { key: "rowActions", values: [true, false], bits: 1 },
+  { key: "pagination", values: [true, false], bits: 1 },
+  { key: "pageSize", values: ["10", "5", "20"], bits: 2 },
+  { key: "resize", values: [true, false], bits: 1 },
+  { key: "reorder", values: [true, false], bits: 1 },
+  { key: "lines", values: ["1", "2", "wrap"], bits: 2 },
+  { key: "align", values: ["auto", "center", "top"], bits: 2 },
+  { key: "headerIcons", values: [false, true], bits: 1 },
+  { key: "editable", values: [false, true], bits: 1 },
+  { key: "expandable", values: [false, true], bits: 1 },
+  { key: "flavor", values: ["radix", "base"], bits: 3 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
+  { key: "size", values: ["default", "compact"], bits: 2 },
+];
+
 // ── Registration (tag "t") ──────────────────────────────────────────────────
 
 export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "c",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "d",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };

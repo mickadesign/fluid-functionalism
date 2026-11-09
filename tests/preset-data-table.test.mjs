@@ -114,7 +114,24 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tcf3h"`);
+    expect(code).toMatchInlineSnapshot(`"tdanR"`);
+  });
+
+  // Version "c" codes were published while header icons defaulted on.
+  it("a version-c code still decodes", () => {
+    const back = decodeDataTablePreset("tcf3h");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("c");
+    expect(back.preset).toEqual({
+      ...DEFAULT_DATA_TABLE_PRESET,
+      filter: "all",
+      selection: false,
+      pageSize: "20",
+      lines: "wrap",
+      align: "top",
+      headerIcons: false,
+      flavor: "base",
+    });
   });
 
   // Version "b" codes were published before sub-rows joined the table.
