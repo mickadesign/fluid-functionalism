@@ -2149,9 +2149,10 @@ function revealCell(e: FocusEvent<HTMLElement> | PointerEvent<HTMLElement>) {
 
 /** A click in an editable cell that missed its editor (the room a taller
  *  row leaves under it, or its padding) presses the editor itself: a
- *  field takes focus with the caret at the end, a trigger gets the
- *  press sequence a real click on it would, so menus and calendars open
- *  however their primitive listens (pointerdown or click). */
+ *  field takes focus with the caret at the end, a trigger (or a
+ *  combobox's field) gets the press sequence a real click on it would,
+ *  so every menu, list and calendar opens however its primitive listens
+ *  (pointerdown or click). */
 const CELL_EDITOR_TARGETS = [
   "textarea",
   'input:not([type=hidden]):not([tabindex="-1"])',
@@ -2183,11 +2184,13 @@ function pressCellEditor(e: React.MouseEvent<HTMLElement>) {
   }
   if (!field) return;
   e.preventDefault();
-  if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+  const isField = field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement;
+  if (isField) {
     field.focus();
     const end = field.value.length;
     field.setSelectionRange?.(end, end);
-    return;
+    // A combobox's field (number, tags) goes on to open its list.
+    if (field.getAttribute("role") !== "combobox") return;
   }
   const r = field.getBoundingClientRect();
   const at = { bubbles: true, cancelable: true, composed: true, button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
