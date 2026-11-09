@@ -4,6 +4,7 @@ import {
   Fragment,
   createContext,
   forwardRef,
+  memo,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -465,8 +466,6 @@ function DataTable<TData>({
   }, [swapping]);
   const skeletonRows = loadingRows ?? table.getState().pagination.pageSize;
 
-  // The clickable row that holds the body's tab stop.
-  const [focusRowId, setFocusRowId] = useState<string | null>(null);
 
   // The header being dragged, and where it would land.
   const [drag, setDrag] = useState<{ id: string; refId: string; place: "before" | "after" } | null>(
@@ -563,6 +562,18 @@ function DataTable<TData>({
     commit: (row, columnId, value) =>
       onCellEdit?.({ row: row as Row<TData>, columnId, value }),
   };
+
+  // One context value for the table's life, reading the latest handlers,
+  // so memoized rows (and their editors) don't re-render for a new object.
+  const editingRef = useRef(editing);
+  useLayoutEffect(() => {
+    editingRef.current = editing;
+  });
+  const [stableEditing] = useState<EditContextValue>(() => ({
+    hold: () => editingRef.current.hold(),
+    release: () => editingRef.current.release(),
+    commit: (row, columnId, value) => editingRef.current.commit(row, columnId, value),
+  }));
 
   const registerLayout = (table as Partial<DataTableExtras>)._registerLayout;
   useLayoutEffect(() => {
@@ -874,7 +885,9 @@ function DataTable<TData>({
   // from the row.
   useEffect(() => {
     if (!rowsFocusable) return;
-    const wrap = wrapRef.current;
+    // Read live, never captured: the ScrollArea root can remount (filling
+    // switches its orientation), and a listener on the old one hears
+    // nothing, which left hover pickup working only the first time.
     let pointerFresh = false;
     let last: { x: number; y: number } | null = null;
     // Only a real move counts: a scroll under a still pointer fires moves at
@@ -882,9 +895,9 @@ function DataTable<TData>({
     const onPointerMove = (e: globalThis.PointerEvent) => {
       if (last && last.x === e.clientX && last.y === e.clientY) return;
       last = { x: e.clientX, y: e.clientY };
-      pointerFresh = true;
+      if (wrapRef.current?.contains(e.target as Node)) pointerFresh = true;
     };
-    wrap?.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
     const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End", "Enter", " ", "x", "X", "Escape", "a", "A"]);
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing || !ROW_KEYS.has(e.key)) return;
@@ -895,6 +908,7 @@ function DataTable<TData>({
       // closes what the page has open.
       if (mod && !hasSelection) return;
       if (e.key === "Escape" && !(hasSelection && Object.keys(table.getState().rowSelection).length)) return;
+      const wrap = wrapRef.current;
       if (!wrap) return;
       const active = document.activeElement as HTMLElement | null;
       const resting = !active || active === document.body || active.contains(wrap);
@@ -925,7 +939,7 @@ function DataTable<TData>({
     window.addEventListener("keydown", onKey, true);
     return () => {
       window.removeEventListener("keydown", onKey, true);
-      wrap?.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointermove", onPointerMove);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- table is one object for its life
   }, [rowsFocusable, hasSelection]);
@@ -934,8 +948,15 @@ function DataTable<TData>({
     registerFocus?.(focusFirstRow);
   });
 
+  // What a body row's cells depend on beyond the row itself: the visible
+  // columns in order and how each fits its text. Rows re-render when this,
+  // their record, their selection or the columns change, and not on every
+  // state change of the table (a Shift + arrow step re-rendered every cell,
+  // editors and all).
+  const layoutKey = visible.map((c) => `${c.id}:${linesOf(table, c) ?? ""}`).join("|");
+
   const tableEl = (
-    <EditContext.Provider value={editing}>
+    <EditContext.Provider value={stableEditing}>
     <Table
       size={size}
       // Selected rows on this page get CheckboxGroup's merged fill.
@@ -1086,133 +1107,26 @@ function DataTable<TData>({
           ))
         ) : rows.length > 0 ? (
           rows.map((row, i) => (
-            <TableRow
+            <DataTableBodyRow
               // Keyed by record, so state in a cell (an open row menu, a
               // consumer's own input, focus) stays with its row through a
               // sort, a search or a page turn.
               key={row.id}
-              data-row-id={row.id}
-              index={i}
-              data-state={row.getIsSelected() ? "selected" : undefined}
-              onClick={
-                onRowClick
-                  ? (e: MouseEvent<HTMLTableRowElement>) => {
-                      // React carries clicks up from portals (the row menu's
-                      // popup) to this row; only clicks inside the row's own
-                      // DOM count, and not those on a control in it.
-                      if (!e.currentTarget.contains(e.target as Node)) return;
-                      if ((e.target as Element).closest(CONTROL)) return;
-                      onRowClick(row);
-                    }
-                  : undefined
-              }
-              // Rows that select or open are one tab stop for the whole body
-              // (roving: the row last focused, else the first), so they have
-              // a keyboard path without a stop per row.
-              tabIndex={rowsFocusable ? (row.id === (focusRowId ?? rows[0]?.id) ? 0 : -1) : undefined}
-              onFocus={
-                rowsFocusable
-                  ? (e: FocusEvent<HTMLTableRowElement>) => {
-                      if (e.target === e.currentTarget) setFocusRowId(row.id);
-                    }
-                  : undefined
-              }
-              className={cn(
-                onRowClick && "cursor-pointer",
-                rowsFocusable && "outline-none",
-                // A focused row looks hovered: Table moves its highlight to
-                // it, and its checkbox takes the hover border, in place of
-                // a blue ring around the row or the box.
-                "[&_[role=checkbox]:focus-visible]:ring-0",
-                "[&:is(:focus-visible,:has(:focus-visible))_[role=checkbox]]:border-foreground/40"
-              )}
-            >
-              {row.getVisibleCells().map((cell, c) => {
-                const meta = cell.column.columnDef.meta;
-                const lines = linesOf(table, cell.column);
-                const editor = onCellEdit ? meta?.editor : undefined;
-                const rendered = editor ? (
-                  <EditableCell
-                    editor={editor}
-                    row={row}
-                    columnId={cell.column.id}
-                    label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
-                    value={cell.getValue()}
-                  />
-                ) : (
-                  flexRender(cell.column.columnDef.cell, cell.getContext())
-                );
-                // line-clamp needs a block of its own; a cell isn't one.
-                const content =
-                  lines === 2 ? (
-                    <div className="line-clamp-2 [overflow-wrap:anywhere]">{rendered}</div>
-                  ) : (
-                    rendered
-                  );
-                return (
-                  <TableCell
-                    key={cell.column.id}
-                    data-column-id={cell.column.id}
-                    className={cn(
-                      // Content reads at full strength, above the muted
-                      // headers.
-                      "text-foreground",
-                      // Anchors the skeleton that fades over it on landing.
-                      swapping && "relative",
-                      alignTop && "align-top",
-                      // A narrowed column cuts its text short instead of
-                      // wrapping it onto a second line.
-                      (lines === 1 || (sized && lines === undefined)) && "truncate",
-                      // Long unbroken text (a URL) breaks anywhere rather
-                      // than running out of its column.
-                      lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
-                      // max-w-0 keeps long text from setting the column's
-                      // width, so it fits the room the column is given.
-                      lines !== undefined && "max-w-0",
-                      meta?.className
-                    )}
-                  >
-                    {swapping && (
-                      // The hand-over: a skeleton over the cell's content box,
-                      // shown at once (its delayed reveal and pulse turned
-                      // off, since this row is new) and fading out as the
-                      // content fades in under it, so the cell is never empty
-                      // and the content keeps its real layout the whole time.
-                      <span
-                        key="skeleton"
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 animate-[reveal-out_120ms_ease-in_forwards] [&_[data-slot=skeleton]]:animate-none"
-                        style={{ padding: "inherit" }}
-                      >
-                        {skeletonFor(cell.column.id, i, c, shape.variant, sizeClasses.variant === "compact")}
-                      </span>
-                    )}
-                    {textCell(cell.column.id) && !editor ? (
-                      // Text sits in a block that carries the cell's fitting
-                      // (a block child escapes the cell's own ellipsis), so
-                      // it can fade in on landing. Clipped sideways only, so
-                      // a 24px badge still overhangs its 20px line.
-                      <span
-                        key="content"
-                        className={cn(
-                          "block",
-                          (lines === 1 || (sized && lines === undefined)) &&
-                            "overflow-x-clip text-ellipsis whitespace-nowrap",
-                          lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
-                          // 160ms in, the moderate tier (CSS can't take the
-                          // spring token).
-                          swapping && "animate-[reveal-preset_160ms_ease-out_both]"
-                        )}
-                      >
-                        {content}
-                      </span>
-                    ) : (
-                      <Fragment key="content">{content}</Fragment>
-                    )}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
+              table={table}
+              row={row}
+              i={i}
+              selected={row.getIsSelected()}
+              columns={table.options.columns}
+              layoutKey={layoutKey}
+              onRowClick={onRowClick}
+              rowsFocusable={rowsFocusable}
+              editable={!!onCellEdit}
+              sized={sized}
+              alignTop={alignTop}
+              swapping={swapping}
+              compact={sizeClasses.variant === "compact"}
+              shapeVariant={shape.variant}
+            />
           ))
         ) : (
           <TableEmpty
@@ -1572,6 +1486,200 @@ function selectColumn<TData>(): ColumnDef<TData> {
     ),
   };
 }
+
+
+// ── Body row ─────────────────────────────────────────────
+
+interface DataTableBodyRowProps<TData> {
+  table: TanStackTable<TData>;
+  row: Row<TData>;
+  i: number;
+  selected: boolean;
+  /** Compared only: new column definitions redraw the cells. */
+  columns: unknown;
+  /** Compared only: the visible columns and their text fitting. */
+  layoutKey: string;
+  onRowClick?: (row: Row<TData>) => void;
+  rowsFocusable: boolean;
+  editable: boolean;
+  sized: boolean;
+  alignTop: boolean;
+  swapping: boolean;
+  compact: boolean;
+  shapeVariant: keyof typeof SKELETON_BAR_RADIUS;
+}
+
+/** One body row. Memoized: it redraws when its record (a new row object),
+ *  its selection, the columns, their layout or the table's look change, not
+ *  on every change to the table's state. A cell that reads other table
+ *  state should live in a column you redefine when that state changes. */
+const DataTableBodyRow = memo(
+  forwardRef<HTMLTableRowElement, DataTableBodyRowProps<unknown>>(function DataTableBodyRow(
+    {
+      table,
+      row,
+      i,
+      selected,
+      onRowClick,
+      rowsFocusable,
+      editable,
+      sized,
+      alignTop,
+      swapping,
+      compact,
+      shapeVariant,
+    },
+    ref
+  ) {
+    "use no memo";
+    return (
+    <TableRow
+      ref={ref}
+      data-row-id={row.id}
+      index={i}
+      data-state={selected ? "selected" : undefined}
+      onClick={
+        onRowClick
+          ? (e: MouseEvent<HTMLTableRowElement>) => {
+              // React carries clicks up from portals (the row menu's
+              // popup) to this row; only clicks inside the row's own
+              // DOM count, and not those on a control in it.
+              if (!e.currentTarget.contains(e.target as Node)) return;
+              if ((e.target as Element).closest(CONTROL)) return;
+              onRowClick(row);
+            }
+          : undefined
+      }
+      // Rows that select or open are one tab stop for the whole body
+      // (roving: the row last focused, else the first), so they have
+      // a keyboard path without a stop per row. The stop moves in
+      // the DOM, not in state: a re-render of every row on every
+      // arrow press is what made held keys drag.
+      tabIndex={rowsFocusable ? (i === 0 ? 0 : -1) : undefined}
+      onFocus={
+        rowsFocusable
+          ? (e: FocusEvent<HTMLTableRowElement>) => {
+              const tr = e.currentTarget;
+              if (e.target !== tr || tr.tabIndex === 0) return;
+              tr.parentElement
+                ?.querySelectorAll<HTMLElement>("tr[data-row-id][tabindex='0']")
+                .forEach((other) => (other.tabIndex = -1));
+              tr.tabIndex = 0;
+            }
+          : undefined
+      }
+      className={cn(
+        onRowClick && "cursor-pointer",
+        rowsFocusable && "outline-none",
+        // A focused row looks hovered: Table moves its highlight to
+        // it, and its checkbox takes the hover border, in place of
+        // a blue ring around the row or the box.
+        "[&_[role=checkbox]:focus-visible]:ring-0",
+        "[&:is(:focus-visible,:has(:focus-visible))_[role=checkbox]]:border-foreground/40"
+      )}
+    >
+      {row.getVisibleCells().map((cell, c) => {
+        const meta = cell.column.columnDef.meta;
+        const lines = linesOf(table, cell.column);
+        const editor = editable ? meta?.editor : undefined;
+        const rendered = editor ? (
+          <EditableCell
+            editor={editor}
+            row={row}
+            columnId={cell.column.id}
+            label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
+            value={cell.getValue()}
+          />
+        ) : (
+          flexRender(cell.column.columnDef.cell, cell.getContext())
+        );
+        // line-clamp needs a block of its own; a cell isn't one.
+        const content =
+          lines === 2 ? (
+            <div className="line-clamp-2 [overflow-wrap:anywhere]">{rendered}</div>
+          ) : (
+            rendered
+          );
+        return (
+          <TableCell
+            key={cell.column.id}
+            data-column-id={cell.column.id}
+            className={cn(
+              // Content reads at full strength, above the muted
+              // headers.
+              "text-foreground",
+              // Anchors the skeleton that fades over it on landing.
+              swapping && "relative",
+              alignTop && "align-top",
+              // A narrowed column cuts its text short instead of
+              // wrapping it onto a second line.
+              (lines === 1 || (sized && lines === undefined)) && "truncate",
+              // Long unbroken text (a URL) breaks anywhere rather
+              // than running out of its column.
+              lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
+              // max-w-0 keeps long text from setting the column's
+              // width, so it fits the room the column is given.
+              lines !== undefined && "max-w-0",
+              meta?.className
+            )}
+          >
+            {swapping && (
+              // The hand-over: a skeleton over the cell's content box,
+              // shown at once (its delayed reveal and pulse turned
+              // off, since this row is new) and fading out as the
+              // content fades in under it, so the cell is never empty
+              // and the content keeps its real layout the whole time.
+              <span
+                key="skeleton"
+                aria-hidden
+                className="pointer-events-none absolute inset-0 animate-[reveal-out_120ms_ease-in_forwards] [&_[data-slot=skeleton]]:animate-none"
+                style={{ padding: "inherit" }}
+              >
+                {skeletonFor(cell.column.id, i, c, shapeVariant, compact)}
+              </span>
+            )}
+            {textCell(cell.column.id) && !editor ? (
+              // Text sits in a block that carries the cell's fitting
+              // (a block child escapes the cell's own ellipsis), so
+              // it can fade in on landing. Clipped sideways only, so
+              // a 24px badge still overhangs its 20px line.
+              <span
+                key="content"
+                className={cn(
+                  "block",
+                  (lines === 1 || (sized && lines === undefined)) &&
+                    "overflow-x-clip text-ellipsis whitespace-nowrap",
+                  lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
+                  // 160ms in, the moderate tier (CSS can't take the
+                  // spring token).
+                  swapping && "animate-[reveal-preset_160ms_ease-out_both]"
+                )}
+              >
+                {content}
+              </span>
+            ) : (
+              <Fragment key="content">{content}</Fragment>
+            )}
+          </TableCell>
+        );
+      })}
+    </TableRow>);
+  }),
+  (a, b) =>
+    a.row === b.row &&
+    a.i === b.i &&
+    a.selected === b.selected &&
+    a.columns === b.columns &&
+    a.layoutKey === b.layoutKey &&
+    a.onRowClick === b.onRowClick &&
+    a.rowsFocusable === b.rowsFocusable &&
+    a.editable === b.editable &&
+    a.sized === b.sized &&
+    a.alignTop === b.alignTop &&
+    a.swapping === b.swapping &&
+    a.compact === b.compact &&
+    a.shapeVariant === b.shapeVariant
+) as <TData>(props: DataTableBodyRowProps<TData>) => ReactNode;
 
 // ── Editable cells ───────────────────────────────────────
 

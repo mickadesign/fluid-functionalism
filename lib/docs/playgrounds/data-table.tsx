@@ -547,116 +547,122 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     </div>
   );
 
-  const controls = (
-    <PlaygroundPanel onShuffle={randomize}>
-      <PlayField label="Search">
-        <PlaySelect
-          value={state.filter}
-          onChange={(v) => set("filter", v as FilterMode)}
-          options={[
-            { value: "column", label: "By name" },
-            { value: "all", label: "Every column" },
-            { value: "none", label: "None" },
-          ]}
+  // The rail redraws only when its own settings do, not on every change to
+  // the table's state (a Shift + arrow step re-rendered every control).
+  // Its handlers read the latest settings through stateRef.
+  const controls = useMemo(
+    () => (
+      <PlaygroundPanel onShuffle={randomize}>
+        <PlayField label="Search">
+          <PlaySelect
+            value={state.filter}
+            onChange={(v) => set("filter", v as FilterMode)}
+            options={[
+              { value: "column", label: "By name" },
+              { value: "all", label: "Every column" },
+              { value: "none", label: "None" },
+            ]}
+          />
+        </PlayField>
+        <Switch
+          label="Columns menu"
+          checked={state.viewMenu}
+          onToggle={() => set("viewMenu", !state.viewMenu)}
+          className={PLAY_SWITCH}
         />
-      </PlayField>
-      <Switch
-        label="Columns menu"
-        checked={state.viewMenu}
-        onToggle={() => set("viewMenu", !state.viewMenu)}
-        className={PLAY_SWITCH}
-      />
-      <Switch
-        label="Row selection"
-        checked={state.selection}
-        onToggle={() => set("selection", !state.selection)}
-        className={PLAY_SWITCH}
-      />
-      <Switch
-        label="Row actions"
-        checked={state.rowActions}
-        onToggle={() => set("rowActions", !state.rowActions)}
-        className={PLAY_SWITCH}
-      />
-      <Switch
-        label="Editable cells"
-        checked={state.editable}
-        onToggle={() => set("editable", !state.editable)}
-        className={PLAY_SWITCH}
-      />
-      <PlayField label="Summary">
-        <PlaySelect
-          value={state.lines}
-          onChange={(v) => set("lines", v as Lines)}
-          options={[
-            { value: "1", label: "1 line" },
-            { value: "2", label: "2 lines" },
-            { value: "wrap", label: "Wrap" },
-          ]}
+        <Switch
+          label="Row selection"
+          checked={state.selection}
+          onToggle={() => set("selection", !state.selection)}
+          className={PLAY_SWITCH}
         />
-      </PlayField>
-      <PlayField label="Cell alignment">
-        <PlaySelect
-          value={state.align}
-          onChange={(v) => set("align", v as PlayState["align"])}
-          options={[
-            { value: "auto", label: "Auto" },
-            { value: "center", label: "Center" },
-            { value: "top", label: "Top" },
-          ]}
+        <Switch
+          label="Row actions"
+          checked={state.rowActions}
+          onToggle={() => set("rowActions", !state.rowActions)}
+          className={PLAY_SWITCH}
         />
-      </PlayField>
-      <Switch
-        label="Loading"
-        checked={loading}
-        onToggle={() => {
-          if (reloadTimer.current) clearTimeout(reloadTimer.current);
-          setLoading(!loading);
-        }}
-        className={PLAY_SWITCH}
-      />
-      <Switch
-        label="Header icons"
-        checked={state.headerIcons}
-        onToggle={() => set("headerIcons", !state.headerIcons)}
-        className={PLAY_SWITCH}
-      />
-      <PlayDivider />
-      <Switch
-        label="Resize columns"
-        checked={state.resize}
-        onToggle={() => set("resize", !state.resize)}
-        className={PLAY_SWITCH}
-      />
-      <Switch
-        label="Reorder columns"
-        checked={state.reorder}
-        onToggle={() => set("reorder", !state.reorder)}
-        className={PLAY_SWITCH}
-      />
-      <PlayDivider />
-      <Switch
-        label="Pagination"
-        checked={state.pagination}
-        onToggle={() => set("pagination", !state.pagination)}
-        className={PLAY_SWITCH}
-      />
-      <PlayField label="Rows per page" disabled={!state.pagination}>
-        <PlaySelect
-          value={state.pageSize}
-          onChange={(v) => set("pageSize", v as PlayState["pageSize"])}
-          options={[
-            { value: "5", label: "5" },
-            { value: "10", label: "10" },
-            { value: "20", label: "20" },
-          ]}
+        <Switch
+          label="Editable cells"
+          checked={state.editable}
+          onToggle={() => set("editable", !state.editable)}
+          className={PLAY_SWITCH}
         />
-      </PlayField>
-      <PlayDivider />
-      {/* shadcn's preset principle: the exact configuration above, as a
-          stateless code the registry can turn into an installable block. */}
-      <GetCodeDialog def={DATA_TABLE_PRESET_DEF} code={presetCode} />
-    </PlaygroundPanel>
+        <PlayField label="Summary">
+          <PlaySelect
+            value={state.lines}
+            onChange={(v) => set("lines", v as Lines)}
+            options={[
+              { value: "1", label: "1 line" },
+              { value: "2", label: "2 lines" },
+              { value: "wrap", label: "Wrap" },
+            ]}
+          />
+        </PlayField>
+        <PlayField label="Cell alignment">
+          <PlaySelect
+            value={state.align}
+            onChange={(v) => set("align", v as PlayState["align"])}
+            options={[
+              { value: "auto", label: "Auto" },
+              { value: "center", label: "Center" },
+              { value: "top", label: "Top" },
+            ]}
+          />
+        </PlayField>
+        <Switch
+          label="Loading"
+          checked={loading}
+          onToggle={() => {
+            if (reloadTimer.current) clearTimeout(reloadTimer.current);
+            setLoading(!loading);
+          }}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Header icons"
+          checked={state.headerIcons}
+          onToggle={() => set("headerIcons", !state.headerIcons)}
+          className={PLAY_SWITCH}
+        />
+        <PlayDivider />
+        <Switch
+          label="Resize columns"
+          checked={state.resize}
+          onToggle={() => set("resize", !state.resize)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Reorder columns"
+          checked={state.reorder}
+          onToggle={() => set("reorder", !state.reorder)}
+          className={PLAY_SWITCH}
+        />
+        <PlayDivider />
+        <Switch
+          label="Pagination"
+          checked={state.pagination}
+          onToggle={() => set("pagination", !state.pagination)}
+          className={PLAY_SWITCH}
+        />
+        <PlayField label="Rows per page" disabled={!state.pagination}>
+          <PlaySelect
+            value={state.pageSize}
+            onChange={(v) => set("pageSize", v as PlayState["pageSize"])}
+            options={[
+              { value: "5", label: "5" },
+              { value: "10", label: "10" },
+              { value: "20", label: "20" },
+            ]}
+          />
+        </PlayField>
+        <PlayDivider />
+        {/* shadcn's preset principle: the exact configuration above, as a
+            stateless code the registry can turn into an installable block. */}
+        <GetCodeDialog def={DATA_TABLE_PRESET_DEF} code={presetCode} />
+      </PlaygroundPanel>
+    ),
+    [state, loading, presetCode]
   );
 
   // Expanded, the table has the window's height to fill: 20 rows a page,
