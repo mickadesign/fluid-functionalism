@@ -74,7 +74,7 @@ export const DEFAULT_COMMAND_MENU_PRESET: CommandMenuPreset = {
 // LAST, mirroring SIDEBAR_PRESET_FIELDS exactly.
 const GLOBAL_FIELDS: readonly PresetField[] = [
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

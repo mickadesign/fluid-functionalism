@@ -29,13 +29,13 @@ import {
 } from "@/components/ui/menu-item";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useFluidHover, isOwnEvent } from "@/hooks/use-fluid-hover";
+import { useFluidHover, useFluidHoverSelect, isOwnEvent } from "@/hooks/use-fluid-hover";
 import {
   useMergeSplitBlocks,
   useSelectionRuns,
   SelectionBackgrounds,
 } from "@/hooks/use-merge-split";
-import { shapeMap } from "@/lib/shape-context";
+import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
@@ -61,12 +61,6 @@ import {
   SubmenuChevron,
   type DropdownSubTriggerProps,
 } from "@/components/ui/dropdown-sub";
-
-// Dropdown opts out of the global pill/rounded shape context — popover surfaces
-// look cleaner with the smaller "rounded" radii regardless of how the rest of
-// the UI is shaped (the heavy pill bubbling distorts perceived padding at this
-// scale and produces the corner-shadow asymmetry).
-const shape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.
@@ -105,10 +99,11 @@ interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
   ({ children, checkedIndex, checkedIndices, size, className, ...props }, ref) => {
+    const shape = usePopupShape();
     const containerRef = useRef<HTMLDivElement>(null);
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       handlers,
@@ -125,8 +120,8 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const runs = useSelectionRuns(checkedIndices ?? []);
     const blocks = useMergeSplitBlocks(runs, itemRects, shape.bgRadius);
     const panelCtx = useMemo(
-      () => ({ registerItem, activeIndex, checkedIndex, multiple, checkedIndices }),
-      [registerItem, activeIndex, checkedIndex, multiple, checkedIndices]
+      () => ({ registerItem, activeStore, checkedIndex, multiple, checkedIndices }),
+      [registerItem, activeStore, checkedIndex, multiple, checkedIndices]
     );
     const panel = (
       <DropdownContext.Provider value={panelCtx}>
@@ -306,6 +301,8 @@ interface DropdownMenuContextValue {
   actionsRef: React.RefObject<DropdownMenuActions | null>;
   /** Set by DropdownSub: the content is a submenu. */
   sub: boolean;
+  /** The menu opened from hovering an openOnHover trigger. */
+  openedByHoverRef?: React.RefObject<boolean>;
 }
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -340,12 +337,25 @@ function DropdownMenu({
   size,
 }: DropdownMenuProps) {
   const [open, setOpen] = useControllableOpen(openProp, defaultOpen, onOpenChange);
-  const { actionsRef, rootOpen, onOpenChange: handleOpenChange } = usePopupExit(
+  const { actionsRef, rootOpen, onOpenChange: exitOnOpenChange } = usePopupExit(
     open,
     setOpen
   );
+  // Whether the last open came from hovering an openOnHover trigger: such a
+  // menu leaves focus where it was instead of moving it to its first row.
+  const openedByHoverRef = useRef(false);
+  const handleOpenChange = (
+    next: boolean,
+    details: { preventUnmountOnClose: () => void; reason?: string }
+  ) => {
+    if (next) openedByHoverRef.current = details.reason === "trigger-hover";
+    exitOnOpenChange(next, details);
+  };
 
-  const ctx = useMemo(() => ({ open, actionsRef, sub: false }), [open, actionsRef]);
+  const ctx = useMemo(
+    () => ({ open, actionsRef, sub: false, openedByHoverRef }),
+    [open, actionsRef, openedByHoverRef]
+  );
 
   // A size prop pins the whole compound (trigger content + portalled popup —
   // React context crosses portals) to one ladder step.
@@ -428,12 +438,13 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     },
     ref
   ) => {
-    const { open, actionsRef, sub } = useDropdownMenuContext();
+    const shape = usePopupShape();
+    const { open, actionsRef, sub, openedByHoverRef } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       handlers,
@@ -462,7 +473,8 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     // submenu: hovering its trigger must leave focus in the parent, and a
     // keyboard open already lands on its first row.
     useEffect(() => {
-      if (!open || sub) return;
+      // A hover-opened menu is a preview: focus stays where the reader left it.
+      if (!open || sub || openedByHoverRef?.current) return;
       let inner: number | undefined;
       const outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => {
@@ -479,7 +491,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
         cancelAnimationFrame(outer);
         if (inner !== undefined) cancelAnimationFrame(inner);
       };
-    }, [open, sub, hasSearch]);
+    }, [open, sub, hasSearch, openedByHoverRef]);
 
     // Release Base UI's deferred unmount once the exit tween has played.
     // onAnimationComplete on the motion.div is the primary signal; this
@@ -591,7 +603,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const contentCtx = useMemo(
       () => ({
         registerItem,
-        activeIndex,
+        activeStore,
         checkedIndex,
         multiple,
         checkedIndices,
@@ -601,7 +613,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       }),
       [
         registerItem,
-        activeIndex,
+        activeStore,
         checkedIndex,
         multiple,
         checkedIndices,
@@ -617,7 +629,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          className="z-50 outline-none"
+          className="z-[var(--z-popover,60)] outline-none"
         >
           <motion.div
             className={popupMotionClass}
@@ -671,6 +683,18 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                 }}
                 onFocus={(e) => {
                   if (!isOwnEvent(e)) return;
+                  // A hover-opened menu is a preview, but Base UI's popup
+                  // focuses itself on open (no prop turns that off). Focus
+                  // arriving from outside the popup goes back where it came
+                  // from, or nowhere; Base UI keeps the menu open either way.
+                  if (openedByHoverRef?.current) {
+                    const from = e.relatedTarget as HTMLElement | null;
+                    if (!from || !e.currentTarget.contains(from)) {
+                      if (from) from.focus({ preventScroll: true });
+                      else (e.target as HTMLElement).blur();
+                      return;
+                    }
+                  }
                   const indexAttr = (e.target as HTMLElement)
                     .closest("[data-fluid-hover-index]")
                     ?.getAttribute("data-fluid-hover-index");
@@ -830,7 +854,7 @@ const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerProps>(
     const parent = useDropdown();
     const { open } = useDropdownMenuContext();
     useReportSubmenu(parent.onSubmenuOpenChange, index, open);
-    const lit = parent.activeIndex === index;
+    const lit = useFluidHoverSelect(parent.activeStore, (i) => i === index);
 
     // The row renders through the parent's MenuItem, wrapped in the submenu
     // trigger primitive instead of a plain item.

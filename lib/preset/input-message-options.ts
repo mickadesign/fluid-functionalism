@@ -82,7 +82,7 @@ export const INPUT_MESSAGE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "status", values: ["off", "idle", "streaming"], bits: 3 },
   // ── Site-level globals, appended LAST (same shapes as the sidebar's) ──
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

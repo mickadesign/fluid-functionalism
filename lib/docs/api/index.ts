@@ -6,6 +6,7 @@ import { apiReference as accordionApi } from "@/lib/docs/api/accordion";
 import { apiReference as askUserQuestionsApi } from "@/lib/docs/api/ask-user-questions";
 import { apiReference as badgeApi } from "@/lib/docs/api/badge";
 import { apiReference as bannerApi } from "@/lib/docs/api/banner";
+import { apiReference as breadcrumbApi } from "@/lib/docs/api/breadcrumb";
 import { apiReference as buttonApi } from "@/lib/docs/api/button";
 import { apiReference as calendarApi } from "@/lib/docs/api/calendar";
 import { apiReference as cardApi } from "@/lib/docs/api/card";
@@ -18,6 +19,10 @@ import { apiReference as commandMenuApi } from "@/lib/docs/api/command-menu";
 import { apiReference as datePickerApi } from "@/lib/docs/api/date-picker";
 import { apiReference as dialogApi } from "@/lib/docs/api/dialog";
 import { apiReference as dropdownApi } from "@/lib/docs/api/dropdown";
+import { apiReference as checkboxApi } from "@/lib/docs/api/checkbox";
+import { apiReference as inputApi } from "@/lib/docs/api/input";
+import { apiReference as textareaApi } from "@/lib/docs/api/textarea";
+import { apiReference as fieldApi } from "@/lib/docs/api/field";
 import { apiReference as fluidHoverApi } from "@/lib/docs/api/fluid-hover";
 import { apiReference as inputCopyApi } from "@/lib/docs/api/input-copy";
 import { apiReference as inputGroupApi } from "@/lib/docs/api/input-group";
@@ -41,6 +46,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   "ask-user-questions": askUserQuestionsApi,
   badge: badgeApi,
   banner: bannerApi,
+  breadcrumb: breadcrumbApi,
   button: buttonApi,
   calendar: calendarApi,
   card: cardApi,
@@ -53,6 +59,10 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   "date-picker": datePickerApi,
   dialog: dialogApi,
   dropdown: dropdownApi,
+  field: fieldApi,
+  textarea: textareaApi,
+  input: inputApi,
+  checkbox: checkboxApi,
   "fluid-hover": fluidHoverApi,
   "input-copy": inputCopyApi,
   "input-group": inputGroupApi,

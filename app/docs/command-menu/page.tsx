@@ -40,7 +40,7 @@ import {
   COMMAND_MENU_COPY,
   useCommandMenuItems,
 } from "@/lib/docs/command-menu-items";
-import { itemDataProps, rootProps, dialogProps, inputProps, listProps, itemProps, tabsProps, footerProps, shortcutProps } from "@/lib/docs/api/command-menu";
+import { itemDataProps, rootProps, dialogProps, inputProps, listProps, itemProps, tabsProps, footerProps, shortcutProps, platformProps } from "@/lib/docs/api/command-menu";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -551,6 +551,10 @@ export default function CommandMenuDoc() {
 
       <DocSection title="API Reference: CommandMenuShortcut">
         <PropsTable props={shortcutProps} />
+      </DocSection>
+
+      <DocSection title="API Reference: CommandMenuPlatform">
+        <PropsTable props={platformProps} />
       </DocSection>
     </DocPage>
   );

@@ -82,7 +82,7 @@
       "name": "tokens",
       "type": "registry:theme",
       "title": "Interaction Tokens",
-      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --fluid-accent color (switch track, drop and swatch rings, copy highlight) with --focus-ring derived from it, the accent text selection, and the base-layer :focus-visible fallback ring.",
+      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --fluid-accent color (switch track, drop and swatch rings, copy highlight) with --focus-ring derived from it, the --z-* stacking scale (sticky, overlay, modal, popover, tooltip), the accent text selection, and the base-layer :focus-visible fallback ring.",
       "cssVars": {
         "theme": {
           "color-hover": "var(--hover)",
@@ -99,7 +99,12 @@
           "fluid-accent": "#6B97FF",
           "focus-ring": "var(--fluid-accent)",
           "tint": "rgb(0 0 0 / 0.08)",
-          "tint-hover": "rgb(0 0 0 / 0.065)"
+          "tint-hover": "rgb(0 0 0 / 0.065)",
+          "z-sticky": "30",
+          "z-overlay": "40",
+          "z-modal": "50",
+          "z-popover": "60",
+          "z-tooltip": "70"
         },
         "dark": {
           "hover": "rgb(255 255 255 / 0.06)",
@@ -677,7 +682,7 @@
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
-      "description": "React context provider for runtime shape variant switching (pill or rounded). Controls border-radius across all Fluid Functionalism components.",
+      "description": "React context provider for runtime shape variant switching (rounded, pill or sharp). Controls border-radius across all Fluid Functionalism components.",
       "files": [
         {
           "path": "registry/default/lib/shape-context.tsx",
@@ -831,7 +836,7 @@
       "name": "fluid-provider",
       "type": "registry:lib",
       "title": "Fluid Provider",
-      "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded or pill), the size step (default or compact), and the icon set.",
+      "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded, pill or sharp), the size step (default or compact), and the icon set.",
       "dependencies": [
         "motion"
       ],
@@ -871,6 +876,30 @@
         },
         {
           "path": "registry/default/fluid-hover-highlight.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "hook"
+      ]
+    },
+    {
+      "name": "use-fluid-hover-standard",
+      "type": "registry:hook",
+      "title": "useFluidHover + FluidHoverHighlight (standard hover)",
+      "description": "Standard hover: the same API as fluid hover, without the glide. The item under the pointer lights with a plain fill; nothing travels between items. Served as r/standard/use-fluid-hover.json.",
+      "registryDependencies": [
+        "utils",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/standard/hooks/use-fluid-hover.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "registry/standard/fluid-hover-highlight.tsx",
           "type": "registry:component"
         }
       ],
@@ -1130,17 +1159,19 @@
         }
       ],
       "css": {
-        "@keyframes spinner-move": {
+        "@keyframes spinner-turn": {
           "to": {
-            "stroke-dashoffset": "-100"
+            "transform": "rotate(360deg)"
           }
         },
-        "@keyframes spinner-dash": {
+        "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "15 85"
+            "stroke-dasharray": "0.01 49.99",
+            "stroke-dashoffset": "-25"
           },
           "50%": {
-            "stroke-dasharray": "40 60"
+            "stroke-dasharray": "26 24",
+            "stroke-dashoffset": "-12"
           }
         }
       },
@@ -1178,17 +1209,19 @@
         }
       ],
       "css": {
-        "@keyframes spinner-move": {
+        "@keyframes spinner-turn": {
           "to": {
-            "stroke-dashoffset": "-100"
+            "transform": "rotate(360deg)"
           }
         },
-        "@keyframes spinner-dash": {
+        "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "15 85"
+            "stroke-dasharray": "0.01 49.99",
+            "stroke-dashoffset": "-25"
           },
           "50%": {
-            "stroke-dasharray": "40 60"
+            "stroke-dasharray": "26 24",
+            "stroke-dashoffset": "-12"
           }
         }
       },
@@ -1299,6 +1332,61 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/dropdown. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#dropdown.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "title": "Checkbox",
+      "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Radix flavor.",
+      "dependencies": [
+        "motion",
+        "@radix-ui/react-checkbox"
+      ],
+      "registryDependencies": [
+        "utils",
+        "shape-context",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/checkbox.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/checkbox. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#checkbox.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "checkbox-base",
+      "type": "registry:ui",
+      "title": "Checkbox (Base UI)",
+      "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Base UI flavor.",
+      "dependencies": [
+        "motion",
+        "@base-ui/react@^1.9.0"
+      ],
+      "registryDependencies": [
+        "utils",
+        "shape-context",
+        "omit",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/base/checkbox.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/checkbox. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#checkbox.",
       "categories": [
         "components"
       ]
@@ -1505,7 +1593,8 @@
       "registryDependencies": [
         "springs",
         "surface-context",
-        "surface-classes"
+        "surface-classes",
+        "tokens"
       ],
       "files": [
         {
@@ -1532,7 +1621,8 @@
         "springs",
         "omit",
         "surface-context",
-        "surface-classes"
+        "surface-classes",
+        "tokens"
       ],
       "files": [
         {
@@ -1572,6 +1662,119 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/input-copy. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input-copy.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "field",
+      "type": "registry:ui",
+      "title": "Field",
+      "description": "Compose a label, a control, helper text, and a validation message into one accessible field: fieldsets, legends, groups, separators, and vertical, horizontal, or responsive layouts.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "icon-context",
+        "size-context",
+        "tokens",
+        "type-scale",
+        "input",
+        "textarea"
+      ],
+      "files": [
+        {
+          "path": "registry/default/field.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/field. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#field.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "title": "Input",
+      "description": "Single-line text field drawn like the Select trigger: a fixed hairline, a hover fill, and a neutral focus border; file inputs get an icon. Pairs with Field.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "icon-context",
+        "shape-context",
+        "size-context",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/input.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/input. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "breadcrumb",
+      "type": "registry:ui",
+      "title": "Breadcrumb",
+      "description": "A trail of links to the current page with one fluid hover across every crumb. Steps can lead with an icon, open a Dropdown, or collapse behind an ellipsis.",
+      "dependencies": [
+        "motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "icon-context",
+        "use-fluid-hover",
+        "tooltip",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/breadcrumb.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/breadcrumb. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#breadcrumb.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "textarea",
+      "type": "registry:ui",
+      "title": "Textarea",
+      "description": "Multi-line text field with the Input's hairline that grows with its content. Pairs with Field.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/textarea.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/textarea. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#textarea.",
       "categories": [
         "components"
       ]
@@ -1646,7 +1849,7 @@
       "name": "file-thumbnail",
       "type": "registry:ui",
       "title": "File Thumbnail",
-      "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting.",
+      "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting. The pdf.js worker loads from jsDelivr by default; setPdfWorkerSrc() points it at a self-hosted copy for strict CSPs.",
       "dependencies": [
         "pdfjs-dist"
       ],
@@ -1819,6 +2022,7 @@
         "utils",
         "springs",
         "font-weight",
+        "shape-context",
         "size-context",
         "tokens"
       ],
@@ -1848,6 +2052,7 @@
         "springs",
         "omit",
         "font-weight",
+        "shape-context",
         "size-context",
         "tokens"
       ],
@@ -1873,6 +2078,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "shape-context",
         "springs",
         "use-fluid-hover",
         "tokens"
@@ -3163,7 +3369,8 @@
         "springs",
         "font-weight",
         "shape-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {
@@ -3192,7 +3399,8 @@
         "omit",
         "font-weight",
         "shape-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {

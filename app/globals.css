@@ -117,6 +117,20 @@
      value in each scope. */
   --focus-ring: var(--fluid-accent);
 
+  /* ── Stacking scale ──
+     The only z-index steps for layers that leave their component: sticky
+     chrome, the scrim under a modal, the modal or sheet itself, popovers
+     (menus, selects, pickers), and tooltips on top. A popover opened from a
+     dialog, or a tooltip on a menu row, wins by its step, never by which
+     portal mounted last. Components read var(--z-*, <literal>), so they keep
+     the same order in projects without these variables. Values inside one
+     component (rows over their hover fill) stay plain z-10 / z-20. */
+  --z-sticky: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+
   /* ── Alpha checkerboard (color-picker swatches) ── */
   --checker-a: light-dark(#bbbbbb, #1f1f1f);
   --checker-b: light-dark(#ffffff, #2a2a2a);
@@ -987,8 +1001,9 @@ html[data-size="compact"] {
 }
 /* </generated:typeset> */
 
-/* Theme-toggle cross-fade: ThemeProvider adds `.transitioning` around the
-   class swap so colors tween instead of snapping. */
+/* Shape-toggle morph: ShapeProvider adds `.transitioning` around the swap so
+   radii tween instead of snapping. (Theme swaps cross-fade as one View
+   Transition snapshot instead: registry/default/lib/theme-context.tsx.) */
 html.transitioning *,
 html.transitioning *::before,
 html.transitioning *::after {
@@ -1136,13 +1151,13 @@ html.transitioning *::after {
 
 /* ── Spinner keyframes ── */
 
-@keyframes spinner-move {
-  to { stroke-dashoffset: -100; }
+@keyframes spinner-turn {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes spinner-dash {
-  0%, 100% { stroke-dasharray: 15 85; }
-  50%      { stroke-dasharray: 40 60; }
+@keyframes spinner-breathe {
+  0%, 100% { stroke-dasharray: 0.01 49.99; stroke-dashoffset: -25; }
+  50%      { stroke-dasharray: 26 24; stroke-dashoffset: -12; }
 }
 
 /* ── Responsive side-panel cross-fade ──
@@ -1154,9 +1169,11 @@ html.transitioning *::after {
    token's faster `.exit`). The `@starting-style` gives the appear transition a
    starting opacity — required for an element to animate *out of* `display:none`
    (otherwise it would pop in). Because the panel's space is already reserved at
-   that width, the appear is a pure opacity fade with no layout shift (it also
-   fades in once on initial wide-screen load). Browsers without
-   `transition-behavior` degrade gracefully to the old instant switch. */
+   that width, the appear is a pure opacity fade with no layout shift. Until
+   the element carries `data-ready` (set after hydration) it has no
+   transition, so first paint shows the panel at once instead of fading it in
+   apart from the page's own reveal. Browsers without `transition-behavior`
+   degrade gracefully to the old instant switch. */
 
 .xl-fade-flex,
 .xl-fade-block {
@@ -1194,6 +1211,10 @@ html.transitioning *::after {
   .xl-fade-block {
     transition: none;
   }
+}
+.xl-fade-flex:not([data-ready]),
+.xl-fade-block:not([data-ready]) {
+  transition: none;
 }
 
 /* ── In-view cross-fade ──

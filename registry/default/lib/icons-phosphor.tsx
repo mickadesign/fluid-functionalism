@@ -24,6 +24,7 @@ import {
   Moon as PhMoon,
   Rectangle as PhRectangle,
   Circle as PhCircle,
+  Square as PhSquare,
   Books as PhBooks,
   Clock as PhClock,
   Star as PhStar,
@@ -68,6 +69,9 @@ import {
   DotsThreeVertical as PhDotsThreeVertical,
   SlidersHorizontal as PhSlidersHorizontal,
   Info as PhInfo,
+  WarningCircle as PhWarningCircle,
+  File as PhFile,
+  Minus as PhMinus,
   CalendarBlank as PhCalendarBlank,
   FolderSimple as PhFolderSimple,
 } from "@phosphor-icons/react";
@@ -105,6 +109,7 @@ export const phosphorIcons: Record<IconName, IconComponent> = {
   "moon": phosphor(PhMoon),
   "rectangle-horizontal": phosphor(PhRectangle),
   "circle": phosphor(PhCircle),
+  "square": phosphor(PhSquare),
   "square-library": phosphor(PhBooks),
   "clock": phosphor(PhClock),
   "star": phosphor(PhStar),
@@ -152,4 +157,7 @@ export const phosphorIcons: Record<IconName, IconComponent> = {
   "folder": phosphor(PhFolderSimple),
   "sliders-horizontal": phosphor(PhSlidersHorizontal),
   "info": phosphor(PhInfo),
+  "circle-alert": phosphor(PhWarningCircle),
+  "file": phosphor(PhFile),
+  "minus": phosphor(PhMinus),
 };

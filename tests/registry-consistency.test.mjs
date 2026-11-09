@@ -234,6 +234,11 @@ describe("shipped CSS variables reach installers", () => {
     "--color-accent", // Tailwind-emitted alias of the shadcn `accent` theme color
     "--spacing",
     "--font-sans",
+    // Tailwind's default palette, used by Button's destructive variant (each
+    // with its oklch value as a var() fallback too)
+    "--color-red-400",
+    "--color-red-500",
+    "--color-red-700",
   ]);
   // 1b. Variables the primitives set on their own nodes at runtime — they are
   //     never defined in any stylesheet.

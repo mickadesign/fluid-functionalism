@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
-import { useShape, nestedRadius } from "@/lib/shape-context";
+import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { useIcons } from "@/lib/icon-context";
 import { Elevated } from "@/lib/elevated";
@@ -322,7 +322,9 @@ export const DatePickerPopupFrame = forwardRef<
     className?: string;
     children: ReactNode;
   }
->(({ open, onExitComplete, className, children }, ref) => (
+>(({ open, onExitComplete, className, children }, ref) => {
+  const shape = usePopupShape();
+  return (
   <motion.div
     className={cn("outline-none", popupMotionClass)}
     initial={{ opacity: 0, y: "var(--popup-enter-y)", scaleY: 0.96 }}
@@ -341,12 +343,13 @@ export const DatePickerPopupFrame = forwardRef<
       offset={2}
       shadowLevel={3}
       data-slot="date-picker-popup"
-      className={cn("rounded-xl outline-none select-none", className)}
+      className={cn(shape.container, "outline-none select-none", className)}
     >
       {children}
     </Elevated>
   </motion.div>
-));
+  );
+});
 DatePickerPopupFrame.displayName = "DatePickerPopupFrame";
 
 // ---------------------------------------------------------------------------
@@ -406,6 +409,7 @@ function TimeField({
   prefix,
   suffix,
 }: TimeFieldProps) {
+  const popupShape = usePopupShape();
   const sizeClasses = useSize();
   const compact = sizeClasses.variant === "compact";
   const listId = useId();
@@ -663,7 +667,7 @@ function TimeField({
           onMouseLeave={onMouseLeave}
           onClick={onClick}
         >
-          <FluidHoverHighlight hover={hover} hidden={!open} className="rounded-lg" />
+          <FluidHoverHighlight hover={hover} hidden={!open} className={popupShape.bg} />
           {slots.map((slot, i) => (
             <TimeRow
               key={slot.minutes}
@@ -715,6 +719,7 @@ function TimeRow({
   const ref = useRef<HTMLDivElement>(null);
   useRegisterFluidHoverItem(registerItem, index, ref);
   const sizeClasses = useSize();
+  const shape = usePopupShape();
   return (
     <div
       ref={ref}
@@ -724,7 +729,8 @@ function TimeRow({
       data-fluid-hover-index={index}
       className={cn(
         // The duration hugs the time: start-aligned, a small gap.
-        "relative z-10 flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg tabular-nums",
+        "relative z-10 flex shrink-0 cursor-pointer items-center gap-1.5 tabular-nums",
+        shape.bg,
         sizeClasses.control,
         sizeClasses.itemPx,
         typeClass("body", compact ? "compact" : "default"),
@@ -792,6 +798,7 @@ function PresetList({
   value: DateRange | undefined;
   onPick: (preset: DatePickerPreset) => void;
 }) {
+  const shape = usePopupShape();
   const ref = useRef<HTMLDivElement>(null);
   const hover = useFluidHover(ref, { axis: "xy" });
   const { setActiveIndex } = hover;
@@ -811,7 +818,7 @@ function PresetList({
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setActiveIndex(null);
       }}
     >
-      <FluidHoverHighlight hover={hover} className="rounded-lg" />
+      <FluidHoverHighlight hover={hover} className={shape.bg} />
       {presets.map((preset, i) => (
         <PresetRow
           key={preset.label}
@@ -845,6 +852,7 @@ function PresetRow({
   const ref = useRef<HTMLButtonElement>(null);
   useRegisterFluidHoverItem(registerItem, index, ref);
   const sizeClasses = useSize();
+  const shape = usePopupShape();
   return (
     <button
       ref={ref}
@@ -853,7 +861,8 @@ function PresetRow({
       aria-pressed={selected}
       onClick={onPick}
       className={cn(
-        "relative z-10 flex shrink-0 cursor-pointer items-center rounded-lg text-left whitespace-nowrap outline-none",
+        "relative z-10 flex shrink-0 cursor-pointer items-center text-left whitespace-nowrap outline-none",
+        shape.bg,
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
         sizeClasses.control,
         sizeClasses.itemPx,
@@ -1036,6 +1045,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   );
 
   const shape = useShape();
+  const popupShape = usePopupShape();
   const sizeClasses = useSize(size);
   const compact = sizeClasses.variant === "compact";
   const icons = useIcons();
@@ -1178,11 +1188,11 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
 
   const field = variant === "outline";
   // Segments sit 2px inside the field (plus its 1px border); their corners
-  // nest inside its radius: 8 - 3 = 5px rounded, 20 - 3 = 17px pill.
+  // nest inside its radius: 8 - 3 = 5px rounded, 20 - 3 = 17px pill, 0 sharp.
   const innerRadius = field
-    ? nestedRadius(shape.bgRadius, 3) === 5
-      ? "rounded-[5px]"
-      : "rounded-[17px]"
+    ? { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[
+        shape.variant
+      ]
     : shape.bg;
   const segmentClass = cn(
     "relative z-[1] inline-flex h-full items-center outline-none",
@@ -1349,8 +1359,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         {/* Presets sit beside the calendar, or below it when the months
             stack (the calendar stays first in reading and tab order). */}
         {showPresets && !stacked && presetList}
-        {/* 4px in from the popup's 12px corners: 8px keeps them concentric. */}
-        <div className="rounded-lg bg-inherit">{calendar}</div>
+        {/* 4px in from the popup's corners: the popup's bg radius keeps them
+            concentric (8px in 12px, 1px when sharp). */}
+        <div className={cn(popupShape.bg, "bg-inherit")}>{calendar}</div>
         {showPresets && stacked && presetList}
       </div>
     </Popover>

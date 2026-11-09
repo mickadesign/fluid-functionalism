@@ -18,8 +18,13 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
-import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
-import { useShape, shapeMap } from "@/lib/shape-context";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
+import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
@@ -94,7 +99,7 @@ function useSelectContext() {
 // Content context for fluid hover
 interface SelectContentContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  activeStore: FluidHoverActiveStore;
   checkedIndex?: number;
 }
 
@@ -104,13 +109,6 @@ const SelectContentContext =
 // ---------------------------------------------------------------------------
 // Select (root)
 // ---------------------------------------------------------------------------
-
-// The trigger follows the global pill/rounded shape; the popup does not.
-// Like Dropdown and Combobox, the list keeps the smaller "rounded" radii
-// whatever the rest of the UI is shaped: pill corners on a popover distort
-// its padding and break the concentric fit of the rows' hover and selection
-// backgrounds inside it.
-const popupShape = shapeMap.rounded;
 
 interface SelectProps {
   children: ReactNode;
@@ -228,7 +226,9 @@ Select.displayName = "Select";
 const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between outline-none cursor-pointer",
-    "transition-all duration-80",
+    // Listed, never `all`: a size change snaps instead of easing the
+    // trigger's height and padding.
+    "transition-[color,background-color,border-radius,box-shadow,opacity] duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     // data-pointer-focus: focus handed back after a pick with the pointer.
     "focus-visible:not-data-[pointer-focus]:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -350,7 +350,7 @@ interface SelectContentProps {
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
   ({ className, children }, ref) => {
     const { open, value, unmount } = useSelectContext();
-    const shape = popupShape;
+    const shape = usePopupShape();
     const containerRef = useRef<HTMLDivElement>(null);
     // The popup's id, which the trigger points at with aria-controls. Read
     // while mounted: by the time focus goes back, the popup is gone.
@@ -358,7 +358,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
 
     const hover = useFluidHover(containerRef, { isItemDisabled: isDisabledRow });
     const {
-      activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       isMeasured,
@@ -457,8 +457,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       isMeasured && focusedIndex !== null ? itemRects[focusedIndex] : null;
 
     const contentCtx = useMemo(
-      () => ({ registerItem, activeIndex, checkedIndex }),
-      [registerItem, activeIndex, checkedIndex]
+      () => ({ registerItem, activeStore, checkedIndex }),
+      [registerItem, activeStore, checkedIndex]
     );
 
     // Rendered unconditionally: while closed, Radix parks these children in a
@@ -475,7 +475,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-50"
+          className="z-[var(--z-popover,60)]"
           // Radix hands focus back to the trigger with focus(), which the
           // browser may report as :focus-visible even after a pick with the
           // pointer. Without keyboard navigation in the popup, the trigger
@@ -679,7 +679,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const selectCtx = useSelectContext();
     const contentCtx = useContext(SelectContentContext);
     const internalRef = useRef<HTMLDivElement>(null);
-    const shape = popupShape;
+    const shape = usePopupShape();
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
 
@@ -691,7 +691,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const registerItem = contentCtx?.registerItem;
     useRegisterFluidHoverItem(registerItem, index, internalRef);
 
-    const isActive = contentCtx?.activeIndex === index;
+    const isActive = useFluidHoverSelect(contentCtx?.activeStore, (i) => i === index);
     const isChecked = selectCtx.value === value;
 
     return (
