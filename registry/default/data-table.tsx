@@ -2187,8 +2187,8 @@ function pressCellEditor(e: React.MouseEvent<HTMLElement>) {
   }
   if (!field) return;
   e.preventDefault();
-  const isField = field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement;
-  if (isField) {
+  // Checked inline (not through a const) so TypeScript narrows `field`.
+  if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
     field.focus();
     const end = field.value.length;
     field.setSelectionRange?.(end, end);
