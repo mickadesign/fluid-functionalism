@@ -33,6 +33,8 @@ export const dropdownContentProps: PropDef[] = [
   { name: "side", type: "\"top\" | \"bottom\" | \"left\" | \"right\"", default: "\"bottom\"", description: "Side of the trigger the popup prefers." },
   { name: "align", type: "\"start\" | \"center\" | \"end\"", default: "\"start\"", description: "Alignment against the trigger." },
   { name: "sideOffset", type: "number", default: "6", description: "Gap to the trigger, in px." },
+  { name: "collisionBoundary", type: "Element | null", description: "Keeps the popup inside this element's box rather than the window's (a table, a panel): it shifts or flips to stay within." },
+  { name: "collisionPadding", type: "number", default: "0", description: "Space kept from the boundary's edges, in px." },
 ];
 
 export const subProps: PropDef[] = [

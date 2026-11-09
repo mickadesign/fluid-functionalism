@@ -785,10 +785,15 @@ interface ComboboxContentProps {
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
   sideOffset?: number;
+  /** Keeps the popup inside this element's box rather than the window's
+   *  (a table's, a panel's): it shifts or flips to stay within. */
+  collisionBoundary?: Element | null;
+  /** Space kept from the boundary's edges, in px. @default 0 */
+  collisionPadding?: number;
 }
 
 const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
-  ({ className, children, side = "bottom", align = "start", sideOffset = 6 }, ref) => {
+  ({ className, children, side = "bottom", align = "start", sideOffset = 6, collisionBoundary, collisionPadding }, ref) => {
     const { open, actionsRef, anchorRef } = useComboboxContext();
     const shape = usePopupShape();
 
@@ -815,6 +820,8 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
           side={side}
           align={align}
           sideOffset={sideOffset}
+          collisionBoundary={collisionBoundary ?? undefined}
+          collisionPadding={collisionPadding}
           className="z-[var(--z-popover,60)] outline-none"
         >
           <motion.div

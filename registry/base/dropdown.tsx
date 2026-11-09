@@ -422,6 +422,11 @@ interface DropdownContentProps {
   sideOffset?: number;
   /** Shift along the trigger edge, in px. */
   alignOffset?: number;
+  /** Keeps the popup inside this element's box rather than the window's
+   *  (a table's, a panel's): it shifts or flips to stay within. */
+  collisionBoundary?: Element | null;
+  /** Space kept from the boundary's edges, in px. @default 0 */
+  collisionPadding?: number;
 }
 
 const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
@@ -435,6 +440,8 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       align = "start",
       sideOffset = 6,
       alignOffset = 0,
+      collisionBoundary,
+      collisionPadding,
     },
     ref
   ) => {
@@ -629,6 +636,8 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
+          collisionBoundary={collisionBoundary ?? undefined}
+          collisionPadding={collisionPadding}
           className="z-[var(--z-popover,60)] outline-none"
         >
           <motion.div

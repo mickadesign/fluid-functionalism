@@ -2130,7 +2130,14 @@ function EditorBody<TData>({
   const commit = (next: unknown) => ctx.commit(row as Row<unknown>, columnId, next);
   const type = editorType(editor);
   const options = editorOptions(editor);
-  const onFocus = hold.onFocus;
+  // The table's visible box, caught as the editor takes focus (before any
+  // popup of its opens), so the popup stays inside it rather than reaching
+  // past the edge of whatever holds the table.
+  const [boundary, setBoundary] = useState<Element | null>(null);
+  const onFocus = () => {
+    hold.onFocus();
+    setBoundary(boxRef.current?.closest("[data-slot=scroll-area]") ?? null);
+  };
   const onBlur = hold.onBlur;
 
   if (type === "text" && (lines === 2 || lines === "wrap")) {
@@ -2195,6 +2202,7 @@ function EditorBody<TData>({
         options={(options.options as readonly DataTableSelectOption[] | undefined) ?? []}
         label={label}
         display={display}
+        boundary={boundary}
         onChange={commit}
       />
     );
@@ -2203,6 +2211,7 @@ function EditorBody<TData>({
   if (type === "number") {
     return (
       <NumberEditor
+        boundary={boundary}
         reach={CELL_REACH.number[step]}
         boxRef={boxRef}
         onFocus={onFocus}
@@ -2238,6 +2247,7 @@ function EditorBody<TData>({
 
   return (
     <TagsEditor
+      boundary={boundary}
       reach={CELL_REACH.tags[step]}
       boxRef={boxRef}
       onFocus={onFocus}
@@ -2531,8 +2541,10 @@ function SelectEditor({
   options,
   label,
   display,
+  boundary,
   onChange,
 }: {
+  boundary: Element | null;
   boxRef: RefObject<HTMLDivElement | null>;
   hold: ReturnType<typeof useEditHold>;
   onFocus: () => void;
@@ -2561,7 +2573,13 @@ function SelectEditor({
             </button>
           }
         />
-        <DropdownContent align="start" checkedIndex={checked === -1 ? undefined : checked} className="w-56">
+        <DropdownContent
+          align="start"
+          checkedIndex={checked === -1 ? undefined : checked}
+          collisionBoundary={boundary}
+          collisionPadding={4}
+          className="w-56"
+        >
           {items.map((option, i) => (
             <MenuItem
               key={option.value}
@@ -2592,6 +2610,7 @@ function SelectEditor({
 }
 
 function NumberEditor({
+  boundary,
   reach,
   boxRef,
   onFocus,
@@ -2602,6 +2621,7 @@ function NumberEditor({
   label,
   onChange,
 }: {
+  boundary: Element | null;
   reach: string;
   boxRef: RefObject<HTMLDivElement | null>;
   onFocus: () => void;
@@ -2661,7 +2681,7 @@ function NumberEditor({
           placeholder={placeholder ?? ""}
           className={cn("w-full min-w-0 tabular-nums", BARE_FIELD)}
         />
-        <ComboboxContent>
+        <ComboboxContent collisionBoundary={boundary} collisionPadding={4}>
           <ComboboxEmpty>Type a number</ComboboxEmpty>
           <ComboboxList>
             {(item) => (
@@ -2677,6 +2697,7 @@ function NumberEditor({
 }
 
 function TagsEditor({
+  boundary,
   reach,
   boxRef,
   onFocus,
@@ -2688,6 +2709,7 @@ function TagsEditor({
   label,
   onChange,
 }: {
+  boundary: Element | null;
   reach: string;
   boxRef: RefObject<HTMLDivElement | null>;
   onFocus: () => void;
@@ -2737,7 +2759,7 @@ function TagsEditor({
           placeholder={placeholder ?? ""}
           className={cn("w-full min-w-0", BARE_FIELD)}
         />
-        <ComboboxContent>
+        <ComboboxContent collisionBoundary={boundary} collisionPadding={4}>
           <ComboboxEmpty>No tags match</ComboboxEmpty>
           <ComboboxList>
             {(item) => (
