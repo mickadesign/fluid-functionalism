@@ -76,6 +76,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       handlers,
       registerItem,
       itemRects,
+      setActiveIndex,
     } = hover;
 
     // The same merged, merge/split-animated selection CheckboxGroup draws.
@@ -105,6 +106,20 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
           onClick={handlers.onClick}
+          // Keyboard focus moves the highlight too: a row holding focus (or
+          // a control in it) looks hovered, so the fill is its focus mark.
+          onFocus={(e) => {
+            const target = e.target as HTMLElement;
+            if (!target.matches(":focus-visible")) return;
+            const index = target.closest("[data-fluid-hover-index]")?.getAttribute("data-fluid-hover-index");
+            if (index != null) setActiveIndex(Number(index));
+          }}
+          onBlur={(e) => {
+            const container = containerRef.current;
+            if (!container || container.contains(e.relatedTarget as Node)) return;
+            // The pointer keeps the highlight it's over.
+            if (!container.matches(":hover")) setActiveIndex(null);
+          }}
         >
           {/* Selected backgrounds, merged per contiguous run */}
           <SelectionBackgrounds blocks={blocks} />

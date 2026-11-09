@@ -1044,9 +1044,11 @@ function DataTable<TData>({
               className={cn(
                 onRowClick && "cursor-pointer",
                 rowsFocusable && "outline-none",
-                // The keyboard ring for a focused row: the row's own box,
-                // inset so the next row's rule doesn't cut through it.
-                rowsFocusable && "focus-visible:shadow-[inset_0_0_0_1px_var(--focus-ring,#6B97FF)]"
+                // A focused row looks hovered: Table moves its highlight to
+                // it, and its checkbox takes the hover border, in place of
+                // a blue ring around the row or the box.
+                "[&_[role=checkbox]:focus-visible]:ring-0",
+                "[&:is(:focus-visible,:has(:focus-visible))_[role=checkbox]]:border-foreground/40"
               )}
             >
               {row.getVisibleCells().map((cell, c) => {
