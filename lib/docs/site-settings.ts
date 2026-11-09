@@ -31,7 +31,7 @@ export interface SiteSettings {
 /** What a first visit sees. */
 export const DEFAULT_SETTINGS: SiteSettings = {
   theme: "system",
-  shape: "rounded",
+  shape: "sharp",
   size: "default",
   icons: "untitledui",
   base: "base",
