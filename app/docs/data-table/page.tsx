@@ -6,12 +6,17 @@ import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { apiReference } from "@/lib/docs/api/data-table";
 import { PlaygroundLayout } from "@/lib/docs/playground";
+import { DataTablePlayground } from "@/lib/docs/playgrounds/data-table";
 import {
-  DATA_TABLE_PRESETS,
-  DataTablePlayground,
-  DataTablePresetDemo,
-  presetCode,
-} from "@/lib/docs/playgrounds/data-table";
+  TeamTable,
+  teamCode,
+  TasksTable,
+  tasksCode,
+  FilesTable,
+  filesCode,
+  ChangelogTable,
+  changelogCode,
+} from "./capability-demos";
 import { SortableTable, SearchTable, LoadingTable } from "./demo-data";
 
 const sortCode = `import { useDataTable, DataTable, DataTableColumnHeader, type ColumnDef } from "./components";
@@ -59,9 +64,6 @@ const table = useDataTable({ data: data ?? [], columns });
 
 // ── Playground ───────────────────────────────────────────
 
-/** The page's presets, by name. */
-const PRESET = Object.fromEntries(DATA_TABLE_PRESETS.map((p) => [p.name, p]));
-
 function DataTablePlaygroundSection() {
   const ReloadIcon = useIcon("rotate-ccw");
   return (
@@ -101,31 +103,39 @@ export default function DataTableDoc() {
         <DataTablePlaygroundSection />
       </DocSection>
 
-      <DocSection title="Admin list">
-        <p className="text-site-body text-muted-foreground">Every part on one table. Select a few rows, then press ⌘K.</p>
-        <ComponentPreview code={presetCode(PRESET["Admin list"])}>
-          <DataTablePresetDemo preset={PRESET["Admin list"]} />
+      <DocSection title="Selection and actions">
+        <p className="text-site-body text-muted-foreground">
+          Select a few people, then press ⌘K to act on all of them at once.
+        </p>
+        <ComponentPreview code={teamCode}>
+          <TeamTable />
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Spreadsheet">
-        <p className="text-site-body text-muted-foreground">Every cell edits in place. Click a cell, type, and press Enter.</p>
-        <ComponentPreview code={presetCode(PRESET["Spreadsheet"])}>
-          <DataTablePresetDemo preset={PRESET["Spreadsheet"]} />
+      <DocSection title="Editable cells">
+        <p className="text-site-body text-muted-foreground">
+          6 editors, each one the cell itself: click a cell to edit it, press Enter or Esc to leave.
+        </p>
+        <ComponentPreview code={tasksCode}>
+          <TasksTable />
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Tree">
-        <p className="text-site-body text-muted-foreground">Rows open into their parts. Click a chevron, or press → on a row.</p>
-        <ComponentPreview code={presetCode(PRESET["Tree"])}>
-          <DataTablePresetDemo preset={PRESET["Tree"]} />
+      <DocSection title="Sub-rows">
+        <p className="text-site-body text-muted-foreground">
+          A folder opens into its files. Click a chevron, or press → on a row and ← to close it.
+        </p>
+        <ComponentPreview code={filesCode}>
+          <FilesTable />
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Report">
-        <p className="text-site-body text-muted-foreground">Read only, every row on one page, each summary in full.</p>
-        <ComponentPreview code={presetCode(PRESET["Report"])}>
-          <DataTablePresetDemo preset={PRESET["Report"]} />
+      <DocSection title="Wrapped text">
+        <p className="text-site-body text-muted-foreground">
+          Long text runs onto as many lines as it needs, and the row reads from the top.
+        </p>
+        <ComponentPreview code={changelogCode}>
+          <ChangelogTable />
         </ComponentPreview>
       </DocSection>
 

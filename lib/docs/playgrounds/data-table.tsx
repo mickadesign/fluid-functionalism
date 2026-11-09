@@ -481,50 +481,6 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   ].join("\n");
 }
 
-// ── Presets ──────────────────────────────────────────────
-// Popular setups, as changes from the rail's defaults. The page shows each
-// as a live table with its code.
-
-export interface DataTablePreset {
-  name: string;
-  description: string;
-  state: Partial<PlayState>;
-}
-
-export const DATA_TABLE_PRESETS: DataTablePreset[] = [
-  {
-    name: "Admin list",
-    description:
-      "Search by name, the Columns menu, selection with its action bar, a row menu and pages of 10.",
-    state: {},
-  },
-  {
-    name: "Spreadsheet",
-    description:
-      "Every cell editable, search across all columns and pages of 20, built for the keyboard.",
-    state: { editable: true, filter: "all", rowActions: false, pageSize: "20" },
-  },
-  {
-    name: "Tree",
-    description: "Rows that open into their parts, with a chevron and an indent for each level.",
-    state: { expandable: true, rowActions: false },
-  },
-  {
-    name: "Report",
-    description: "Read only: no selection or menus, the summary wrapped in full, every row on one page.",
-    state: {
-      filter: "all",
-      viewMenu: false,
-      selection: false,
-      rowActions: false,
-      pagination: false,
-      resize: false,
-      reorder: false,
-      lines: "wrap",
-    },
-  },
-];
-
 /** The selection bar's actions, for the selected components. */
 function selectionActions(rows: Row<ComponentRow>[], icons: Icons) {
   return [
@@ -544,83 +500,6 @@ function selectionActions(rows: Row<ComponentRow>[], icons: Icons) {
       onSelect: () => navigator.clipboard?.writeText(rows.map((r) => r.original.name).join("\n")),
     },
   ];
-}
-
-/** A preset's state: the rail's defaults with its changes on top. */
-export function presetState(preset: DataTablePreset): PlayState {
-  return { ...DEFAULT_STATE, ...preset.state };
-}
-
-/** A preset's code, as Get code would give it. */
-export function presetCode(preset: DataTablePreset): string {
-  return buildDataTablePlaygroundCode(presetState(preset));
-}
-
-/** One preset as a live table on the page: the playground's table, its
- *  settings fixed. */
-export function DataTablePresetDemo({ preset }: { preset: DataTablePreset }) {
-  const [state] = useState(() => presetState(preset));
-  const [data, setData] = useState(buildRows);
-  const icons = useIcons();
-  const tableData = useMemo(
-    () => (state.expandable ? data : data.map((r) => ({ ...r, subRows: undefined }))),
-    [data, state.expandable]
-  );
-  const columns = useMemo(
-    () =>
-      buildColumns({
-        selection: state.selection,
-        rowActions: state.rowActions,
-        lines: state.lines,
-        icons: state.headerIcons ? icons : null,
-        editable: state.editable,
-      }),
-    [state, icons]
-  );
-  const table = useDataTable({
-    data: tableData,
-    columns,
-    pageSize: state.pagination ? Number(state.pageSize) : data.length,
-    getRowId: (row) => row.slug,
-    getSubRows: (row) => row.subRows,
-    initialState: {
-      sorting: [{ id: "added", desc: true }],
-      columnVisibility: { fluidHover: false },
-    },
-  });
-  return (
-    <div className="flex w-full flex-col gap-3">
-      {(state.filter !== "none" || state.viewMenu) && (
-        <div className="flex items-center gap-2">
-          {state.filter !== "none" && (
-            <DataTableSearch
-              table={table}
-              column={state.filter === "column" ? "name" : undefined}
-              placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
-            />
-          )}
-          {state.viewMenu && <DataTableViewOptions table={table} className="ml-auto" />}
-        </div>
-      )}
-      <DataTable
-        table={table}
-        resizeColumns={state.resize}
-        reorderColumns={state.reorder}
-        cellAlign={state.align}
-        empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
-        onCellEdit={
-          state.editable
-            ? ({ row, columnId, value }) =>
-                setData((old) => updateRow(old, row.original.slug, columnId, value))
-            : undefined
-        }
-      />
-      {state.pagination && <DataTablePagination table={table} />}
-      {state.selection && (
-        <DataTableSelectionBar table={table} actions={(rows) => selectionActions(rows, icons)} />
-      )}
-    </div>
-  );
 }
 
 // ── Playground ───────────────────────────────────────────
