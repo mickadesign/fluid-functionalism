@@ -834,13 +834,16 @@ function DataTable<TData>({
   //                  its checkbox). Without a selection column, Enter
   //                  opens the row (onRowClick)
   //   Space          opens the row (onRowClick), else selects it
+  //   Enter / Space  on a row that can't be opened or selected, opens or
+  //                  closes its sub-rows
   //   ⌘A / Ctrl+A    selects every row, on every page
   //   Esc            clears the selection
-  // Rows are focusable whenever they can be selected or opened: one tab
-  // stop for the body (the row last focused, else the first). A hovered
+  // Rows are focusable whenever they can be selected, opened or expanded,
+  // so navigation never depends on a selection column: one tab stop for
+  // the body (the row last focused, else the first). A hovered
   // row counts as focused while nothing else is (see below).
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
-  const rowsFocusable = hasSelection || !!onRowClick;
+  const rowsFocusable = hasSelection || !!onRowClick || table.getCanSomeRowsExpand();
   // The far end of a Shift + arrow range, so the next step can shrink it.
   const rangeHead = useRef<string | null>(null);
   const extendTo = (fromId: string, toId: string) => {
@@ -915,11 +918,19 @@ function DataTable<TData>({
       return;
     }
     if (onRow && (e.key === "Enter" || e.key === " ") && !e.repeat) {
-      if (e.key === "Enter" && !onRowClick) return;
-      e.preventDefault();
       const row = rows.find((r) => r.id === id);
-      if (onRowClick && row) onRowClick(row);
-      else toggleRow(id);
+      if (!row) return;
+      if (onRowClick) {
+        e.preventDefault();
+        onRowClick(row);
+      } else if (e.key === " " && hasSelection) {
+        e.preventDefault();
+        toggleRow(id);
+      } else if (row.getCanExpand()) {
+        // Nothing else to do with the row: the key opens or closes it.
+        e.preventDefault();
+        toggleExpanded(row, !row.getIsExpanded());
+      }
       return;
     }
     // Sub-rows, as in a tree: → opens a row, or steps into its first child
@@ -1015,6 +1026,8 @@ function DataTable<TData>({
       // Select-all and clear only when they'd do something, so Escape still
       // closes what the page has open.
       if (mod && !hasSelection) return;
+      // X selects; without a selection column it's the page's.
+      if ((e.key === "x" || e.key === "X") && !hasSelection) return;
       if (e.key === "Escape" && !(hasSelection && Object.keys(table.getState().rowSelection).length)) return;
       const wrap = wrapRef.current;
       if (!wrap) return;
@@ -1104,6 +1117,8 @@ function DataTable<TData>({
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
       snapKey={expandTick}
       hideHeadHighlight={!!drag}
+      // While anything is selected every box stays up (see selectColumn).
+      data-selecting={Object.keys(table.getState().rowSelection).length > 0 || undefined}
       // The skeleton rows are aria-hidden; this tells assistive tech the
       // table is loading rather than empty.
       aria-busy={loading || undefined}
@@ -1111,7 +1126,13 @@ function DataTable<TData>({
       // Fixed layout keeps the widths you set. The min width is every
       // column's width summed, so past the box the table scrolls instead of
       // crushing the column that takes the rest.
-      className={cn(sized && "table-fixed", className)}
+      className={cn(
+        sized && "table-fixed",
+        // The column after the boxes drops its left padding: 8px from box
+        // to text, the gap a Checkbox keeps from its label.
+        "[&_[data-column-id=select]+[data-column-id]]:pl-0",
+        className
+      )}
       style={sized ? { minWidth: table.getTotalSize() } : undefined}
     >
       <TableHeader>
@@ -1573,6 +1594,13 @@ const SelectHit = forwardRef<HTMLSpanElement, SelectHitProps>(
 );
 SelectHit.displayName = "SelectHit";
 
+/** A selection box shows only where it's wanted: on the row under the
+ *  pointer or holding focus, on a checked box, on every row once anything
+ *  is selected, and always on touch screens, which have no hover. The cell
+ *  still takes the click while the box is hidden. */
+const SELECT_REVEAL =
+  "opacity-0 transition-opacity duration-80 group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [table[data-selecting]_&]:opacity-100 [@media(hover:none)]:opacity-100";
+
 /** The selectable rows the search leaves, sub-rows included, on every page. */
 function selectableRows<TData>(table: TanStackTable<TData>) {
   return table.getFilteredRowModel().flatRows.filter((r) => r.getCanSelect());
@@ -1605,8 +1633,11 @@ function selectColumn<TData>(): ColumnDef<TData> {
     // 8px either side of the 16px box, so its focus ring never meets the
     // row's edge (or the scroll box's clip).
     size: 32,
-    // w-0 shrinks the column to the box and its 8px either side.
-    meta: { className: "w-0 px-2" },
+    // w-0 shrinks the column to the box and its 8px either side. The row
+    // dividers start after it: the cell's own transparent bottom border
+    // wins the collapsed-border conflict with the row's, so no line runs
+    // above or below a box.
+    meta: { className: "w-0 px-2 border-b border-b-transparent" },
     header: ({ table }) => {
       // Every row the search leaves, on every page: a page is a view, not
       // a scope, so "all" means the whole result.
@@ -1621,7 +1652,7 @@ function selectColumn<TData>(): ColumnDef<TData> {
         // rest, a check clears it. Its trigger is the hit area, not the
         // box, so it works whichever primitive the box is built on.
         <Tooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top">
-          <SelectHit onToggle={() => selectAllRows(table, !all)}>
+          <SelectHit className={SELECT_REVEAL} onToggle={() => selectAllRows(table, !all)}>
             <Checkbox
               aria-label="Select all rows"
               checked={all}
@@ -1634,6 +1665,7 @@ function selectColumn<TData>(): ColumnDef<TData> {
     },
     cell: ({ row, table }) => (
       <SelectHit
+        className={SELECT_REVEAL}
         disabled={!row.getCanSelect()}
         onToggle={() => row.toggleSelected()}
         // Shift-click selects (or clears) every row from the last one

@@ -181,7 +181,8 @@ export default function DataTableDoc() {
           <li>↓ from the search or a header steps into the first row; ↑ / ↓ and Home / End move between rows.</li>
           <li>X or Enter selects or clears a row; Shift + ↑ / ↓ grows or shrinks the selection from where it started.</li>
           <li>⌘A / Ctrl+A selects every row, on every page; Esc clears the selection.</li>
-          <li>With sub-rows, → opens a row or steps into it and ← closes it or steps back to its parent.</li>
+          <li>With sub-rows, → opens a row or steps into it and ← closes it or steps back to its parent. Without a selection column or onRowClick, Enter or Space opens and closes it too.</li>
+          <li>Rows take focus whenever they can be selected, opened or expanded, so the keys work without a selection column.</li>
           <li>In an editable cell, Enter or Esc leaves the field and keeps what you typed; F2 edits a link.</li>
           <li>With a selection, ⌘K opens its actions.</li>
           <li>Alt + ← / → on a focused header moves its column; ← / → on a focused resize handle steps its width by 16px.</li>
