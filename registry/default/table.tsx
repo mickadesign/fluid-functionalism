@@ -2,6 +2,7 @@
 
 import {
   useRef,
+  useState,
   useMemo,
   createContext,
   useContext,
@@ -84,6 +85,29 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     const runs = useSelectionRuns(selectedIndices);
     const blocks = useMergeSplitBlocks(runs, itemRects, shape.mergedRadius);
 
+    // Keyboard focus owns the highlight until the pointer really moves. A
+    // scroll (the rows sliding under a still pointer, as arrow keys bring
+    // the next row in) fires mouse moves and leaves at the same spot: those
+    // must not snatch the highlight back to whatever row is now underneath.
+    const keyboardOwns = useRef(false);
+    const lastPointer = useRef<{ x: number; y: number } | null>(null);
+    const pointerMoved = (e: React.MouseEvent) => {
+      const last = lastPointer.current;
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      return !last || last.x !== e.clientX || last.y !== e.clientY;
+    };
+    const fromPointer = (e: React.MouseEvent) => {
+      const moved = pointerMoved(e);
+      if (keyboardOwns.current && !moved) return false;
+      keyboardOwns.current = false;
+      return true;
+    };
+
+    // A held arrow key repeats faster than the highlight's spring settles,
+    // so while it repeats the highlight snaps row to row and stays on the
+    // focused one; a single press, and the pointer, still glide.
+    const [repeating, setRepeating] = useState(false);
+
     const selectedKey = selectedIndices.join(",");
     const selected = useMemo(
       () => new Set(selectedKey ? selectedKey.split(",").map(Number) : []),
@@ -102,23 +126,30 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         <div
           ref={containerRef}
           className="relative"
-          onMouseEnter={handlers.onMouseEnter}
-          onMouseMove={handlers.onMouseMove}
-          onMouseLeave={handlers.onMouseLeave}
+          onMouseEnter={(e) => fromPointer(e) && handlers.onMouseEnter()}
+          onMouseMove={(e) => fromPointer(e) && handlers.onMouseMove(e)}
+          onMouseLeave={(e) => fromPointer(e) && handlers.onMouseLeave()}
           onClick={handlers.onClick}
+          onKeyDown={(e) => {
+            if (e.repeat && !repeating && e.key.startsWith("Arrow")) setRepeating(true);
+          }}
+          onKeyUp={() => repeating && setRepeating(false)}
           // Keyboard focus moves the highlight too: a row holding focus (or
           // a control in it) looks hovered, so the fill is its focus mark.
           onFocus={(e) => {
             const target = e.target as HTMLElement;
             if (!target.matches(":focus-visible")) return;
             const index = target.closest("[data-fluid-hover-index]")?.getAttribute("data-fluid-hover-index");
-            if (index != null) setActiveIndex(Number(index));
+            if (index == null) return;
+            keyboardOwns.current = true;
+            setActiveIndex(Number(index));
           }}
           onBlur={(e) => {
             const container = containerRef.current;
             if (!container || container.contains(e.relatedTarget as Node)) return;
             // The pointer keeps the highlight it's over.
             if (!container.matches(":hover")) setActiveIndex(null);
+            setRepeating(false);
           }}
         >
           {/* Selected backgrounds, merged per contiguous run */}
@@ -126,7 +157,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
           {/* Hover background, rounded by the shape setting like the
               selection under it. */}
-          <FluidHoverHighlight hover={hover} className={shape.bg} />
+          <FluidHoverHighlight hover={hover} className={shape.bg} transition={repeating ? false : undefined} />
 
           <table
             ref={ref}

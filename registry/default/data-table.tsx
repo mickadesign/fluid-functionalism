@@ -852,7 +852,12 @@ function DataTable<TData>({
     const next = order.find((r) => control(r));
     if (!next) return;
     e.preventDefault();
-    control(next)!.focus();
+    control(next)!.focus({ preventScroll: true });
+    // Arrows keep one row ahead in view, so you see what's next before you
+    // reach it; Home / End just bring their row in.
+    const ahead =
+      e.key === "ArrowUp" || e.key === "ArrowDown" ? (order[order.indexOf(next) + 1] ?? next) : next;
+    revealRow(ahead, fill ? (wrapRef.current?.querySelector("thead")?.offsetHeight ?? 0) : 0);
     if (hasSelection && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       extendTo(id, next.dataset.rowId!);
     } else if (!e.shiftKey) {
@@ -871,7 +876,12 @@ function DataTable<TData>({
     if (!rowsFocusable) return;
     const wrap = wrapRef.current;
     let pointerFresh = false;
-    const onPointerMove = () => {
+    let last: { x: number; y: number } | null = null;
+    // Only a real move counts: a scroll under a still pointer fires moves at
+    // the same spot, and those mustn't hand the keys back to the hover.
+    const onPointerMove = (e: globalThis.PointerEvent) => {
+      if (last && last.x === e.clientX && last.y === e.clientY) return;
+      last = { x: e.clientX, y: e.clientY };
       pointerFresh = true;
     };
     wrap?.addEventListener("pointermove", onPointerMove);
@@ -1416,6 +1426,29 @@ function DataTableColumnHeader<TData, TValue>({
 // function, the one object the table keeps for its whole life (the view
 // useDataTable hands out is new on every change).
 const selectionAnchors = new WeakMap<object, string>();
+
+/** Scrolls a row into view vertically, by as little as it takes, in its
+ *  nearest scrolling box (a filled table's viewport, a panel) or the page.
+ *  `topInset` keeps it clear of a sticky header. Measured by hand rather
+ *  than scrollIntoView, which would also slide a wide table sideways. */
+function revealRow(row: HTMLElement, topInset: number) {
+  let box: HTMLElement | null = row.parentElement;
+  while (box && box !== document.body && box !== document.documentElement) {
+    const overflow = getComputedStyle(box).overflowY;
+    if ((overflow === "auto" || overflow === "scroll") && box.scrollHeight > box.clientHeight) break;
+    box = box.parentElement;
+  }
+  const r = row.getBoundingClientRect();
+  if (box && box !== document.body && box !== document.documentElement) {
+    const b = box.getBoundingClientRect();
+    const top = b.top + topInset;
+    if (r.top < top) box.scrollTop -= top - r.top;
+    else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
+    return;
+  }
+  if (r.top < 0) window.scrollBy(0, r.top);
+  else if (r.bottom > window.innerHeight) window.scrollBy(0, r.bottom - window.innerHeight);
+}
 
 /** Selects (or clears) every row on the page from one row to another. */
 function selectRange<TData>(table: TanStackTable<TData>, fromId: string, toId: string, value: boolean) {
