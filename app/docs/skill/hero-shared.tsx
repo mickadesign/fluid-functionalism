@@ -310,7 +310,13 @@ export function Compare({
       active === side ? "text-foreground" : "text-muted-foreground"
     );
   return (
-    <div ref={rootRef} className="relative grid w-full max-w-xl gap-5 sm:grid-cols-2" {...bind}>
+    <div
+      ref={rootRef}
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
+      className="relative grid w-full max-w-xl gap-5 sm:grid-cols-2"
+      {...bind}
+    >
       <div className="flex flex-col items-center gap-3">
         <div data-side="generic" className={frame} style={style}>
           {generic}

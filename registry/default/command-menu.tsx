@@ -1516,6 +1516,9 @@ function CommandMenuDialog({
   // which dialog answers a shared combo with each click.
   const openRef = useRef(open);
   const scopeRef = useRef(shortcutScope);
+  // Where the dialog sits in the page (its content is portalled), so an
+  // app-wide palette can tell a keyboard scope it's outside of.
+  const anchorRef = useRef<HTMLSpanElement>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   const controlledRef = useRef(openProp !== undefined);
   useIsoLayoutEffect(() => {
@@ -1540,7 +1543,12 @@ function CommandMenuDialog({
       isOpen: () => openRef.current,
       inScope: () => {
         const scope = scopeRef.current?.current;
-        return !scope || scope.contains(document.activeElement);
+        if (scope) return scope.contains(document.activeElement);
+        // Without a scope it answers everywhere, except inside a keyboard
+        // scope (an embedded preview marked data-keyboard-scope) it sits
+        // outside of: there the keys belong to what's in the scope.
+        const keyScope = document.activeElement?.closest("[data-keyboard-scope]");
+        return !keyScope || !!(anchorRef.current && keyScope.contains(anchorRef.current));
       },
     };
     mountedDialogs.push(entry);
@@ -1567,6 +1575,8 @@ function CommandMenuDialog({
   const dialogCtx = useMemo(() => ({ close: () => setOpen(false) }), [setOpen]);
 
   return (
+    <>
+      <span ref={anchorRef} hidden />
     <Dialog open={open} onOpenChange={setOpen} modal={modal}>
       <DialogContent
         size="lg"
@@ -1589,6 +1599,7 @@ function CommandMenuDialog({
         </CommandMenuDialogContext.Provider>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 

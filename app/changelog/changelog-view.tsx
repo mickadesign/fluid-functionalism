@@ -432,7 +432,12 @@ function Entry({ entry, month, first }: { entry: EntryView; month: string; first
         </div>
       )}
       {staged && (
-        <div ref={stageRef} className={cn("bento-card-border relative mt-3 overflow-hidden border", shape.container)}>
+        <div
+          ref={stageRef}
+          // Keys typed in here reach the component, not the site's shortcuts.
+          data-keyboard-scope=""
+          className={cn("bento-card-border relative mt-3 overflow-hidden border", shape.container)}
+        >
           {animated && (
             <Tooltip content={paused ? "Play all previews" : "Pause all previews"} side="top">
               <Button

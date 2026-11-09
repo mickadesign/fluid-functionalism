@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -35,6 +36,8 @@ function SidebarShortcutToast() {
   const pendingAtRef = useRef<number | null>(null);
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "[") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
@@ -134,6 +137,8 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
       // A component already used this key (a DataTable resize handle).

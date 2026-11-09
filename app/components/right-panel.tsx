@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import {
   createContext,
   useContext,
@@ -835,6 +836,8 @@ export function RightPanel() {
   openRef.current = open;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "]") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Below xl the panel doesn't render — a shortcut that visibly does
