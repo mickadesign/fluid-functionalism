@@ -9,67 +9,10 @@ import { PlaygroundLayout } from "@/lib/docs/playground";
 import {
   DATA_TABLE_PRESETS,
   DataTablePlayground,
-  loadDataTablePreset,
+  DataTablePresetDemo,
+  presetCode,
 } from "@/lib/docs/playgrounds/data-table";
-import { CardGroup, Card, CardHeader, CardTitle, CardDescription } from "@/registry/default/card";
-import { PaymentsTable, SortableTable, SearchTable, LoadingTable } from "./demo-data";
-
-const fullCode = `import {
-  useDataTable, DataTable, DataTableColumnHeader,
-  DataTableSearch, DataTableViewOptions, DataTablePagination,
-  selectColumn, rowActionsColumn, type ColumnDef,
-} from "./components";
-import { MenuItem, Badge } from "./components";
-
-type Payment = {
-  id: string;
-  status: "pending" | "processing" | "success" | "failed";
-  email: string;
-  amount: number;
-};
-
-const columns: ColumnDef<Payment>[] = [
-  selectColumn<Payment>(),
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => <Badge variant="ghost" color="green">{row.original.status}</Badge>,
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
-    meta: { label: "Email" },
-  },
-  {
-    accessorKey: "amount",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Amount" />,
-    cell: ({ row }) => currency.format(row.original.amount),
-    meta: { label: "Amount" },
-  },
-  rowActionsColumn<Payment>((row) => (
-    <>
-      <MenuItem index={0} label="Copy payment ID" onSelect={() => copy(row.original.id)} />
-      <MenuItem index={1} label="View customer" />
-      <MenuItem index={2} label="View payment details" />
-    </>
-  )),
-];
-
-const table = useDataTable({ data: payments, columns, pageSize: 5 });
-
-<div className="flex flex-col gap-3">
-  <div className="flex items-center gap-2">
-    <DataTableSearch table={table} column="email" placeholder="Search emails…" />
-    <DataTableViewOptions table={table} className="ml-auto" />
-  </div>
-  <DataTable
-    table={table}
-    resizeColumns
-    reorderColumns
-    onRowClick={(row) => row.toggleSelected()}
-  />
-  <DataTablePagination table={table} />
-</div>`;
+import { SortableTable, SearchTable, LoadingTable } from "./demo-data";
 
 const sortCode = `import { useDataTable, DataTable, DataTableColumnHeader, type ColumnDef } from "./components";
 
@@ -116,32 +59,8 @@ const table = useDataTable({ data: data ?? [], columns });
 
 // ── Playground ───────────────────────────────────────────
 
-// ── Presets ──────────────────────────────────────────────
-
-/** Popular setups: a click loads one into the playground and scrolls to it. */
-function PresetCards() {
-  return (
-    <CardGroup columns={2} orientation="inline" border="outlined">
-      {DATA_TABLE_PRESETS.map((preset) => (
-        <Card
-          key={preset.name}
-          label={`Load the ${preset.name} preset into the playground`}
-          onClick={() => {
-            loadDataTablePreset(preset);
-            document
-              .getElementById("data-table-playground")
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        >
-          <CardHeader>
-            <CardTitle>{preset.name}</CardTitle>
-            <CardDescription>{preset.description}</CardDescription>
-          </CardHeader>
-        </Card>
-      ))}
-    </CardGroup>
-  );
-}
+/** The page's presets, by name. */
+const PRESET = Object.fromEntries(DATA_TABLE_PRESETS.map((p) => [p.name, p]));
 
 function DataTablePlaygroundSection() {
   const ReloadIcon = useIcon("rotate-ccw");
@@ -179,27 +98,34 @@ export default function DataTableDoc() {
       description="TanStack Table on the fluid hover Table: sorting, search, resizable and movable columns, selection with spreadsheet keys, editable cells, sub-rows and pagination, each part optional."
     >
       <DocSection title="Playground">
-        <div id="data-table-playground" className="scroll-mt-6">
-          <DataTablePlaygroundSection />
-        </div>
+        <DataTablePlaygroundSection />
       </DocSection>
 
-      <DocSection title="Presets">
-        <p className="text-site-body text-muted-foreground">
-          4 common setups, built from the playground&apos;s own settings. Pick one to load it above, then
-          adjust it and copy its code.
-        </p>
-        <PresetCards />
+      <DocSection title="Admin list">
+        <p className="text-site-body text-muted-foreground">Every part on one table. Select a few rows, then press ⌘K.</p>
+        <ComponentPreview code={presetCode(PRESET["Admin list"])}>
+          <DataTablePresetDemo preset={PRESET["Admin list"]} />
+        </ComponentPreview>
       </DocSection>
 
-      <DocSection title="All parts">
-        <p className="text-site-body text-muted-foreground">
-          Every part on one table. TanStack Table holds the state and each part reads and sets it, so you
-          keep the ones you need. Select a few rows, sort by amount, hide a column, drag a header to move
-          its column or its right edge to resize it, or open a row&apos;s menu.
-        </p>
-        <ComponentPreview code={fullCode}>
-          <PaymentsTable />
+      <DocSection title="Spreadsheet">
+        <p className="text-site-body text-muted-foreground">Every cell edits in place. Click a cell, type, and press Enter.</p>
+        <ComponentPreview code={presetCode(PRESET["Spreadsheet"])}>
+          <DataTablePresetDemo preset={PRESET["Spreadsheet"]} />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Tree">
+        <p className="text-site-body text-muted-foreground">Rows open into their parts. Click a chevron, or press → on a row.</p>
+        <ComponentPreview code={presetCode(PRESET["Tree"])}>
+          <DataTablePresetDemo preset={PRESET["Tree"]} />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Report">
+        <p className="text-site-body text-muted-foreground">Read only, every row on one page, each summary in full.</p>
+        <ComponentPreview code={presetCode(PRESET["Report"])}>
+          <DataTablePresetDemo preset={PRESET["Report"]} />
         </ComponentPreview>
       </DocSection>
 

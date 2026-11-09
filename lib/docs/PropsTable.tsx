@@ -10,6 +10,20 @@ type PropsTableProps =
    *  line up from group to group (separate tables size theirs apart). */
   | { groups: ApiTable[]; props?: never };
 
+/** A description's `code` spans as inline code (the same text the .md
+ *  pages render as Markdown), the rest as plain text. */
+function Description({ text }: { text: string }) {
+  return text.split(/(`[^`]+`)/).map((part, i) =>
+    part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
+      <code key={i} className="font-mono text-site-caption text-foreground">
+        {part.slice(1, -1)}
+      </code>
+    ) : (
+      part
+    )
+  );
+}
+
 function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean }) {
   return (
     <tr className="border-b border-border/40">
@@ -26,7 +40,9 @@ function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean })
           {prop.default ?? "—"}
         </td>
       )}
-      <td className="px-3 py-2 text-muted-foreground">{prop.description}</td>
+      <td className="px-3 py-2 text-muted-foreground">
+        <Description text={prop.description} />
+      </td>
     </tr>
   );
 }

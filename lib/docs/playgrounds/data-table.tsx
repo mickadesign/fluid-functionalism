@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   useDataTable,
   DataTable,
@@ -13,6 +13,7 @@ import {
   rowActionsColumn,
   type ColumnDef,
 } from "@/registry/default/data-table";
+import type { Row } from "@tanstack/react-table";
 import { MenuItem } from "@/registry/default/menu-item";
 import { Badge } from "@/registry/default/badge";
 import { Switch } from "@/registry/radix/switch";
@@ -481,8 +482,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
 }
 
 // ── Presets ──────────────────────────────────────────────
-// Popular setups, as changes from the rail's defaults. The page lists them
-// and loads one into the playground through PRESET_EVENT.
+// Popular setups, as changes from the rail's defaults. The page shows each
+// as a live table with its code.
 
 export interface DataTablePreset {
   name: string;
@@ -524,12 +525,102 @@ export const DATA_TABLE_PRESETS: DataTablePreset[] = [
   },
 ];
 
-/** Window event that loads a preset into the playground. */
-export const PRESET_EVENT = "data-table:preset";
+/** The selection bar's actions, for the selected components. */
+function selectionActions(rows: Row<ComponentRow>[], icons: Icons) {
+  return [
+    {
+      value: "install",
+      label: "Copy install command",
+      icon: icons.copy,
+      onSelect: () =>
+        navigator.clipboard?.writeText(
+          `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
+        ),
+    },
+    {
+      value: "names",
+      label: "Copy names",
+      icon: icons.file,
+      onSelect: () => navigator.clipboard?.writeText(rows.map((r) => r.original.name).join("\n")),
+    },
+  ];
+}
 
-/** Loads a preset into the playground on this page. */
-export function loadDataTablePreset(preset: DataTablePreset) {
-  window.dispatchEvent(new CustomEvent(PRESET_EVENT, { detail: preset.state }));
+/** A preset's state: the rail's defaults with its changes on top. */
+export function presetState(preset: DataTablePreset): PlayState {
+  return { ...DEFAULT_STATE, ...preset.state };
+}
+
+/** A preset's code, as Get code would give it. */
+export function presetCode(preset: DataTablePreset): string {
+  return buildDataTablePlaygroundCode(presetState(preset));
+}
+
+/** One preset as a live table on the page: the playground's table, its
+ *  settings fixed. */
+export function DataTablePresetDemo({ preset }: { preset: DataTablePreset }) {
+  const [state] = useState(() => presetState(preset));
+  const [data, setData] = useState(buildRows);
+  const icons = useIcons();
+  const tableData = useMemo(
+    () => (state.expandable ? data : data.map((r) => ({ ...r, subRows: undefined }))),
+    [data, state.expandable]
+  );
+  const columns = useMemo(
+    () =>
+      buildColumns({
+        selection: state.selection,
+        rowActions: state.rowActions,
+        lines: state.lines,
+        icons: state.headerIcons ? icons : null,
+        editable: state.editable,
+      }),
+    [state, icons]
+  );
+  const table = useDataTable({
+    data: tableData,
+    columns,
+    pageSize: state.pagination ? Number(state.pageSize) : data.length,
+    getRowId: (row) => row.slug,
+    getSubRows: (row) => row.subRows,
+    initialState: {
+      sorting: [{ id: "added", desc: true }],
+      columnVisibility: { fluidHover: false },
+    },
+  });
+  return (
+    <div className="flex w-full flex-col gap-3">
+      {(state.filter !== "none" || state.viewMenu) && (
+        <div className="flex items-center gap-2">
+          {state.filter !== "none" && (
+            <DataTableSearch
+              table={table}
+              column={state.filter === "column" ? "name" : undefined}
+              placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+            />
+          )}
+          {state.viewMenu && <DataTableViewOptions table={table} className="ml-auto" />}
+        </div>
+      )}
+      <DataTable
+        table={table}
+        resizeColumns={state.resize}
+        reorderColumns={state.reorder}
+        cellAlign={state.align}
+        empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
+        onCellEdit={
+          state.editable
+            ? ({ row, columnId, value }) =>
+                setData((old) => updateRow(old, row.original.slug, columnId, value))
+            : undefined
+        }
+      />
+      {state.pagination && <DataTablePagination table={table} />}
+      {state.selection && (
+        <DataTableSelectionBar table={table} actions={(rows) => selectionActions(rows, icons)} />
+      )}
+    </div>
+  );
 }
 
 // ── Playground ───────────────────────────────────────────
@@ -615,18 +706,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
     apply({ ...stateRef.current, [key]: value });
 
-  // A preset from the page: the defaults with its changes on top.
-  const applyRef = useRef(apply);
-  useLayoutEffect(() => {
-    applyRef.current = apply;
-  });
-  useEffect(() => {
-    const onPreset = (e: Event) =>
-      applyRef.current({ ...DEFAULT_STATE, ...(e as CustomEvent<Partial<PlayState>>).detail });
-    window.addEventListener(PRESET_EVENT, onPreset);
-    return () => window.removeEventListener(PRESET_EVENT, onPreset);
-  }, []);
-
   // ── Get code (presets) ─────────────────────────────────
   const globals = usePresetGlobals();
   const presetCode = encodeDataTablePreset({ ...state, ...globals });
@@ -690,23 +769,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       {state.selection && (
         <DataTableSelectionBar
           table={table}
-          actions={(rows) => [
-            {
-              value: "install",
-              label: "Copy install command",
-              icon: icons.copy,
-              onSelect: () =>
-                navigator.clipboard?.writeText(
-                  `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
-                ),
-            },
-            {
-              value: "names",
-              label: "Copy names",
-              icon: icons.file,
-              onSelect: () => navigator.clipboard?.writeText(rows.map((r) => r.original.name).join("\n")),
-            },
-          ]}
+          actions={(rows) => selectionActions(rows, icons)}
         />
       )}
     </div>

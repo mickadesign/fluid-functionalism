@@ -3,77 +3,78 @@
 import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 
 export const useDataTableProps: PropDef[] = [
-  { name: "data", type: "TData[]", description: "The rows. Keep the array stable (state or useMemo), or TanStack recomputes every render." },
-  { name: "columns", type: "ColumnDef<TData>[]", description: "TanStack column definitions. Same identity rule as data." },
+  { name: "data", type: "TData[]", description: "The rows. Keep the array stable (state or `useMemo`)." },
+  { name: "columns", type: "ColumnDef<TData>[]", description: "TanStack column definitions. Keep them stable too." },
   { name: "pageSize", type: "number", default: "10", description: "Rows per page." },
-  { name: "getSubRows", type: "(row: TData) => TData[] | undefined", description: "Gives rows children: the first data column gets a chevron and an indent, \u2192 / \u2190 open and close from a focused row, and a page keeps its parents however many children they open. TanStack's own option, passed through." },
-  { name: "...options", type: "TableOptions<TData>", description: "Anything useReactTable accepts: initialState, controlled state with its on*Change handlers, getRowId, enableRowSelection. The core, sorted, filtered and paginated row models come set." },
+  { name: "getSubRows", type: "(row: TData) => TData[] | undefined", description: "Gives rows children: a chevron and an indent on the first column, `→` / `←` to open and close." },
+  { name: "...options", type: "TableOptions<TData>", description: "Anything `useReactTable` takes, like `initialState`, `getRowId` or controlled state." },
 ];
 
 export const dataTableProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "What useDataTable returns." },
-  { name: "size", type: '"default" | "compact"', description: "Pins every row to one step of the size ladder (36px or 28px). Omitted, rows follow the surrounding SizeProvider." },
-  { name: "empty", type: "{ title?, description?, action? }", default: '{ title: "No results" }', description: "What the body says with no rows. It holds a page of height, so a filter that empties the table doesn't move what sits below." },
-  { name: "onRowClick", type: "(row: Row<TData>) => void", description: "Makes body rows clickable. Clicks on a control inside the row (a checkbox, a menu) are left to that control, and clicks in a portalled popup (the row menu) don't count. Space on a focused row opens it, and so does Enter when there is no selection column (with one, Enter and X select)." },
-  { name: "resizeColumns", type: "boolean", default: "false", description: "A handle on each header's right edge: drag it, or focus it and press ← / →, to set the width; double-click resets it. Columns start at the widths the table lays out on its own (or their size). The last resizable one takes the rest, and its handle sets the least it takes; a wider table scrolls sideways with faded edges. Fixed columns set enableResizing: false and a size." },
-  { name: "cellAlign", type: '"auto" | "center" | "top"', default: '"auto"', description: "Where cell content sits in its row. Auto puts it along the top while a visible column runs past one line (lines: 2, \"wrap\", or the Columns menu's Wrap text), centered otherwise." },
-  { name: "loading", type: "boolean", default: "false", description: "Shows a page of skeleton rows the size of real ones, timed by @fluid/reveal (data under 160ms never shows one). Set it back to false with the data in place: each skeleton fades out as its cell fades in." },
-  { name: "loadingRows", type: "number", default: "the page size", description: "How many skeleton rows to show while loading." },
-  { name: "fill", type: "boolean", default: "false", description: "Fills the height of a flex column parent: the table's box takes the room left and scrolls both ways under a sticky header, so search above and pagination below stay in view." },
-  { name: "reorderColumns", type: "boolean", default: "false", description: "Drag a data column's header to move it, or press Alt + ← / → from a focused header. Selection and action columns hold their place." },  { name: "onCellEdit", type: "({ row, columnId, value }) => void", description: "Turns on the editors of columns with meta.editor and gets each change as it's made. Write value back to your data. While an editor has focus the rows keep their order; they settle once focus leaves." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns." },
+  { name: "size", type: '"default" | "compact"', description: "Pins every row to 36px or 28px. Omitted, rows follow the SizeProvider." },
+  { name: "empty", type: "{ title?, description?, action? }", default: '{ title: "No results" }', description: "What an empty body says. It keeps a page of height, so nothing below moves." },
+  { name: "onRowClick", type: "(row: Row<TData>) => void", description: "Opens a row on click or Space. Clicks on its controls stay with them." },
+  { name: "resizeColumns", type: "boolean", default: "false", description: "Drag a header's right edge, or press `←` / `→` on it, to set a width. Double-click resets." },
+  { name: "cellAlign", type: '"auto" | "center" | "top"', default: '"auto"', description: "Where content sits in a row. `auto` goes to the top once a column wraps." },
+  { name: "loading", type: "boolean", default: "false", description: "A page of skeleton rows. Each fades out as its cell fades in." },
+  { name: "loadingRows", type: "number", default: "the page size", description: "How many skeleton rows to show." },
+  { name: "fill", type: "boolean", default: "false", description: "Fills a flex column: rows scroll under a sticky header, search and pages stay in view." },
+  { name: "reorderColumns", type: "boolean", default: "false", description: "Drag a header to move its column, or press `Alt` + `←` / `→` on it." },
+  { name: "onCellEdit", type: "({ row, columnId, value }) => void", description: "Turns on `meta.editor` and gets each change. Write `value` back to your data." },
 ];
 
 export const columnMetaProps: PropDef[] = [
-  { name: "label", type: "string", description: "The column's name in the Columns menu. Defaults to a string header, then the column id." },
-  { name: "className", type: "string", description: "Classes for the column's header and body cells, e.g. a width." },
-  { name: "icon", type: "IconComponent", description: "An icon before the header's title, 14px in the header's muted color. Drawn for a string header and inside DataTableColumnHeader's sort button." },
-  { name: "editor", type: '"text" | "number" | "date" | "tags" | { type, options?, creatable?, placeholder? } | { type: "select", options }', description: 'Makes the column editable when DataTable has onCellEdit: a text field, a number field with a list of options that takes any number typed, a date picker, a chips field over options (creatable adds what is typed), or a select: the cell itself becomes the trigger of a menu of options. The editor draws the cell in place of cell.' },
-  { name: "lines", type: '1 | 2 | "wrap"', description: 'How text fits the column: 1 cuts it to one line with an ellipsis, 2 stops it after two, "wrap" lets it run. Give the column room with className: "w-full".' },
+  { name: "label", type: "string", description: "The column's name in the Columns menu." },
+  { name: "className", type: "string", description: "Classes for the column's cells, like a width." },
+  { name: "icon", type: "IconComponent", description: "A 14px icon before the header's title." },
+  { name: "editor", type: '"text" | "number" | "date" | "tags" | { type, options?, creatable?, placeholder? } | { type: "select", options }', description: "Edits the column in place: text, a link, a number, a date, tags or a select." },
+  { name: "lines", type: '1 | 2 | "wrap"', description: '`1` cuts text to a line, `2` stops after two, `"wrap"` lets it run.' },
 ];
 
 export const columnHeaderProps: PropDef[] = [
-  { name: "column", type: "Column<TData>", description: "The header context's column." },
-  { name: "title", type: "string", description: "The label. A column that can't sort renders it alone." },
+  { name: "column", type: "Column<TData>", description: "The header's column." },
+  { name: "title", type: "string", description: "The label. Sorts on click when the column can." },
 ];
 
 export const searchProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "What useDataTable returns." },
-  { name: "column", type: "string", description: "The column id to search. Omitted, the field searches every column." },
-  { name: "placeholder", type: "string", default: '"Search…"', description: "Also the field's accessible name, without the ellipsis. The field is ghost: no hairline, the hover fill on hover and while focused." },
-  { name: "size", type: '"default" | "compact"', description: "Pins the field to one step of the size ladder." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns." },
+  { name: "column", type: "string", description: "The column to search. Omitted, it searches them all." },
+  { name: "placeholder", type: "string", default: '"Search…"', description: "Also the field's accessible name." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the field to one size step." },
 ];
 
 export const viewOptionsProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "What useDataTable returns. The menu lists every accessor column that can hide, under a Wrap text switch that wraps every column with meta.lines (useDataTable tables only)." },
-  { name: "label", type: "string", default: '"Columns"', description: "The icon button's accessible name, its tooltip, and the menu's title." },
-  { name: "size", type: '"default" | "compact"', description: "Pins the icon button and the menu rows to one step of the size ladder." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. Lists the columns that can hide, under a Wrap text switch." },
+  { name: "label", type: "string", default: '"Columns"', description: "The button's accessible name, tooltip and menu title." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the button and the menu to one size step." },
 ];
 
 export const rowActionsProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "MenuItems, numbered from 0 with index." },
+  { name: "children", type: "ReactNode", description: "`MenuItem`s, each with its `index`." },
   { name: "label", type: "string", default: '"Row actions"', description: "The ⋯ button's accessible name." },
 ];
 
 export const paginationProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "What useDataTable returns." },
-  { name: "pageSizes", type: "number[]", default: "[10, 20, 50]", description: "The choices in the borderless rows-per-page select; the current page size is always among them. An empty array hides it." },
-  { name: "size", type: '"default" | "compact"', description: "Pins the text and arrow buttons to one step of the size ladder." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns." },
+  { name: "pageSizes", type: "number[]", default: "[10, 20, 50]", description: "The rows-per-page choices. An empty array hides the select." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the text and arrows to one size step." },
 ];
 
 export const selectionBarProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "The table from useDataTable. The bar shows while any row is selected, on any page." },
-  { name: "actions", type: "CommandMenuItemData[] | (rows: Row<TData>[]) => CommandMenuItemData[]", description: "What the Actions menu lists, or a function that builds it from the selected rows. Without any, the bar shows the count and the clear button only." },
-  { name: "shortcut", type: "string | null", default: '"mod+k"', description: "Opens the actions while rows are selected; the page's own palette keeps the combo otherwise. null binds nothing." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. Shows while any row is selected." },
+  { name: "actions", type: "CommandMenuItemData[] | (rows: Row<TData>[]) => CommandMenuItemData[]", description: "The ⌘K menu's actions, or a function that builds them from the selected rows." },
+  { name: "shortcut", type: "string | null", default: '"mod+k"', description: "Opens the actions while rows are selected. `null` binds nothing." },
   { name: "placeholder", type: "string", default: '"Act on 3 rows…"', description: "The menu field's placeholder." },
-  { name: "size", type: '"default" | "compact"', description: "Pins the bar to one step of the size ladder." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the bar to one size step." },
 ];
 
 export const rowActionsColumnProps: PropDef[] = [
-  { name: "rowActionsColumn<TData>(items, { label? })", type: "ColumnDef<TData>", description: "A last column for DataTableRowActions. items(row) returns its MenuItems. Sized and padded so the \u22ef lines up with the Columns button and the page arrows; never sorted, hidden or resized." },
+  { name: "rowActionsColumn<TData>(items, { label? })", type: "ColumnDef<TData>", description: "A last column of ⋯ menus. `items(row)` returns the row's `MenuItem`s." },
 ];
 
 export const selectColumnProps: PropDef[] = [
-  { name: "selectColumn<TData>()", type: "ColumnDef<TData>", description: "A checkbox column to put first in columns. The header box selects every row on the page, shows a dash while only some are, and names its next click in a tooltip with the count it acts on (Select all 10 / Unselect all 10)." },
+  { name: "selectColumn<TData>()", type: "ColumnDef<TData>", description: "A first column of checkboxes. The header box selects the page and counts it in its tooltip." },
 ];
 
 /** The page's tables in page order, titled as on the page. */

@@ -6,14 +6,8 @@ import {
   DataTable,
   DataTableColumnHeader,
   DataTableSearch,
-  DataTableViewOptions,
-  DataTablePagination,
-  selectColumn,
-  rowActionsColumn,
   type ColumnDef,
 } from "@/components/ui/data-table";
-import { MenuItem } from "@/components/ui/menu-item";
-import { Badge } from "@/registry/default/badge";
 import { Button } from "@/components/ui/button";
 
 export type Payment = {
@@ -38,79 +32,7 @@ export const PAYMENTS: Payment[] = [
   { id: "k6v2pn4e", status: "success", email: "arjun.k@example.com", amount: 705 },
 ];
 
-const STATUS_COLOR = {
-  pending: "gray",
-  processing: "blue",
-  success: "green",
-  failed: "red",
-} as const;
-
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
-const columns: ColumnDef<Payment>[] = [
-  selectColumn<Payment>(),
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.original.status;
-      // The 24px badge overhangs the 20px line box instead of growing the row.
-      return (
-        <span className="flex h-[1lh] items-center">
-          <Badge variant="ghost" color={STATUS_COLOR[status]}>
-            {status[0].toUpperCase() + status.slice(1)}
-          </Badge>
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
-    meta: { label: "Email" },
-  },
-  {
-    accessorKey: "amount",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Amount" />,
-    cell: ({ row }) => currency.format(row.original.amount),
-    meta: { label: "Amount" },
-  },
-  rowActionsColumn<Payment>((row) => (
-    <>
-      <MenuItem
-        index={0}
-        label="Copy payment ID"
-        onSelect={() => navigator.clipboard?.writeText(row.original.id)}
-      />
-      <MenuItem index={1} label="View customer" />
-      <MenuItem index={2} label="View payment details" />
-    </>
-  )),
-];
-
-/** The full example: search, Columns menu, selection, sorting, row menus and
- *  pagination over the payments above. */
-export function PaymentsTable() {
-  const [data] = useState(PAYMENTS);
-  const table = useDataTable({ data, columns, pageSize: 5, getRowId: (row) => row.id });
-
-  return (
-    <div className="flex w-full flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <DataTableSearch table={table} column="email" placeholder="Search emails…" />
-        <DataTableViewOptions table={table} className="ml-auto" />
-      </div>
-      {/* A click anywhere in a row (or Enter on a focused row) selects it. */}
-      <DataTable
-        table={table}
-        resizeColumns
-        reorderColumns
-        onRowClick={(row) => row.toggleSelected()}
-      />
-      <DataTablePagination table={table} />
-    </div>
-  );
-}
 
 const sortOnlyColumns: ColumnDef<Payment>[] = [
   {
