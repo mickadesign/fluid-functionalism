@@ -2094,7 +2094,10 @@ function toIsoDay(date: Date) {
 // row's full height, reaching into the cell's padding just far enough that
 // their text (or first chip) starts where the column's text does. The reach
 // is each control's own inset less the cell's (12px, 10px compact).
-const CELL_CONTROL = "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1";
+// A control fills the row's height, so a focus ring drawn outside it would
+// be cut by the cell's clip: rings inside the cell draw inset.
+const CELL_CONTROL =
+  "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1 [&_:focus-visible]:ring-inset";
 // The Combobox editors drop their field's ring and fills, like the text
 // field: the cell's own text, with the text cursor.
 const BARE_FIELD =
