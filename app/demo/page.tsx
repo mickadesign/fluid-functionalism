@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { CarouselDots } from "@/registry/default/carousel-dots";
 import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -70,6 +71,7 @@ function DemoPageInner() {
     "input-group",
     "switch",
     "table",
+    "data-table",
     "card",
     "tabs",
     "thinking-indicator",
@@ -140,6 +142,8 @@ function DemoPageInner() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
 
       const tag = (e.target as HTMLElement).tagName;
@@ -192,6 +196,8 @@ function DemoPageInner() {
   const stage = (children: ReactNode, maxWidth = 420) => (
     <motion.div
       ref={setScaleEl}
+      // Keys typed in the slide reach its component, not the site's shortcuts.
+      data-keyboard-scope=""
       className="w-full mx-auto flex justify-center relative"
       // Springs between the two scales on toggle instead of snapping, and
       // chases the resize-driven scale closely enough to feel immediate.

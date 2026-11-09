@@ -1067,7 +1067,7 @@
       "name": "badge",
       "type": "registry:ui",
       "title": "Badge",
-      "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
+      "description": "Compact label with solid, dot, and ghost variants, Tailwind color palette, and three sizes.",
       "dependencies": [
         "class-variance-authority"
       ],
@@ -2108,7 +2108,9 @@
         "font-weight",
         "use-fluid-hover",
         "size-context",
-        "tokens"
+        "tokens",
+        "shape-context",
+        "use-merge-split"
       ],
       "files": [
         {
@@ -2117,6 +2119,51 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/table. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#table.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "data-table",
+      "type": "registry:ui",
+      "title": "Data Table",
+      "description": "TanStack Table drawn with the library's Table: the fluid hover row highlight plus resizable, draggable columns, sorting headers with an animated sort glyph, a ghost search field with a magnifying glass, an icon Columns menu that shows and hides columns, a checkbox selection column with a select-all dash, a row actions menu, pagination with arrow buttons, and skeleton loading rows that hand over cell by cell. A useDataTable hook wires the row models; every part reads and sets TanStack state, so each one is optional.",
+      "dependencies": [
+        "@tanstack/react-table@^8.21.3",
+        "motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "icon-context",
+        "size-context",
+        "table",
+        "checkbox",
+        "input",
+        "button",
+        "dropdown",
+        "switch",
+        "select",
+        "tooltip",
+        "tokens",
+        "font-weight",
+        "shape-context",
+        "scroll-area",
+        "skeleton",
+        "reveal",
+        "combobox",
+        "date-picker",
+        "command-menu",
+        "elevated",
+        "badge"
+      ],
+      "files": [
+        {
+          "path": "registry/default/data-table.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/data-table. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#data-table.",
       "categories": [
         "components"
       ]

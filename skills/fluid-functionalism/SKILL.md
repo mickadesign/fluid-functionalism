@@ -303,6 +303,33 @@ system:
   reusing the pair. Past
   24px, with asymmetric gaps, or when the inner surface does not reach the
   corner, treat the layers independently and tune by eye.
+- **Icon-only controls name themselves.** Every icon-only button gets an
+  `aria-label` and a tooltip with the same words. A tooltip on a menu's
+  trigger is forced closed while the menu is open: React carries the
+  portalled menu's pointer events up to the trigger's ancestors, so it would
+  reopen over the menu. A tooltip whose trigger is a component must reach a
+  DOM node: the component forwards its ref and spreads the props, or the
+  tooltip wraps a span around it.
+- **Rows of controls share edges.** In a toolbar, table and footer, left
+  content starts on one line (DataTable: 8px in) and the right-side icon
+  buttons share one center line. Status badges inside table rows are
+  `variant="ghost"`. Labels in a row of controls never wrap (Button is
+  `whitespace-nowrap`): wrap or restructure the row instead.
+- **Anything clickable that isn't a Button behaves like a ghost Button.**
+  Hover fills with `--hover` and pressed with `--active` on a surface 1px
+  inside the hit area, with a same-color 1px ring that collapses on press;
+  the label lifts from muted to foreground on hover. A drag ghost is that
+  pressed state lifted off the page (opaque over `--background`), and the
+  slot it left stays empty, not dimmed.
+- **Layout changes play from a snapshot.** Measure positions right before a
+  change (not on every render), let it commit, then slide each element from
+  its old place to 0 (FLIP) on the tier its size calls for. Expanding or
+  collapsing a container swaps its content first, so the box moves around
+  what it will show; the dismissal uses the tier's `.exit` tween. Recipe:
+  [references/custom-motion.md](references/custom-motion.md#layout-changes-measure-change-play).
+- **Menus never reflow under their own fills.** A menu row that comes and
+  goes (a switch, a section) shifts every row below it out from under its
+  selection fill: keep the row and disable it instead.
 - **Move with `transform`/`opacity`**, never `top`/`left`/`width`/`height` —
   that keeps motion on the compositor and lets `MotionConfig` reduce it for
   free.
@@ -340,7 +367,7 @@ written down. In order of reach:
   wrap or compose instead. Edits are lost on the next `--overwrite` install
   and drift the app away from the system.
 - Components built on a flavored one (AskUserQuestions, ColorPicker,
-  CommandMenu, InputCopy, InputMessage, and the blocks) also take the `base/`
+  CommandMenu, DataTable, InputCopy, InputMessage, and the blocks) also take the `base/`
   prefix. Single-source items (badge, card, table, input-group, chat-message,
   thinking-indicator, the libs and hooks) have one name for both kinds of
   project.

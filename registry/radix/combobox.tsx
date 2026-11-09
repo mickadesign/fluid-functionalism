@@ -1040,10 +1040,15 @@ interface ComboboxContentProps {
   side?: ContentPrimitiveProps["side"];
   align?: ContentPrimitiveProps["align"];
   sideOffset?: number;
+  /** Keeps the popup inside this element's box rather than the window's
+   *  (a table's, a panel's): it shifts or flips to stay within. */
+  collisionBoundary?: Element | null;
+  /** Space kept from the boundary's edges, in px. @default 0 */
+  collisionPadding?: number;
 }
 
 const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
-  ({ className, children, side = "bottom", align = "start", sideOffset = 6 }, ref) => {
+  ({ className, children, side = "bottom", align = "start", sideOffset = 6, collisionBoundary, collisionPadding }, ref) => {
     const { open, anchorRef } = useComboboxContext();
     const shape = usePopupShape();
 
@@ -1085,6 +1090,8 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
           side={side}
           align={align}
           sideOffset={sideOffset}
+          collisionBoundary={collisionBoundary}
+          collisionPadding={collisionPadding}
           // The listbox inside is the semantic surface; the wrapper is chrome.
           role="presentation"
           // Focus never leaves the input — the listbox is driven through

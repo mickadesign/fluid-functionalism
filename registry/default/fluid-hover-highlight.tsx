@@ -68,6 +68,11 @@ export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) &
    *  to the new rect with no travel (a layout reflow that moved the rows
    *  underneath, not a hover change). The opacity fade is always 0.08s. */
   transition?: Transition | false;
+  /** Every frame the highlight moves or fades: where it is now (container
+   *  coordinates) and how opaque. For things that should follow the fill
+   *  itself rather than its target, like dividers that hide only once it
+   *  covers them. */
+  onFrame?: (box: { y: number; height: number; opacity: number }) => void;
 };
 
 const fade: Transition = { duration: 0.08 };
@@ -109,7 +114,7 @@ export function resolveHighlightSource(
 }
 
 export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
-  const { from, fadeIn = true, className, transition } = props;
+  const { from, fadeIn = true, className, transition, onFrame } = props;
   const { rect, session } = resolveHighlightSource(props);
   // Reads the OS media query directly, so an installed copy honours reduced
   // motion without the app wrapping its tree in MotionConfig. A wrapped app
@@ -135,6 +140,18 @@ export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
           animate={{ opacity: 1, ...toTarget(rect) }}
           exit={{ opacity: 0, transition: spring.fast.exit }}
           transition={resolveHighlightTransition(transition, reduceMotion)}
+          onUpdate={
+            onFrame
+              ? (latest) => {
+                  const n = (v: unknown, d: number) => (typeof v === "number" ? v : d);
+                  onFrame({
+                    y: n(latest.y, rect.top),
+                    height: n(latest.height, rect.height),
+                    opacity: n(latest.opacity, 1),
+                  });
+                }
+              : undefined
+          }
         />
       )}
     </AnimatePresence>

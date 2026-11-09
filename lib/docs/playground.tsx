@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import {
   createContext,
   useContext,
@@ -10,6 +11,8 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { PreviewExpandContext } from "@/lib/docs/preview-expand";
+import { PlaygroundMenu } from "@/app/components/playground-menu";
 import { Shuffle } from "lucide-react";
 import { animate } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
@@ -147,7 +150,11 @@ export function PlaygroundPanel({
   });
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "x" && e.key !== "X") return;
+      // A key the preview already used (X selects a focused table row).
+      if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
@@ -273,9 +280,22 @@ function useIsXl() {
 export function PlaygroundLayout({
   preview,
   controls,
+  expandable = false,
+  label = "Playground controls",
+  onExpandedChange,
 }: {
   preview: ReactNode;
   controls: ReactNode;
+  /** Adds an expand button to the preview's header: the preview lifts into
+   *  a layer over the whole window (both side columns hidden, like /demo),
+   *  with the controls in a pen menu. Esc or the button brings it back. */
+  expandable?: boolean;
+  /** The pen menu's accessible name while expanded. */
+  label?: string;
+  /** Called as the preview expands (true, before it grows) and once it has
+   *  settled back in place (false), e.g. to show more rows while there's
+   *  room for them. */
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   // Park the controls in the right rail on wide screens; inline below the
   // preview otherwise. `mounted` gates the first paint so desktop doesn't flash
@@ -301,10 +321,212 @@ export function PlaygroundLayout({
     return () => io.disconnect();
   }, []);
 
+  // ── Expand ──────────────────────────────────────────────
+  // The preview's own box moves (no remount, so its state survives): it
+  // turns fixed and springs from where it sat on the page to the window
+  // inset 24px, over a page-colored backdrop that hides both side columns.
+  // A placeholder keeps the page from collapsing under it. Collapsing runs
+  // the same spring back to the placeholder's box.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const placeholderRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [placeholderHeight, setPlaceholderHeight] = useState<number | null>(null);
+  const [backdrop, setBackdrop] = useState(false);
+  // From the start of a collapse to its landing: the rail's controls come
+  // back then, so they fade in with the page as the backdrop clears
+  // instead of popping in once the box has landed.
+  const [collapsing, setCollapsing] = useState(false);
+  const fromRect = useRef<DOMRect | null>(null);
+  const animating = useRef(false);
+
+  const target = () => {
+    const m = 24;
+    return { top: m, left: m, width: window.innerWidth - 2 * m, height: window.innerHeight - 2 * m };
+  };
+
+  // The latest callbacks, for listeners and spring callbacks set up in an
+  // earlier render (the Esc listener lives for a whole expansion; a
+  // collapse settles a spring later).
+  const onExpandedChangeRef = useRef(onExpandedChange);
+  const closeRef = useRef<() => void>(() => {});
+  const settleCollapseRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    onExpandedChangeRef.current = onExpandedChange;
+  });
+
+  const open = () => {
+    const el = frameRef.current;
+    if (!el || animating.current) return;
+    fromRect.current = el.getBoundingClientRect();
+    setPlaceholderHeight(fromRect.current.height);
+    setBackdrop(true);
+    setExpanded(true);
+    onExpandedChangeRef.current?.(true);
+  };
+
+  const close = () => {
+    const el = frameRef.current;
+    const home = placeholderRef.current?.getBoundingClientRect();
+    if (!el || !home || animating.current) return;
+    animating.current = true;
+    setBackdrop(false);
+    setCollapsing(true);
+    // The content keeps its expanded form while the box shrinks, scrolled
+    // back to its top: a filled table at the slot's height shows exactly
+    // the rows its page form will, so the swap at the end barely shows.
+    // (Swapping first snapped 20 rows down to 10 in the large box.)
+    // On the collapse's own tween, so the scroll lands with the box (a
+    // browser smooth scroll can outlast it).
+    el.querySelectorAll<HTMLElement>("[data-slot=scroll-area-viewport]").forEach((viewport) => {
+      if (!viewport.scrollTop) return;
+      animate(viewport.scrollTop, 0, {
+        type: "tween",
+        ease: "easeOut",
+        ...spring.slow.exit,
+        onUpdate: (top) => {
+          viewport.scrollTop = top;
+        },
+      });
+    });
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      settleCollapseRef.current = null;
+      // Stops a stalled spring too, so it can't write over the cleared box.
+      motionCtrl.stop();
+      animating.current = false;
+      onExpandedChangeRef.current?.(false);
+      setCollapsing(false);
+      el.removeAttribute("style");
+      // Motion commits a finished tween's last values to the inline style
+      // after its promise resolves; clear once more after that lands.
+      requestAnimationFrame(() => {
+        if (!settleCollapseRef.current && !animating.current) el.removeAttribute("style");
+      });
+      setExpanded(false);
+      setPlaceholderHeight(null);
+    };
+    // A dismissal is the tier's exit: a tween with no bounce, so the box
+    // can't overshoot its slot on the page and settle back.
+    const motionCtrl = animate(
+      el,
+      { top: home.top, left: home.left, width: home.width, height: home.height },
+      { type: "tween", ease: "easeOut", ...spring.slow.exit }
+    );
+    motionCtrl.then(settle);
+    // The spring aims at the placeholder's box as it was; a resize moves
+    // that box, so one ends the collapse in place instead.
+    settleCollapseRef.current = settle;
+    // A background tab can stall the spring's frames; the collapse still
+    // lands, a beat after the spring would have.
+    setTimeout(settle, Math.round(spring.slow.exit.duration * 1000) + 150);
+  };
+
+  useEffect(() => {
+    closeRef.current = close;
+  });
+
+  useLayoutEffect(() => {
+    const el = frameRef.current;
+    const from = fromRect.current;
+    if (!expanded || !el || !from) return;
+    fromRect.current = null;
+    animating.current = true;
+    const to = target();
+    Object.assign(el.style, {
+      top: `${from.top}px`,
+      left: `${from.left}px`,
+      width: `${from.width}px`,
+      height: `${from.height}px`,
+    });
+    animate(el, to, spring.slow).then(() => {
+      animating.current = false;
+    });
+    // Same guard as the collapse: don't stay locked if frames stall.
+    setTimeout(() => {
+      animating.current = false;
+    }, Math.round(spring.slow.duration * 1000) + 150);
+  }, [expanded]);
+
+  // While expanded: the window's size drives the layer's, the page stops
+  // scrolling under it, and Esc collapses it (after any open menu, which
+  // claims that Esc for itself).
+  useEffect(() => {
+    if (!expanded) return;
+    const onResize = () => {
+      if (settleCollapseRef.current) {
+        settleCollapseRef.current();
+        return;
+      }
+      const el = frameRef.current;
+      if (!el || animating.current) return;
+      const to = target();
+      Object.assign(el.style, {
+        top: `${to.top}px`,
+        left: `${to.left}px`,
+        width: `${to.width}px`,
+        height: `${to.height}px`,
+      });
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector("[role=menu], [role=listbox], [role=dialog]")) return;
+      closeRef.current();
+    };
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    window.addEventListener("resize", onResize);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      root.style.overflow = overflow;
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
+
+  const expandValue = expandable
+    ? {
+        expanded,
+        toggle: expanded ? close : open,
+        // Gone once a collapse starts: the rail's controls are back then, and
+        // the same switches shouldn't exist twice.
+        menu: collapsing ? null : <PlaygroundMenu label={label}>{controls}</PlaygroundMenu>,
+      }
+    : null;
+
+  const framed = expandable ? (
+    <PreviewExpandContext.Provider value={expandValue}>
+      <div ref={placeholderRef} style={placeholderHeight ? { height: placeholderHeight } : undefined}>
+        <div
+          ref={frameRef}
+          className={cn(
+            expanded &&
+              "fixed z-[var(--z-modal,50)] bg-background"
+          )}
+        >
+          {preview}
+        </div>
+      </div>
+      {mounted &&
+        createPortal(
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 z-[var(--z-overlay,40)] bg-background transition-opacity duration-[160ms]"
+            style={{ opacity: backdrop ? 1 : 0, visibility: expanded ? "visible" : "hidden" }}
+          />,
+          document.body
+        )}
+    </PreviewExpandContext.Provider>
+  ) : (
+    preview
+  );
+
   return (
     <div ref={playgroundRef}>
-      {preview}
-      {mounted && inRail && (
+      {framed}
+      {mounted && inRail && (!expanded || collapsing) && (
         // Kept mounted so it can cross-fade (the same fade the side panels use)
         // as the playground scrolls in and out of view, rather than snapping.
         createPortal(

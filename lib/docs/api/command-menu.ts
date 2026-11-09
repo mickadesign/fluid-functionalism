@@ -36,7 +36,7 @@ export const dialogProps: PropDef[] = [
   { name: "open", type: "boolean", description: "Controlled open state." },
   { name: "defaultOpen", type: "boolean", default: "false", description: "Initial open state." },
   { name: "onOpenChange", type: "(open: boolean) => void", description: "Called when the dialog opens or closes, including from the shortcut." },
-  { name: "shortcut", type: "string | null", default: '"mod+k"', description: 'The combo that toggles the dialog from anywhere: "mod" is ⌘ on a Mac and Ctrl elsewhere, joined with "+" to alt, shift, and one key. null binds nothing.' },
+  { name: "shortcut", type: "string | null", default: '"mod+k"', description: 'The combo that toggles the dialog from anywhere: "mod" is ⌘ on a Mac and Ctrl elsewhere, joined with "+" to alt, shift, and one key. null binds nothing. Without shortcutScope it stands aside while focus is in a data-keyboard-scope region (an embedded preview) it sits outside of.' },
   { name: "shortcutScope", type: "RefObject<HTMLElement>", description: "Focus must be inside this element for the combo to open the dialog. For a demo or a pane that shares its combo with the palette at the root: the root palette keeps the key everywhere else." },
   { name: "title", type: "string", default: '"Command menu"', description: "The dialog's name for screen readers." },
   { name: "description", type: "string", default: '"Search for a command to run."', description: "Read after the title." },

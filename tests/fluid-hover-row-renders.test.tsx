@@ -5,7 +5,8 @@ import { Profiler, createContext, useContext, useRef, type ReactNode } from "rea
 
 // Rows read the highlighted index through `activeStore` + `useFluidHoverSelect`,
 // so a hover change re-renders the row it left and the row it reached, not
-// every row in the list. The accordion's per-frame remeasure (while a panel's
+// every row in the list. Table's dividers follow the fill's live box straight
+// on the DOM, so they cost no renders at all. The accordion's per-frame remeasure (while a panel's
 // height springs) re-renders the group's overlays, never its items.
 
 // Springs don't run in jsdom: motion.div renders a plain div and hands its
@@ -181,7 +182,7 @@ describe("useFluidHoverSelect", () => {
 });
 
 describe("Table", () => {
-  it("lights the hovered row and hides the borders around it, re-rendering only those rows", () => {
+  it("lights the hovered row, re-rendering only the rows it leaves and reaches", () => {
     const log = useRenderLog();
     const { container } = render(
       <Table>
@@ -203,20 +204,57 @@ describe("Table", () => {
     fireEvent.mouseMove(row(5).querySelector("td")!);
     flushFrames();
     expect(row(5).className).toContain("is-active");
-    expect(row(5).className).toContain("border-transparent");
-    expect(row(4).className).toContain("border-transparent");
-    expect(row(6).className).not.toContain("border-transparent");
-    // The lit row and the one whose border sits on its top edge.
-    expect(log.rendered()).toEqual(["row-04", "row-05"]);
+    // Borders follow the fill frame by frame (see the next test), so only
+    // the lit row renders.
+    expect(log.rendered()).toEqual(["row-05"]);
 
     log.reset();
     fireEvent.mouseMove(row(6).querySelector("td")!);
     flushFrames();
     expect(row(6).className).toContain("is-active");
     expect(row(5).className).not.toContain("is-active");
-    expect(row(4).className).not.toContain("border-transparent");
-    // Row 4 lets go of its hidden border, 5 goes from lit to edge, 6 lights.
-    expect(log.rendered()).toEqual(["row-04", "row-05", "row-06"]);
+    expect(log.rendered()).toEqual(["row-05", "row-06"]);
+  });
+
+  it("hides a row's border only once the highlight's fill covers it", () => {
+    // Rows sit at their data-top in the viewport too, so the fill's live
+    // box can be checked against each bottom border.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const top = this.dataset.top;
+      return top === undefined ? new DOMRect(0, 0, 200, 432) : new DOMRect(0, Number(top), 200, 36);
+    });
+    const { container } = render(
+      <Table>
+        <TableBody>
+          {Array.from({ length: 12 }, (_, i) => (
+            <TableRow key={i} index={i} data-top={i * 36}>
+              <TableCell>Row {i}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+    flushFrames();
+    const row = (i: number) => container.querySelectorAll("tr")[i];
+    const covered = () =>
+      Array.from(container.querySelectorAll("tr")).flatMap((tr, i) =>
+        tr.hasAttribute("data-under-highlight") ? [i] : []
+      );
+    onUpdates.length = 0;
+    fireEvent.mouseMove(row(5).querySelector("td")!);
+    flushFrames();
+    const frame = onUpdates.at(-1) as unknown as (v: Record<string, number>) => void;
+    // The hover changed but the fill hasn't moved yet: no rule hides.
+    expect(covered()).toEqual([]);
+    // Passing over row 2: the rules on its two edges (rows 1 and 2's).
+    act(() => frame({ y: 72, height: 36, opacity: 1 }));
+    expect(covered()).toEqual([1, 2]);
+    // Arrived on row 5: the rule above it (row 4's) and its own.
+    act(() => frame({ y: 180, height: 36, opacity: 1 }));
+    expect(covered()).toEqual([4, 5]);
+    // Fading out lets them back.
+    act(() => frame({ y: 180, height: 36, opacity: 0.2 }));
+    expect(covered()).toEqual([]);
   });
 });
 

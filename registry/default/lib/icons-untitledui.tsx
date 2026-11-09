@@ -69,6 +69,10 @@ import {
   AlertCircle as UuiAlertCircle,
   File01 as UuiFile,
   Minus as UuiMinus,
+  Expand01 as UuiExpand01,
+  Minimize01 as UuiMinimize01,
+  DotsGrid as UuiDotsGrid,
+  Tag01 as UuiTag,
   Calendar as UuiCalendar,
   Folder as UuiFolder,
 } from "@untitledui/icons";
@@ -152,4 +156,9 @@ export const untitleduiIcons: Record<IconName, IconComponent> = {
   "circle-alert": untitledui(UuiAlertCircle),
   "file": untitledui(UuiFile),
   "minus": untitledui(UuiMinus),
+  "maximize": untitledui(UuiExpand01),
+  "minimize": untitledui(UuiMinimize01),
+  // Untitled UI has no six-dot grip; the nine-dot grid is its drag handle.
+  "grip-vertical": untitledui(UuiDotsGrid),
+  tag: untitledui(UuiTag),
 };

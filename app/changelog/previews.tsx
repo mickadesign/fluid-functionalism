@@ -31,6 +31,7 @@ export const SHOWCASE_PREVIEW_SLUGS = new Set([
   "color-picker",
   "combobox",
   "command-menu",
+  "data-table",
   "date-picker",
   "dialog",
   "dropdown",

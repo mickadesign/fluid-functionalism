@@ -10,6 +10,7 @@ import { Tooltip } from "@/registry/radix/tooltip";
 import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
 import { InspectOverlay } from "./InspectOverlay";
+import { usePreviewExpand } from "@/lib/docs/preview-expand";
 
 export interface PlaybackButton {
   icon: ReactNode;
@@ -89,6 +90,9 @@ export function ComponentPreview({
   const [codeWanted, setCodeWanted] = useState(false);
   const shape = useShape();
   const ReplayIcon = useIcon("rotate-ccw");
+  const ExpandIcon = useIcon("maximize");
+  const CollapseIcon = useIcon("minimize");
+  const expand = usePreviewExpand();
   const previewRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -131,11 +135,16 @@ export function ComponentPreview({
       // The Copy-prompt sweep screenshots this frame as its reference for
       // what the component looks like (evals/copy-prompts/grade.mjs).
       data-component-preview=""
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
       // `isolate` scopes the frame's internal z ladder (the z-[70] tab bar,
       // the inspect overlay's layers) to its own stacking context, so a
       // portalled dialog's z-50 overlay dims the WHOLE frame instead of
       // sliding underneath the header.
-      className={`relative isolate flex flex-col gap-0 w-full border border-border/60 transition-[border-color] duration-150 ease-out focus-within:border-foreground/40 ${shape.container}`}
+      // Expanded, the frame is exactly the layer's height: the header keeps
+      // its size and the content takes the rest (a long preview scrolls
+      // inside itself, not the layer).
+      className={`relative isolate flex flex-col gap-0 w-full border border-border/60 transition-[border-color] duration-150 ease-out focus-within:border-foreground/40 ${shape.container} ${expand?.expanded ? "h-full" : ""}`}
     >
       {/* Tab bar — min-height reserves the playback button's height (h-10 + pt-3)
           so the header doesn't shift when the button mounts/unmounts. A hairline
@@ -188,6 +197,20 @@ export function ComponentPreview({
               />
             </span>
           )}
+          {expand?.expanded && expand.menu}
+          {expand && (
+            <Tooltip content={expand.expanded ? "Collapse (Esc)" : "Expand"} side="top">
+              <button
+                type="button"
+                onClick={expand.toggle}
+                aria-label={expand.expanded ? "Collapse preview" : "Expand preview"}
+                aria-pressed={expand.expanded}
+                className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+              >
+                {expand.expanded ? <CollapseIcon size={16} strokeWidth={1.5} /> : <ExpandIcon size={16} strokeWidth={1.5} />}
+              </button>
+            </Tooltip>
+          )}
           {showButton && (
             <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
               <button
@@ -211,7 +234,7 @@ export function ComponentPreview({
           shape is active, and leaves the top corners square (the tab
           bar sits above, well below the outer's curved top edge). */}
       <div
-        className="overflow-hidden"
+        className={`overflow-hidden ${expand?.expanded ? "flex min-h-0 flex-1 flex-col" : ""}`}
         // With no header above it, the content owns all four corners.
         style={
           hideHeader
@@ -229,7 +252,7 @@ export function ComponentPreview({
             // — holds keyboard scope for the demo without ringing any control.
             tabIndex={-1}
             onMouseDown={handlePreviewMouseDown}
-            className={`relative flex outline-none ${
+            className={`relative flex outline-none ${expand?.expanded ? "min-h-0 flex-1 [&>*]:max-h-full" : ""} ${
               align === "bottom"
                 ? "items-end"
                 : align === "top"

@@ -20,6 +20,7 @@ import { COMBOBOX_PRESET_GENERATOR } from "./combobox-install";
 import { COMMAND_MENU_PRESET_GENERATOR } from "./command-menu-install";
 import { CALENDAR_PRESET_GENERATOR } from "./calendar-install";
 import { DATE_PICKER_PRESET_GENERATOR } from "./date-picker-install";
+import { DATA_TABLE_PRESET_GENERATOR } from "./data-table-install";
 
 export interface PresetGenerator {
   title: string;
@@ -46,4 +47,5 @@ export const PRESET_GENERATORS: Record<string, PresetGenerator> = {
   k: COMMAND_MENU_PRESET_GENERATOR,
   n: CALENDAR_PRESET_GENERATOR,
   p: DATE_PICKER_PRESET_GENERATOR,
+  t: DATA_TABLE_PRESET_GENERATOR,
 };

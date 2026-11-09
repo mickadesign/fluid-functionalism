@@ -685,7 +685,10 @@ export function useRegisterFluidHoverItem(
   index: number | undefined,
   ref: RefObject<HTMLElement | null>
 ) {
-  useEffect(() => {
+  // Before paint, so a list that measures in its own layout effect (a Table
+  // snapping its fills as rows open) already sees every item at its new
+  // index: a child's layout effect runs before its parent's.
+  useIsoLayoutEffect(() => {
     if (!registerItem || index === undefined) return;
     registerItem(index, ref.current);
     return () => registerItem(index, null);

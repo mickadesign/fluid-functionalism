@@ -95,6 +95,8 @@ export function BentoCard({ slug, name, isNew, animateLayout = false, action, cl
       <motion.div
         layout={animateLayout ? "position" : false}
         transition={spring.moderate}
+        // Keys typed in the tile reach its component, not the site's shortcuts.
+        data-keyboard-scope=""
         className={cn(
           "flex-1 min-h-0 flex items-center justify-center px-6 py-16",
           previewClassName

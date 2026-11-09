@@ -288,6 +288,11 @@ const SidebarProvider = forwardRef<HTMLDivElement, SidebarProviderProps>(
         // isn't enough: the innermost provider containing focus wins.
         const root = wrapperRef.current;
         if (!root) return;
+        // Focus inside a keyboard scope (an embedded preview marked
+        // data-keyboard-scope) that this provider sits outside: the keys
+        // belong to what's in the scope.
+        const scope = target.closest?.("[data-keyboard-scope]");
+        if (scope && !scope.contains(root)) return;
         if (root.contains(target)) {
           if (
             mountedProviders.some(

@@ -1,7 +1,11 @@
 "use client";
 
 import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
   useRef,
+  useState,
   useMemo,
   createContext,
   useContext,
@@ -22,6 +26,12 @@ import {
   type FluidHoverActiveStore,
 } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { useShape } from "@/lib/shape-context";
+import {
+  SelectionBackgrounds,
+  useMergeSplitBlocks,
+  useSelectionRuns,
+} from "@/hooks/use-merge-split";
 
 // ---------------------------------------------------------------------------
 // Table is a plain HTML table with one fluid hover highlight drawn behind all
@@ -38,6 +48,11 @@ interface TableContextValue {
   /** Read per row, so a highlight change re-renders only the rows whose
    *  borders or text change, not the whole table. */
   activeStore: FluidHoverActiveStore;
+  /** Selected body rows: their borders, and the border above a run, step
+   *  aside so a merged selection reads as one block. */
+  selected: ReadonlySet<number>;
+  /** Header cells with a hoverIndex join their own fluid hover scope. */
+  registerHead: (index: number, element: HTMLElement | null) => void;
 }
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -49,23 +64,114 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Pins the table's rows to one step of the size ladder (default 36px,
    *  compact 28px). Omitted, it follows the surrounding SizeProvider. */
   size?: SizeVariant;
+  /** Selected body rows, by `index`. Contiguous ones share one merged
+   *  background, drawn like CheckboxGroup's, under the hover highlight. */
+  selectedIndices?: readonly number[];
+  /** Change it in the render that reorders rows without animating them
+   *  (rows opened or closed above): the selection fill and the hover
+   *  highlight jump with the rows for that one commit instead of springing
+   *  after them. */
+  snapKey?: string | number;
+  /** Hides the header cells' fluid hover highlight, e.g. while a header
+   *  is dragged. */
+  hideHeadHighlight?: boolean;
 }
 
+const NO_SELECTION: readonly number[] = [];
+
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
     const hover = useFluidHover(containerRef);
+    // Header cells that act (sort, move) share a second scope: one fill
+    // glides along the header row the way the row highlight runs down the
+    // body. Only the cell under the pointer lights.
+    const headHover = useFluidHover(containerRef, { axis: "x" });
+    const registerHead = headHover.registerItem;
     const {
       activeStore,
       handlers,
       registerItem,
+      itemRects,
+      setActiveIndex,
     } = hover;
 
+    // The same merged, merge/split-animated selection CheckboxGroup draws.
+    const shape = useShape();
+    const runs = useSelectionRuns(selectedIndices);
+    const mergedBlocks = useMergeSplitBlocks(runs, itemRects, shape.mergedRadius);
+    // A new snapKey snaps the fills for the commit it lands in, and the
+    // frame after hands them back to their springs.
+    const [snap, setSnap] = useState({ key: snapKey, on: false });
+    if (snap.key !== snapKey) setSnap({ key: snapKey, on: true });
+    useEffect(() => {
+      if (!snap.on) return;
+      const id = requestAnimationFrame(() => setSnap((s) => ({ ...s, on: false })));
+      return () => cancelAnimationFrame(id);
+    }, [snap.on]);
+    // The rows just moved: measure them now, before paint, so the snapped
+    // fills land on their new places in the same frame (the observer that
+    // usually measures runs a frame later).
+    const { measureItems } = hover;
+    useLayoutEffect(() => {
+      if (snap.on) measureItems();
+    }, [snap.on, measureItems]);
+    const blocks = snap.on
+      ? mergedBlocks.map((b) => ({ ...b, instant: true, exitInstant: true, enterFrom: undefined }))
+      : mergedBlocks;
+
+    // Keyboard focus owns the highlight until the pointer really moves. A
+    // scroll (the rows sliding under a still pointer, as arrow keys bring
+    // the next row in) fires mouse moves and leaves at the same spot: those
+    // must not snatch the highlight back to whatever row is now underneath.
+    const keyboardOwns = useRef(false);
+    const lastPointer = useRef<{ x: number; y: number } | null>(null);
+    const pointerMoved = (e: React.MouseEvent) => {
+      const last = lastPointer.current;
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      return !last || last.x !== e.clientX || last.y !== e.clientY;
+    };
+    const fromPointer = (e: React.MouseEvent) => {
+      const moved = pointerMoved(e);
+      if (keyboardOwns.current && !moved) return false;
+      keyboardOwns.current = false;
+      return true;
+    };
+
+    // A held arrow key repeats faster than the highlight's spring settles,
+    // so while it repeats the highlight snaps row to row and stays on the
+    // focused one; a single press, and the pointer, still glide.
+    const [repeating, setRepeating] = useState(false);
+
+    const selectedKey = selectedIndices.join(",");
+    const selected = useMemo(
+      () => new Set(selectedKey ? selectedKey.split(",").map(Number) : []),
+      [selectedKey]
+    );
+
+    // A divider hides once the highlight's fill covers it, read from where
+    // the fill is this frame rather than where it's headed: hiding on the
+    // hover change itself would drop the rule before the fill gets there.
+    // Straight to the DOM (no render per frame); reads first, then writes.
+    // A rule goes at once as the fill reaches it and fades back in after.
+    const hideCoveredRules = useCallback((box: { y: number; height: number; opacity: number }) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const top = container.getBoundingClientRect().top;
+      const rows = Array.from(container.querySelectorAll<HTMLTableRowElement>("thead > tr, tbody > tr"));
+      const covered = rows.map((tr) => {
+        if (box.opacity < 0.5) return false;
+        const bottom = tr.getBoundingClientRect().bottom - top;
+        return bottom >= box.y - 1.5 && bottom <= box.y + box.height + 1.5;
+      });
+      rows.forEach((tr, i) => tr.toggleAttribute("data-under-highlight", covered[i]));
+    }, []);
+
     const contextValue = useMemo(
-      () => ({ registerItem, activeStore }),
-      [registerItem, activeStore]
+      () => ({ registerItem, activeStore, selected, registerHead }),
+      [registerItem, activeStore, selected, registerHead]
     );
 
     const table = (
@@ -75,13 +181,55 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         <div
           ref={containerRef}
           className="relative"
-          onMouseEnter={handlers.onMouseEnter}
-          onMouseMove={handlers.onMouseMove}
-          onMouseLeave={handlers.onMouseLeave}
+          onMouseEnter={(e) => {
+            headHover.handlers.onMouseEnter();
+            if (fromPointer(e)) handlers.onMouseEnter();
+          }}
+          onMouseMove={(e) => {
+            headHover.handlers.onMouseMove(e);
+            if (fromPointer(e)) handlers.onMouseMove(e);
+          }}
+          onMouseLeave={(e) => {
+            headHover.handlers.onMouseLeave();
+            if (fromPointer(e)) handlers.onMouseLeave();
+          }}
           onClick={handlers.onClick}
+          onKeyDown={(e) => {
+            if (e.repeat && !repeating && e.key.startsWith("Arrow")) setRepeating(true);
+          }}
+          onKeyUp={() => repeating && setRepeating(false)}
+          // Keyboard focus moves the highlight too: a row holding focus (or
+          // a control in it) looks hovered, so the fill is its focus mark.
+          onFocus={(e) => {
+            const target = e.target as HTMLElement;
+            if (!target.matches(":focus-visible")) return;
+            const index = target.closest("[data-fluid-hover-index]")?.getAttribute("data-fluid-hover-index");
+            if (index == null) return;
+            keyboardOwns.current = true;
+            setActiveIndex(Number(index));
+          }}
+          onBlur={(e) => {
+            const container = containerRef.current;
+            if (!container || container.contains(e.relatedTarget as Node)) return;
+            // The pointer keeps the highlight it's over.
+            if (!container.matches(":hover")) setActiveIndex(null);
+            setRepeating(false);
+          }}
         >
-          {/* Hover background */}
-          <FluidHoverHighlight hover={hover} />
+          {/* Selected backgrounds, merged per contiguous run */}
+          {/* Keyed by the snap, so a block that leaves in a snap goes at
+              once instead of fading from where the rows no longer are. */}
+          <SelectionBackgrounds key={String(snap.key ?? "")} blocks={blocks} />
+
+          {/* Hover background, rounded by the shape setting like the
+              selection under it. */}
+          <FluidHoverHighlight
+            hover={hover}
+            className={shape.bg}
+            transition={repeating || snap.on ? false : undefined}
+            onFrame={hideCoveredRules}
+          />
+          <FluidHoverHighlight hover={headHover} hidden={hideHeadHighlight} className={shape.bg} />
 
           <table
             ref={ref}
@@ -145,16 +293,17 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
 
     const isBodyRow = index !== undefined;
     // Each row draws only its bottom border, so the lit row's top edge is the
-    // border of the row above it. Hiding both leaves the highlight with no
-    // rule along or through it. Row 0's top edge is the header's border.
-    // 2: this row is lit; 1: its border borders the lit row; 0: neither.
-    const litState = useFluidHoverSelect(ctx?.activeStore, (active) => {
-      if (active === null) return 0;
-      if (!isBodyRow) return active === 0 ? 1 : 0;
-      if (index === active) return 2;
-      return index === active - 1 ? 1 : 0;
-    });
-    const hideBorder = litState > 0;
+    // border of the row above it. Both hide under the highlight (Table sets
+    // data-under-highlight as its fill covers them), so it has no rule along
+    // or through it. Row 0's top edge is the header's border.
+    const lit = useFluidHoverSelect(ctx?.activeStore, (active) => isBodyRow && active === index);
+    // A selected row, and the row above it, drop their rule too, so a
+    // selected run is one block with no lines through or over it.
+    const selected = ctx?.selected;
+    const nextIndex = isBodyRow ? index + 1 : 0;
+    const bySelection =
+      !!selected && ((isBodyRow && selected.has(index)) || selected.has(nextIndex));
+    const hideBorder = bySelection;
 
     return (
       <tr
@@ -168,8 +317,8 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         // `is-active` lets every cell read the lit state through the row.
         className={cn(
           "group/row relative z-10 border-b transition-[border-color] duration-80",
-          hideBorder ? "border-transparent" : "border-accent/40",
-          litState === 2 && "is-active",
+          hideBorder ? "border-transparent" : "border-accent/40 data-[under-highlight]:border-transparent data-[under-highlight]:duration-0",
+          lit && "is-active",
           className
         )}
         // Weight goes through the variable font's axis with the same values
@@ -190,14 +339,24 @@ TableRow.displayName = "TableRow";
 
 // ── TableHead ────────────────────────────────────────────
 
-const TableHead = forwardRef<
-  HTMLTableCellElement,
-  ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => {
+interface TableHeadProps extends ThHTMLAttributes<HTMLTableCellElement> {
+  /** Joins the header row's fluid hover: give each header cell that acts
+   *  (sorts, moves) its position. */
+  hoverIndex?: number;
+}
+
+const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(({ hoverIndex, className, ...props }, ref) => {
   const sizeClasses = useSize();
+  const ctx = useContext(TableContext);
+  const internalRef = useRef<HTMLTableCellElement>(null);
+  useRegisterFluidHoverItem(ctx?.registerHead, hoverIndex, internalRef);
   return (
     <th
-      ref={ref}
+      ref={(node) => {
+        internalRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      }}
       className={cn(
         "text-left text-foreground",
         // py + line box lands the row on the ladder (36px / 28px).
@@ -260,10 +419,11 @@ const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
     return (
       <tr ref={ref} data-slot="table-empty" className={className} {...props}>
         <td colSpan={columns} className="p-0">
-          {/* A body row is one line box plus the cells' padding, so `rows` of
-              them stay in step with TableCell whatever the ladder step. */}
+          {/* A body row is one line box plus the cells' padding and its 1px
+              bottom border, so `rows` of them stay in step with TableCell
+              whatever the ladder step. */}
           <div
-            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
             style={{ "--table-empty-rows": rows } as CSSProperties}
           >
             {title && (
