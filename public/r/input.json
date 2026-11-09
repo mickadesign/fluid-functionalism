@@ -4,7 +4,7 @@
   "title": "Input",
   "description": "Single-line text field drawn like the Select trigger: a fixed hairline, a hover fill, and a neutral focus border; file inputs get an icon. Pairs with Field.",
   "dependencies": [
-    "lucide-react"
+    "lucide-react@^1.70.0"
   ],
   "registryDependencies": [
     "utils",
