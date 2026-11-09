@@ -143,7 +143,15 @@ type DataTableEditor =
   | "number"
   | "date"
   | "tags"
-  | { type: "text"; placeholder?: string }
+  | {
+      type: "text";
+      placeholder?: string;
+      /** Shows the value as a link at rest: a click on the text follows
+       *  it, a click beside it edits (F2 from the focused link too).
+       *  `true` links the value itself (https:// added when it has no
+       *  scheme); a function builds the address. */
+      link?: boolean | ((value: string) => string);
+    }
   | { type: "number"; options?: readonly number[]; placeholder?: string }
   | { type: "date"; placeholder?: string }
   | { type: "tags"; options?: readonly string[]; creatable?: boolean; placeholder?: string }
@@ -1953,6 +1961,7 @@ function useEditHold(ctx: EditContextValue, ref: RefObject<HTMLDivElement | null
 const editorType = (e: DataTableEditor) => (typeof e === "string" ? e : e.type);
 interface EditorOptions {
   placeholder?: string;
+  link?: boolean | ((value: string) => string);
   options?: readonly (number | string)[];
   creatable?: boolean;
 }
@@ -2075,6 +2084,27 @@ function EditableCell<TData>({
     );
   }
 
+  if (type === "text" && options.link) {
+    const text = value == null ? "" : String(value);
+    const link = options.link;
+    return (
+      <LinkField
+        boxRef={boxRef}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        label={label}
+        value={text}
+        href={typeof link === "function" ? link(text) : /^[a-z][a-z\d+.-]*:/i.test(text) ? text : `https://${text}`}
+        placeholder={options.placeholder}
+        onChange={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          else revert(e);
+        }}
+      />
+    );
+  }
+
   if (type === "text") {
     return (
       <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className="min-w-0">
@@ -2087,6 +2117,15 @@ function EditableCell<TData>({
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             else revert(e);
+          }}
+          // At rest the field reads as truncated text: a trackpad can't
+          // scroll its hidden end into view, and leaving it shows the
+          // start again with its ellipsis.
+          onScroll={(e) => {
+            if (document.activeElement !== e.currentTarget) e.currentTarget.scrollLeft = 0;
+          }}
+          onBlurCapture={(e) => {
+            e.currentTarget.scrollLeft = 0;
           }}
           // The touch size keeps iOS from zooming into the field.
           className={cn(CELL_FIELD, sizeClasses.field)}
@@ -2160,6 +2199,96 @@ function EditableCell<TData>({
       label={label}
       onChange={commit}
     />
+  );
+}
+
+/** A text field that reads as a link at rest: a click on the text follows
+ *  it, a click beside it (anywhere else in the cell) swaps in the field,
+ *  focused with its caret at the end. F2 on the focused link edits too.
+ *  Leaving the field shows the link again. */
+function LinkField({
+  boxRef,
+  onFocus,
+  onBlur,
+  label,
+  value,
+  href,
+  placeholder,
+  onChange,
+  onKeyDown,
+}: {
+  boxRef: RefObject<HTMLDivElement | null>;
+  onFocus: () => void;
+  onBlur: () => void;
+  label: string;
+  value: string;
+  href: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  const sizeClasses = useSize();
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (!editing || !input) return;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }, [editing]);
+  return (
+    <div
+      ref={boxRef}
+      onFocus={onFocus}
+      onBlur={(e) => {
+        onBlur();
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setEditing(false);
+      }}
+      onClick={(e) => {
+        if (!editing && !(e.target as Element).closest("a")) setEditing(true);
+      }}
+      // The row's full height and the cell's right padding, so a click
+      // anywhere beside the text edits, even when a long address fills
+      // the column.
+      className={cn(
+        "-my-(--table-cell-py) flex h-[calc(1lh+2*var(--table-cell-py))] min-w-0 cursor-text items-center",
+        sizeClasses.variant === "compact" ? "-mr-2.5 pr-2.5" : "-mr-3 pr-3"
+      )}
+    >
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="text"
+          aria-label={label}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          // The touch size keeps iOS from zooming into the field.
+          className={cn(
+            "block w-full min-w-0 bg-transparent p-0 text-foreground outline-none placeholder:text-muted-foreground text-ellipsis",
+            sizeClasses.field
+          )}
+        />
+      ) : (
+        <a
+          href={href}
+          onKeyDown={(e) => {
+            if (e.key === "F2") {
+              e.preventDefault();
+              setEditing(true);
+            }
+          }}
+          aria-keyshortcuts="F2"
+          className={cn(
+            "min-w-0 cursor-pointer truncate underline decoration-foreground/30 underline-offset-2",
+            "transition-colors duration-80 hover:decoration-foreground"
+          )}
+        >
+          {value || placeholder}
+        </a>
+      )}
+    </div>
   );
 }
 

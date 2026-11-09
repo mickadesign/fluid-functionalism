@@ -262,7 +262,8 @@ function buildColumns(o: {
         lines: 1,
         className: "min-w-60",
         icon: icon("link"),
-        editor: o.editable ? "text" : undefined,
+        // The text follows the link; beside it, the cell edits.
+        editor: o.editable ? { type: "text", link: true } : undefined,
       },
     },
     {
@@ -404,7 +405,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    accessorKey: "website",`,
     `    header: "Website",`,
     `    cell: ({ row }) => <a href={row.original.href}>{row.original.website}</a>,`,
-    `    meta: { className: "min-w-60", lines: 1${o.headerIcons ? ", icon: Link" : ""}${o.editable ? `, editor: "text"` : ""} },`,
+    `    meta: { className: "min-w-60", lines: 1${o.headerIcons ? ", icon: Link" : ""}${o.editable ? `, editor: { type: "text", link: true }` : ""} },`,
     `  },`,
     `  {`,
     `    accessorKey: "summary",`,
