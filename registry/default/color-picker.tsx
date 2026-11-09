@@ -23,7 +23,7 @@ import { NumberField } from "@base-ui/react/number-field";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
-import { nestedRadius, useShape, shapeMap } from "@/lib/shape-context";
+import { nestedRadius, useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
@@ -524,6 +524,8 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
   // corner follows the panel rather than reusing the popup-specific p-1 pair.
   const radius = nestedRadius(shape.containerRadius, 12);
   // Rounded: 12px - 12px = 0, square corners. Pill: 24px - 12px = 12px.
+  // The thumb and its hover ghost go square with sharp, round otherwise.
+  const thumbRadius = shape.variant === "sharp" ? "rounded-none" : "rounded-full";
 
   const updateFromPointer = useCallback(
     (clientX: number, clientY: number) => {
@@ -640,7 +642,7 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
           black ring keeps it visible on light and dark regions alike.
           Duration 0 so it never lags the pointer. */}
       <motion.div
-        className="absolute pointer-events-none rounded-full"
+        className={cn("absolute pointer-events-none", thumbRadius)}
         initial={false}
         animate={{
           left: `${s * 100}%`,
@@ -661,7 +663,7 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
           Hidden while dragging, when the real thumb is under the pointer. */}
       {hovered && !dragging && cursorPos && (
         <div
-          className="absolute pointer-events-none rounded-full"
+          className={cn("absolute pointer-events-none", thumbRadius)}
           style={{
             left: `${cursorPos.x}%`,
             top: `${cursorPos.y}%`,
@@ -807,10 +809,6 @@ const FORMAT_LABELS: Record<ColorFormat, string> = {
 
 const FORMATS = ["hex", "rgb", "hsl", "oklch"] as const;
 
-// Popup surfaces opt out of the global pill/rounded shape — same rationale as
-// the Dropdown component (pill radii distort perceived padding at this scale).
-const menuShape = shapeMap.rounded;
-
 interface FormatMenuContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
@@ -900,6 +898,7 @@ function FormatDropdown({
   open?: boolean;
   defaultOpen?: boolean;
 }) {
+  const menuShape = usePopupShape();
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const isControlled = openProp !== undefined;
   const open = isControlled ? openProp : internalOpen;
@@ -1006,7 +1005,7 @@ function FormatDropdown({
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-[60] outline-none"
+          className="z-[var(--z-popover,60)] outline-none"
         >
           {/* The positioner's data-side flips the origin and the 4px enter
               offset when the menu opens above, as Dropdown's does. */}
@@ -1905,7 +1904,11 @@ function SwatchStrip({
             "bg-transparent before:pointer-events-none before:absolute before:inset-[3px] before:bg-[var(--swatch-press)] before:transition-[box-shadow,background-color] before:[transition-duration:180ms,80ms] before:[transition-timing-function:cubic-bezier(0.23,1,0.32,1),ease]",
             shape.container,
             // The band's radius 2px in, less the 1px spread.
-            shape.variant === "pill" ? "before:rounded-full" : "before:rounded-[9px]",
+            {
+              pill: "before:rounded-full",
+              rounded: "before:rounded-[9px]",
+              sharp: "before:rounded-none",
+            }[shape.variant],
             pressed && !litSelected
               ? "[--swatch-press:var(--active)] before:shadow-[0_0_0_0px_var(--swatch-press)] before:[transition-duration:80ms,80ms]"
               : "[--swatch-press:var(--hover)] before:shadow-[0_0_0_1px_var(--swatch-press)]"
@@ -2472,8 +2475,11 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
       (el: HTMLButtonElement | null) => registerSegment(1, el),
       [registerSegment]
     );
-    const innerRadius =
-      nestedRadius(shape.bgRadius, 3) === 5 ? "rounded-[5px]" : "rounded-[17px]";
+    const innerRadius = {
+      rounded: "rounded-[5px]",
+      pill: "rounded-[17px]",
+      sharp: "rounded-none",
+    }[shape.variant];
 
     const triggerContent = (
       <>
@@ -2572,7 +2578,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
               side="bottom"
               align="start"
               sideOffset={6}
-              className="z-50 outline-none"
+              className="z-[var(--z-popover,60)] outline-none"
             >
               <motion.div
                 // The positioner's data-side flips the 4px enter offset when

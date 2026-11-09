@@ -99,7 +99,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     },
     ref
   ) => {
-    // Corner radius comes from the shape context (pill or rounded), so
+    // Corner radius comes from the shape context (rounded, pill or sharp), so
     // badges follow the rest of the app instead of hard-coding a radius.
     const shape = useShape();
     // Resolve the size: explicit prop (legacy aliases mapped onto the

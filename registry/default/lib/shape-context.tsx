@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-type ShapeVariant = "pill" | "rounded";
+type ShapeVariant = "pill" | "rounded" | "sharp";
 
 interface ShapeClasses {
   /** The variant these classes belong to — handy for conditionals. */
@@ -78,6 +78,21 @@ const shapeMap: Record<ShapeVariant, ShapeClasses> = {
     containerRadius: 12,
     mergedRadius: 8,
   },
+  // Sharp keeps a 1px radius rather than 0 so corners still anti-alias softly.
+  // Containers stay at 1px too: concentric radii stop mattering at this size.
+  sharp: {
+    variant: "sharp",
+    item: "rounded-[1px]",
+    bg: "rounded-[1px]",
+    focusRing: "rounded-[3px]",
+    mergedBg: "rounded-[1px]",
+    container: "rounded-[1px]",
+    button: "rounded-[1px]",
+    input: "rounded-[1px]",
+    bgRadius: 1,
+    containerRadius: 1,
+    mergedRadius: 1,
+  },
 };
 
 interface ShapeContextValue {
@@ -96,6 +111,13 @@ function useShape(): ShapeClasses {
   const ctx = useContext(ShapeContext);
   if (!ctx) return shapeMap.rounded;
   return ctx.classes;
+}
+
+// Popup surfaces (menus, select and combobox lists) cap at rounded: pill
+// corners distort their padding at this scale and skew the corner shadows.
+// Sharp carries over, so a sharp UI gets sharp menus.
+function usePopupShape(): ShapeClasses {
+  return useShape().variant === "sharp" ? shapeMap.sharp : shapeMap.rounded;
 }
 
 function useShapeContext() {
@@ -159,5 +181,5 @@ function ShapeProvider({
   );
 }
 
-export { ShapeProvider, useShape, useShapeContext, shapeMap, nestedRadius };
+export { ShapeProvider, useShape, usePopupShape, useShapeContext, shapeMap, nestedRadius };
 export type { ShapeVariant, ShapeClasses };

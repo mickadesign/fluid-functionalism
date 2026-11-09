@@ -79,7 +79,7 @@ export const CARD_PRESET_FIELDS: readonly PresetField[] = [
   { key: "fluidHover", values: [true, false], bits: 1 },
   { key: "selected", values: [false, true], bits: 1 },
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

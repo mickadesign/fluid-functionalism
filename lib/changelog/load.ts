@@ -37,7 +37,11 @@ export interface AheadOfRelease {
 export const AHEAD_OF_RELEASE: AheadOfRelease[] = [
   // Merged in October 2026; the October release ships Friday 2026-11-06.
   { month: "2026-10", slugs: ["banner", "typography", "reveal", "calendar", "date-picker"] },
+  { month: "2026-11", slugs: ["field", "checkbox", "input", "textarea", "breadcrumb"] },
 ];
+
+/** The first month whose new pages the sidebar dots (recentNew below). */
+export const NEW_SINCE = "2026-10";
 
 let marksCache: ReleaseMarks | null = null;
 
@@ -74,4 +78,33 @@ export function latestMarks(dir = CHANGELOG_DIR, ahead = AHEAD_OF_RELEASE): Rele
   }
   marksCache = marks;
   return marks;
+}
+
+let recentCache: string[] | null = null;
+
+/** Every docs page added since NEW_SINCE: the New entries of each release
+ *  from that month on, plus the pages listed ahead of a release. The sidebar
+ *  dots these, so a page stays marked past its own release; the New badges
+ *  elsewhere keep the narrower latestMarks().ahead. */
+export function recentNew(
+  dir = CHANGELOG_DIR,
+  since = NEW_SINCE,
+  ahead = AHEAD_OF_RELEASE
+): string[] {
+  if (recentCache && process.env.NODE_ENV === "production") return recentCache;
+  const slugs = new Set<string>();
+  try {
+    for (const release of loadReleases(dir)) {
+      if (release.month < since) continue;
+      for (const e of releaseEntries(release)) {
+        const slug = e.kind === "new" && e.href ? /^\/docs\/([^/#?]+)/.exec(e.href)?.[1] : undefined;
+        if (slug) slugs.add(slug);
+      }
+    }
+  } catch (error) {
+    console.error("[changelog] Recent New dots skipped:", error);
+  }
+  for (const a of ahead) if (a.month >= since) a.slugs.forEach((slug) => slugs.add(slug));
+  recentCache = [...slugs];
+  return recentCache;
 }

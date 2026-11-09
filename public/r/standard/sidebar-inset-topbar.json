@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "sidebar-inset-topbar",
+  "title": "Sidebar Inset Topbar",
+  "description": "The main region's topbar: h-12 with the trigger that hides while the rail peeks and fades back in at its settled spot after a pin.",
+  "registryDependencies": [
+    "utils",
+    "https://www.fluidfunctionalism.com/r/standard/sidebar.json"
+  ],
+  "files": [
+    {
+      "path": "registry/blocks/sidebar-app/inset-topbar.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { SidebarTrigger, useSidebar } from \"@/components/ui/sidebar\";\nimport { cn } from \"@/lib/utils\";\n\n// ---------------------------------------------------------------------------\n// The main region's topbar. While the sidebar is only PEEKED the trigger\n// hides (the overlay covers it anyway); after a pin it fades back in\n// slightly late, so it appears at its settled position instead of riding\n// the inset's slide.\n// ---------------------------------------------------------------------------\n\nexport function SidebarInsetTopbar({\n  children,\n  className,\n}: {\n  children?: ReactNode;\n  className?: string;\n}) {\n  const { isPeeking } = useSidebar();\n  return (\n    <header\n      className={cn(\"flex h-12 shrink-0 items-center gap-2 px-1.5\", className)}\n    >\n      <SidebarTrigger\n        className={`transition-opacity delay-200 duration-160 ${\n          isPeeking ? \"opacity-0\" : \"opacity-100\"\n        }`}\n      />\n      {children}\n    </header>\n  );\n}\n",
+      "type": "registry:component",
+      "target": "components/sidebar-app/inset-topbar.tsx"
+    }
+  ],
+  "type": "registry:block"
+}

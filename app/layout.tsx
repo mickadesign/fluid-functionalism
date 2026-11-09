@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import localFont from "next/font/local";
 import { MotionConfig } from "motion/react";
 import "./globals.css";
@@ -15,17 +15,19 @@ import { SizeShortcut } from "@/lib/docs/size-shortcut";
 import { SizeAttribute } from "@/lib/docs/size-attribute";
 import { SettingsToast } from "@/lib/docs/settings-toast";
 import { SettingsPersistence } from "@/lib/docs/settings-persistence";
-import { readCustomAccent, readHeadingFont, readSettings } from "@/lib/docs/site-settings";
+import { readCustomAccent, readHeadingFont, readHoverMode, readMacPlatform, readSettings } from "@/lib/docs/site-settings";
 import { AccentProvider, AccentShortcut } from "@/lib/docs/accent";
 import { accentCss } from "@/lib/accent";
+import { CommandMenuPlatform } from "@/registry/default/command-menu";
 import { HeadingFontProvider, HeadingFontShortcut } from "@/lib/docs/heading-font";
+import { HoverModeProvider, HoverModeShortcut } from "@/lib/docs/hover-mode";
 import googleFonts from "@/lib/docs/google-fonts.json";
 import { customHeadingVars, googleFontWeights, type GoogleFont } from "@/lib/docs/google-fonts";
 import { BaseProvider } from "@/lib/base-context";
 import { SidebarLayout } from "@/app/components/sidebar-layout";
 import { GitHubStarsProvider } from "@/app/components/right-panel";
 import { getGitHubStars } from "@/lib/github-stars";
-import { latestMarks } from "@/lib/changelog/load";
+import { latestMarks, recentNew } from "@/lib/changelog/load";
 
 // The optional serif for headings (right panel > Heading font, or F):
 // Vercel's display serif, one Regular cut so far and not on Google Fonts, so
@@ -80,7 +82,11 @@ export default async function RootLayout({
   // cookie means open — the component's own default.
   // The star count rides along so the panel's GitHub button paints with
   // its number instead of widening when a client fetch lands.
-  const [cookieStore, stars] = await Promise.all([cookies(), getGitHubStars()]);
+  const [cookieStore, headerStore, stars] = await Promise.all([cookies(), headers(), getGitHubStars()]);
+  // Shortcut caps (⌘K, Ctrl K) paint for the visitor's platform from the
+  // first frame instead of swapping after hydration. The HTML now depends on
+  // these two headers: if this layout is ever cached, add them to Vary.
+  const mac = readMacPlatform(headerStore.get("sec-ch-ua-platform"), headerStore.get("user-agent"));
   const sidebarDefaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   // The "Make them yours" settings, saved one cookie each by
   // SettingsPersistence: rendering them here means a reload paints the
@@ -96,6 +102,8 @@ export default async function RootLayout({
     ? ((googleFonts as GoogleFont[]).find((f) => f.n === saved.customFamily) ?? null)
     : null;
   const headingFont = saved.font === "custom" && !customFont ? "inter" : saved.font;
+  // Fluid or standard hover, for every list on the site.
+  const hoverMode = readHoverMode((name) => cookieStore.get(name)?.value);
   // A saved weight the family doesn't have reads as Auto.
   const customWeight =
     customFont && saved.customWeight !== null && googleFontWeights(customFont).includes(saved.customWeight)
@@ -136,17 +144,22 @@ export default async function RootLayout({
                       <AccentShortcut />
                       <HeadingFontProvider defaultFont={headingFont} defaultCustom={customFont} defaultWeight={customWeight}>
                         <HeadingFontShortcut />
+                        <HoverModeProvider defaultMode={hoverMode}>
+                        <HoverModeShortcut />
                         <SettingsPersistence />
                         {/* The sidebar's New dots: what the latest changelog
                             release lists as New, read from content/changelog. */}
                         <GitHubStarsProvider stars={stars}>
-                          <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={latestMarks()}>
-                            {children}
-                          </SidebarLayout>
+                          <CommandMenuPlatform mac={mac}>
+                            <SidebarLayout defaultOpen={sidebarDefaultOpen} marks={{ ...latestMarks(), recent: recentNew() }}>
+                              {children}
+                            </SidebarLayout>
+                          </CommandMenuPlatform>
                         </GitHubStarsProvider>
                         <SettingsToast />
                         <Analytics />
                         <SpeedInsights />
+                        </HoverModeProvider>
                       </HeadingFontProvider>
                     </AccentProvider>
                   </BaseProvider>

@@ -66,6 +66,9 @@ import {
   DotsVertical as UuiDotsVertical,
   Sliders01 as UuiSliders,
   InfoCircle as UuiInfo,
+  AlertCircle as UuiAlertCircle,
+  File01 as UuiFile,
+  Minus as UuiMinus,
   Calendar as UuiCalendar,
   Folder as UuiFolder,
 } from "@untitledui/icons";
@@ -95,6 +98,7 @@ export const untitleduiIcons: Record<IconName, IconComponent> = {
   "moon": untitledui(UuiMoon),
   "rectangle-horizontal": untitledui(UuiSquare),
   "circle": untitledui(UuiCircle),
+  "square": untitledui(UuiSquare),
   "square-library": untitledui(UuiBook),
   "clock": untitledui(UuiClock),
   "star": untitledui(UuiStar),
@@ -145,4 +149,7 @@ export const untitleduiIcons: Record<IconName, IconComponent> = {
   "folder": untitledui(UuiFolder),
   "sliders-horizontal": untitledui(UuiSliders),
   "info": untitledui(UuiInfo),
+  "circle-alert": untitledui(UuiAlertCircle),
+  "file": untitledui(UuiFile),
+  "minus": untitledui(UuiMinus),
 };

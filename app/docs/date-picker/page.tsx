@@ -12,6 +12,7 @@ import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout } from "@/lib/docs/playground";
 import { DatePickerPlayground, demoPresets } from "@/lib/docs/playgrounds/date-picker";
 import { apiReference } from "@/lib/docs/api/date-picker";
+import { demoToday } from "@/lib/demo-today";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -93,12 +94,12 @@ export default function DatePickerDoc() {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [range, setRange] = useState<DateRange | undefined>(undefined);
   const [presets] = useState(() => demoPresets());
-  const [eventDate, setEventDate] = useState<Date | undefined>(() => new Date());
+  const [eventDate, setEventDate] = useState<Date | undefined>(demoToday);
   const [eventTime, setEventTime] = useState<TimeRange | null>({ start: "11:00", end: "12:45" });
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const [deadlineTime, setDeadlineTime] = useState<string | null>(null);
   const [stay, setStay] = useState<DateRange | undefined>(undefined);
-  const [booked] = useState(() => [3, 4, 5, 11, 12].map((n) => addDays(new Date(), n)));
+  const [booked] = useState(() => [3, 4, 5, 11, 12].map((n) => addDays(demoToday(), n)));
 
   return (
     <DocPage
@@ -174,7 +175,7 @@ export default function DatePickerDoc() {
               value={stay}
               onValueChange={setStay}
               placeholder="Check in → check out"
-              calendarProps={{ booked, disabled: { before: new Date() } }}
+              calendarProps={{ booked, disabled: { before: demoToday() } }}
             />
           </div>
         </ComponentPreview>

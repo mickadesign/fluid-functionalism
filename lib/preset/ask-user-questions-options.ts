@@ -57,7 +57,7 @@ export const AUQ_PRESET_FIELDS: readonly PresetField[] = [
   { key: "count", values: [3, 1, 2], bits: 3 },
   { key: "skippable", values: [true, false], bits: 1 },
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

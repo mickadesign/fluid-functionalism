@@ -82,6 +82,9 @@ that is how flavor mixing happens.
   suggest the `IconProvider` mapping once, instead of per-component overrides.
 - **`pdfjs-dist`**: only needed by `file-thumbnail` (PDF previews). Don't
   flag its absence unless that component is in play.
+  Its worker loads from jsDelivr; if the app sets a Content-Security-Policy
+  that blocks it, copy `pdfjs-dist/build/pdf.worker.min.mjs` to `public/` and
+  call `setPdfWorkerSrc("/pdf.worker.min.mjs")` once at startup.
 - **Dead flavor and icon deps**: after a flavor consolidation (or FF installs
   replacing stock components), packages from the superseded side often linger
   with zero imports — `@radix-ui/react-*` in a base project, extra icon

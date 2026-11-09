@@ -38,8 +38,8 @@ const groupedCode = `import { AccordionGroup, AccordionItem, AccordionTrigger, A
   <AccordionItem value="item-2" index={1}>
     <AccordionTrigger>Styling</AccordionTrigger>
     <AccordionContent>
-      The component integrates with the shape system for pill or rounded
-      border-radius variants. All animations use spring physics.
+      The component integrates with the shape system for rounded, pill or
+      sharp border-radius variants. All animations use spring physics.
     </AccordionContent>
   </AccordionItem>
   <AccordionItem value="item-3" index={2}>
@@ -162,8 +162,8 @@ export default function AccordionDoc() {
             <AccordionItem value="item-2" index={1}>
               <AccordionTrigger>Styling</AccordionTrigger>
               <AccordionContent>
-                The component integrates with the shape system for pill or
-                rounded border-radius variants. All animations use spring
+                The component integrates with the shape system for rounded,
+                pill or sharp border-radius variants. All animations use spring
                 physics.
               </AccordionContent>
             </AccordionItem>

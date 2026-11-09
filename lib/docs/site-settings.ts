@@ -31,7 +31,7 @@ export interface SiteSettings {
 /** What a first visit sees. */
 export const DEFAULT_SETTINGS: SiteSettings = {
   theme: "system",
-  shape: "rounded",
+  shape: "sharp",
   size: "default",
   icons: "untitledui",
   base: "base",
@@ -41,7 +41,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 /** Every value each setting accepts, in the order the site lists them. */
 export const SETTING_VALUES = {
   theme: ["system", "light", "dark"],
-  shape: ["rounded", "pill"],
+  shape: ["sharp", "rounded", "pill"],
   size: ["default", "compact"],
   icons: ["lucide", "tabler", "phosphor", "hugeicons", "untitledui"],
   base: ["radix", "base"],
@@ -166,4 +166,35 @@ export function customWeightCookie(weight: number | null): string {
   return weight === null
     ? `${CUSTOM_WEIGHT_COOKIE}=; path=/; max-age=0; samesite=lax`
     : `${CUSTOM_WEIGHT_COOKIE}=${weight}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+// ---------------------------------------------------------------------------
+// Hover: fluid (the highlight glides between items) or standard (it sits on
+// the item under the pointer). Outside SiteSettings, like the heading font:
+// it travels to installs through the install URL (`r/standard/…`), not a
+// starter slug.
+// ---------------------------------------------------------------------------
+
+export type HoverMode = "fluid" | "standard";
+
+export const HOVER_MODES = ["fluid", "standard"] as const satisfies readonly HoverMode[];
+
+export const HOVER_COOKIE = "ff_hover";
+
+/** The saved hover mode, fluid when missing or unknown. */
+export function readHoverMode(get: (name: string) => string | undefined): HoverMode {
+  return get(HOVER_COOKIE) === "standard" ? "standard" : "fluid";
+}
+
+export function hoverModeCookie(value: HoverMode): string {
+  return `${HOVER_COOKIE}=${value}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+}
+
+/** Whether the request comes from a Mac (or iPhone/iPad), from the
+ *  `Sec-CH-UA-Platform` hint where the browser sends one, the User-Agent
+ *  otherwise. Seeds CommandMenuPlatform so shortcut caps paint as ⌘ or Ctrl
+ *  from the first frame. */
+export function readMacPlatform(platformHint: string | null, userAgent: string | null): boolean {
+  if (platformHint) return /mac|ios/i.test(platformHint);
+  return /mac|iphone|ipad|ipod/i.test(userAgent ?? "");
 }
