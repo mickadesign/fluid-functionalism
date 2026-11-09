@@ -1468,7 +1468,10 @@ function DataTableColumnHeader<TData, TValue>({
       type="button"
       onClick={column.getToggleSortingHandler()}
       className={cn(
-        "group/sort inline-flex cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none",
+        "group/sort inline-flex cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
+        // The sorted column reads at full contrast, its icon and label with
+        // the arrow, so the sort shows from across the table.
+        sorted && "text-foreground",
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
