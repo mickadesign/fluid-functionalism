@@ -735,13 +735,15 @@ function DataTable<TData>({
   //                  From a control (checkbox, link, row menu) it's the same
   //                  column's control in that row
   //   Shift + ↑ ↓    grows or shrinks the selection from where it started
-  //   X              selects or clears the focused row (Space too, when
-  //                  rows don't open with onRowClick)
-  //   Enter          opens the row (onRowClick)
+  //   X / Enter      selects or clears the focused row (from the row or
+  //                  its checkbox). Without a selection column, Enter
+  //                  opens the row (onRowClick)
+  //   Space          opens the row (onRowClick), else selects it
   //   ⌘A / Ctrl+A    selects every row, on every page
   //   Esc            clears the selection
   // Rows are focusable whenever they can be selected or opened: one tab
-  // stop for the body (the row last focused, else the first).
+  // stop for the body (the row last focused, else the first). A hovered
+  // row counts as focused while nothing else is (see below).
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
   const rowsFocusable = hasSelection || !!onRowClick;
   // The far end of a Shift + arrow range, so the next step can shrink it.
@@ -808,7 +810,11 @@ function DataTable<TData>({
     if (!tr) return;
     const id = tr.dataset.rowId!;
     const onRow = target === tr;
-    if (onRow && hasSelection && e.key.toLowerCase() === "x" && !e.repeat) {
+    // The row's checkbox (or its cell) toggles like the row itself; Enter
+    // on a link or the row menu keeps its own meaning.
+    const onBox = !!target.closest("[role=checkbox], [data-select-hit]");
+    const key = e.key.toLowerCase();
+    if (hasSelection && !e.repeat && (key === "x" || (key === "enter" && (onRow || onBox)))) {
       e.preventDefault();
       toggleRow(id);
       return;
@@ -853,6 +859,66 @@ function DataTable<TData>({
       rangeHead.current = null;
     }
   };
+  // A hovered row counts as focused: a row key moves focus to the row under
+  // the pointer and runs there, so you can point at a row and carry on from
+  // the keyboard. It applies while focus rests on the page (or a preview
+  // frame around the table), or on a row or its controls when the pointer
+  // has moved since the last key (a resting pointer doesn't pull focus back
+  // while the keys walk away from it). Window capture, so the table answers
+  // before page shortcuts; the original key stops and its replay starts
+  // from the row.
+  useEffect(() => {
+    if (!rowsFocusable) return;
+    const wrap = wrapRef.current;
+    let pointerFresh = false;
+    const onPointerMove = () => {
+      pointerFresh = true;
+    };
+    wrap?.addEventListener("pointermove", onPointerMove);
+    const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End", "Enter", " ", "x", "X", "Escape", "a", "A"]);
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing || !ROW_KEYS.has(e.key)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      // ⌘A / Ctrl+A is the only modified key; a bare A is the page's.
+      if ((e.key === "a" || e.key === "A") !== mod || e.altKey) return;
+      // Select-all and clear only when they'd do something, so Escape still
+      // closes what the page has open.
+      if (mod && !hasSelection) return;
+      if (e.key === "Escape" && !(hasSelection && Object.keys(table.getState().rowSelection).length)) return;
+      if (!wrap) return;
+      const active = document.activeElement as HTMLElement | null;
+      const resting = !active || active === document.body || active.contains(wrap);
+      // Focus on a row or a control in one (not a field being typed in).
+      const inRows =
+        !!active?.closest("tbody tr[data-row-id]") &&
+        wrap.contains(active) &&
+        !active.closest("input, textarea, select, [contenteditable=true]");
+      const tr = wrap.querySelector<HTMLElement>("tbody tr[data-row-id]:hover");
+      const fresh = pointerFresh;
+      pointerFresh = false;
+      if (!tr || !(resting || (inRows && fresh && !tr.contains(active)))) return;
+      e.preventDefault();
+      e.stopPropagation();
+      tr.focus({ preventScroll: true });
+      tr.dispatchEvent(
+        new globalThis.KeyboardEvent("keydown", {
+          key: e.key,
+          code: e.code,
+          shiftKey: e.shiftKey,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      wrap?.removeEventListener("pointermove", onPointerMove);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- table is one object for its life
+  }, [rowsFocusable, hasSelection]);
   const registerFocus = (table as Partial<DataTableExtras>)._registerFocus;
   useLayoutEffect(() => {
     registerFocus?.(focusFirstRow);
