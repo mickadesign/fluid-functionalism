@@ -1939,8 +1939,13 @@ const DataTableBodyRow = memo(
               lines !== undefined && "max-w-0",
               // An editor raised past the column shows over its neighbors.
               "has-[[data-cell-expanded]]:overflow-visible",
+              // The whole cell is the editor's: a row grown by a
+              // wrapped neighbor leaves room under the field, and a
+              // press there edits too (see pressCellEditor).
+              editor && (editorType(editor) === "text" ? "cursor-text" : "cursor-pointer"),
               meta?.className
             )}
+            onClick={editor ? pressCellEditor : undefined}
           >
             {swapping && (
               // The hand-over: a skeleton over the cell's content box,
@@ -2140,6 +2145,58 @@ function revealCell(e: FocusEvent<HTMLElement> | PointerEvent<HTMLElement>) {
   if (!delta) return;
   viewport.dataset.revealedAt = String(performance.now());
   viewport.scrollLeft = Math.max(0, Math.min(max, viewport.scrollLeft + delta));
+}
+
+/** A click in an editable cell that missed its editor (the room a taller
+ *  row leaves under it, or its padding) presses the editor itself: a
+ *  field takes focus with the caret at the end, a trigger gets the
+ *  press sequence a real click on it would, so menus and calendars open
+ *  however their primitive listens (pointerdown or click). */
+const CELL_EDITOR_TARGETS = [
+  "textarea",
+  'input:not([type=hidden]):not([tabindex="-1"])',
+  "[role=textbox]",
+  "[role=combobox]",
+  "[aria-haspopup]",
+  "button",
+];
+function pressCellEditor(e: React.MouseEvent<HTMLElement>) {
+  const target = e.target as Element;
+  if (e.button !== 0 || e.defaultPrevented) return;
+  if (target.closest("input, textarea, button, a[href], [role=textbox], [role=combobox], [role=checkbox], [aria-haspopup]"))
+    return;
+  // A raised field or an open popup already has the cell's attention.
+  if (e.currentTarget.querySelector("[data-cell-expanded]")) return;
+  // An editor that takes the click on its own box (a link's "beside the
+  // text") hears it there.
+  if (target.closest("[data-cell-editor]")) return;
+  const own = e.currentTarget.querySelector<HTMLElement>("[data-cell-editor]");
+  if (own) {
+    e.preventDefault();
+    own.click();
+    return;
+  }
+  let field: HTMLElement | null = null;
+  for (const selector of CELL_EDITOR_TARGETS) {
+    field = e.currentTarget.querySelector<HTMLElement>(selector);
+    if (field) break;
+  }
+  if (!field) return;
+  e.preventDefault();
+  if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+    field.focus();
+    const end = field.value.length;
+    field.setSelectionRange?.(end, end);
+    return;
+  }
+  const r = field.getBoundingClientRect();
+  const at = { bubbles: true, cancelable: true, composed: true, button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+  field.dispatchEvent(new globalThis.PointerEvent("pointerdown", { ...at, pointerType: "mouse", isPrimary: true }));
+  field.dispatchEvent(new globalThis.MouseEvent("mousedown", at));
+  field.focus();
+  field.dispatchEvent(new globalThis.PointerEvent("pointerup", { ...at, pointerType: "mouse", isPrimary: true }));
+  field.dispatchEvent(new globalThis.MouseEvent("mouseup", at));
+  field.dispatchEvent(new globalThis.MouseEvent("click", at));
 }
 
 function EditableCell<TData>(props: Parameters<typeof EditorBody<TData>>[0]) {
@@ -2495,6 +2552,7 @@ function LinkField({
       ref={boxRef}
       onFocus={onFocus}
       onBlur={onBlur}
+      data-cell-editor=""
       onClick={(e) => {
         if (!editing && !(e.target as Element).closest("a")) setEditing(true);
       }}
