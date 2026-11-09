@@ -1764,6 +1764,9 @@ const DataTableBodyRow = memo(
       className={cn(
         onRowClick && "cursor-pointer",
         rowsFocusable && "outline-none",
+        // Rows each stack on their own (z-10); the one holding a raised
+        // editor lifts above the rows after it, so the field covers them.
+        "has-[[data-cell-expanded]]:z-30",
         // A focused row looks hovered: Table moves its highlight to
         // it, and its checkbox takes the hover border, in place of
         // a blue ring around the row or the box.
