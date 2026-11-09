@@ -3179,8 +3179,9 @@ interface DataTablePaginationProps<TData> {
   className?: string;
 }
 
-/** The row count (or the selection, once there is one) on the left, the
- *  page and the previous / next arrows on the right. */
+/** The row count (the page's against the whole, "10 / 35 rows", when
+ *  there is more than one page; or the selection, once there is one) on
+ *  the left, the page and the previous / next arrows on the right. */
 const DEFAULT_PAGE_SIZES = [10, 20, 50];
 
 function DataTablePagination<TData>({
@@ -3216,7 +3217,10 @@ function DataTablePagination<TData>({
       <span aria-live="polite" className="pl-2">
         {selected > 0
           ? `${selected} of ${total} ${total === 1 ? "row" : "rows"} selected`
-          : `${total} ${total === 1 ? "row" : "rows"}`}
+          : pageCount > 1
+            ? // The rows this page shows against the result: "10 / 35 rows".
+              `${Math.max(0, Math.min(pageSize, total - (page - 1) * pageSize))} / ${total} rows`
+            : `${total} ${total === 1 ? "row" : "rows"}`}
       </span>
       {/* On a narrow bar the two groups wrap as wholes; their words don't. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 whitespace-nowrap">

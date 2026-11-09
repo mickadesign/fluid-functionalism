@@ -896,7 +896,7 @@ const table = useDataTable({ data: payments, columns, pageSize: 5 });
       "DataTableSearch: { table, column?, placeholder = \"Search…\" }. A ghost search field with a magnifying glass over one column, or every column when column is omitted.",
       "DataTableViewOptions: { table, label = \"Columns\" }. Icon button menu, with a tooltip, that shows and hides columns.",
       "DataTableRowActions: { children, label = \"Row actions\" }. The ⋯ menu for a row; children are MenuItems.",
-      "DataTablePagination: { table, pageSizes = [10, 20, 50] }. Row or selection count, a rows-per-page select, page, and previous / next arrow buttons.",
+      "DataTablePagination: { table, pageSizes = [10, 20, 50] }. Row count (\"10 / 35 rows\" across pages) or selection count, a rows-per-page select, page, and previous / next arrow buttons.",
       "selectColumn<TData>(): ColumnDef. Checkbox column; the header box selects every matching row on every page.",
       "rowActionsColumn<TData>(row => MenuItems, { label? }): ColumnDef. The \u22ef column, sized to line up with the toolbar icons.",
     ],
