@@ -86,7 +86,9 @@ export function PropsTable({ props, groups }: PropsTableProps) {
               </th>
             )}
             <th
-              className="px-3 py-2 text-left text-foreground"
+              // A floor for the column people read: a long prop or type
+              // wraps before the descriptions get squeezed.
+              className="min-w-64 px-3 py-2 text-left text-foreground"
               style={{ fontVariationSettings: fontWeights.semibold }}
             >
               Description

@@ -70,11 +70,11 @@ export const selectionBarProps: PropDef[] = [
 ];
 
 export const rowActionsColumnProps: PropDef[] = [
-  { name: "rowActionsColumn<TData>(items, { label? })", type: "ColumnDef<TData>", description: "A last column of ⋯ menus. `items(row)` returns the row's `MenuItem`s." },
+  { name: "rowActionsColumn(items)", type: "ColumnDef<TData>", description: "A last column of ⋯ menus. `items(row)` returns the row's `MenuItem`s; `{ label }` names the button." },
 ];
 
 export const selectColumnProps: PropDef[] = [
-  { name: "selectColumn<TData>()", type: "ColumnDef<TData>", description: "A first column of checkboxes. The header box selects the page and counts it in its tooltip." },
+  { name: "selectColumn()", type: "ColumnDef<TData>", description: "A first column of checkboxes. The header box selects the page and counts it in its tooltip." },
 ];
 
 /** The page's tables in page order, titled as on the page. */
