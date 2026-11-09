@@ -1734,10 +1734,11 @@ function DataTablePagination<TData>({
           ? `${selected} of ${total} ${total === 1 ? "row" : "rows"} selected`
           : `${total} ${total === 1 ? "row" : "rows"}`}
       </span>
-      <div className="flex items-center gap-1">
+      {/* On a narrow bar the two groups wrap as wholes; their words don't. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 whitespace-nowrap">
         {sizes.length > 0 && (
           // A borderless select, so it reads as part of the sentence.
-          <span className="mr-3 flex items-center gap-1">
+          <span className="flex items-center gap-1">
             Rows per page
             <Select value={String(pageSize)} onValueChange={(v) => table.setPageSize(Number(v))}>
               <SelectTrigger variant="borderless" aria-label="Rows per page" className="w-auto min-w-0 gap-1 px-2" />
@@ -1751,31 +1752,33 @@ function DataTablePagination<TData>({
             </Select>
           </span>
         )}
-        <span>
-          Page {page} of {pageCount}
+        <span className="flex items-center gap-1">
+          <span>
+            Page {page} of {pageCount}
+          </span>
+          <Tooltip content="Previous page">
+            <Button
+              variant="ghost"
+              size={iconSize}
+              aria-label="Previous page"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              <Prev />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Next page">
+            <Button
+              variant="ghost"
+              size={iconSize}
+              aria-label="Next page"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              <Next />
+            </Button>
+          </Tooltip>
         </span>
-        <Tooltip content="Previous page">
-          <Button
-            variant="ghost"
-            size={iconSize}
-            aria-label="Previous page"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <Prev />
-          </Button>
-        </Tooltip>
-        <Tooltip content="Next page">
-          <Button
-            variant="ghost"
-            size={iconSize}
-            aria-label="Next page"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            <Next />
-          </Button>
-        </Tooltip>
       </div>
     </div>
   );

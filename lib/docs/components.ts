@@ -57,7 +57,7 @@ export const componentList: ComponentEntry[] = [
   { slug: "sidebar", name: "Sidebar", description: "Refined, composable sidebar with offcanvas collapse, a drag-resize rail, and a mobile drawer.", gridSize: "large" },
   { slug: "slider", name: "Slider", description: "One slider, two ladder steps: the default pip/scrubber design and the compact design with range mode and value display.", gridSize: "small" },
   { slug: "switch", name: "Switch", description: "Toggle switch with animated thumb and label.", gridSize: "small" },
-  { slug: "table", name: "Table", description: "Data table with row hover effects and semantic markup.", gridSize: "medium" },
+  { slug: "table", name: "Table", description: "Data table with row hover effects and semantic markup.", gridSize: "small" },
   { slug: "tabs", name: "Tabs", description: "Tab navigation with smooth pill animations.", gridSize: "small" },
   { slug: "textarea", name: "Textarea", description: "A multi-line text field with the Input's hairline that grows with its content.", gridSize: "small" },
   { slug: "thinking-indicator", name: "ThinkingIndicator", description: "Animated status indicator with morphing SVG and cycling text.", gridSize: "small" },

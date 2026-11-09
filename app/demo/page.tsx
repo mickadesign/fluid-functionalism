@@ -70,6 +70,7 @@ function DemoPageInner() {
     "input-group",
     "switch",
     "table",
+    "data-table",
     "card",
     "tabs",
     "thinking-indicator",

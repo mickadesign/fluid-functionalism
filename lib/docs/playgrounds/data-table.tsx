@@ -108,7 +108,7 @@ const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
 const flavoredSingle = new Set<string>(FLAVORED_SINGLE_SOURCE_SLUGS);
 const fluid = new Set<string>(FLUID_HOVER_SLUGS);
 
-function buildRows(): ComponentRow[] {
+export function buildRows(): ComponentRow[] {
   return componentList.map(({ slug, name, description }) => ({
     slug,
     name,
@@ -124,13 +124,13 @@ function buildRows(): ComponentRow[] {
 // Formatted by hand, not with the viewer's time zone: an ISO day read as a
 // local Date can land on the previous day and break hydration.
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-function formatDay(iso: string) {
+export function formatDay(iso: string) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", "Built on both": "purple", None: "gray" } as const;
+export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", "Built on both": "purple", None: "gray" } as const;
 
 const INSTALL_URL = "https://www.fluidfunctionalism.com/r";
 

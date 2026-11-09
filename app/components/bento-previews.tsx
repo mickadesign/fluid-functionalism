@@ -52,6 +52,22 @@ import {
 } from "@/registry/default/breadcrumb";
 import { BREADCRUMB_MENU_CLASS, EllipsisMenu } from "@/lib/docs/playgrounds/breadcrumb";
 import {
+  useDataTable,
+  DataTable,
+  DataTableColumnHeader,
+  DataTableSearch,
+  DataTableViewOptions,
+  DataTablePagination,
+  selectColumn,
+  type ColumnDef,
+} from "@/registry/default/data-table";
+import {
+  buildRows,
+  formatDay,
+  PRIMITIVE_COLOR,
+  type ComponentRow,
+} from "@/lib/docs/playgrounds/data-table";
+import {
   DropdownMenu as FlavoredDropdownMenu,
   DropdownTrigger as FlavoredDropdownTrigger,
   DropdownContent as FlavoredDropdownContent,
@@ -639,7 +655,7 @@ function TablePreview() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {/* 4 rows fit a medium tile's stage; the /demo stage and the
+          {/* 4 rows fit a tile's stage; the /demo stage and the
               /compare pair keep all 7, matching the shadcn original. */}
           {(inTile ? TABLE_ROWS.slice(0, 4) : TABLE_ROWS).map((row, i) => (
             <TableRow key={row[0]} index={i}>
@@ -650,6 +666,66 @@ function TablePreview() {
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+// The library listing itself, as on the DataTable docs page: newest first,
+// with search, the columns menu, selection, and pages.
+const DATA_TABLE_COLUMNS: ColumnDef<ComponentRow>[] = [
+  selectColumn<ComponentRow>(),
+  {
+    accessorKey: "name",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,
+    meta: { label: "Component" },
+    enableHiding: false,
+  },
+  {
+    accessorKey: "primitives",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Primitives" />,
+    cell: ({ row }) => (
+      <span className="flex h-[1lh] items-center">
+        <Badge variant="ghost" color={PRIMITIVE_COLOR[row.original.primitives]}>
+          {row.original.primitives}
+        </Badge>
+      </span>
+    ),
+    meta: { label: "Primitives" },
+  },
+  {
+    accessorKey: "props",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Props" />,
+    meta: { label: "Props", className: "tabular-nums" },
+  },
+  {
+    accessorKey: "added",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,
+    cell: ({ row }) => formatDay(row.original.added),
+    meta: { label: "Added", className: "tabular-nums whitespace-nowrap w-full" },
+  },
+];
+
+function DataTablePreview() {
+  const [data] = useState(buildRows);
+  const table = useDataTable({
+    data,
+    columns: DATA_TABLE_COLUMNS,
+    pageSize: 8,
+    getRowId: (row) => row.slug,
+    initialState: { sorting: [{ id: "added", desc: true }] },
+  });
+  return (
+    <div className="flex w-full max-w-[640px] flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <DataTableSearch table={table} column="name" placeholder="Search components…" />
+        <DataTableViewOptions table={table} className="ml-auto" />
+      </div>
+      <DataTable
+        table={table}
+        reorderColumns
+        empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
+      />
+      <DataTablePagination table={table} pageSizes={[8, 16, 32]} />
     </div>
   );
 }
@@ -1045,6 +1121,7 @@ export const previewMap: Record<string, React.FC> = {
   slider: SliderPreview,
   switch: SwitchPreview,
   table: TablePreview,
+  "data-table": DataTablePreview,
   "tabs": TabsPreview,
   "thinking-indicator": ThinkingIndicatorPreview,
   "thinking-steps": ThinkingStepsPreview,

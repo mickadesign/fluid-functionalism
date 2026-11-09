@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * left/right band by band.
  *
  * The size mix is balanced so the grid fills with NO holes at xl:
- * smalls needed = 2·(larges) + 1·(mediums) = 2·6 + 6 = 18 = smalls available.
+ * smalls needed = 2·(larges) + 1·(mediums) = 2·7 + 5 = 19 = smalls available.
  * At md (2 cols) only smalls take one column, so an odd small count leaves a
  * half row: the last small then spans the full row there (and goes back to
  * one column at xl). Adding a card or changing a gridSize breaks the xl
@@ -49,7 +49,8 @@ const displayOrder: { slug: string; side?: "right" }[] = [
   { slug: "carousel-dots", side: "right" },   // band 10 · large right
   { slug: "button" },
   { slug: "breadcrumb" },
-  { slug: "table" },                          // band 11 · medium left
+  { slug: "data-table" },                     // band 11 · large left
+  { slug: "table" },
   { slug: "dialog" },
   { slug: "calendar", side: "right" },        // band 12 · medium right
   { slug: "date-picker" },
@@ -59,6 +60,7 @@ const displayOrder: { slug: string; side?: "right" }[] = [
 const STAGE_PADDING: Record<string, string> = {
   sidebar: "px-4 py-8",
   table: "px-6 py-6",
+  "data-table": "px-6 py-6",
   card: "px-6 py-5",
   "command-menu": "px-6 py-8",
   calendar: "px-4 py-2",
