@@ -142,13 +142,18 @@ const bgVariants: Record<string, string> = {
     "[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_15%,transparent),color-mix(in_oklab,var(--btn-red)_20%,transparent))] group-hover:[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_25%,transparent),color-mix(in_oklab,var(--btn-red)_30%,transparent))] group-active:[--btn-bg:light-dark(color-mix(in_oklab,var(--btn-red)_15%,transparent),color-mix(in_oklab,var(--btn-red)_20%,transparent))] bg-[var(--btn-bg)] shadow-[0_0_0_1px_var(--btn-bg)] group-active:shadow-[0_0_0_0px_var(--btn-bg)]",
 };
 
-/* The rest state alone: every class above minus its group-hover: and
-   group-active: overrides. */
-const restBg = (classes: string) =>
-  classes
-    .split(" ")
-    .filter((c) => !c.startsWith("group-"))
-    .join(" ");
+/* A loading button's fill: each variant above minus its group-hover: and
+   group-active: overrides, so it holds the rest colors while the pointer is
+   still over the button that was just clicked. */
+const loadingBgVariants: Record<string, string> = Object.fromEntries(
+  Object.entries(bgVariants).map(([variant, classes]) => [
+    variant,
+    classes
+      .split(" ")
+      .filter((c) => !c.startsWith("group-hover:") && !c.startsWith("group-active:"))
+      .join(" "),
+  ])
+);
 
 /* Forced-active (`active` prop): pressed colors at full size; the
    geometric press-collapse still reacts on top. */
@@ -218,13 +223,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       resolvedSize === "compact" || resolvedSize === "icon-compact";
     const iconSize = isCompact ? 14 : 16;
     const shape = useShape();
-    // A loading button holds its rest fill: dropping the hover and press
-    // classes keeps the spinner from appearing on a lighter, hovered surface
-    // (the pointer is usually still over the button that was just clicked).
     const bgClass = active
       ? activeBgVariants[variant ?? "primary"]
       : loading
-        ? restBg(bgVariants[variant ?? "primary"])
+        ? loadingBgVariants[variant ?? "primary"]
         : bgVariants[variant ?? "primary"];
 
     const internals = (
@@ -255,9 +257,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                     dashes sit at 25% and 75% of the path so neither crosses
                     its start: a dash split there gets 2 extra caps and draws
                     1.5px too long. rotate(-90) puts the dots back at 3 and
-                    9 o'clock. */}
+                    9 o'clock. The 0.01 dash (not 0) keeps Safari drawing
+                    the round caps as dots. */}
                 <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none">
-                  <g className="origin-center animate-[spinner-turn_1s_cubic-bezier(0.65,0,0.35,1)_infinite] motion-reduce:[animation-duration:2s]">
+                  <g className="origin-center [transform-box:fill-box] animate-[spinner-turn_1s_cubic-bezier(0.65,0,0.35,1)_infinite] motion-reduce:[animation-duration:2s]">
                     <circle
                       cx="8"
                       cy="8"

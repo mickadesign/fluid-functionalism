@@ -1166,7 +1166,7 @@
         },
         "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "0 50",
+            "stroke-dasharray": "0.01 49.99",
             "stroke-dashoffset": "-25"
           },
           "50%": {
@@ -1216,7 +1216,7 @@
         },
         "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "0 50",
+            "stroke-dasharray": "0.01 49.99",
             "stroke-dashoffset": "-25"
           },
           "50%": {

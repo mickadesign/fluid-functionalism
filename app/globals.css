@@ -1156,7 +1156,7 @@ html.transitioning *::after {
 }
 
 @keyframes spinner-breathe {
-  0%, 100% { stroke-dasharray: 0 50; stroke-dashoffset: -25; }
+  0%, 100% { stroke-dasharray: 0.01 49.99; stroke-dashoffset: -25; }
   50%      { stroke-dasharray: 26 24; stroke-dashoffset: -12; }
 }
 
