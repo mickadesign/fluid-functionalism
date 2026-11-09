@@ -6,6 +6,7 @@ export const useDataTableProps: PropDef[] = [
   { name: "data", type: "TData[]", description: "The rows. Keep the array stable (state or useMemo), or TanStack recomputes every render." },
   { name: "columns", type: "ColumnDef<TData>[]", description: "TanStack column definitions. Same identity rule as data." },
   { name: "pageSize", type: "number", default: "10", description: "Rows per page." },
+  { name: "getSubRows", type: "(row: TData) => TData[] | undefined", description: "Gives rows children: the first data column gets a chevron and an indent, \u2192 / \u2190 open and close from a focused row, and a page keeps its parents however many children they open. TanStack's own option, passed through." },
   { name: "...options", type: "TableOptions<TData>", description: "Anything useReactTable accepts: initialState, controlled state with its on*Change handlers, getRowId, enableRowSelection. The core, sorted, filtered and paginated row models come set." },
 ];
 

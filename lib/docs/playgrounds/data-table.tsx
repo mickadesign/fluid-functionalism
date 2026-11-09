@@ -107,6 +107,8 @@ export type ComponentRow = {
   fluidHover: boolean;
   added: string;
   tags: string[];
+  /** The component's parts (its API tables), with sub-rows on. */
+  subRows?: ComponentRow[];
 };
 
 const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
@@ -124,6 +126,27 @@ export function buildRows(): ComponentRow[] {
     fluidHover: fluid.has(slug),
     added: ADDED[slug] ?? "",
     tags: dataTableTagsFor(slug),
+    subRows: partsOf(slug, name),
+  }));
+}
+
+/** A component's parts, from the same API tables the docs render: one row
+ *  per table (DropdownMenu, DropdownTrigger…), when it has more than one. */
+function partsOf(slug: string, name: string): ComponentRow[] | undefined {
+  const tables = API_REFERENCE[slug] ?? [];
+  if (tables.length < 2) return undefined;
+  const fluidHover = fluid.has(slug);
+  const primitives: Primitives = dual.has(slug) ? "Radix + Base UI" : flavoredSingle.has(slug) ? "Built on both" : "None";
+  return tables.map((t) => ({
+    slug: `${slug}/${t.title}`,
+    name: t.title,
+    summary: `Part of ${name}.`,
+    website: `fluidfunctionalism.com/docs/${slug}`,
+    primitives,
+    props: t.props.length,
+    fluidHover,
+    added: ADDED[slug] ?? "",
+    tags: [],
   }));
 }
 
@@ -221,7 +244,7 @@ function buildColumns(o: {
       header: "Website",
       cell: ({ row }) => (
         <a
-          href={`/docs/${row.original.slug}`}
+          href={`/docs/${row.original.slug.split("/")[0]}`}
           className="underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground"
         >
           {row.original.website}
@@ -240,6 +263,7 @@ function buildColumns(o: {
         className: "w-full min-w-64",
         lines: o.lines === "wrap" ? "wrap" : o.lines === "2" ? 2 : 1,
         icon: icon("file"),
+        editor: o.editable ? "text" : undefined,
       },
     },
     ...(o.rowActions
@@ -265,6 +289,17 @@ function buildColumns(o: {
         ]
       : []),
   ];
+}
+
+/** Writes one edit into the rows, a sub-row's into its parent's parts. */
+function updateRow(list: ComponentRow[], slug: string, key: string, value: unknown): ComponentRow[] {
+  return list.map((r) =>
+    r.slug === slug
+      ? { ...r, [key]: value }
+      : r.subRows
+        ? { ...r, subRows: updateRow(r.subRows, slug, key, value) }
+        : r
+  );
 }
 
 // ── State ────────────────────────────────────────────────
@@ -358,7 +393,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  {`,
     `    accessorKey: "summary",`,
     `    header: "Summary",`,
-    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : o.lines}${o.headerIcons ? ", icon: File" : ""} },`,
+    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : o.lines}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
     `  },`,
     ...(o.rowActions
       ? [
@@ -377,6 +412,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  data: ${o.editable ? "rows" : "components"},`,
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
+    ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
     `  initialState: {`,
     `    sorting: [{ id: "added", desc: true }],`,
     `    columnVisibility: { fluidHover: false },`,
@@ -441,6 +477,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // pinned, the rows scrolling between them).
   const [expanded, setExpanded] = useState(false);
   const [data, setData] = useState(buildRows);
+  // Sub-rows on, the rows carry their parts; off, they're left out (a new
+  // array, so the table builds its rows again).
+  const tableData = useMemo(
+    () => (state.expandable ? data : data.map((r) => ({ ...r, subRows: undefined }))),
+    [data, state.expandable]
+  );
   const icons = useIcons();
   const columns = useMemo(
     () =>
@@ -455,10 +497,11 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   );
 
   const table = useDataTable({
-    data,
+    data: tableData,
     columns,
     pageSize: Number(DEFAULT_STATE.pageSize),
     getRowId: (row) => row.slug,
+    getSubRows: (row) => row.subRows,
     initialState: {
       sorting: [{ id: "added", desc: true }],
       columnVisibility: { fluidHover: false },
@@ -485,6 +528,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     // The Tags column comes and goes with editing: the widths are read
     // again, so it starts at its own width rather than none.
     if (!next.resize || next.editable !== prev.editable) table.resetColumnSizing();
+    if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
     // The Summary control sets the column's own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
@@ -519,6 +563,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       align: pick(["auto", "auto", "center", "top"] as const),
       headerIcons: Math.random() > 0.3,
       editable: Math.random() > 0.5,
+      expandable: Math.random() > 0.5,
     });
 
   const toolbar = (state.filter !== "none" || state.viewMenu) && (
@@ -550,9 +595,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         onCellEdit={
           state.editable
             ? ({ row, columnId, value }) =>
-                setData((old) =>
-                  old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r))
-                )
+                setData((old) => updateRow(old, row.original.slug, columnId, value))
             : undefined
         }
       />
@@ -615,6 +658,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           label="Row actions"
           checked={state.rowActions}
           onToggle={() => set("rowActions", !state.rowActions)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sub-rows"
+          checked={state.expandable}
+          onToggle={() => set("expandable", !state.expandable)}
           className={PLAY_SWITCH}
         />
         <Switch

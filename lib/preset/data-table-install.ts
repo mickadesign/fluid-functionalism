@@ -13,6 +13,7 @@ import type { PresetGenerator } from "./generators";
 import {
   type DataTablePreset,
   DATA_TABLE_PROPS_OPTIONS,
+  DATA_TABLE_SAMPLE_PARTS,
   DATA_TABLE_SAMPLE_ROWS,
   DATA_TABLE_TAG_OPTIONS,
   dataTableTagsFor,
@@ -25,6 +26,16 @@ const PRIMITIVE_COLOR: Record<string, string> = {
 };
 
 function dataTableDemoFile(p: DataTablePreset): string {
+  // A sample row's parts as its sub-rows, written inline.
+  const partsOf = (r: (typeof DATA_TABLE_SAMPLE_ROWS)[number]) => {
+    const parts = p.expandable ? DATA_TABLE_SAMPLE_PARTS[r.slug] : undefined;
+    if (!parts) return "";
+    const sub = parts.map(
+      ([name, props]) =>
+        `{ slug: ${JSON.stringify(`${r.slug}/${name}`)}, name: ${JSON.stringify(name)}, summary: ${JSON.stringify(`Part of ${r.name}.`)}, primitives: ${JSON.stringify(r.primitives)}, props: ${props}, added: ${JSON.stringify(r.added)}${p.editable ? ", tags: []" : ""} }`
+    );
+    return `, subRows: [${sub.join(", ")}]`;
+  };
   const icons = p.headerIcons;
   const lines = p.lines === "wrap" ? `"wrap"` : p.lines;
   const parts = [
@@ -43,6 +54,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   const l: string[] = [];
 
   const edit = p.editable;
+  const tree = p.expandable;
   l.push(`"use client";`);
   l.push(``);
   if (edit) l.push(`import { useState } from "react";`);
@@ -65,13 +77,14 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  props: number;`);
   l.push(`  added: string;`);
   if (edit) l.push(`  tags: string[];`);
+  if (tree) l.push(`  subRows?: Row[];`);
   l.push(`};`);
   l.push(``);
   l.push(`// Sample rows in the playground's shape. Replace with your own data.`);
   l.push(`const ROWS: Row[] = [`);
   for (const r of DATA_TABLE_SAMPLE_ROWS) {
     l.push(
-      `  { slug: ${JSON.stringify(r.slug)}, name: ${JSON.stringify(r.name)}, summary: ${JSON.stringify(r.summary)}, primitives: ${JSON.stringify(r.primitives)}, props: ${r.props}, added: ${JSON.stringify(r.added)}${edit ? `, tags: ${JSON.stringify(dataTableTagsFor(r.slug))}` : ""} },`
+      `  { slug: ${JSON.stringify(r.slug)}, name: ${JSON.stringify(r.name)}, summary: ${JSON.stringify(r.summary)}, primitives: ${JSON.stringify(r.primitives)}, props: ${r.props}, added: ${JSON.stringify(r.added)}${edit ? `, tags: ${JSON.stringify(dataTableTagsFor(r.slug))}` : ""}${partsOf(r)} },`
     );
   }
   l.push(`];`);
@@ -143,7 +156,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    accessorKey: "summary",`);
   l.push(`    header: "Summary",`);
   l.push(`    // Last of the data columns: it takes the width left, at least 256px.`);
-  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${lines}${icon("File")} },`);
+  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${lines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
   l.push(`  },`);
   if (p.rowActions) {
     l.push(`  rowActionsColumn<Row>((row) => (`);
@@ -159,12 +172,22 @@ function dataTableDemoFile(p: DataTablePreset): string {
   if (edit) {
     l.push(`  // The table shows what your data holds: each edit writes back here.`);
     l.push(`  const [rows, setRows] = useState(ROWS);`);
+    if (tree) {
+      l.push(`  // A sub-row's edit lands in its parent's subRows.`);
+      l.push(`  const update = (list: Row[], slug: string, key: string, value: unknown): Row[] =>`);
+      l.push(`    list.map((r) =>`);
+      l.push(`      r.slug === slug`);
+      l.push(`        ? { ...r, [key]: value }`);
+      l.push(`        : r.subRows ? { ...r, subRows: update(r.subRows, slug, key, value) } : r`);
+      l.push(`    );`);
+    }
   }
   l.push(`  const table = useDataTable({`);
   l.push(`    data: ${edit ? "rows" : "ROWS"},`);
   l.push(`    columns,`);
   l.push(`    pageSize: ${p.pagination ? p.pageSize : "ROWS.length"},`);
   l.push(`    getRowId: (row) => row.slug,`);
+  if (tree) l.push(`    getSubRows: (row) => row.subRows,`);
   l.push(`    initialState: { sorting: [{ id: "added", desc: true }] },`);
   l.push(`  });`);
   l.push(``);
@@ -190,7 +213,11 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`      <DataTable`);
     for (const prop of tableProps) l.push(`        ${prop}`);
     l.push(`        onCellEdit={({ row, columnId, value }) =>`);
-    l.push(`          setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`);
+    l.push(
+      tree
+        ? `          setRows((old) => update(old, row.original.slug, columnId, value))`
+        : `          setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`
+    );
     l.push(`        }`);
     l.push(`      />`);
   } else l.push(`      <DataTable ${tableProps.join(" ")} />`);

@@ -24,6 +24,7 @@ import {
 import {
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -177,6 +178,12 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    // Sub-rows (getSubRows): an open row shows its children under it, on
+    // its own page (a page holds its parents, however many children they
+    // open), and a search that matches a child keeps its parent.
+    getExpandedRowModel: getExpandedRowModel(),
+    paginateExpandedRows: false,
+    filterFromLeafRows: true,
     // Every column sorts ascending first, numbers included (TanStack's own
     // default starts numbers descending), so a header click is predictable.
     sortDescFirst: false,
@@ -626,7 +633,14 @@ function DataTable<TData>({
       });
     wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
       const old = before.tops.get(tr.dataset.rowId!);
-      if (old === undefined) return;
+      // A row that wasn't there (a sub-row just opened) fades in where it
+      // lands while the rows below slide down to make room.
+      if (old === undefined) {
+        animate(tr, { opacity: [0, 1] }, spring.moderate).then(() => {
+          tr.style.opacity = "";
+        });
+        return;
+      }
       const dy = old - tr.offsetTop;
       if (!dy) return;
       animate(tr, { y: [dy, 0] }, spring.moderate).then(() => {
@@ -860,6 +874,32 @@ function DataTable<TData>({
       else toggleRow(id);
       return;
     }
+    // Sub-rows, as in a tree: → opens a row, or steps into its first child
+    // once open; ← closes it, or steps up to its parent.
+    if (onRow && !e.shiftKey && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      const row = rows.find((r) => r.id === id);
+      if (!row) return;
+      const step = (to: Element | null | undefined) => {
+        if (!(to instanceof HTMLElement)) return;
+        e.preventDefault();
+        to.focus({ preventScroll: true });
+        revealRow(to, fill ? (wrapRef.current?.querySelector("thead")?.offsetHeight ?? 0) : 0);
+      };
+      if (e.key === "ArrowRight") {
+        if (row.getCanExpand() && !row.getIsExpanded()) {
+          e.preventDefault();
+          captureLayout();
+          row.toggleExpanded(true);
+        } else if (row.getIsExpanded()) step(tr.nextElementSibling);
+      } else if (row.getIsExpanded()) {
+        e.preventDefault();
+        captureLayout();
+        row.toggleExpanded(false);
+      } else if (row.parentId) {
+        step(tr.parentElement?.querySelector(`tr[data-row-id="${CSS.escape(row.parentId)}"]`));
+      }
+      return;
+    }
     if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
     const bodyRows = Array.from((tr.parentElement as HTMLTableSectionElement).rows).filter(
       (r) => r.dataset.rowId
@@ -920,7 +960,7 @@ function DataTable<TData>({
       if (wrapRef.current?.contains(e.target as Node)) pointerFresh = true;
     };
     window.addEventListener("pointermove", onPointerMove, { passive: true });
-    const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End", "Enter", " ", "x", "X", "Escape", "a", "A"]);
+    const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "Enter", " ", "x", "X", "Escape", "a", "A"]);
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing || !ROW_KEYS.has(e.key)) return;
       const mod = e.metaKey || e.ctrlKey;
@@ -978,6 +1018,11 @@ function DataTable<TData>({
   // state change of the table (a Shift + arrow step re-rendered every cell,
   // editors and all).
   const layoutKey = visible.map((c) => `${c.id}:${linesOf(table, c) ?? ""}`).join("|");
+  // With sub-rows, the first data column carries the chevron and the
+  // indent.
+  const expanderId = table.getCanSomeRowsExpand()
+    ? visible.find((c) => c.accessorFn !== undefined)?.id
+    : undefined;
 
   const tableEl = (
     <EditContext.Provider value={stableEditing}>
@@ -1140,6 +1185,9 @@ function DataTable<TData>({
               row={row}
               i={i}
               selected={row.getIsSelected()}
+              someSelected={row.getIsSomeSelected()}
+              expanded={row.getIsExpanded()}
+              expanderId={expanderId}
               columns={table.options.columns}
               layoutKey={layoutKey}
               onRowClick={onRowClick}
@@ -1503,6 +1551,8 @@ function selectColumn<TData>(): ColumnDef<TData> {
         <Checkbox
           aria-label="Select row"
           checked={row.getIsSelected()}
+          // Some of its sub-rows picked, not all: the dash.
+          indeterminate={!row.getIsSelected() && row.getIsSomeSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={(checked) => row.toggleSelected(checked)}
         />
@@ -1512,6 +1562,54 @@ function selectColumn<TData>(): ColumnDef<TData> {
 }
 
 
+// ── Sub-rows ─────────────────────────────────────────────
+
+/** How far each level of sub-rows steps in: the chevron and its gap, so a
+ *  child's chevron sits under its parent's text. */
+const SUB_ROW_INDENT = 20;
+
+/** The chevron that opens a row's sub-rows. Not a tab stop: from the row,
+ *  → opens and ← closes. Turns a quarter on spring.fast. */
+function ExpandToggle({
+  expanded,
+  sharp,
+  onToggle,
+}: {
+  expanded: boolean;
+  sharp: boolean;
+  onToggle: () => void;
+}) {
+  const icons = useIcons();
+  const Chevron = icons["chevron-right"];
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-expanded={expanded}
+      aria-label={expanded ? "Collapse row" : "Expand row"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      className={cn(
+        // 16px, its hit area 4px wider each way; above an editor's reach.
+        "relative z-[1] flex size-4 shrink-0 items-center justify-center text-muted-foreground outline-none",
+        "after:absolute after:-inset-1 transition-colors duration-80 hover:bg-hover hover:text-foreground",
+        sharp ? "rounded-[1px]" : "rounded-[4px]"
+      )}
+    >
+      <motion.span
+        className="flex"
+        initial={false}
+        animate={{ rotate: expanded ? 90 : 0 }}
+        transition={spring.fast}
+      >
+        <Chevron size={14} strokeWidth={1.75} />
+      </motion.span>
+    </button>
+  );
+}
+
 // ── Body row ─────────────────────────────────────────────
 
 interface DataTableBodyRowProps<TData> {
@@ -1519,6 +1617,11 @@ interface DataTableBodyRowProps<TData> {
   row: Row<TData>;
   i: number;
   selected: boolean;
+  /** Compared only: some, not all, of its sub-rows are selected. */
+  someSelected: boolean;
+  expanded: boolean;
+  /** The column that carries the chevron and the indent, with sub-rows. */
+  expanderId: string | undefined;
   /** Compared only: new column definitions redraw the cells. */
   columns: unknown;
   /** Compared only: the visible columns and their text fitting. */
@@ -1544,6 +1647,8 @@ const DataTableBodyRow = memo(
       row,
       i,
       selected,
+      expanded,
+      expanderId,
       onRowClick,
       rowsFocusable,
       editable,
@@ -1612,17 +1717,50 @@ const DataTableBodyRow = memo(
             row={row}
             columnId={cell.column.id}
             label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
+            lines={lines}
             value={cell.getValue()}
           />
         ) : (
           flexRender(cell.column.columnDef.cell, cell.getContext())
         );
         // line-clamp needs a block of its own; a cell isn't one.
-        const content =
+        const fitted =
           lines === 2 ? (
             <div className="line-clamp-2 [overflow-wrap:anywhere]">{rendered}</div>
           ) : (
             rendered
+          );
+        // With sub-rows, the first data column indents by depth and leads
+        // with the chevron (or its width, so siblings' text lines up).
+        const content =
+          cell.column.id === expanderId ? (
+            <span
+              className="flex min-w-0 items-center gap-1"
+              style={row.depth ? { paddingLeft: row.depth * SUB_ROW_INDENT } : undefined}
+            >
+              {row.getCanExpand() ? (
+                <ExpandToggle
+                  expanded={expanded}
+                  sharp={shapeVariant === "sharp"}
+                  onToggle={() => {
+                    (table as Partial<DataTableExtras>).captureLayout?.();
+                    row.toggleExpanded();
+                  }}
+                />
+              ) : (
+                <span aria-hidden className="size-4 shrink-0" />
+              )}
+              <span
+                className={cn(
+                  "min-w-0 flex-1",
+                  (lines === 1 || (sized && lines === undefined)) && "truncate"
+                )}
+              >
+                {fitted}
+              </span>
+            </span>
+          ) : (
+            fitted
           );
         return (
           <TableCell
@@ -1693,6 +1831,9 @@ const DataTableBodyRow = memo(
     a.row === b.row &&
     a.i === b.i &&
     a.selected === b.selected &&
+    a.someSelected === b.someSelected &&
+    a.expanded === b.expanded &&
+    a.expanderId === b.expanderId &&
     a.columns === b.columns &&
     a.layoutKey === b.layoutKey &&
     a.onRowClick === b.onRowClick &&
@@ -1819,6 +1960,7 @@ function EditableCell<TData>({
   row,
   columnId,
   label,
+  lines,
   value,
 }: {
   editor: DataTableEditor;
@@ -1826,6 +1968,8 @@ function EditableCell<TData>({
   columnId: string;
   /** The editor's name: its column's (the table gives the row). */
   label: string;
+  /** The column's text fitting: 2 lines or "wrap" edit in a textarea. */
+  lines: ColumnLines | undefined;
   value: unknown;
 }) {
   "use no memo";
@@ -1859,6 +2003,27 @@ function EditableCell<TData>({
     commit(start.current);
     (e.target as HTMLElement).blur();
   };
+
+  if (type === "text" && (lines === 2 || lines === "wrap")) {
+    return (
+      <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className="min-w-0">
+        <WrappingField
+          label={label}
+          value={value == null ? "" : String(value)}
+          placeholder={options.placeholder}
+          maxLines={lines === 2 ? 2 : undefined}
+          onChange={commit}
+          onKeyDown={(e) => {
+            // One paragraph: Enter finishes, as in the one-line field.
+            if (e.key === "Enter") {
+              e.preventDefault();
+              (e.target as HTMLTextAreaElement).blur();
+            } else revert(e);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (type === "text") {
     return (
@@ -1928,6 +2093,55 @@ function EditableCell<TData>({
       placeholder={options.placeholder}
       label={label}
       onChange={commit}
+    />
+  );
+}
+
+/** The text editor for a column that wraps: a bare textarea that grows
+ *  with its text (to two lines for `lines: 2`, where the rest scrolls), so
+ *  the cell keeps the shape it has at rest. Sized by hand: field-sizing
+ *  isn't everywhere yet. */
+function WrappingField({
+  label,
+  value,
+  placeholder,
+  maxLines,
+  onChange,
+  onKeyDown,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  maxLines?: number;
+  onChange: (value: string) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+}) {
+  const sizeClasses = useSize();
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      aria-label={label}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      className={cn(
+        // The row's padding moves inside, so the whole cell takes the click.
+        "-my-(--table-cell-py) block w-full min-w-0 resize-none bg-transparent px-0 py-(--table-cell-py)",
+        "cursor-text text-foreground outline-none placeholder:text-muted-foreground",
+        "whitespace-normal [overflow-wrap:anywhere]",
+        maxLines === 2 ? "max-h-[calc(2lh+2*var(--table-cell-py))] overflow-y-auto [scrollbar-width:none]" : "overflow-hidden",
+        // The touch size keeps iOS from zooming into the field.
+        sizeClasses.field
+      )}
     />
   );
 }
@@ -2571,7 +2785,7 @@ function DataTablePagination<TData>({
 const subscribeNever = () => () => {};
 
 /** How far the bar floats above the table's bottom edge, or the window's. */
-const BAR_INSET = 16;
+const BAR_INSET = 20;
 
 interface DataTableSelectionBarProps<TData> {
   table: TanStackTable<TData>;
@@ -2703,7 +2917,7 @@ function DataTableSelectionBar<TData>({
             </span>
             {items.length > 0 && (
               <Button
-                variant="secondary"
+                variant="ghost"
                 size={compact ? "compact" : "default"}
                 onClick={() => setMenuOpen(true)}
                 aria-keyshortcuts={shortcut ?? undefined}
@@ -2713,7 +2927,18 @@ function DataTableSelectionBar<TData>({
                 {shortcut && <CommandMenuShortcut keys={shortcut} className="ml-1" />}
               </Button>
             )}
-            <Tooltip content="Clear selection (Esc)">
+            <Tooltip
+              content={
+                <span className="flex items-center gap-2">
+                  Clear selection
+                  {/* A key cap in the tooltip's inverted colors, as the
+                      Sidebar's tooltips draw theirs. */}
+                  <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background">
+                    Esc
+                  </kbd>
+                </span>
+              }
+            >
               <Button
                 variant="ghost"
                 size={compact ? "icon-compact" : "icon"}

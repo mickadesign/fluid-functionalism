@@ -114,7 +114,24 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tbO0f"`);
+    expect(code).toMatchInlineSnapshot(`"tcf3h"`);
+  });
+
+  // Version "b" codes were published before sub-rows joined the table.
+  it("a version-b code still decodes", () => {
+    const back = decodeDataTablePreset("tbO0f");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("b");
+    expect(back.preset).toEqual({
+      ...DEFAULT_DATA_TABLE_PRESET,
+      filter: "all",
+      selection: false,
+      pageSize: "20",
+      lines: "wrap",
+      align: "top",
+      headerIcons: false,
+      flavor: "base",
+    });
   });
 
   // Version "a" codes were published before editable cells joined the
@@ -158,6 +175,8 @@ const MATRIX = [
   { shape: "pill", size: "compact", flavor: "base", headerIcons: false },
   { editable: true },
   { editable: true, headerIcons: false, selection: false, rowActions: false, pagination: false },
+  { expandable: true },
+  { expandable: true, editable: true, selection: false },
 ];
 
 describe("data table preset install generator", () => {

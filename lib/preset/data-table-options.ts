@@ -41,6 +41,8 @@ export interface DataTablePlayState {
   /** Editable cells: Component (text), Props (number), Added (date) and a
    *  Tags column. */
   editable: boolean;
+  /** Rows with sub-rows: a component opens into its parts. */
+  expandable: boolean;
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -58,6 +60,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   align: "auto",
   headerIcons: true,
   editable: false,
+  expandable: false,
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -85,8 +88,8 @@ export const DATA_TABLE_PRESET_FIELDS_A: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
-// Version b adds editable cells.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version b adds editable cells: kept so its codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_B: readonly PresetField[] = [
   { key: "filter", values: ["column", "all", "none"], bits: 2 },
   { key: "viewMenu", values: [true, false], bits: 1 },
   { key: "selection", values: [true, false], bits: 1 },
@@ -104,14 +107,34 @@ export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
+// Version c adds sub-rows.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  { key: "filter", values: ["column", "all", "none"], bits: 2 },
+  { key: "viewMenu", values: [true, false], bits: 1 },
+  { key: "selection", values: [true, false], bits: 1 },
+  { key: "rowActions", values: [true, false], bits: 1 },
+  { key: "pagination", values: [true, false], bits: 1 },
+  { key: "pageSize", values: ["10", "5", "20"], bits: 2 },
+  { key: "resize", values: [true, false], bits: 1 },
+  { key: "reorder", values: [true, false], bits: 1 },
+  { key: "lines", values: ["1", "2", "wrap"], bits: 2 },
+  { key: "align", values: ["auto", "center", "top"], bits: 2 },
+  { key: "headerIcons", values: [true, false], bits: 1 },
+  { key: "editable", values: [false, true], bits: 1 },
+  { key: "expandable", values: [false, true], bits: 1 },
+  { key: "flavor", values: ["radix", "base"], bits: 3 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
+  { key: "size", values: ["default", "compact"], bits: 2 },
+];
+
 // ── Registration (tag "t") ──────────────────────────────────────────────────
 
 export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "b",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "c",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
@@ -207,3 +230,13 @@ const TAGS: Record<string, readonly string[]> = {
 export function dataTableTagsFor(slug: string): string[] {
   return [...(TAGS[slug] ?? [])];
 }
+
+// ── Sub-rows ────────────────────────────────────────────────────────────────
+// The parts a few sample components open into, with their props counts.
+
+export const DATA_TABLE_SAMPLE_PARTS: Record<string, readonly (readonly [string, number])[]> = {
+  "data-table": [["useDataTable", 2], ["DataTable", 13], ["DataTableSearch", 4], ["DataTablePagination", 4], ["DataTableSelectionBar", 6]],
+  "command-menu": [["CommandMenu", 10], ["CommandMenuDialog", 11], ["CommandMenuInput", 2], ["CommandMenuItem", 8]],
+  sidebar: [["SidebarProvider", 9], ["Sidebar", 6], ["SidebarMenu", 4], ["SidebarMenuItem", 7]],
+  combobox: [["Combobox", 13], ["ComboboxInput", 6], ["ComboboxChips", 6], ["ComboboxItem", 4]],
+};
