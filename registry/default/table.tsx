@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -150,6 +151,24 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       [selectedKey]
     );
 
+    // A divider hides once the highlight's fill covers it, read from where
+    // the fill is this frame rather than where it's headed: hiding on the
+    // hover change itself would drop the rule before the fill gets there.
+    // Straight to the DOM (no render per frame); reads first, then writes.
+    // A rule goes at once as the fill reaches it and fades back in after.
+    const hideCoveredRules = useCallback((box: { y: number; height: number; opacity: number }) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const top = container.getBoundingClientRect().top;
+      const rows = Array.from(container.querySelectorAll<HTMLTableRowElement>("thead > tr, tbody > tr"));
+      const covered = rows.map((tr) => {
+        if (box.opacity < 0.5) return false;
+        const bottom = tr.getBoundingClientRect().bottom - top;
+        return bottom >= box.y - 1.5 && bottom <= box.y + box.height + 1.5;
+      });
+      rows.forEach((tr, i) => tr.toggleAttribute("data-under-highlight", covered[i]));
+    }, []);
+
     const contextValue = useMemo(
       () => ({ registerItem, activeStore, selected, registerHead }),
       [registerItem, activeStore, selected, registerHead]
@@ -204,7 +223,12 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
           {/* Hover background, rounded by the shape setting like the
               selection under it. */}
-          <FluidHoverHighlight hover={hover} className={shape.bg} transition={repeating || snap.on ? false : undefined} />
+          <FluidHoverHighlight
+            hover={hover}
+            className={shape.bg}
+            transition={repeating || snap.on ? false : undefined}
+            onFrame={hideCoveredRules}
+          />
           <FluidHoverHighlight hover={headHover} hidden={hideHeadHighlight} className={shape.bg} />
 
           <table
@@ -269,22 +293,17 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
 
     const isBodyRow = index !== undefined;
     // Each row draws only its bottom border, so the lit row's top edge is the
-    // border of the row above it. Hiding both leaves the highlight with no
-    // rule along or through it. Row 0's top edge is the header's border.
-    // 2: this row is lit; 1: its border borders the lit row; 0: neither.
-    const litState = useFluidHoverSelect(ctx?.activeStore, (active) => {
-      if (active === null) return 0;
-      if (!isBodyRow) return active === 0 ? 1 : 0;
-      if (index === active) return 2;
-      return index === active - 1 ? 1 : 0;
-    });
+    // border of the row above it. Both hide under the highlight (Table sets
+    // data-under-highlight as its fill covers them), so it has no rule along
+    // or through it. Row 0's top edge is the header's border.
+    const lit = useFluidHoverSelect(ctx?.activeStore, (active) => isBodyRow && active === index);
     // A selected row, and the row above it, drop their rule too, so a
     // selected run is one block with no lines through or over it.
     const selected = ctx?.selected;
     const nextIndex = isBodyRow ? index + 1 : 0;
     const bySelection =
       !!selected && ((isBodyRow && selected.has(index)) || selected.has(nextIndex));
-    const hideBorder = litState > 0 || bySelection;
+    const hideBorder = bySelection;
 
     return (
       <tr
@@ -298,8 +317,8 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         // `is-active` lets every cell read the lit state through the row.
         className={cn(
           "group/row relative z-10 border-b transition-[border-color] duration-80",
-          hideBorder ? "border-transparent" : "border-accent/40",
-          litState === 2 && "is-active",
+          hideBorder ? "border-transparent" : "border-accent/40 data-[under-highlight]:border-transparent data-[under-highlight]:duration-0",
+          lit && "is-active",
           className
         )}
         // Weight goes through the variable font's axis with the same values

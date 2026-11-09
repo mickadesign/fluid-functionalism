@@ -34,7 +34,8 @@ export interface DataTablePlayState {
   pageSize: "10" | "5" | "20";
   resize: boolean;
   reorder: boolean;
-  /** How the Summary column's text fits. */
+  /** "wrap" wraps every text column; anything else is off: names and
+   *  links keep 1 line, the Summary 2. ("1" only arrives from old codes.) */
   lines: DataTableLines;
   align: "auto" | "center" | "top";
   headerIcons: boolean;
@@ -56,7 +57,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   pageSize: "10",
   resize: true,
   reorder: true,
-  lines: "1",
+  lines: "2",
   align: "auto",
   headerIcons: false,
   editable: false,
@@ -127,7 +128,8 @@ export const DATA_TABLE_PRESET_FIELDS_C: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
-// Version d turns header icons off by default.
+// Version d turns header icons off by default, and text fitting into one
+// wrap switch: off, names and links keep 1 line and the Summary 2.
 export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "filter", values: ["column", "all", "none"], bits: 2 },
   { key: "viewMenu", values: [true, false], bits: 1 },
@@ -137,7 +139,7 @@ export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "pageSize", values: ["10", "5", "20"], bits: 2 },
   { key: "resize", values: [true, false], bits: 1 },
   { key: "reorder", values: [true, false], bits: 1 },
-  { key: "lines", values: ["1", "2", "wrap"], bits: 2 },
+  { key: "lines", values: ["2", "wrap"], bits: 1 },
   { key: "align", values: ["auto", "center", "top"], bits: 2 },
   { key: "headerIcons", values: [false, true], bits: 1 },
   { key: "editable", values: [false, true], bits: 1 },

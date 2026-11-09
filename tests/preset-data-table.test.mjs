@@ -114,7 +114,7 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tdanR"`);
+    expect(code).toMatchInlineSnapshot(`"tdIPp"`);
   });
 
   // Version "c" codes were published while header icons defaulted on.

@@ -184,12 +184,16 @@ function buildColumns(o: {
   editable: boolean;
 }): ColumnDef<ComponentRow>[] {
   const icon = (name: keyof Icons) => (o.icons ? o.icons[name] : undefined);
+  // Text wrap on wraps every text column; off, names and links keep one
+  // line and the Summary two.
+  const wrap = o.lines === "wrap";
+  const lines = wrap ? "wrap" : 1;
   return [
     ...(o.selection ? [selectColumn<ComponentRow>()] : []),
     {
       accessorKey: "name",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,
-      meta: { label: "Component", icon: icon("square-library"), editor: o.editable ? "text" : undefined },
+      meta: { label: "Component", lines, icon: icon("square-library"), editor: o.editable ? "text" : undefined },
       enableHiding: false,
     },
     {
@@ -265,7 +269,7 @@ function buildColumns(o: {
       // Room for most of the URL before it cuts short.
       meta: {
         label: "Website",
-        lines: 1,
+        lines,
         className: "min-w-60",
         icon: icon("link"),
         // The text follows the link; beside it, the cell edits.
@@ -280,7 +284,7 @@ function buildColumns(o: {
       meta: {
         label: "Summary",
         className: "w-full min-w-64",
-        lines: o.lines === "wrap" ? "wrap" : o.lines === "2" ? 2 : 1,
+        lines: wrap ? "wrap" : 2,
         icon: icon("file"),
         editor: o.editable ? "text" : undefined,
       },
@@ -367,8 +371,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,`,
     `    enableHiding: false,`,
     ...(o.headerIcons || o.editable
-      ? [`    meta: { ${[o.headerIcons && "icon: SquareLibrary", o.editable && `editor: "text"`].filter(Boolean).join(", ")} },`]
-      : []),
+      ? [`    meta: { ${[`lines: ${o.lines === "wrap" ? `"wrap"` : 1}`, o.headerIcons && "icon: SquareLibrary", o.editable && `editor: "text"`].filter(Boolean).join(", ")} },`]
+      : [`    meta: { lines: ${o.lines === "wrap" ? `"wrap"` : 1} },`]),
     `  },`,
     `  {`,
     `    accessorKey: "primitives",`,
@@ -412,12 +416,12 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    accessorKey: "website",`,
     `    header: "Website",`,
     `    cell: ({ row }) => <a href={row.original.href}>{row.original.website}</a>,`,
-    `    meta: { className: "min-w-60", lines: 1${o.headerIcons ? ", icon: Link" : ""}${o.editable ? `, editor: { type: "text", link: true }` : ""} },`,
+    `    meta: { className: "min-w-60", lines: ${o.lines === "wrap" ? `"wrap"` : 1}${o.headerIcons ? ", icon: Link" : ""}${o.editable ? `, editor: { type: "text", link: true }` : ""} },`,
     `  },`,
     `  {`,
     `    accessorKey: "summary",`,
     `    header: "Summary",`,
-    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : o.lines}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
+    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : 2}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
     `  },`,
     ...(o.rowActions
       ? [
@@ -575,9 +579,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     if (!next.resize || next.editable !== prev.editable) table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
-    // The Summary control sets the column's own lines; a wrap chosen in the
+    // The Text wrap switch sets the columns' own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
-    if (next.lines !== prev.lines) table.setColumnLines("summary", undefined);
+    if (next.lines !== prev.lines)
+      for (const id of ["name", "website", "summary"]) table.setColumnLines(id, undefined);
     table.setPageSize(next.pagination ? Number(next.pageSize) : data.length);
     table.setPageIndex(0);
     setState(next);
@@ -604,7 +609,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       pageSize: pick(["5", "10", "20"] as const),
       resize: Math.random() > 0.3,
       reorder: Math.random() > 0.3,
-      lines: pick(["1", "2", "wrap"] as const),
+      lines: pick(["2", "wrap"] as const),
       align: pick(["auto", "auto", "center", "top"] as const),
       headerIcons: Math.random() > 0.3,
       editable: Math.random() > 0.5,
@@ -701,17 +706,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           onToggle={() => set("editable", !state.editable)}
           className={PLAY_SWITCH}
         />
-        <PlayField label="Summary">
-          <PlaySelect
-            value={state.lines}
-            onChange={(v) => set("lines", v as Lines)}
-            options={[
-              { value: "1", label: "1 line" },
-              { value: "2", label: "2 lines" },
-              { value: "wrap", label: "Wrap" },
-            ]}
-          />
-        </PlayField>
+        <Switch
+          label="Text wrap"
+          checked={state.lines === "wrap"}
+          onToggle={() => set("lines", state.lines === "wrap" ? "2" : "wrap")}
+          className={PLAY_SWITCH}
+        />
         <PlayField label="Cell alignment">
           <PlaySelect
             value={state.align}

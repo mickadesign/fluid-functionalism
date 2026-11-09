@@ -37,7 +37,9 @@ function dataTableDemoFile(p: DataTablePreset): string {
     return `, subRows: [${sub.join(", ")}]`;
   };
   const icons = p.headerIcons;
-  const lines = p.lines === "wrap" ? `"wrap"` : p.lines;
+  const wrap = p.lines === "wrap";
+  const lines = wrap ? `"wrap"` : "1";
+  const summaryLines = wrap ? `"wrap"` : "2";
   const parts = [
     "useDataTable",
     "DataTable",
@@ -99,7 +101,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    accessorKey: "name",`);
   l.push(`    header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,`);
   l.push(`    enableHiding: false,`);
-  l.push(`    meta: { label: "Component"${icon("SquareLibrary")}${edit ? `, editor: "text"` : ""} },`);
+  l.push(`    meta: { label: "Component", lines: ${lines}${icon("SquareLibrary")}${edit ? `, editor: "text"` : ""} },`);
   l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "primitives",`);
@@ -152,13 +154,13 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`        {\`/docs/\${row.original.slug}\`}`);
   l.push(`      </a>`);
   l.push(`    ),`);
-  l.push(`    meta: { label: "Website", lines: 1, className: "min-w-60"${icon("Link")} },`);
+  l.push(`    meta: { label: "Website", lines: ${lines}, className: "min-w-60"${icon("Link")} },`);
   l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "summary",`);
   l.push(`    header: "Summary",`);
   l.push(`    // Last of the data columns: it takes the width left, at least 256px.`);
-  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${lines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
+  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${summaryLines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
   l.push(`  },`);
   if (p.rowActions) {
     l.push(`  rowActionsColumn<Row>((row) => (`);

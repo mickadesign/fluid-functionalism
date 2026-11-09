@@ -1117,8 +1117,6 @@ function DataTable<TData>({
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
       snapKey={expandTick}
       hideHeadHighlight={!!drag}
-      // While anything is selected every box stays up (see selectColumn).
-      data-selecting={Object.keys(table.getState().rowSelection).length > 0 || undefined}
       // The skeleton rows are aria-hidden; this tells assistive tech the
       // table is loading rather than empty.
       aria-busy={loading || undefined}
@@ -1595,11 +1593,12 @@ const SelectHit = forwardRef<HTMLSpanElement, SelectHitProps>(
 SelectHit.displayName = "SelectHit";
 
 /** A selection box shows only where it's wanted: on the row under the
- *  pointer or holding focus, on a checked box, on every row once anything
- *  is selected, and always on touch screens, which have no hover. The cell
- *  still takes the click while the box is hidden. */
+ *  pointer or holding focus, on a checked (or, in the header, partly
+ *  checked) box, and always on touch screens, which have no hover. A
+ *  selection doesn't bring the rest up. The cell still takes the click
+ *  while the box is hidden. */
 const SELECT_REVEAL =
-  "opacity-0 transition-opacity duration-80 group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [table[data-selecting]_&]:opacity-100 [@media(hover:none)]:opacity-100";
+  "opacity-0 transition-opacity duration-80 group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100";
 
 /** The selectable rows the search leaves, sub-rows included, on every page. */
 function selectableRows<TData>(table: TanStackTable<TData>) {
@@ -2195,7 +2194,8 @@ function EditorBody<TData>({
   };
   const onBlur = hold.onBlur;
 
-  if (type === "text" && (lines === 2 || lines === "wrap")) {
+  // A link keeps its own field (the text follows the link) at any lines.
+  if (type === "text" && !options.link && (lines === 2 || lines === "wrap")) {
     return (
       <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className="min-w-0">
         <WrappingField
