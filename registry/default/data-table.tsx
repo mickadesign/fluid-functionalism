@@ -98,6 +98,7 @@ import {
   type CommandMenuItemData,
 } from "@/components/ui/command-menu";
 import { Elevated } from "@/lib/elevated";
+import { badgeColors, type BadgeColor } from "@/components/ui/badge";
 
 // ---------------------------------------------------------------------------
 // DataTable is TanStack Table drawn with the library's Table: the same fluid
@@ -155,7 +156,11 @@ type DataTableEditor =
   | { type: "number"; options?: readonly number[]; placeholder?: string }
   | { type: "date"; placeholder?: string }
   | { type: "tags"; options?: readonly string[]; creatable?: boolean; placeholder?: string }
-  | { type: "select"; options: readonly string[] };
+  | { type: "select"; options: readonly DataTableSelectOption[] };
+
+/** A select editor's option: a value, or a value with a Badge color that
+ *  the menu shows as the option's dot (match the cell's badge). */
+type DataTableSelectOption = string | { value: string; label?: string; color?: BadgeColor };
 
 /** One edit, as DataTable's `onCellEdit` receives it. Write `value` into
  *  your data: the table shows what your data holds. */
@@ -1815,7 +1820,9 @@ const DataTableBodyRow = memo(
               <span
                 className={cn(
                   "min-w-0 flex-1",
-                  (lines === 1 || (sized && lines === undefined)) && "truncate"
+                  // An editor cuts its own text short, and its raised field
+                  // must reach past this box.
+                  !editor && (lines === 1 || (sized && lines === undefined)) && "truncate"
                 )}
               >
                 {fitted}
@@ -1844,6 +1851,8 @@ const DataTableBodyRow = memo(
               // max-w-0 keeps long text from setting the column's
               // width, so it fits the room the column is given.
               lines !== undefined && "max-w-0",
+              // An editor raised past the column shows over its neighbors.
+              "has-[[data-cell-expanded]]:overflow-visible",
               meta?.className
             )}
           >
@@ -1969,7 +1978,7 @@ const editorType = (e: DataTableEditor) => (typeof e === "string" ? e : e.type);
 interface EditorOptions {
   placeholder?: string;
   link?: boolean | ((value: string) => string);
-  options?: readonly (number | string)[];
+  options?: readonly (number | string | Exclude<DataTableSelectOption, string>)[];
   creatable?: boolean;
 }
 const editorOptions = (e: DataTableEditor): EditorOptions =>
@@ -1989,15 +1998,6 @@ function toIsoDay(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
-
-// The in-cell text field is the cell's text itself: no border, no fill,
-// only the text cursor on hover and the caret once focused. It spans the
-// row's height, so a click anywhere in the cell lands in it.
-const CELL_FIELD = [
-  "-my-(--table-cell-py) block h-[calc(1lh+2*var(--table-cell-py))] w-full min-w-0",
-  "cursor-text bg-transparent p-0 text-foreground outline-none",
-  "placeholder:text-muted-foreground text-ellipsis",
-];
 
 // Controls that carry their own field (Combobox, DatePicker) sit in the
 // row's full height, reaching into the cell's padding just far enough that
@@ -2032,10 +2032,31 @@ function blurOnEscape(e: KeyboardEvent<HTMLElement>) {
   target.blur();
 }
 
+/** An editor taking focus brings its whole cell into the table's visible
+ *  box first (sideways, by as little as it takes), so a cell half scrolled
+ *  out of view never opens its menu or calendar beside the table, past the
+ *  edge of whatever holds it. */
+function revealCell(e: FocusEvent<HTMLElement> | PointerEvent<HTMLElement>) {
+  const td = (e.target as HTMLElement).closest("td");
+  const viewport = td?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+  if (!td || !viewport) return;
+  const r = td.getBoundingClientRect();
+  const v = viewport.getBoundingClientRect();
+  if (r.left < v.left) viewport.scrollLeft -= v.left - r.left;
+  else if (r.right > v.right) viewport.scrollLeft += Math.min(r.right - v.right, r.left - v.left);
+}
+
 function EditableCell<TData>(props: Parameters<typeof EditorBody<TData>>[0]) {
   return (
-    // A box of no layout of its own, there to hear Escape from any editor.
-    <div className="contents" onKeyDown={blurOnEscape}>
+    // A box of no layout of its own, there to hear Escape from any editor
+    // and to bring the cell into view as one takes focus.
+    <div
+      className="contents"
+      onKeyDown={blurOnEscape}
+      onFocus={revealCell}
+      // Safari doesn't focus a button on click: the press brings it in too.
+      onPointerDownCapture={revealCell}
+    >
       <EditorBody {...props} />
     </div>
   );
@@ -2107,36 +2128,18 @@ function EditorBody<TData>({
         href={typeof link === "function" ? link(text) : /^[a-z][a-z\d+.-]*:/i.test(text) ? text : `https://${text}`}
         placeholder={options.placeholder}
         onChange={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-        }}
       />
     );
   }
 
   if (type === "text") {
     return (
-      <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className="min-w-0">
-        <input
-          type="text"
-          aria-label={label}
+      <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className="relative h-[1lh] min-w-0">
+        <PlainTextField
+          label={label}
           value={value == null ? "" : String(value)}
           placeholder={options.placeholder}
-          onChange={(e) => commit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          }}
-          // At rest the field reads as truncated text: a trackpad can't
-          // scroll its hidden end into view, and leaving it shows the
-          // start again with its ellipsis.
-          onScroll={(e) => {
-            if (document.activeElement !== e.currentTarget) e.currentTarget.scrollLeft = 0;
-          }}
-          onBlurCapture={(e) => {
-            e.currentTarget.scrollLeft = 0;
-          }}
-          // The touch size keeps iOS from zooming into the field.
-          className={cn(CELL_FIELD, sizeClasses.field)}
+          onChange={commit}
         />
       </div>
     );
@@ -2150,7 +2153,7 @@ function EditorBody<TData>({
         onFocus={onFocus}
         onBlur={onBlur}
         value={value == null ? "" : String(value)}
-        options={(options.options as readonly string[] | undefined) ?? []}
+        options={(options.options as readonly DataTableSelectOption[] | undefined) ?? []}
         label={label}
         display={display}
         onChange={commit}
@@ -2210,10 +2213,155 @@ function EditorBody<TData>({
   );
 }
 
+// ── One-line text editors ──
+
+/** The widest a raised cell editor grows; longer text wraps inside it. */
+const EXPANDED_MAX = 400;
+
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+
+/** The width of a value on one line, in the field's own font. */
+function textWidth(el: HTMLElement, text: string) {
+  if (measureCtx === undefined) measureCtx = document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return 0;
+  const cs = getComputedStyle(el);
+  measureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  return measureCtx.measureText(text).width;
+}
+
+/** A one-line cell's editor while it has focus: a bare textarea on the
+ *  cell's own line while the text fits; once it's wider than the cell, a
+ *  raised field over the cells beside and below (a hairline, the card
+ *  fill, the shape's corners) as wide as the text up to 400px, past which
+ *  the text wraps and the field grows down. Its first line stays exactly
+ *  where the cell's text was. Enter finishes. */
+function CellTextEditor({
+  label,
+  value,
+  placeholder,
+  onChange,
+  onDone,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  onDone: () => void;
+}) {
+  const sizeClasses = useSize();
+  const shape = useShape();
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  // Sized from the text, in the handlers that change it: no extra render.
+  const measure = (el: HTMLTextAreaElement) => {
+    const room = el.parentElement?.clientWidth ?? 0;
+    const text = textWidth(el, el.value || el.placeholder);
+    // 8px of padding a side, the 1px hairline, room for the caret.
+    if (text <= room) setWidth(null);
+    else setWidth(Math.min(EXPANDED_MAX, Math.max(room + 18, Math.ceil(text) + 22)));
+  };
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+    measure(el);
+  }, []);
+  // The raised field's height follows its wrapped text.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "";
+    if (width !== null) el.style.height = `${el.scrollHeight}px`;
+  }, [value, width]);
+  const raised = width !== null;
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      aria-label={label}
+      value={value}
+      placeholder={placeholder}
+      data-cell-expanded={raised || undefined}
+      onChange={(e) => {
+        measure(e.currentTarget);
+        onChange(e.target.value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onDone();
+        }
+      }}
+      onBlur={onDone}
+      style={raised ? { width } : undefined}
+      className={cn(
+        "block min-w-0 resize-none overflow-hidden text-foreground outline-none placeholder:text-muted-foreground",
+        raised
+          ? [
+              // Out 9px (8px padding, the hairline) and up to the row's top,
+              // its padding putting the first line where the cell's was.
+              "absolute -left-[9px] -top-(--table-cell-py) z-30 border border-border bg-card",
+              "min-h-[calc(1lh+2*var(--table-cell-py))] px-2 py-[calc(var(--table-cell-py)-1px)]",
+              "whitespace-pre-wrap [overflow-wrap:anywhere]",
+              shape.input,
+            ]
+          : "h-[1lh] w-full whitespace-nowrap bg-transparent p-0",
+        // The touch size keeps iOS from zooming into the field.
+        sizeClasses.field
+      )}
+    />
+  );
+}
+
+/** The one-line text editor: at rest the cell's own text, cut short with
+ *  an ellipsis (a focusable span, so it never scrolls sideways); a click
+ *  anywhere in the cell, or focus, swaps in the editor. */
+function PlainTextField({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  return editing ? (
+    <CellTextEditor
+      label={label}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      onDone={() => setEditing(false)}
+    />
+  ) : (
+    <span
+      role="textbox"
+      tabIndex={0}
+      aria-label={label}
+      aria-readonly={false}
+      onFocus={() => setEditing(true)}
+      // One line, cut short; an invisible layer over the row's full height
+      // (its box is the editor's, not this clipped line) takes clicks
+      // anywhere in the cell.
+      className={cn(
+        "block h-[1lh] cursor-text truncate outline-none",
+        "before:absolute before:inset-x-0 before:-inset-y-(--table-cell-py) before:content-['']",
+        !value && "text-muted-foreground"
+      )}
+    >
+      {value || placeholder}
+    </span>
+  );
+}
+
 /** A text field that reads as a link at rest: a click on the text follows
- *  it, a click beside it (anywhere else in the cell) swaps in the field,
- *  focused with its caret at the end. F2 on the focused link edits too.
- *  Leaving the field shows the link again. */
+ *  it, a click beside it (anywhere else in the cell, the right padding
+ *  included) swaps in the editor with the caret at the end. F2 on the
+ *  focused link edits too. Leaving the editor shows the link again. */
 function LinkField({
   boxRef,
   onFocus,
@@ -2223,7 +2371,6 @@ function LinkField({
   href,
   placeholder,
   onChange,
-  onKeyDown,
 }: {
   boxRef: RefObject<HTMLDivElement | null>;
   onFocus: () => void;
@@ -2233,25 +2380,14 @@ function LinkField({
   href: string;
   placeholder?: string;
   onChange: (value: string) => void;
-  onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const sizeClasses = useSize();
   const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  useLayoutEffect(() => {
-    const input = inputRef.current;
-    if (!editing || !input) return;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  }, [editing]);
   return (
     <div
       ref={boxRef}
       onFocus={onFocus}
-      onBlur={(e) => {
-        onBlur();
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setEditing(false);
-      }}
+      onBlur={onBlur}
       onClick={(e) => {
         if (!editing && !(e.target as Element).closest("a")) setEditing(true);
       }}
@@ -2259,25 +2395,20 @@ function LinkField({
       // anywhere beside the text edits, even when a long address fills
       // the column.
       className={cn(
-        "-my-(--table-cell-py) flex h-[calc(1lh+2*var(--table-cell-py))] min-w-0 cursor-text items-center",
+        "relative -my-(--table-cell-py) flex h-[calc(1lh+2*var(--table-cell-py))] min-w-0 cursor-text items-center",
         sizeClasses.variant === "compact" ? "-mr-2.5 pr-2.5" : "-mr-3 pr-3"
       )}
     >
       {editing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          aria-label={label}
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          // The touch size keeps iOS from zooming into the field.
-          className={cn(
-            "block w-full min-w-0 bg-transparent p-0 text-foreground outline-none placeholder:text-muted-foreground text-ellipsis",
-            sizeClasses.field
-          )}
-        />
+        <div className="relative h-[1lh] min-w-0 flex-1">
+          <CellTextEditor
+            label={label}
+            value={value}
+            placeholder={placeholder}
+            onChange={onChange}
+            onDone={() => setEditing(false)}
+          />
+        </div>
       ) : (
         <a
           href={href}
@@ -2368,13 +2499,14 @@ function SelectEditor({
   onFocus: () => void;
   onBlur: () => void;
   value: string;
-  options: readonly string[];
+  options: readonly DataTableSelectOption[];
   label: string;
   display: ReactNode;
   onChange: (value: string) => void;
 }) {
   "use no memo";
-  const checked = options.indexOf(value);
+  const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : { label: o.value, ...o }));
+  const checked = items.findIndex((o) => o.value === value);
   return (
     <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className={CELL_CONTROL}>
       <DropdownMenu onOpenChange={hold.onOpenChange}>
@@ -2391,13 +2523,27 @@ function SelectEditor({
           }
         />
         <DropdownContent align="start" checkedIndex={checked === -1 ? undefined : checked} className="w-56">
-          {options.map((option, i) => (
+          {items.map((option, i) => (
             <MenuItem
-              key={option}
+              key={option.value}
               index={i}
-              label={option}
-              checked={option === value}
-              onSelect={() => onChange(option)}
+              label={option.label}
+              // A badge's dot, in the Badge's own colors (gray reads as the
+              // muted foreground there too), so the menu matches the cell.
+              leading={
+                "color" in option && option.color ? (
+                  <span
+                    aria-hidden
+                    className="size-[7px] shrink-0 rounded-full"
+                    style={{
+                      backgroundColor:
+                        option.color === "gray" ? "var(--muted-foreground)" : badgeColors[option.color],
+                    }}
+                  />
+                ) : undefined
+              }
+              checked={option.value === value}
+              onSelect={() => onChange(option.value)}
             />
           ))}
         </DropdownContent>
@@ -3258,6 +3404,7 @@ export {
 export type {
   DataTableInstance,
   DataTableEditor,
+  DataTableSelectOption,
   DataTableCellEdit,
   DataTableExtras,
   ColumnLines,

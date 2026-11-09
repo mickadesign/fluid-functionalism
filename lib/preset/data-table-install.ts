@@ -116,7 +116,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`      </span>`);
   l.push(`    ),`);
   l.push(
-    `    meta: { label: "Primitives"${icon("Folder")}${edit ? `, editor: { type: "select", options: ${JSON.stringify(Object.keys(PRIMITIVE_COLOR)).replace(/,/g, ", ")} }` : ""} },`
+    `    meta: { label: "Primitives"${icon("Folder")}${edit ? `, editor: { type: "select", options: [${Object.entries(PRIMITIVE_COLOR).map(([value, color]) => `{ value: ${JSON.stringify(value)}, color: ${JSON.stringify(color)} as const }`).join(", ")}] }` : ""} },`
   );
   l.push(`  },`);
   l.push(`  {`);

@@ -159,9 +159,14 @@ export function formatDay(iso: string) {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-const PRIMITIVE_OPTIONS: readonly Primitives[] = ["Radix + Base UI", "Built on both", "None"];
-
 export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", "Built on both": "purple", None: "gray" } as const;
+
+// The select editor's options carry the badge colors, so its menu shows
+// each option's dot.
+const PRIMITIVE_OPTIONS = (Object.keys(PRIMITIVE_COLOR) as Primitives[]).map((value) => ({
+  value,
+  color: PRIMITIVE_COLOR[value],
+}));
 
 const INSTALL_URL = "https://www.fluidfunctionalism.com/r";
 
@@ -370,7 +375,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `    cell: ({ row }) => <Badge variant="ghost" color="blue">{row.original.primitives}</Badge>,`,
     ...(o.headerIcons || o.editable
       ? [
-          `    meta: { ${[o.headerIcons && "icon: Folder", o.editable && `editor: { type: "select", options: ["Radix + Base UI", "Built on both", "None"] }`].filter(Boolean).join(", ")} },`,
+          `    meta: { ${[o.headerIcons && "icon: Folder", o.editable &&
+              `editor: { type: "select", options: [{ value: "Radix + Base UI", color: "blue" }, { value: "Built on both", color: "purple" }, { value: "None", color: "gray" }] }`].filter(Boolean).join(", ")} },`,
         ]
       : []),
     `  },`,

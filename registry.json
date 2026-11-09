@@ -2150,7 +2150,8 @@
         "combobox",
         "date-picker",
         "command-menu",
-        "elevated"
+        "elevated",
+        "badge"
       ],
       "files": [
         {
