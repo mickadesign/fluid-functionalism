@@ -25,7 +25,7 @@ import { animate, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
-import { shapeMap } from "@/lib/shape-context";
+import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, fieldTouchClass, type SizeVariant } from "@/lib/size-context";
 import { isDisabledRow } from "@/lib/popup";
 import {
@@ -44,7 +44,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { TabsSubtle, TabsSubtleItem } from "@/components/ui/tabs-subtle";
+import { Tabs, TabsItem } from "@/components/ui/tabs";
 
 // ---------------------------------------------------------------------------
 // Command menu
@@ -99,12 +99,6 @@ interface CommandMenuSection {
   /** Flat index of the section's first row. */
   start: number;
 }
-
-// The list keeps the smaller "rounded" radii whatever the rest of the UI is
-// shaped, like every popup list: pill rows inside a square panel distort the
-// concentric fit of the hover fill. The dialog shell follows the global
-// shape through DialogContent.
-const listShape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
 // Shortcuts — one string syntax for both the trigger combo and the caps a row
@@ -276,16 +270,27 @@ export function isMacPlatform(): boolean {
 }
 
 // The platform never changes, so it is read once and served as a store
-// snapshot: the server (and hydration) draw ⌘, other platforms swap to
-// words in the render that follows, with no state or effect per cap.
+// snapshot. The server can't see navigator: it (and hydration) draws what
+// CommandMenuPlatform says, ⌘ when nothing does, and a wrong guess swaps in
+// the render that follows, with no state or effect per cap.
 let macPlatform: boolean | null = null;
 const readMac = () => (macPlatform ??= isMacPlatform());
-const serverMac = () => true;
 const subscribeNever = () => () => {};
+
+const PlatformContext = createContext<boolean | null>(null);
+
+/** Tells the server render which glyphs to draw, so caps paint as ⌘ or Ctrl
+ *  from the first frame instead of swapping (and changing width) after
+ *  hydration. Derive `mac` from the request's `Sec-CH-UA-Platform` or
+ *  User-Agent header. */
+export function CommandMenuPlatform({ mac, children }: { mac: boolean; children: ReactNode }) {
+  return <PlatformContext.Provider value={mac}>{children}</PlatformContext.Provider>;
+}
 
 /** Whether to draw ⌘ and ⌥ rather than Ctrl and Alt. */
 export function useIsMac(): boolean {
-  return useSyncExternalStore(subscribeNever, readMac, serverMac);
+  const serverMac = useContext(PlatformContext) ?? true;
+  return useSyncExternalStore(subscribeNever, readMac, () => serverMac);
 }
 
 // Layout effects have no server counterpart; on the server they are no-ops.
@@ -888,7 +893,7 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
 CommandMenuInput.displayName = "CommandMenuInput";
 
 // ---------------------------------------------------------------------------
-// CommandMenuTabs — subtle tabs under the field. The tabs are state you own:
+// CommandMenuTabs — tabs under the field. The tabs are state you own:
 // derive `items` from the value so the list follows.
 // ---------------------------------------------------------------------------
 
@@ -951,13 +956,13 @@ const CommandMenuTabs = forwardRef<HTMLDivElement, CommandMenuTabsProps>(
         <div
           // A pointer pick must not take focus from the field (the tabs are
           // buttons); keyboard users still reach them with Tab. No overflow
-          // clip here: TabsSubtle scrolls itself and keeps 4px of room around
+          // clip here: Tabs scrolls itself and keeps 4px of room around
           // the tabs for the 2px-outset focus ring, which a second scroll
           // container this tight would crop.
           onMouseDown={(e) => e.preventDefault()}
           className="flex min-w-0 flex-1 items-center"
         >
-          <TabsSubtle
+          <Tabs
             size="compact"
             selectedIndex={selectedIndex}
             onSelect={(index) => {
@@ -967,9 +972,9 @@ const CommandMenuTabs = forwardRef<HTMLDivElement, CommandMenuTabsProps>(
             aria-label="Filter results"
           >
             {tabs.map((tab, index) => (
-              <TabsSubtleItem key={tab.value} index={index} label={tab.label} icon={tab.icon} />
+              <TabsItem key={tab.value} index={index} label={tab.label} icon={tab.icon} />
             ))}
-          </TabsSubtle>
+          </Tabs>
         </div>
         {children && (
           <TabsRowContext.Provider value={true}>
@@ -1036,6 +1041,7 @@ export interface CommandMenuListProps extends HTMLAttributes<HTMLDivElement> {
 
 const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
   ({ className, children, renderItem, ...props }, ref) => {
+    const listShape = usePopupShape();
     const { sections, rows, listId, listRef, setActiveIndex, listHandlers } = useCommandMenu();
     const fill = useContext(CommandMenuFillContext);
     const sizeClasses = useSize();
@@ -1052,6 +1058,23 @@ const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
       listHandlers.onMouseLeave();
       setActiveIndex(lastActiveRef.current);
     };
+
+    // No results keeps the height the last results showed (what was on
+    // screen of it, not what scrolled), so the message sits where the rows
+    // were and the palette doesn't jump on each keystroke into and out of
+    // an empty query. The rows' own height takes over again once they return.
+    const shownHeightRef = useRef(0);
+    useIsoLayoutEffect(() => {
+      const node = listRef.current;
+      if (!node) return;
+      if (empty) {
+        node.style.minHeight = shownHeightRef.current ? `${shownHeightRef.current}px` : "";
+        return;
+      }
+      node.style.minHeight = "";
+      const viewport = node.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+      shownHeightRef.current = Math.min(node.offsetHeight, viewport?.clientHeight ?? Infinity);
+    }, [empty, rows.length, listRef]);
 
     return (
       // Not the popup viewport class: a palette is sized by its rows up to
@@ -1090,8 +1113,9 @@ const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
           onMouseDown={(e) => e.preventDefault()}
           className={cn(
             // The list is the fill's offsetParent, so rows and fill scroll
-            // together inside the viewport. Padding collapses when empty.
-            "relative flex flex-col gap-1 p-1 outline-none data-[empty]:p-0",
+            // together inside the viewport. Padding collapses when empty, and
+            // the message centers in the height the rows left.
+            "relative flex flex-col gap-1 p-1 outline-none data-[empty]:justify-center data-[empty]:p-0",
             className
           )}
           {...props}
@@ -1250,6 +1274,7 @@ const CommandMenuItem = memo(forwardRef<HTMLDivElement, CommandMenuItemProps>(
     },
     ref
   ) => {
+    const listShape = usePopupShape();
     const { itemsByValue, listId, registerItem, highlight, select } = useCommandMenu();
     const index = useContext(CommandMenuIndexContext);
     const internalRef = useRef<HTMLDivElement | null>(null);

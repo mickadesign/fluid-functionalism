@@ -28,6 +28,7 @@ import {
   Moon,
   RectangleHorizontal,
   Circle,
+  Square,
   SquareLibrary,
   Clock,
   Star,
@@ -76,6 +77,9 @@ import {
   Folder,
   SlidersHorizontal,
   Info,
+  CircleAlert,
+  File,
+  Minus,
 } from "lucide-react";
 
 // The whole contract an icon has to meet. Components pass `strokeWidth` and
@@ -95,7 +99,7 @@ export type IconComponent = ComponentType<IconComponentProps>;
 // Ellipsis).
 export type IconName =
   | "chevron-right" | "chevron-down" | "x" | "copy" | "menu" | "dot"
-  | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle"
+  | "monitor" | "sun" | "moon" | "rectangle-horizontal" | "circle" | "square"
   | "square-library" | "clock" | "star" | "settings"
   | "plus" | "arrow-left" | "arrow-right" | "arrow-up" | "arrow-down"
   | "search" | "loader"
@@ -107,7 +111,7 @@ export type IconName =
   | "home" | "message-circle" | "inbox"
   | "pencil" | "scaling" | "skip-forward" | "corner-down-right" | "corner-down-left"
   | "panel-left" | "panel-right" | "chevrons-up-down" | "more-horizontal" | "more-vertical" | "calendar" | "folder"
-  | "sliders-horizontal" | "info";
+  | "sliders-horizontal" | "info" | "circle-alert" | "file" | "minus";
 
 export const defaultIcons: Record<IconName, IconComponent> = {
   "chevron-right": ChevronRight,
@@ -122,6 +126,7 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "moon": Moon,
   "rectangle-horizontal": RectangleHorizontal,
   "circle": Circle,
+  "square": Square,
   "square-library": SquareLibrary,
   "clock": Clock,
   "star": Star,
@@ -169,6 +174,9 @@ export const defaultIcons: Record<IconName, IconComponent> = {
   "folder": Folder,
   "sliders-horizontal": SlidersHorizontal,
   "info": Info,
+  "circle-alert": CircleAlert,
+  "file": File,
+  "minus": Minus,
 };
 
 const IconContext = createContext<Record<IconName, IconComponent> | null>(null);

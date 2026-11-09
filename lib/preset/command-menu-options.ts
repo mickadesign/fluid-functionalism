@@ -45,7 +45,7 @@ export interface CommandMenuPlayState {
   shortcuts: boolean;
   /** Suggested rows listed first while nothing is typed. */
   suggestions: boolean;
-  /** Subtle tabs under the field. */
+  /** Tabs under the field. */
   tabs: boolean;
   /** Borderless filter bar under the field (inside the tab row when both). */
   filters: boolean;
@@ -74,7 +74,7 @@ export const DEFAULT_COMMAND_MENU_PRESET: CommandMenuPreset = {
 // LAST, mirroring SIDEBAR_PRESET_FIELDS exactly.
 const GLOBAL_FIELDS: readonly PresetField[] = [
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

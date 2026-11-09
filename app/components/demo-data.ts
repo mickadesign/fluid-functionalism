@@ -175,15 +175,6 @@ export const TABLE_ROWS = [
   ["Gwen", "Designer", "Active"],
 ] as const;
 
-export const TABS_ITEMS = [
-  { value: "overview", label: "Overview" },
-  { value: "analytics", label: "Analytics" },
-  { value: "settings", label: "Settings" },
-  { value: "logs", label: "Logs" },
-] as const;
-
-export const TABS_DEFAULT = "overview";
-
 export const TOOLTIP_COPY = {
   trigger: "Hover me",
   content: "Copy to clipboard",

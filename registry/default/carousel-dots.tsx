@@ -16,6 +16,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useShape } from "@/lib/shape-context";
 import { spring } from "@/lib/springs";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
@@ -161,6 +162,9 @@ const CarouselDots = forwardRef<HTMLDivElement, CarouselDotsProps>(
     const source = isMotionValue(progress) ? progress : local;
     const fillTransform = useTransform(source, fillAt);
 
+    // Sharp squares the dots, the pill and the highlight; otherwise round.
+    const round = useShape().variant === "sharp" ? "rounded-none" : "rounded-full";
+
     return (
       <div
         ref={(node) => {
@@ -174,7 +178,7 @@ const CarouselDots = forwardRef<HTMLDivElement, CarouselDotsProps>(
         {...hover.handlers}
         {...props}
       >
-        <FluidHoverHighlight hover={hover} className="rounded-full" />
+        <FluidHoverHighlight hover={hover} className={round} />
         {Array.from({ length: count }, (_, i) => (
           <Dot
             key={i}
@@ -184,6 +188,7 @@ const CarouselDots = forwardRef<HTMLDivElement, CarouselDotsProps>(
             fillTransform={fillTransform}
             reduced={reduced === true}
             registerItem={hover.registerItem}
+            round={round}
             onSelect={onValueChange}
           />
         ))}
@@ -202,6 +207,7 @@ function Dot({
   reduced,
   registerItem,
   onSelect,
+  round,
 }: {
   index: number;
   label: string;
@@ -210,6 +216,7 @@ function Dot({
   reduced: boolean;
   registerItem: (index: number, element: HTMLElement | null) => void;
   onSelect?: (index: number) => void;
+  round: string;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   useRegisterFluidHoverItem(registerItem, index, ref);
@@ -222,10 +229,10 @@ function Dot({
       aria-current={current ? "true" : undefined}
       // Equal padding on every side: an 18px round click area per dot, and
       // 12px between dots. No gap, so the highlight never drops out.
-      className="relative z-10 flex items-center rounded-full p-1.5 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
+      className={cn("relative z-10 flex items-center p-1.5 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]", round)}
     >
       <motion.span
-        className="relative block overflow-hidden rounded-full"
+        className={cn("relative block overflow-hidden", round)}
         style={{ height: DOT_PX, backgroundColor: TRACK_COLOR }}
         initial={false}
         animate={{ width: current ? PILL_PX : DOT_PX }}
@@ -236,7 +243,7 @@ function Dot({
         {current && (
           <motion.span
             aria-hidden
-            className="absolute inset-0 rounded-full"
+            className={cn("absolute inset-0", round)}
             style={{ backgroundColor: FILL_COLOR, transform: fillTransform }}
           />
         )}

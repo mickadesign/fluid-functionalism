@@ -29,7 +29,12 @@ import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { useSize, SizeProvider, typeClass, type SizeVariant } from "@/lib/size-context";
-import { useFluidHover, type ItemRect } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  type FluidHoverActiveStore,
+  type ItemRect,
+} from "@/hooks/use-fluid-hover";
 import type { IconComponent } from "@/lib/icon-context";
 import { resolveSlotTemplate, SlotElement } from "@/components/ui/sidebar-core";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
@@ -53,7 +58,11 @@ interface MenuScopeValue {
   registerRow: (el: HTMLElement) => () => void;
   setRowButton: (row: HTMLElement, button: HTMLElement | null) => void;
   setRowActive: (row: HTMLElement, active: boolean) => void;
-  hoveredRowEl: HTMLElement | null;
+  /** The hovered row is `orderedRows[activeStore.get()]`. Rows read it
+   *  through `useFluidHoverSelect`, so a hover change re-renders the row it
+   *  left and the row it reached instead of every row in the menu. */
+  activeStore: FluidHoverActiveStore;
+  orderedRows: HTMLElement[];
   /** Every visible active row, in DOM order — a parent section marker and
    *  the current row inside its sub-tree can be active at once. */
   activeRows: HTMLElement[];
@@ -230,6 +239,7 @@ function useMenuScope(
 ): MenuScope {
   const {
     activeIndex,
+    activeStore,
     setActiveIndex,
     itemRects,
     isMeasured,
@@ -446,13 +456,14 @@ function useMenuScope(
       registerRow,
       setRowButton,
       setRowActive,
-      hoveredRowEl,
+      activeStore,
+      orderedRows,
       activeRows,
       firstRowEl: orderedRows[0] ?? null,
       hasActive: activeRows.length > 0,
       refreshVisibility,
     }),
-    [registerRow, setRowButton, setRowActive, hoveredRowEl, activeRows, orderedRows, refreshVisibility]
+    [registerRow, setRowButton, setRowActive, activeStore, activeRows, orderedRows, refreshVisibility]
   );
 
   const shape = useShape();
@@ -672,7 +683,10 @@ function useMenuRow(rowRef: RefObject<HTMLLIElement | null>, isSubRow = false) {
     [setRowButton, rowRef]
   );
 
-  const isHovered = rowEl !== null && scope?.hoveredRowEl === rowEl;
+  const isHovered = useFluidHoverSelect(
+    scope?.activeStore,
+    (active) => rowEl !== null && active !== null && scope?.orderedRows[active] === rowEl
+  );
   const isActiveRow = rowEl !== null && (scope?.activeRows.includes(rowEl) ?? false);
 
   const [trailing, setTrailing] = useState({
@@ -752,11 +766,34 @@ function rowGutter(actionCount: number, hasBadge: boolean) {
   return inset + runWidth + ROW_GAP;
 }
 
+// The row publishes its button's height as --row-h so the absolutely placed
+// badge and actions can center on it. Fixed `top-*` offsets drifted 2px on
+// every height but the one they were tuned for. Read through `:has()` on the
+// button's data-size, so it is right from the server render on, and mirrors
+// SidebarMenuButton / SidebarMenuSubButton's height classes.
+function rowHeightClass(isSubRow: boolean, variant: string) {
+  return isSubRow
+    ? cn(
+        variant === "compact" ? "[--row-h:24px]" : "[--row-h:28px]",
+        "has-[>[data-size=sm]]:[--row-h:24px]"
+      )
+    : cn(
+        variant === "compact" ? "[--row-h:28px]" : "[--row-h:32px]",
+        "has-[>[data-size=sm]]:[--row-h:28px] has-[>[data-size=lg]]:[--row-h:48px]"
+      );
+}
+
+// Vertical offsets that center a trailing part on the row: the badge is h-5,
+// actions are size-6.
+const BADGE_TOP = "top-[calc((var(--row-h,32px)_-_20px)/2)]";
+const ACTION_TOP = "top-[calc((var(--row-h,32px)_-_24px)/2)]";
+
 const SidebarMenuItem = forwardRef<HTMLLIElement, SidebarMenuItemProps>(
   ({ className, children, ...props }, ref) => {
     const rowRef = useRef<HTMLLIElement>(null);
     const item = useMenuRow(rowRef);
     const { attachRow } = item;
+    const { variant } = useSize();
     // Stable ref callback: an inline one is detached and re-attached around
     // every re-render, and child layout effects fire inside that null window.
     const refCb = useCallback(
@@ -772,7 +809,7 @@ const SidebarMenuItem = forwardRef<HTMLLIElement, SidebarMenuItemProps>(
         <li
           ref={refCb}
           data-sidebar="menu-item"
-          className={cn("group/menu-item relative", className)}
+          className={cn("group/menu-item relative", rowHeightClass(false, variant), className)}
           {...props}
         >
           {children}
@@ -790,6 +827,7 @@ const SidebarMenuSubItem = forwardRef<HTMLLIElement, SidebarMenuSubItemProps>(
     const rowRef = useRef<HTMLLIElement>(null);
     const item = useMenuRow(rowRef, true);
     const { attachRow } = item;
+    const { variant } = useSize();
     // Stable ref callback — same reason as SidebarMenuItem's.
     const refCb = useCallback(
       (node: HTMLLIElement | null) => {
@@ -804,7 +842,7 @@ const SidebarMenuSubItem = forwardRef<HTMLLIElement, SidebarMenuSubItemProps>(
         <li
           ref={refCb}
           data-sidebar="menu-sub-item"
-          className={cn("group/menu-sub-item relative", className)}
+          className={cn("group/menu-sub-item relative", rowHeightClass(true, variant), className)}
           {...props}
         >
           {children}
@@ -1124,8 +1162,7 @@ const SidebarMenuAction = forwardRef<HTMLButtonElement, SidebarMenuActionProps>(
               (item?.isSubRow
                 ? "group-has-[>[data-sidebar=menu-badge]]/menu-sub-item:right-8.5"
                 : "group-has-[>[data-sidebar=menu-badge]]/menu-item:right-8.5"),
-            !inCluster &&
-              (item?.isSubRow || sizeClasses.variant === "compact" ? "top-0.5" : "top-1"),
+            !inCluster && ACTION_TOP,
             "hover:bg-hover hover:text-foreground transition-[color,background-color,opacity] duration-80",
             "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
             // One icon size across the sidebar: row actions match the leading
@@ -1177,7 +1214,6 @@ export interface SidebarMenuActionsProps extends HTMLAttributes<HTMLDivElement> 
 const SidebarMenuActions = forwardRef<HTMLDivElement, SidebarMenuActionsProps>(
   ({ className, showOnHover = false, children, ...props }, ref) => {
     const item = useContext(MenuItemContext);
-    const sizeClasses = useSize();
     const count = Children.count(children);
 
     const setActions = item?.setActions;
@@ -1196,7 +1232,7 @@ const SidebarMenuActions = forwardRef<HTMLDivElement, SidebarMenuActionsProps>(
           item?.isSubRow
             ? "group-has-[>[data-sidebar=menu-badge]]/menu-sub-item:right-8.5"
             : "group-has-[>[data-sidebar=menu-badge]]/menu-item:right-8.5",
-          item?.isSubRow || sizeClasses.variant === "compact" ? "top-0.5" : "top-1",
+          ACTION_TOP,
           showOnHover &&
             (item?.isSubRow
               ? "opacity-0 transition-opacity duration-80 group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:opacity-100 has-[[data-state=open]]:opacity-100 has-[[data-popup-open]]:opacity-100"
@@ -1237,7 +1273,7 @@ const SidebarMenuBadge = forwardRef<HTMLDivElement, SidebarMenuBadgeProps>(
         data-sidebar="menu-badge"
         className={cn(
           "pointer-events-none absolute right-2 z-10 flex h-5 min-w-5 items-center justify-center px-1 tabular-nums",
-          sizeClasses.variant === "compact" ? "top-1" : "top-1.5",
+          BADGE_TOP,
           typeClass("micro", sizeClasses.variant),
           "transition-[color,font-variation-settings] duration-80",
           lit ? "text-foreground" : "text-muted-foreground",

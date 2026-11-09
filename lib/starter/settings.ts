@@ -5,7 +5,7 @@
 //   /r/starter/default.json                       every default
 //   /r/starter/radix-pill-compact-phosphor.json   four changed, theme default
 //
-// Every value is a distinct word across all five settings, so a slug parses
+// Every value is a distinct word across all six settings, so a slug parses
 // without knowing which position held which setting, and a person or an
 // agent can read (or edit) it at a glance. Server-safe: no "use client".
 // ---------------------------------------------------------------------------
@@ -18,10 +18,13 @@ import {
 
 export type StarterSettings = SiteSettings;
 
-export const STARTER_DEFAULTS: StarterSettings = DEFAULT_SETTINGS;
+/** The slug's baseline. Shape stays "rounded" even though the site now opens
+ *  on sharp: slugs already shared (`default`, `radix-dark`, ...) leave shape
+ *  out, so moving the baseline would change what those links install. */
+export const STARTER_DEFAULTS: StarterSettings = { ...DEFAULT_SETTINGS, shape: "rounded" };
 
 /** Slug order: the order settings appear in the slug. */
-const KEYS = ["base", "shape", "size", "icons", "theme"] as const satisfies readonly (keyof StarterSettings)[];
+const KEYS = ["base", "shape", "size", "icons", "theme", "accent"] as const satisfies readonly (keyof StarterSettings)[];
 
 /** The slug for every default. */
 export const DEFAULT_SLUG = "default";

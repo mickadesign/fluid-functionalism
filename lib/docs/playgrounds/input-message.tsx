@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import {
   InputMessage,
   type QueuedMessage,
@@ -71,6 +72,7 @@ function buildImPlaygroundCode(o: {
 
   const l: string[] = [];
   l.push(`import { useEffect, useRef, useState } from "react";`);
+  l.push(`import { AnimatePresence } from "motion/react";`);
   l.push(`import { ${imports.join(", ")} } from "./components";`);
   if (o.leftSlot || o.rightSlot)
     l.push(`import { useIcons } from "@/lib/icon-context";`);
@@ -151,11 +153,14 @@ function buildImPlaygroundCode(o: {
       : `      style={{ paddingBottom: inputH + 8 }}`
   );
   l.push(`    >`);
-  l.push(`      {messages.map((m, i) => (`);
-  l.push(`        <ChatMessage key={i} from="user" files={m.files}>`);
-  l.push(`          {m.text}`);
-  l.push(`        </ChatMessage>`);
-  l.push(`      ))}`);
+  l.push(`      {/* initial={false}: messages already sent skip the entrance. */}`);
+  l.push(`      <AnimatePresence initial={false}>`);
+  l.push(`        {messages.map((m, i) => (`);
+  l.push(`          <ChatMessage key={i} from="user" files={m.files}>`);
+  l.push(`            {m.text}`);
+  l.push(`          </ChatMessage>`);
+  l.push(`        ))}`);
+  l.push(`      </AnimatePresence>`);
   l.push(`    </div>`);
   l.push(`  </div>`);
   if (queueOn) {
@@ -514,11 +519,17 @@ export function InputMessagePlayground({ children }: PlaygroundProps) {
       ? collapsedStackHeight(queue.length, cardH) + 8
       : 0);
 
-  const transcript = messages.map((m, i) => (
-    <ChatMessage key={i} from="user" files={m.files}>
-      {m.text}
-    </ChatMessage>
-  ));
+  // The seeded message is already sent: initial={false} skips its entrance,
+  // and messages sent from the composer still animate in.
+  const transcript = (
+    <AnimatePresence initial={false}>
+      {messages.map((m, i) => (
+        <ChatMessage key={i} from="user" files={m.files}>
+          {m.text}
+        </ChatMessage>
+      ))}
+    </AnimatePresence>
+  );
 
   // `scroll` picks how the transcript handles more content than there is room
   // for. The doc page scrolls it inside a fixed-height box; the demo card lets

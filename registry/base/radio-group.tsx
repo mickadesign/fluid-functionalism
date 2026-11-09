@@ -383,9 +383,11 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
-          // text-box trim on the label doesn't shrink the row.
-          `relative z-10 flex ${sizeClasses.control} items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} cursor-pointer outline-none`,
+          // A floor, not a fixed height: one line sits on the ladder's control
+          // height (the padding alone stays under it, so the text-box trim on
+          // the label can't shrink the row), and a long label wraps and grows
+          // the row instead of spilling into the next one.
+          `relative z-10 flex ${compact ? "min-h-7 py-2" : "min-h-9 py-3"} items-center ${sizeClasses.gap} ${shape.item} ${sizeClasses.px} cursor-pointer outline-none`,
           className
         )}
         {...props}
@@ -403,7 +405,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
               neutral-400 (neutral-500 dark) over 80ms. */}
           <div
             className={cn(
-              "absolute inset-0 rounded-full border-solid transition-all duration-80",
+              "absolute inset-0 rounded-full border-solid transition-[border-color] duration-80",
               isSelected
                 ? "border-[1.5px] border-transparent"
                 : isActive
@@ -443,7 +445,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         {/* Label */}
         {/* Both stacked spans carry the text-box trim so the invisible bold
             sizer and the visible label keep identical boxes. */}
-        <span className={cn("inline-grid", sizeClasses.text)}>
+        <span className={cn("inline-grid min-w-0 [overflow-wrap:anywhere]", sizeClasses.text)}>
           {/* Always semibold, so the grid cell is sized for the heaviest
               weight and the row never shifts when the label gains weight. */}
           <span

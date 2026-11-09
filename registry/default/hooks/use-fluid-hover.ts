@@ -6,6 +6,8 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
+  useSyncExternalStore,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -20,7 +22,7 @@ export interface ItemRect {
 
 export interface UseFluidHoverOptions {
   /**
-   * Which direction to resolve the nearest item along.
+   * With `nearest`, which direction to resolve the nearest item along.
    *   "y"  — vertical lists (default): closest by top/height
    *   "x"  — horizontal strips: closest by left/width
    *   "xy" — 2-D grids: closest card across both rows AND columns,
@@ -35,20 +37,43 @@ export interface UseFluidHoverOptions {
    */
   isItemDisabled?: (element: HTMLElement) => boolean;
   /**
-   * Whether a click that lands between items (a gap, the padding, past the
-   * last row) is routed to the highlighted item, so what is lit is what a
-   * click hits. On by default: in a menu or a list the highlight is a
-   * promise about the click. Pass `false` where empty space should stay
+   * With `nearest`, whether a click that lands between items (a gap, the
+   * padding, past the last row) is routed to the highlighted item, so what
+   * is lit is what a click hits. On by default: in a menu or a list the
+   * highlight is a promise about the click. Without `nearest` nothing is lit
+   * between items, so there is nothing to route. Pass `false` where empty
+   * space should stay
    * inert (rows with destructive actions, generous whitespace), or
    * `{ maxDistance }` to route only clicks within that many pixels of the
    * highlighted item's edge.
    */
   gapClick?: boolean | { maxDistance?: number };
+  /**
+   * Whether empty space lights the nearest item. Off by default: only the
+   * item under the pointer lights, and the highlight fades out over empty
+   * space (a popup's padding, the unfilled end of a grid row, a label beside
+   * a control), gliding again from the next item it lands on. Pass `true` to
+   * light the item nearest the pointer wherever it is in the container.
+   */
+  nearest?: boolean;
+}
+
+/**
+ * The highlighted index as a store a row can subscribe to. Read it with
+ * `useFluidHoverSelect` instead of passing `activeIndex` down a context: a
+ * context re-renders every row on every highlight change, a selector
+ * re-renders the row the highlight left and the row it reached.
+ */
+export interface FluidHoverActiveStore {
+  subscribe: (listener: () => void) => () => void;
+  get: () => number | null;
 }
 
 export interface UseFluidHoverReturn {
   activeIndex: number | null;
   setActiveIndex: Dispatch<SetStateAction<number | null>>;
+  /** `activeIndex` as a stable store, for rows (see `useFluidHoverSelect`). */
+  activeStore: FluidHoverActiveStore;
   itemRects: ItemRect[];
   /**
    * True once every registered item has been measured and no remeasure is
@@ -247,7 +272,7 @@ export function useFluidHover<T extends HTMLElement>(
   containerRef: RefObject<T | null>,
   options: UseFluidHoverOptions = {}
 ): UseFluidHoverReturn {
-  const { axis = "y", isItemDisabled, gapClick = true } = options;
+  const { axis = "y", isItemDisabled, gapClick = true, nearest = false } = options;
   const gapClickMaxDistance =
     typeof gapClick === "object" ? (gapClick.maxDistance ?? Infinity) : Infinity;
   const itemsRef = useRef(new Map<number, HTMLElement>());
@@ -256,8 +281,25 @@ export function useFluidHover<T extends HTMLElement>(
   // row registering). Written in a layout effect, which runs before any
   // row's registration effect in the same commit.
   const activeIndexRef = useRef<number | null>(null);
+  const listenersRef = useRef(new Set<() => void>());
+  const activeStore = useMemo<FluidHoverActiveStore>(
+    () => ({
+      subscribe: (listener) => {
+        listenersRef.current.add(listener);
+        return () => {
+          listenersRef.current.delete(listener);
+        };
+      },
+      get: () => activeIndexRef.current,
+    }),
+    []
+  );
   useIsoLayoutEffect(() => {
     activeIndexRef.current = activeIndex;
+    // The store lags `activeIndex` by this one effect, so a row rendering
+    // alongside the change reads the old value; subscribed rows re-render
+    // with the new one in this same commit, before paint.
+    listenersRef.current.forEach((listener) => listener());
   }, [activeIndex]);
 
   // The state, in the DOM: `data-fluid-hover-active` on the highlighted item
@@ -455,6 +497,7 @@ export function useFluidHover<T extends HTMLElement>(
       if (!isOwnEvent(e)) return;
       const mouseX = e.clientX;
       const mouseY = e.clientY;
+      const target = e.target as Node;
 
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
@@ -464,7 +507,21 @@ export function useFluidHover<T extends HTMLElement>(
         rafIdRef.current = null;
         const container = containerRef.current;
         if (!container) return;
-        const next = pickNearest({
+        let next: number | null;
+        if (!nearest) {
+          // The item under the pointer, or none. Items can nest (a sidebar
+          // row's sub-rows sit inside it): the innermost one holding the
+          // pointer wins.
+          next = null;
+          let hit: HTMLElement | null = null;
+          for (const [index, el] of itemsRef.current) {
+            if (!el.contains(target) || isItemDisabled?.(el)) continue;
+            if (!hit || hit.contains(el)) {
+              hit = el;
+              next = index;
+            }
+          }
+        } else next = pickNearest({
           axis,
           point: { x: mouseX, y: mouseY },
           rects: itemRectsRef.current,
@@ -484,10 +541,13 @@ export function useFluidHover<T extends HTMLElement>(
           sessionRef.current += 1;
           setSession(sessionRef.current);
         }
+        // Empty space put the highlight out: the next item lit fades it in
+        // there, as on entering, instead of sliding from the last one.
+        if (next === null) sessionPendingRef.current = true;
         setActiveIndex(next);
       });
     },
-    [axis, containerRef, isItemDisabled]
+    [axis, containerRef, isItemDisabled, nearest]
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -524,7 +584,10 @@ export function useFluidHover<T extends HTMLElement>(
         "input, textarea, select, button, a, summary, [contenteditable], [role='textbox'], [role='searchbox'], [role='button']"
       );
       if (control) return;
-      if (gapClick === false) return;
+      // Without nearest nothing is lit between items. The highlight updates a
+      // frame late, so one still lit from the item just left must not take
+      // a click that landed in the gap.
+      if (gapClick === false || !nearest) return;
       const index = activeIndexRef.current;
       if (index === null) return;
       const element = itemsRef.current.get(index);
@@ -539,7 +602,7 @@ export function useFluidHover<T extends HTMLElement>(
       // wrapping it, if any) run exactly as if the pointer had been inside.
       resolveActivator(element).click();
     },
-    [isItemDisabled, gapClick, gapClickMaxDistance]
+    [isItemDisabled, gapClick, gapClickMaxDistance, nearest]
   );
 
   // Remeasure when the container resizes — a reflow moves items even though
@@ -572,6 +635,7 @@ export function useFluidHover<T extends HTMLElement>(
   return {
     activeIndex,
     setActiveIndex,
+    activeStore,
     itemRects,
     isMeasured,
     session,
@@ -586,6 +650,27 @@ export function useFluidHover<T extends HTMLElement>(
     remeasure,
     measureItems,
   };
+}
+
+const subscribeNever = () => () => {};
+
+/**
+ * Reads one value derived from the highlighted index, re-rendering only when
+ * that value changes. The selector must return a primitive:
+ *
+ *   const isActive = useFluidHoverSelect(ctx?.activeStore, (i) => i === index);
+ *
+ * A missing store (a row rendered outside a list) reads as nothing lit.
+ */
+export function useFluidHoverSelect<T>(
+  store: FluidHoverActiveStore | null | undefined,
+  select: (activeIndex: number | null) => T
+): T {
+  return useSyncExternalStore(
+    store?.subscribe ?? subscribeNever,
+    () => select(store ? store.get() : null),
+    () => select(null)
+  );
 }
 
 /**

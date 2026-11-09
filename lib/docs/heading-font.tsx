@@ -33,7 +33,7 @@ import { showShortcutToast } from "@/lib/docs/settings-toast";
 /** The built-in choices. "custom" reads as the picked family's name. */
 const BUILT_IN_LABELS = {
   inter: "Inter",
-  "source-serif": "Source Serif 4",
+  "geist-serif": "Geist Serif",
 } as const satisfies Partial<Record<HeadingFont, string>>;
 
 export function headingFontLabel(font: HeadingFont, custom: GoogleFont | null): string {

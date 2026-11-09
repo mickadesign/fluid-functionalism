@@ -30,7 +30,7 @@ import {
 } from "@/components/flavored/sidebar";
 import { componentList, systemNavList } from "@/lib/docs/components";
 import { useReleaseMarks } from "@/lib/changelog/marks";
-import { useIcons, type IconName } from "@/lib/icon-context";
+import { useIcons, type IconComponent, type IconComponentProps, type IconName } from "@/lib/icon-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useShapeContext, type ShapeVariant } from "@/lib/shape-context";
 import { useSizeContext, type SizeVariant } from "@/lib/size-context";
@@ -41,6 +41,10 @@ import {
   type IconLibrary,
 } from "@/lib/docs/icon-playground";
 import { useBase, installUrl, type Base } from "@/lib/base-context";
+import { HOVER_MODE_LABELS, useHoverModeSetting } from "@/lib/docs/hover-mode";
+import { HOVER_MODES } from "@/lib/docs/site-settings";
+import { useAccent } from "@/lib/docs/accent";
+import { ACCENT_ORDER, ACCENT_PRESETS, accentCss } from "@/lib/accent";
 
 // ---------------------------------------------------------------------------
 // The site's own command menu: ⌘K anywhere. Every page, every setting the
@@ -110,9 +114,35 @@ const THEMES: { value: Theme; label: string; icon: IconName }[] = [
   { value: "dark", label: "Dark", icon: "moon" },
 ];
 const SHAPES: { value: ShapeVariant; label: string; icon: IconName }[] = [
+  { value: "sharp", label: "Sharp", icon: "square" },
   { value: "rounded", label: "Rounded", icon: "rectangle-horizontal" },
   { value: "pill", label: "Pill", icon: "circle" },
 ];
+
+/** Each accent preset's own color in place of an icon: a round swatch in
+ *  the icon's box, three quarters of it across so it sits level with the
+ *  line icons around it, edged like the color picker's tiles. */
+/** `color` is any CSS color: a preset's light-dark() follows the theme. */
+function accentSwatch(color: string): IconComponent {
+  function AccentSwatch({ size = 16, className }: IconComponentProps) {
+    return (
+      <span
+        aria-hidden
+        className={`flex items-center justify-center ${className ?? ""}`}
+        style={{ width: size, height: size }}
+      >
+        <span
+          className="rounded-full shadow-[inset_0_0_0_1px_rgba(127,127,127,0.25)]"
+          style={{ width: size * 0.75, height: size * 0.75, backgroundColor: color }}
+        />
+      </span>
+    );
+  }
+  return AccentSwatch;
+}
+const ACCENT_SWATCHES = Object.fromEntries(
+  ACCENT_ORDER.map((a) => [a, accentSwatch(accentCss(a, null))])
+) as Record<(typeof ACCENT_ORDER)[number], IconComponent>;
 const SIZES: { value: SizeVariant; label: string }[] = [
   { value: "default", label: "Default" },
   { value: "compact", label: "Compact" },
@@ -151,7 +181,18 @@ export function SiteCommandMenuTrigger() {
         <SidebarMenuButton icon={icons.search} onClick={() => setOpen(true)}>
           Search
         </SidebarMenuButton>
-        <SidebarMenuBadge className="font-sans text-site-caption">{mac ? "⌘K" : "Ctrl K"}</SidebarMenuBadge>
+        {/* The right panel's key chips, one per key: 18px on a 2px-round
+            tint, 1px down to stay centered where the 20px badge sat. */}
+        <SidebarMenuBadge className="mt-px gap-0.5 px-0 font-mono text-site-micro leading-none [@media(hover:none)]:hidden">
+          {(mac ? ["⌘", "K"] : ["Ctrl", "K"]).map((key) => (
+            <kbd
+              key={key}
+              className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[2px] bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-[inherit]"
+            >
+              {key}
+            </kbd>
+          ))}
+        </SidebarMenuBadge>
       </SidebarMenuItem>
     </SidebarMenu>
   );
@@ -167,6 +208,8 @@ export function SiteCommandMenu() {
   const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
+  const { mode: hover, setMode: setHover } = useHoverModeSetting();
+  const { preset: accent, custom: customAccent, setPreset: setAccent } = useAccent();
   const [tab, setTab] = useState("all");
   const [recent, setRecent] = useState<string[]>([]);
 
@@ -245,6 +288,20 @@ export function SiteCommandMenu() {
           showSuccessToast(`Theme set to ${t.label}`);
         },
       })),
+      ...ACCENT_ORDER.map((a) => ({
+        kind: "setting" as const,
+        value: `accent:${a}`,
+        label: `Accent: ${ACCENT_PRESETS[a].label}`,
+        action: `Set accent to ${ACCENT_PRESETS[a].label}`,
+        description: current(!customAccent && accent === a),
+        icon: ACCENT_SWATCHES[a],
+        keywords: ["accent", "color", "brand", "focus", a],
+        group: "Settings",
+        onSelect: () => {
+          setAccent(a);
+          showSuccessToast(`Accent set to ${ACCENT_PRESETS[a].label}`);
+        },
+      })),
       ...SHAPES.map((s) => ({
         kind: "setting" as const,
         value: `shape:${s.value}`,
@@ -301,6 +358,20 @@ export function SiteCommandMenu() {
           showSuccessToast(`Primitive set to ${b.label}`);
         },
       })),
+      ...HOVER_MODES.map((m) => ({
+        kind: "setting" as const,
+        value: `hover:${m}`,
+        label: `Hover: ${HOVER_MODE_LABELS[m]}`,
+        action: `Set hover to ${HOVER_MODE_LABELS[m]}`,
+        description: current(hover === m),
+        icon: icons.settings,
+        keywords: ["hover", "fluid", "standard", "highlight", m],
+        group: "Settings",
+        onSelect: () => {
+          setHover(m);
+          showSuccessToast(`Hover set to ${HOVER_MODE_LABELS[m]}`);
+        },
+      })),
     ];
     const actions: SiteItem[] = [
       ...(currentComponent
@@ -314,7 +385,7 @@ export function SiteCommandMenu() {
               keywords: ["npx", "shadcn", "add", "registry"],
               group: "Actions",
               onSelect: () => {
-                const cmd = `npx shadcn@latest add ${installUrl(currentComponent.slug, base)}`;
+                const cmd = `npx shadcn@latest add ${installUrl(currentComponent.slug, base, hover)}`;
                 // The toast follows the write: no clipboard (an insecure
                 // context) or a refused write must not announce a copy.
                 navigator.clipboard
@@ -378,6 +449,11 @@ export function SiteCommandMenu() {
     setIconLibrary,
     base,
     setBase,
+    hover,
+    setHover,
+    accent,
+    customAccent,
+    setAccent,
     currentComponent,
     pageIndex,
     isNew,

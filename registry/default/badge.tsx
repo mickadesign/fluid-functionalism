@@ -16,7 +16,10 @@ import { useSizeVariant } from "@/lib/size-context";
 
 // Tailwind's 500 step for each hue (400 for gray). Text never takes the hue:
 // it stays on the foreground color, so it keeps its contrast on every color.
+// `accent` is the app's accent (--fluid-accent, #6B97FF without the token),
+// for marks like New that should follow the brand color.
 const badgeColors = {
+  accent: "var(--fluid-accent, #6B97FF)",
   gray: "#a3a3a3",
   red: "#ef4444",
   orange: "#f97316",
@@ -96,7 +99,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     },
     ref
   ) => {
-    // Corner radius comes from the shape context (pill or rounded), so
+    // Corner radius comes from the shape context (rounded, pill or sharp), so
     // badges follow the rest of the app instead of hard-coding a radius.
     const shape = useShape();
     // Resolve the size: explicit prop (legacy aliases mapped onto the
