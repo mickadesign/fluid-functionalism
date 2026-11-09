@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import {
   createContext,
   useCallback,
@@ -187,7 +189,12 @@ export function SiteCommandMenuTrigger() {
           {(mac ? ["⌘", "K"] : ["Ctrl", "K"]).map((key) => (
             <kbd
               key={key}
-              className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[2px] bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-[inherit]"
+              className={cn(
+                "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[2px] bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-[inherit]",
+                // The mono face draws ⌘ smaller than its letters; Inter's
+                // ⌘ sits at their size.
+                key === "⌘" && "font-sans"
+              )}
             >
               {key}
             </kbd>
