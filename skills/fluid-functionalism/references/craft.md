@@ -25,11 +25,13 @@ Systems first — their craft applies across every component below.
 - [AskUserQuestions](#ask-user-questions)
 - [Badge](#badge)
 - [Banner](#banner)
+- [Breadcrumb](#breadcrumb)
 - [Button](#button)
 - [Calendar](#calendar)
 - [Card](#card)
 - [CarouselDots](#carousel-dots)
 - [ChatMessage](#chat-message)
+- [Checkbox](#checkbox)
 - [CheckboxGroup](#checkbox-group)
 - [ColorPicker](#color-picker)
 - [Combobox](#combobox)
@@ -37,6 +39,8 @@ Systems first — their craft applies across every component below.
 - [DatePicker](#date-picker)
 - [Dialog](#dialog)
 - [Dropdown](#dropdown)
+- [Field](#field)
+- [Input](#input)
 - [InputCopy](#input-copy)
 - [InputGroup](#input-group)
 - [InputMessage](#input-message)
@@ -47,6 +51,7 @@ Systems first — their craft applies across every component below.
 - [Switch](#switch)
 - [Table](#table)
 - [Tabs](#tabs)
+- [Textarea](#textarea)
 - [ThinkingIndicator](#thinking-indicator)
 - [ThinkingSteps](#thinking-steps)
 - [Tooltip](#tooltip)
@@ -75,6 +80,7 @@ Systems first — their craft applies across every component below.
 - The pointer session counter increments on `onMouseEnter` and re-keys the highlight, so a fresh entry fades in at the row it lands on instead of sliding over from wherever it was last; `from` sets where that fresh entry fades in from (a dropdown passes its checked row, a nav menu its active route), and `fadeIn={false}` starts it opaque when `from` sits under a filled item (the calendar's range start), so the highlight slides out of it.
 - Gap click: a click that lands between items (gap, padding, past the last row) is routed as a real DOM `.click()` to the highlighted item's activator — "what is lit is what a click hits". Clicks inside an item, on controls between rows (a menu's search field), and on disabled items are left alone; `gapClick: false` turns it off, `{maxDistance}` caps it (the card grid uses 16px).
 - Gate overlays on `isMeasured`: an overlay mounted against a rect a later pass corrects animates from the wrong place to the right one, which reads as the highlight sliding in from another row. Measurement coalesces every trigger into one rAF pass, retries up to 3 frames while a popup has no layout box, and never publishes zeroed rects — the last complete measurement stands.
+- Rows never read `activeIndex` from a context: every row would re-render on every highlight change. Pass the hook's stable `activeStore` down instead and read it per row with `useFluidHoverSelect(store, (i) => i === index)`, which re-renders only the row the highlight left and the row it reached. The selector returns a primitive (a boolean, or a small number for a table row whose border hides next to the lit one).
 - Reduced motion is handled inside the component itself via `useReducedMotion()`: travel snaps, the 0.08s opacity fade stays — so an installed copy behaves correctly without the consumer wrapping their app in `MotionConfig`.
 - Only click targets register: a card without `href` or `onClick` does not join the highlight, because lighting it would promise a click with nowhere to land. One list per group of alternatives — children ride in the parent's list, a divider between different kinds of rows means a new container and a new hook.
 - The docs' skip-list is explicit UX judgment: skip fluid hover when a wrong click would hurt, when only some items are clickable, when there is a lot of empty space around items, or when rows change place as you scroll.
@@ -91,7 +97,7 @@ Systems first — their craft applies across every component below.
 - `shadowLevel` decouples shadow from background: a dropdown always reads `shadow-surface-3` whether it opens on the page or inside a dialog — the background tracks the substrate, but the shadow weight stays constant, so "a popover still reads as a popover three layers down".
 - Hover and selected states are surface-relative overlays, not fixed colors, so they work at any elevation: `--overlay` flips tint direction per theme (black on light, white on dark); dark hover is +6% white and selected +10% (light: 4% / 7%) — the demo labels these exactly.
 - One accent, `--fluid-accent` (#6B97FF by default), carries the brand: every focus ring (through `--focus-ring: var(--fluid-accent)`), the switch track, drag-over and swatch rings, and the copy highlight. Hover and selected stay neutral overlays. Components read `var(--fluid-accent, #6B97FF)` and derive shades in place with `color-mix(in oklab, …)`, never a raw hex. Declare the accent on `:root` only: a `.light` / `.dark` subtree that re-declares it resets a forced-theme preview to the default.
-- Closely nested rounded surfaces use concentric corners: inner radius = max(0, outer radius - inset - border), where inset is the interior spacing (usually parent padding) and border is the parent's border width. The fixed shape pair (`container` 12/24px → `bg` 8/20px) is for a 4px total inset; any other padding uses `nestedRadius()` instead of reusing those classes. Past 24px, with asymmetric gaps, or when the inner element does not reach the corner, the layers are independent and may be tuned by eye.
+- Closely nested rounded surfaces use concentric corners: inner radius = max(0, outer radius - inset - border), where inset is the interior spacing (usually parent padding) and border is the parent's border width. The fixed shape pair (`container` 12/24px → `bg` 8/20px) is for a 4px total inset (sharp stays 1px at both levels); any other padding uses `nestedRadius()` instead of reusing those classes. Past 24px, with asymmetric gaps, or when the inner element does not reach the corner, the layers are independent and may be tuned by eye.
 
 <a id="sizes"></a>
 ## Sizes (size-context)
@@ -211,6 +217,19 @@ Systems first — their craft applies across every component below.
 - A banner that is mostly faded (under 50%) takes no clicks, so one appearing can't catch clicks meant for what's under it and one leaving can't be clicked twice. When a banner closes with keyboard focus inside, focus moves to the next focusable element after it (else the one before), not back to the top of the page.
 - Errors and warnings get `role="alert"` and interrupt a screen reader; the rest get `role="status"`. Uncontrolled, the ✕ hides the banner on its own; pass `open` to bring a dismissed banner back.
 
+<a id="breadcrumb"></a>
+## Breadcrumb
+
+- One fluid hover scope on the <nav> covers every crumb in the trail, the current page included. The separator is each crumb's trailing icon, inside the crumb, so crumbs sit flush (no gap) and the highlight glides along the trail without going dark between items.
+- Targets register by DOM order (a data attribute read in a layout effect after each render), so parts compose freely with no index props; only slots whose element changed re-register, so a re-render costs no measurement pass. Dropdown popups are portalled out of the nav and never join the scope.
+- Crumbs are one segment item high (28px, 24px compact) with the ladder's row padding (8px, 6px compact), so the highlight has room around the text; the current page keeps the same padding so its text lines up with the links. A crumb with a trailing separator steps its right padding down (6px, 4px compact) because the chevron glyph carries its own side bearing.
+- Links and buttons are muted-foreground at rest and turn foreground while the highlight sits on them (data-fluid-hover-active), while their menu is open (data-state=open, data-popup-open), or on keyboard focus, which also draws the 1px --focus-ring. The current page is foreground at the normal weight: color, not weight, marks where you are.
+- The separator is the icon set's chevron-right, 2px under the glyph size, in muted-foreground and aria-hidden, hidden on the last item (li:last-child). On a step that opens a Dropdown (aria-haspopup) the same chevron turns 90deg to point down while the highlight sits on it, on keyboard focus, and while the menu is open (data-state=open / data-popup-open, 150ms ease-out, off under reduced motion), so the step needs no second chevron. Breadcrumb separator swaps the glyph (a slash) without the turn, or null drops it.
+- The trail stays on one row. Links and buttons stop at 12rem (10rem compact), so a long middle step truncates at that cap with an ellipsis while short steps are never cut; the item holding the current page is the only one that shrinks, taking whatever room is left. Text children are wrapped in a truncate span (a bare text node in a flex row cannot take an ellipsis). A crumb whose label is cut shows its full name in the library Tooltip (side bottom); whether it is cut is read as the pointer or keyboard focus arrives, the tooltip is forced closed while the name fits and while the crumb's own menu is open.
+- useBreadcrumbCollapse({ count }) hides middle steps while the trail is wider than its Breadcrumb: steps go from the second on, the first step, the last link and the page always stay, and past that the page truncates. Widths are read in a layout effect before paint and cached per step (the page's cut overflow added back), so a hidden step returns as soon as its width fits; a ResizeObserver on the nav re-runs the pass.
+- Breadcrumb menus open on hover by default in the docs and playground: DropdownTrigger openOnHover (100ms rest; Base UI natively, Radix through a timer the trigger and popup share, 150ms close delay to cross the gap; a click pins it open). Pass nothing for click-only menus, the Dropdown default. The collapsed ellipsis shows what it hides in one way at a time: on hover the menu itself opens (no tooltip, it would stack on the menu); with click-only menus a Tooltip counts the hidden steps ("3 hidden steps", side bottom), forced closed while the menu is open. The button's aria-label carries the count either way. Breadcrumb menus pass DropdownContent className w-max with min-w-[max(8rem, trigger width)]: the menu fits its rows instead of the default 288px, keeps 8rem so a checked row's check has room, and never gets narrower than its trigger (Radix --radix-dropdown-menu-trigger-width, Base UI --anchor-width).
+- Polymorphism is a local slot (render or asChild), so the component installs the same into Radix and Base UI projects.
+
 <a id="button"></a>
 ## Button
 
@@ -218,7 +237,7 @@ Systems first — their craft applies across every component below.
 - The press geometry releases slowly, presses fast: box-shadow transitions at 180ms cubic-bezier(0.23,1,0.32,1) at rest, dropping to 80ms while :active; background-color always runs 80ms ease.
 - Tertiary's border is an outer 1px shadow at rest that hands off to an inset 1px shadow when pressed, so the ring moves inward with the shrinking surface.
 - Icons thicken on hover instead of the label changing: strokeWidth animates 1.5 → 2 over 80ms; icons also sit 4px closer to their edge than text (12px default / 8px compact vs 16px / 12px base padding).
-- Loading keeps label and icons mounted at opacity-0 so the button's width never changes; the spinner overlays them, its box tracking the button height (h-9 / h-7). The spinner is a figure-eight SVG path with a 15/85 dash driven by two loops: 2s linear movement + 4s ease-in-out dash.
+- Loading keeps label and icons mounted at opacity-0 so the button's width never changes; the spinner overlays them at icon size (16px, 14px compact) with the 1.5 icon stroke. It draws two opposite arcs that turn one lap per second on cubic-bezier(0.65,0,0.35,1): they stretch to 26% of the ring mid-turn and shrink back into 2 dots as they settle, the dash offset moving half the growth so both ends move. The dashes sit at 25% and 75% of the path (circle rotated -90deg) so neither crosses the path start, where a split dash gets 2 extra round caps and draws a stroke-width too long. Reduced motion slows it to 2s rather than stopping it.
 - `active` prop forces the pressed colors at full size — for a button holding a dropdown/popover open — and the geometric press-collapse still reacts on top.
 - Size ladder: default h-9 (36px) px-4 13px text, compact h-7 (28px) px-3 12px text; unset size follows the surrounding SizeProvider, legacy sm/md/lg resolve as aliases. asChild clones the user's element with the button's internals as children and drops `disabled` on non-button roots.
 - `render` is accepted as a second spelling of `asChild` (and `nativeButton` is accepted and ignored), on the same clone path, so a link stays a plain link with no `role="button"`. The shadcn CLI rewrites `asChild` into `render` plus `nativeButton={false}` when it installs into a Base UI project, so components that hand Button a link keep working there.
@@ -275,6 +294,16 @@ Systems first — their craft applies across every component below.
 - Timestamps are a user-message-only affordance — `time` is ignored on assistant replies, which show their actions alone; the timestamp renders tabular-nums.
 - Messages cap at max-w-[80%]; attachments render as square thumbnails (default 64px) in a row above the bubble, justified toward the message's own side, and an attachment-only message (no children) drops the text bubble entirely. Each thumbnail gets a 1px inset pure-black/pure-white 10% outline so bright edge pixels do not disappear into the page.
 
+<a id="checkbox"></a>
+## Checkbox
+
+- The square is CheckboxGroup's: 16px (14px compact), a 1.5px --border at rounded-[5px] (4px compact), so a lone checkbox and a group row read as one family.
+- Checked, the border goes transparent and the drawn check alone marks the state; the check draws itself (pathLength 0 → 1 over 0.08s easeOut) and retracts faster (0.04s easeIn). AnimatePresence initial={false} so a box checked at mount does not animate on load.
+- Hover darkens an unchecked border to foreground/40, the same neutral as the Input's focus border, and so does hovering the Field row it sits in (group-hover/field), so the label is part of the target.
+- Keyboard focus shows the 1px --focus-ring; aria-invalid tints only the unchecked border red, and disabled dims to 50% with no pointer events.
+- Uncontrolled use is mirrored in local state because the check's enter and exit need the value in render; onCheckedChange always reports a plain boolean in both flavors.
+- Space toggles, as the ARIA checkbox pattern says; inside a choice card (a FieldLabel wrapping a whole Field) Enter toggles too, because the card reads as an option to pick. A plain checkbox, even one wrapped in a label, leaves Enter to submit its form.
+
 <a id="checkbox-group"></a>
 ## CheckboxGroup
 
@@ -328,7 +357,7 @@ Systems first — their craft applies across every component below.
 <a id="date-picker"></a>
 ## DatePicker
 
-- The outline trigger (the default `variant`) matches Select: the control height, the shape's input radius, a 1px border, and the focus ring. Its parts (the date, each time, the clear button) sit 2px inside the border and share one fluid hover scope along `x`, with corners nested in the field's radius (5px rounded, 17px pill). `variant="ghost"` drops the border for inline use.
+- The outline trigger (the default `variant`) matches Select: the control height, the shape's input radius, a 1px border, and the focus ring. Its parts (the date, each time, the clear button) sit 2px inside the border and share one fluid hover scope along `x`, with corners nested in the field's radius (5px rounded, 17px pill, square when sharp). `variant="ghost"` drops the border for inline use.
 - Labels come from `Intl`, no date library: `Wed Oct 21`, the year added outside the current one; ranges read `Oct 21 → Oct 24`. Times follow the locale's 12 or 24 hour clock unless `hourCycle` says otherwise.
 - The date popover opens on the selected day (or today) with focus on it; Escape closes it and focus returns to the trigger. A single pick holds the popover 200ms so the fill is seen landing, then closes. A range closes once its end is picked, and only complete ranges reach `onValueChange`: the half-picked one lives in the picker, and closing mid-pick drops it.
 - Escape mid-pick restores the previous range and keeps the popover open; the next Escape closes it. Range mode shows 2 months, side by side when the viewport has room, stacked and scrolling under one weekday row when it doesn't.
@@ -362,9 +391,30 @@ Systems first — their craft applies across every component below.
 - Opens ready to act: two rAFs after the primitive's own open autofocus, focus lands on the first enabled row — unless a DropdownSearch is mounted, which takes focus itself so a searchable menu opens ready to type. A row lit by that open or by the keyboard fades in where it is; only a pointer entry rises from the checked row (`from`), so arrowing in never slides the highlight over from it. With a search mounted, the primitive's brief first-row focus on open lights nothing.
 - DropdownSearch: typing while a row is focused is redirected into the field (capture-phase keydown refocuses and appends the character; Backspace too; Space is left alone because on a row it activates). The field is one stop in the ring of rows: ↓/↑ jump to the first/last row, arrowing off either end of the list returns to the field, and while the field has focus no row is highlighted (the field is the active stop, it just draws no background). Enter in the field picks nothing: only a row the user arrowed onto activates, so a searchable menu never selects a row nobody landed on. Without a search field the first row takes focus on open, so Enter picks it.
 - The search field is sticky at the popup's top, bleeding into the 4px padding so its divider runs edge to edge and rows scroll underneath; the popup drops its scroll fade while a field is pinned there. The query resets on close (`clearOnClose` default true) so the menu reopens unfiltered.
-- The popup opts out of the global pill/rounded shape and keeps the smaller "rounded" radii: heavy pill bubbling distorts perceived padding at this scale and produces corner-shadow asymmetry. Elevation is substrate + 2 with the shadow pinned to level 3, so a dropdown reads the same shadow on the page or inside a dialog. Width: min-w tracks the trigger, max-h is min(480px, available height).
+- The popup caps the global shape at "rounded" (`usePopupShape()`): a pill UI still gets rounded menus, because heavy pill bubbling distorts perceived padding at this scale and produces corner-shadow asymmetry. A sharp UI gets sharp menus. Elevation is substrate + 2 with the shadow pinned to level 3, so a dropdown reads the same shadow on the page or inside a dialog. Width: min-w tracks the trigger, max-h is min(480px, available height).
 - Submenus: the primitive owns the safe area (the pointer can cut diagonally across other rows to an open submenu without closing it), but the fluid hover would still follow the pointer onto those rows. So while a submenu is open, the parent's highlight stays on its trigger and moves only with focus: both primitives move focus to another row only once the pointer leaves the safe area, and close the submenu as they do. The submenu renders through a portal yet is a React child of the parent, so the parent's handlers skip events from outside their own DOM; otherwise a click on a submenu row would also reach the parent's gap-click routing.
 - A submenu sits 2px off the parent menu (`sideOffset` 6 is measured from the trigger row, inside the menu's 4px padding) with its first row level with the trigger (`alignOffset` -4 cancels the padding), keeps its own `w-56` instead of tracking its anchor's width, and never takes focus on a hover open: only a keyboard open (→, Enter) lands on its first row.
+
+<a id="field"></a>
+## Field
+
+- Field is layout and type plus one link: the control (Input, Textarea, Select, Checkbox, any native field) is whatever goes inside, and after each render Field adds the ids of its own FieldDescription and FieldError to that control's aria-describedby, keeping the caller's ids. It is role=group only when named (aria-label or aria-labelledby), so single fields don't announce an empty group. Validation reads data-invalid on Field for the red label and aria-invalid on the control for its border.
+- Labels are body text in muted-foreground above a control and full foreground beside one (orientation horizontal), where they read as the control's own text.
+- Labels, descriptions and errors sit flush with the control's left edge; FieldError leads with the circle-alert icon nudged 1px down so it centers on the first caption line even when the message wraps or lists, the ladder's icon-to-label gap (8px, 4px compact) from its text.
+- Spacing comes from the size rules: stacked, label, control, description and error sit 4px apart at both steps, as in InputField; fields (and a fieldset's legend block) sit 12px apart, InputGroup's step; side by side, a control and its label or label column take the ladder gap (8px, 4px compact), as in a CheckboxGroup row. A choice card pads with the ladder's px (12px, 10px compact) and takes the shape's container radius.
+- FieldError takes children or an errors array from a form library or Standard Schema; duplicate messages collapse and several render as a plain list, false or empty children fall back to the array, and it renders nothing when there is nothing to say, so it can stay in the tree.
+- FieldGroup is an @container/field-group, so orientation responsive switches to a row on the group's width, not the viewport's.
+- Choice card: a FieldLabel wrapping a whole horizontal Field becomes one bordered, hoverable target (rounded-xl, p-3, hover:bg-hover) whose border darkens to foreground/40 once the checkbox inside is checked. Keyboard focus rings the card's outline in --focus-ring and the checkbox's own ring steps aside, so the focus mark matches the target.
+
+<a id="input"></a>
+## Input
+
+- The frame copies the Select trigger: border border-border that never moves at rest, the ladder's height (h-9 / h-7), px (12px / 10px) and body text, so an Input and a Select side by side match to the pixel.
+- Hover adds bg-hover; focus darkens the border to a neutral foreground/40 instead of an accent ring and drops the hover fill.
+- Focus wins over aria-invalid's red while the value is being fixed; Tailwind sorts aria-* after focus, so the invalid case carries its own stacked aria-invalid:focus: class.
+- On touch screens the text steps up to 16px inside the same height (the ladder's field class), so iOS Safari never zooms on focus.
+- type=number swaps the browser spinners for − and + buttons side by side at the right end, inset like segmented tabs (28px buttons 4px in, 24px and 2px compact) with nested corners; they stay out of the tab order (arrow keys already step) and call stepUp/stepDown, then dispatch an input event so a controlled onChange sees the new value and min, max and step hold.
+- type=file gets a file icon over its left padding (px + icon + gap) and the line padding a text input centers by itself (7px, 4px compact); its text stays muted until a file is picked, while the browser's Choose File button keeps full contrast.
 
 <a id="input-copy"></a>
 ## InputCopy
@@ -381,8 +431,9 @@ Systems first — their craft applies across every component below.
 ## InputGroup
 
 - A field lights up when it is the hover-nearest item OR focused (`labelActive = isActive || isFocused`): its leading icon shifts muted→foreground and stroke-width 1.5→2 over 80ms.
-- State chrome is a precedence ladder: disabled → transparent/ring-border; error → transparent at rest, bg-destructive-light/60 on hover-active, bg-card when focused, with ring-destructive/50 only while focused or hover-active; focused → bg-card + ring-border; hover-active → bg-muted/50; rest → fully transparent with invisible ring.
-- The label sits one notch tighter (pl-2.5, compact pl-2) than the ladder's control padding because "the field ring is invisible at rest, so the roomier inset reads as a gap".
+- The frame is the Select trigger's hairline: an inset ring-1 in --border that never moves at rest, bg-hover on the field under the pointer, and the ladder's px (12px, compact 10px) so text lines up with a Select beside it.
+- Focus darkens the ring to a neutral ring-foreground/40 instead of an accent, and it wins over the error tint (ring-destructive/50) while the value is being fixed; the red comes back on blur if the field is still invalid. Focus also drops the hover fill.
+- Label and error message sit flush with the field's edge, not inset to the text; the error leads with the circle-alert icon (14px, compact 12px) on the caption role.
 - The label stacks an invisible semibold layer under the visible one in one grid cell, reserving the bold width so weight changes never shift layout.
 - Mousedown anywhere on the input container (icon, padding) focuses the input — preserving the old one-big-label behavior — while clicks on the input itself are left alone so caret placement isn't disturbed.
 - The input container uses a fixed ladder control height (rather than py-2 around the line box) so the field sits exactly on the 36px / 28px size steps. On touch screens the text steps up to 16px inside that same height, so iOS Safari never zooms the page on focus and the row doesn't move.
@@ -423,7 +474,7 @@ Systems first — their craft applies across every component below.
 - Keyboard focus ring is gated: seeded from the trigger's `:focus-visible` at open and earned by nav keys (arrows/Home/End/PageUp/PageDown/Tab) inside the popup, tracked in the capture phase because the primitive moves focus during its own keydown. Pointer-driven focus never draws the ring.
 - SelectContent renders unconditionally: while closed, Radix parks its children in a detached DocumentFragment, which the selected label portal into the trigger, closed-trigger typeahead, and the hidden native `<select>` options all depend on — never gate it behind a mounted flag.
 - Flavor difference a user feels: the Radix flavor is modal-ish — it scroll-locks the page and disables outside pointer events while open; the Base UI flavor is non-modal — the page keeps scrolling and the positioner tracks the anchor.
-- The trigger follows the global pill/rounded shape but the popup always keeps the smaller "rounded" radii; the popup enters on the fast tier with the side-aware `popupMotionClass`, tracks the trigger width via `--radix-select-trigger-width`, and caps at min(300px, available height).
+- The trigger follows the global shape; the popup caps it at "rounded" (pill becomes rounded, sharp stays sharp); the popup enters on the fast tier with the side-aware `popupMotionClass`, tracks the trigger width via `--radix-select-trigger-width`, and caps at min(300px, available height).
 
 <a id="sidebar"></a>
 ## Sidebar
@@ -486,6 +537,14 @@ Systems first — their craft applies across every component below.
 - The list wears `-mx-1 px-1 / -my-1 py-1` so the 2px-outset focus ring can draw inside `overflow-x-auto` without clipping, and `max-w-[calc(100%_+_8px)]` because fit-content parents size against the margin box — a plain max-w-full would clamp the list 8px too small and clip the first/last tab's ring.
 - Activation is manual, `activationMode="manual"` on Radix and `activateOnFocus={false}` on Base UI: arrows move focus, Enter/Space selects. The primitive owns role="tablist", roving tabindex, and Arrow/Home/End.
 
+<a id="textarea"></a>
+## Textarea
+
+- The Input's hairline on a multi-line box: fixed --border at rest, bg-hover on hover, neutral foreground/40 on focus that wins over aria-invalid's red.
+- It grows with field-sizing-content from three lines (76px, 64px compact) to ten (216px, 190px), then scrolls, with resize-none, so a long paste never pushes the form off screen; browsers without field-sizing keep the minimum and scroll.
+- Vertical padding puts the first line exactly where an Input's text sits: (36 - 2 - 20) / 2 = 7px, (28 - 2 - 18) / 2 = 4px compact, so a Textarea under an Input starts on the same baseline offset.
+- A pill shape steps down to its merged radius, because a full pill radius on a tall box reads as a blob.
+
 <a id="thinking-indicator"></a>
 ## ThinkingIndicator
 
@@ -514,7 +573,7 @@ Systems first — their craft applies across every component below.
 - Hover delay defaults to 200ms; an app-level `TooltipProvider` adds skip-delay grouping (300ms window) so moving between adjacent triggers shows the next tooltip instantly. Each bare Tooltip falls back to a per-instance provider only when no ambient one exists — a per-instance provider everywhere would defeat the grouping and re-wait the full delay between neighbors.
 - `followCursor="x" | "y"` tracks the pointer along one axis for tall or wide triggers (the Sidebar rail) where a centered tooltip sits far from the pointer; the other axis stays anchored by `side`. The offset is a framer motion value, so per-move updates skip React re-renders; a force-opened follow tooltip rests centered until a real pointer takes over.
 - The bubble is an inverted surface (`bg-foreground text-background`), 12px at regular weight (`fontVariationSettings`); `text-box: trim-both cap alphabetic` recenters the label, with the padding bump applied only where text-box is supported so overall height stays ~24px on untrimmed browsers.
-- `contentClassName` exists because Radix copies the content's z-index onto its popper wrapper: pass a z utility there to lift the whole tooltip above other fixed layers (default z-50); on Base UI the same prop lands on the Positioner instead. `className` styles the bubble itself.
+- `contentClassName` exists because Radix copies the content's z-index onto its popper wrapper: pass a z utility there to lift the whole tooltip above other fixed layers (default: the `--z-tooltip` step, 70); on Base UI the same prop lands on the Positioner instead. `className` styles the bubble itself.
 - `forceOpen` pins the tooltip open (or closed) over the hover/focus behavior — `onOpenChange` still reports the internal state before forceOpen is applied.
 
 # Blocks

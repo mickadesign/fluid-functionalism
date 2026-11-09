@@ -6,6 +6,7 @@ import {
   createContext,
   useContext,
   forwardRef,
+  type CSSProperties,
   type ReactNode,
   type HTMLAttributes,
   type TdHTMLAttributes,
@@ -14,7 +15,12 @@ import {
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
-import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // ---------------------------------------------------------------------------
@@ -29,7 +35,9 @@ import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 interface TableContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  /** Read per row, so a highlight change re-renders only the rows whose
+   *  borders or text change, not the whole table. */
+  activeStore: FluidHoverActiveStore;
 }
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -50,15 +58,14 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
     const hover = useFluidHover(containerRef);
     const {
-      activeIndex,
+      activeStore,
       handlers,
       registerItem,
     } = hover;
 
-
     const contextValue = useMemo(
-      () => ({ registerItem, activeIndex }),
-      [registerItem, activeIndex]
+      () => ({ registerItem, activeStore }),
+      [registerItem, activeStore]
     );
 
     const table = (
@@ -78,7 +85,14 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
 
           <table
             ref={ref}
-            className={cn("w-full border-collapse", sizeClasses.text, className)}
+            // --table-cell-py is the one source for row height: cells pad by
+            // it and TableEmpty holds its rows with it.
+            className={cn(
+              "w-full border-collapse",
+              sizeClasses.variant === "compact" ? "[--table-cell-py:5px]" : "[--table-cell-py:--spacing(2)]",
+              sizeClasses.text,
+              className
+            )}
             {...props}
           >
             {children}
@@ -130,14 +144,17 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
     useRegisterFluidHoverItem(ctx?.registerItem, index, internalRef);
 
     const isBodyRow = index !== undefined;
-    const activeIdx = ctx?.activeIndex ?? null;
     // Each row draws only its bottom border, so the lit row's top edge is the
     // border of the row above it. Hiding both leaves the highlight with no
     // rule along or through it. Row 0's top edge is the header's border.
-    const hideBorder = activeIdx !== null && (
-      (isBodyRow && (index === activeIdx || index === activeIdx - 1)) ||
-      (!isBodyRow && activeIdx === 0)
-    );
+    // 2: this row is lit; 1: its border borders the lit row; 0: neither.
+    const litState = useFluidHoverSelect(ctx?.activeStore, (active) => {
+      if (active === null) return 0;
+      if (!isBodyRow) return active === 0 ? 1 : 0;
+      if (index === active) return 2;
+      return index === active - 1 ? 1 : 0;
+    });
+    const hideBorder = litState > 0;
 
     return (
       <tr
@@ -152,7 +169,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         className={cn(
           "group/row relative z-10 border-b transition-[border-color] duration-80",
           hideBorder ? "border-transparent" : "border-accent/40",
-          isBodyRow && activeIdx === index && "is-active",
+          litState === 2 && "is-active",
           className
         )}
         // Weight goes through the variable font's axis with the same values
@@ -184,7 +201,8 @@ const TableHead = forwardRef<
       className={cn(
         "text-left text-foreground",
         // py + line box lands the row on the ladder (36px / 28px).
-        sizeClasses.variant === "compact" ? "px-2.5 py-[5px]" : "px-3 py-2",
+        "py-(--table-cell-py)",
+        sizeClasses.variant === "compact" ? "px-2.5" : "px-3",
         className
       )}
       {...props}
@@ -208,7 +226,8 @@ const TableCell = forwardRef<
       // border fade. Same padding as TableHead so every row shares a height.
       className={cn(
         "text-muted-foreground transition-colors duration-80 group-[.is-active]/row:text-foreground",
-        sizeClasses.variant === "compact" ? "px-2.5 py-[5px]" : "px-3 py-2",
+        "py-(--table-cell-py)",
+        sizeClasses.variant === "compact" ? "px-2.5" : "px-3",
         className
       )}
       {...props}
@@ -218,6 +237,55 @@ const TableCell = forwardRef<
 
 TableCell.displayName = "TableCell";
 
+// ── TableEmpty ───────────────────────────────────────────
+
+interface TableEmptyProps extends Omit<HTMLAttributes<HTMLTableRowElement>, "title"> {
+  /** How many columns the message spans: the table's column count. */
+  columns: number;
+  /** One short line saying what belongs here. */
+  title?: ReactNode;
+  /** One line on how rows get here. */
+  description?: ReactNode;
+  /** The control that creates the first row, e.g. a Button. */
+  action?: ReactNode;
+  /** The height to hold, in body rows, so filling the table doesn't shift
+   *  what sits under it. Default 3. */
+  rows?: number;
+}
+
+// Rendered in place of the body rows when there are none. Not a fluid hover
+// item (no `index`), so it never lights up.
+const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
+  ({ columns, title, description, action, rows = 3, children, className, ...props }, ref) => {
+    return (
+      <tr ref={ref} data-slot="table-empty" className={className} {...props}>
+        <td colSpan={columns} className="p-0">
+          {/* A body row is one line box plus the cells' padding, so `rows` of
+              them stay in step with TableCell whatever the ladder step. */}
+          <div
+            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            style={{ "--table-empty-rows": rows } as CSSProperties}
+          >
+            {title && (
+              <span
+                className="text-foreground"
+                style={{ fontVariationSettings: fontWeights.semibold }}
+              >
+                {title}
+              </span>
+            )}
+            {description && <span className="text-muted-foreground">{description}</span>}
+            {children}
+            {action && <div className="mt-2">{action}</div>}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+
+TableEmpty.displayName = "TableEmpty";
+
 // ── Exports ──────────────────────────────────────────────
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell };
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty };

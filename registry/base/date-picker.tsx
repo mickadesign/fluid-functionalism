@@ -69,7 +69,7 @@ function DatePickerPopover({
           sideOffset={6}
           collisionPadding={8}
           anchor={kind === "anchor" ? anchorRef : undefined}
-          className="z-50 outline-none [--popup-available-height:var(--available-height)]"
+          className="z-[var(--z-popover,60)] outline-none [--popup-available-height:var(--available-height)]"
         >
           <PopoverPrimitive.Popup
             // The calendar focuses its day; a time field keeps focus.

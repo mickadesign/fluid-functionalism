@@ -179,7 +179,7 @@ export function PlaygroundMenu({
                 ref={panelRef}
                 role="dialog"
                 aria-label={label}
-                className="fixed z-50"
+                className="fixed z-[var(--z-popover,60)]"
                 style={{
                   right: pos.right,
                   top: pos.top,

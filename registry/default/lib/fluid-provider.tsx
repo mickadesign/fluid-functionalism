@@ -7,7 +7,7 @@
 //   - motion: MotionConfig reducedMotion="user", so the OS "reduce motion"
 //     setting drops transform and layout animations. Fades stay, since they
 //     carry meaning.
-//   - shape: rounded or pill corners (ShapeProvider).
+//   - shape: rounded, pill or sharp corners (ShapeProvider).
 //   - size: the 36px default step or the 28px compact one (SizeProvider).
 //   - icons: Lucide, unless you pass another set (icons-tabler,
 //     icons-phosphor, icons-hugeicons, icons-untitledui) or your own map.

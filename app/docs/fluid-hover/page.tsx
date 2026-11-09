@@ -11,6 +11,7 @@ import {
   ListsDemo,
   CostDemo,
 } from "./demos";
+import { HoverModeOverride } from "@/lib/docs/hover-mode";
 import { hookOptions, hookReturn, highlightProps } from "@/lib/docs/api/fluid-hover";
 
 /** Inline code chip used throughout the prose. */
@@ -44,6 +45,9 @@ function UseList({ title, items }: { title: string; items: string[] }) {
 
 export default function FluidHoverDoc() {
   return (
+    // The demos exist to show the glide, so this page stays fluid whatever
+    // the Hover setting says.
+    <HoverModeOverride mode="fluid">
     <DocPage
       title="Fluid Hover"
       slug="fluid-hover"
@@ -159,5 +163,6 @@ export default function FluidHoverDoc() {
         </p>
       </DocSection>
     </DocPage>
+    </HoverModeOverride>
   );
 }

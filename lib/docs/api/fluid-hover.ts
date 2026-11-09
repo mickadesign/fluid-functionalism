@@ -13,6 +13,7 @@ export const hookReturn: PropDef[] = [
   { name: "handlers", type: "{ onMouseEnter, onMouseMove, onMouseLeave, onClick }", description: "Spread onto the container. Mouse only. onClick is the gap click." },
   { name: "registerItem", type: "(index, element | null) => void", description: "Give it to each row. Indices start at 0 and must not change while the list is on screen." },
   { name: "activeIndex", type: "number | null", description: "The lit item, or null. Also set as data-fluid-hover-active on the item." },
+  { name: "activeStore", type: "{ subscribe, get }", description: "activeIndex as a stable store. Pass it to rows through context and read it with useFluidHoverSelect, so a move re-renders two rows, not the list." },
   { name: "setActiveIndex", type: "(index | null) => void", description: "Light an item yourself, for keyboard focus. The hook never moves focus." },
   { name: "itemRects", type: "ItemRect[]", description: "Each item's box inside the container. Survives a parent scale, not a rotation." },
   { name: "isMeasured", type: "boolean", description: "True once every item has a box. Measured again on register and on resize." },

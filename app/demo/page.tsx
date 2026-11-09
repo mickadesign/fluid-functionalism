@@ -1,5 +1,6 @@
 "use client";
 
+import { CarouselDots } from "@/registry/default/carousel-dots";
 import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -74,7 +75,6 @@ function DemoPageInner() {
     "thinking-indicator",
     "thinking-steps",
     "banner",
-    "__settings__",
     "input-copy",
     "carousel-dots",
     // Any component with a registered playground gets a slide automatically
@@ -82,6 +82,8 @@ function DemoPageInner() {
     // up here too, under the pen menu. Curate the position by naming the slug
     // above; anything unnamed lands at the end.
     ...Object.keys(playgroundMap),
+    // "Make them yours" always closes the deck, after every component.
+    "__settings__",
   ].filter((slug, i, all) => all.indexOf(slug) === i);
 
   const componentMap = new Map(componentList.map((c) => [c.slug, c]));
@@ -333,20 +335,13 @@ function DemoPageInner() {
       </div>
 
       {/* Progress indicator */}
-      <div className="flex items-center gap-2.5 mt-10 mb-12">
-        {slides.map((s, i) => (
-          <button
-            key={s.slug}
-            onClick={() => goTo(i)}
-            className="h-1.5 rounded-full transition-all duration-150"
-            style={{
-              width: i === currentIndex ? 24 : 6,
-              backgroundColor: "color-mix(in oklab, var(--foreground), transparent 60%)",
-            }}
-            aria-label={`Go to ${s.name}`}
-          />
-        ))}
-      </div>
+      <CarouselDots
+        count={slides.length}
+        value={currentIndex}
+        onValueChange={goTo}
+        getLabel={(i) => `Go to ${slides[i].name}`}
+        className="mt-10 mb-12"
+      />
     </div>
   );
 }

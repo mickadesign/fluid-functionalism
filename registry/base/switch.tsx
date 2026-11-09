@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { omit } from "@/lib/omit";
 import { useSize, type SizeVariant } from "@/lib/size-context";
+import { useShape } from "@/lib/shape-context";
 
 // ---------------------------------------------------------------------------
 // Switch is a whole labeled row: a click anywhere on it toggles, and the thumb
@@ -75,6 +76,8 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
     const [hovered, setHovered] = useState(false);
     const [pressed, setPressed] = useState(false);
     const sizeClasses = useSize(size);
+    // Sharp squares the track and thumb; rounded and pill keep the pill.
+    const sharp = useShape().variant === "sharp";
     const m = METRICS[sizeClasses.variant];
     const thumbTravel = m.trackWidth - m.thumbSize - THUMB_OFFSET * 2;
 
@@ -285,7 +288,8 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
           disabled={disabled}
           tabIndex={0}
           className={cn(
-            "relative shrink-0 rounded-full outline-none cursor-pointer",
+            "relative shrink-0 outline-none cursor-pointer",
+            sharp ? "rounded-none" : "rounded-full",
             "transition-colors duration-80",
             // Only on :focus-visible, so a click leaves no ring. The 2px
             // offset is filled with the background to part it from the track.
@@ -331,7 +335,7 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
                   {...rest}
                   // Pinned to the top-left and placed only by the x and y transforms;
                   // width and height carry the hover and press shapes.
-                  className="absolute top-0 left-0 block rounded-full bg-white shadow-sm"
+                  className={cn("absolute top-0 left-0 block bg-white shadow-sm", sharp ? "rounded-none" : "rounded-full")}
                   initial={false}
                   style={{
                     ...(baseStyle as React.CSSProperties | undefined),

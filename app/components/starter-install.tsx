@@ -3,6 +3,7 @@
 import { track } from "@vercel/analytics";
 import type { ButtonSize } from "@/registry/radix/button";
 import { CopyPromptButton } from "@/lib/docs/copy-prompt-button";
+import { useHoverMode } from "@/lib/docs/hover-mode";
 import { buildStarterPrompt } from "@/lib/docs/install-prompt";
 import { useThemeContext } from "@/registry/default/lib/theme-context";
 import { useShapeContext } from "@/lib/shape-context";
@@ -28,19 +29,20 @@ function useStarterSettings(): StarterSettings {
  * Home page "Copy install prompt": a brief that has a coding agent start a
  * new app from the starter, with every component and the visitor's "Make
  * them yours" settings and heading font. The prompt follows the settings
- * live (panel or T, R, S, I, A, F). On the home page and in the right panel.
+ * live (panel or T, R, S, I, A, F, H). On the home page and in the right panel.
  */
 export function StarterPromptButton({ size, className }: { size?: ButtonSize; className?: string }) {
   const settings = useStarterSettings();
   const { font, custom, weight } = useHeadingFont();
   const { custom: customAccent } = useAccent();
+  const hover = useHoverMode();
   return (
     <CopyPromptButton
       label="Copy install prompt"
-      prompt={buildStarterPrompt(settings, { font, custom, weight }, customAccent)}
+      prompt={buildStarterPrompt(settings, { font, custom, weight }, customAccent, hover)}
       size={size}
       className={className}
-      onCopy={() => track("Starter prompt copied", { base: settings.base, headingFont: font })}
+      onCopy={() => track("Starter prompt copied", { base: settings.base, headingFont: font, hover })}
     />
   );
 }
