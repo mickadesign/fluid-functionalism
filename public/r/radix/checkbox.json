@@ -4,8 +4,8 @@
   "title": "Checkbox",
   "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Radix flavor.",
   "dependencies": [
-    "motion",
-    "@radix-ui/react-checkbox"
+    "motion@^14.11.1",
+    "@radix-ui/react-checkbox@^1.4.1"
   ],
   "registryDependencies": [
     "utils",
