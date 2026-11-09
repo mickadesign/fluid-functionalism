@@ -335,8 +335,9 @@ interface DataTableProps<TData> {
    *  change as it's made (a keystroke, a pick). While an editor has focus
    *  or an open popup, the rows hold their order, so a sorted column
    *  doesn't move the row from under you; they settle into place once
-   *  focus leaves the table's editors. Escape puts back the value the
-   *  editor started with. */
+   *  focus leaves the table's editors. Escape only takes focus out of an
+   *  editor (an open list or calendar closes first); what was typed
+   *  stays. */
   onCellEdit?: (edit: DataTableCellEdit<TData>) => void;
   className?: string;
 }
@@ -2017,7 +2018,30 @@ const CELL_REACH = {
   tags: { default: "-mx-1.5", compact: "-mx-1" },
 } as const;
 
-function EditableCell<TData>({
+/** Esc in an editor only takes focus out of it: what was typed stays (it
+ *  was written as it was typed), and nothing else hears the key (the
+ *  selection, the page's own Escape). An editor whose popup is open (a
+ *  list, a calendar, a menu) closes it first, and keys that come up from
+ *  the popup itself are left to it. */
+function blurOnEscape(e: KeyboardEvent<HTMLElement>) {
+  if (e.key !== "Escape" || e.defaultPrevented) return;
+  const target = e.target as HTMLElement;
+  if (!e.currentTarget.contains(target) || target.getAttribute("aria-expanded") === "true") return;
+  e.preventDefault();
+  e.stopPropagation();
+  target.blur();
+}
+
+function EditableCell<TData>(props: Parameters<typeof EditorBody<TData>>[0]) {
+  return (
+    // A box of no layout of its own, there to hear Escape from any editor.
+    <div className="contents" onKeyDown={blurOnEscape}>
+      <EditorBody {...props} />
+    </div>
+  );
+}
+
+function EditorBody<TData>({
   editor,
   row,
   columnId,
@@ -2044,30 +2068,10 @@ function EditableCell<TData>({
   const sizeClasses = useSize();
   const step = sizeClasses.variant === "compact" ? "compact" : "default";
   const commit = (next: unknown) => ctx.commit(row as Row<unknown>, columnId, next);
-  // The value the editor started with, for Escape.
-  const start = useRef<unknown>(value);
   const type = editorType(editor);
   const options = editorOptions(editor);
-
-  // A session runs from the editor's first focus until the hold lets go;
-  // its first value is what Escape puts back.
-  const inSession = useRef(false);
-  const onFocus = () => {
-    if (!inSession.current) start.current = value;
-    inSession.current = true;
-    hold.onFocus();
-  };
-  const onBlur = () => {
-    hold.onBlur();
-    setTimeout(() => {
-      if (!boxRef.current?.contains(document.activeElement)) inSession.current = false;
-    }, 80);
-  };
-  const revert = (e: KeyboardEvent<HTMLElement>) => {
-    if (e.key !== "Escape") return;
-    commit(start.current);
-    (e.target as HTMLElement).blur();
-  };
+  const onFocus = hold.onFocus;
+  const onBlur = hold.onBlur;
 
   if (type === "text" && (lines === 2 || lines === "wrap")) {
     return (
@@ -2083,7 +2087,7 @@ function EditableCell<TData>({
             if (e.key === "Enter") {
               e.preventDefault();
               (e.target as HTMLTextAreaElement).blur();
-            } else revert(e);
+            }
           }}
         />
       </div>
@@ -2105,7 +2109,6 @@ function EditableCell<TData>({
         onChange={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          else revert(e);
         }}
       />
     );
@@ -2122,7 +2125,6 @@ function EditableCell<TData>({
           onChange={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            else revert(e);
           }}
           // At rest the field reads as truncated text: a trackpad can't
           // scroll its hidden end into view, and leaving it shows the
@@ -2184,7 +2186,7 @@ function EditableCell<TData>({
           onOpenChange={hold.onOpenChange}
           onValueChange={(next) => {
             const day = next instanceof Date ? next : undefined;
-            commit(day ? (typeof start.current === "string" || typeof value === "string" ? toIsoDay(day) : day) : null);
+            commit(day ? (typeof value === "string" ? toIsoDay(day) : day) : null);
           }}
           className="min-w-0"
         />
