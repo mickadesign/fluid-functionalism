@@ -574,6 +574,37 @@ function DataTable<TData>({
     };
   }, [fill]);
 
+  // Opening and closing sub-rows: rows below jump to their new places in
+  // one frame, with the selection fill and the highlight (Table snaps them
+  // on a new snapKey), and only the rows that appear fade in. A slide here
+  // left the fills, keyed by position, springing apart from the rows.
+  const [expandTick, setExpandTick] = useState(0);
+  const fadeFrom = useRef<Set<string> | null>(null);
+  const toggleExpanded = (row: Row<TData>, open?: boolean) => {
+    fadeFrom.current = new Set(rows.map((r) => r.id));
+    setExpandTick((t) => t + 1);
+    row.toggleExpanded(open);
+  };
+  const toggleRef = useRef(toggleExpanded);
+  useLayoutEffect(() => {
+    toggleRef.current = toggleExpanded;
+  });
+  useLayoutEffect(() => {
+    const seen = fadeFrom.current;
+    if (!seen) return;
+    fadeFrom.current = null;
+    if (reduceMotion) return;
+    wrapRef.current?.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
+      if (seen.has(tr.dataset.rowId!)) return;
+      animate(tr, { opacity: [0, 1] }, spring.moderate).then(() => {
+        tr.style.opacity = "";
+      });
+    });
+  });
+  const [stableToggle] = useState(() => (row: Row<unknown>, open?: boolean) =>
+    toggleRef.current(row as Row<TData>, open)
+  );
+
   // Editors hold the row order while they have focus (see heldOrder). A
   // count, so moving from one editor to the next keeps the hold; the last
   // one out records the layout, so the rows glide to their sorted places.
@@ -888,13 +919,11 @@ function DataTable<TData>({
       if (e.key === "ArrowRight") {
         if (row.getCanExpand() && !row.getIsExpanded()) {
           e.preventDefault();
-          captureLayout();
-          row.toggleExpanded(true);
+          toggleExpanded(row, true);
         } else if (row.getIsExpanded()) step(tr.nextElementSibling);
       } else if (row.getIsExpanded()) {
         e.preventDefault();
-        captureLayout();
-        row.toggleExpanded(false);
+        toggleExpanded(row, false);
       } else if (row.parentId) {
         step(tr.parentElement?.querySelector(`tr[data-row-id="${CSS.escape(row.parentId)}"]`));
       }
@@ -1030,6 +1059,7 @@ function DataTable<TData>({
       size={size}
       // Selected rows on this page get CheckboxGroup's merged fill.
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
+      snapKey={expandTick}
       // The skeleton rows are aria-hidden; this tells assistive tech the
       // table is loading rather than empty.
       aria-busy={loading || undefined}
@@ -1188,6 +1218,7 @@ function DataTable<TData>({
               someSelected={row.getIsSomeSelected()}
               expanded={row.getIsExpanded()}
               expanderId={expanderId}
+              onToggleExpand={stableToggle}
               columns={table.options.columns}
               layoutKey={layoutKey}
               onRowClick={onRowClick}
@@ -1572,21 +1603,27 @@ const SUB_ROW_INDENT = 20;
  *  → opens and ← closes. Turns a quarter on spring.fast. */
 function ExpandToggle({
   expanded,
+  count,
   sharp,
   onToggle,
 }: {
   expanded: boolean;
+  /** How many sub-rows it opens: the tooltip names the next click with
+   *  it, as the select-all box does with its page. */
+  count: number;
   sharp: boolean;
   onToggle: () => void;
 }) {
   const icons = useIcons();
   const Chevron = icons["chevron-right"];
+  const action = expanded ? "Collapse" : "Expand";
   return (
+    <Tooltip content={`${action} ${count}`} side="top">
     <button
       type="button"
       tabIndex={-1}
       aria-expanded={expanded}
-      aria-label={expanded ? "Collapse row" : "Expand row"}
+      aria-label={`${action} ${count} ${count === 1 ? "sub-row" : "sub-rows"}`}
       onClick={(e) => {
         e.stopPropagation();
         onToggle();
@@ -1607,6 +1644,7 @@ function ExpandToggle({
         <Chevron size={14} strokeWidth={1.75} />
       </motion.span>
     </button>
+    </Tooltip>
   );
 }
 
@@ -1622,6 +1660,8 @@ interface DataTableBodyRowProps<TData> {
   expanded: boolean;
   /** The column that carries the chevron and the indent, with sub-rows. */
   expanderId: string | undefined;
+  /** Stable for the table's life. */
+  onToggleExpand: (row: Row<unknown>) => void;
   /** Compared only: new column definitions redraw the cells. */
   columns: unknown;
   /** Compared only: the visible columns and their text fitting. */
@@ -1649,6 +1689,7 @@ const DataTableBodyRow = memo(
       selected,
       expanded,
       expanderId,
+      onToggleExpand,
       onRowClick,
       rowsFocusable,
       editable,
@@ -1741,11 +1782,9 @@ const DataTableBodyRow = memo(
               {row.getCanExpand() ? (
                 <ExpandToggle
                   expanded={expanded}
+                  count={row.subRows.length}
                   sharp={shapeVariant === "sharp"}
-                  onToggle={() => {
-                    (table as Partial<DataTableExtras>).captureLayout?.();
-                    row.toggleExpanded();
-                  }}
+                  onToggle={() => onToggleExpand(row as Row<unknown>)}
                 />
               ) : (
                 <span aria-hidden className="size-4 shrink-0" />

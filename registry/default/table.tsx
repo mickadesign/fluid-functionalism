@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useMemo,
@@ -62,12 +64,17 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Selected body rows, by `index`. Contiguous ones share one merged
    *  background, drawn like CheckboxGroup's, under the hover highlight. */
   selectedIndices?: readonly number[];
+  /** Change it in the render that reorders rows without animating them
+   *  (rows opened or closed above): the selection fill and the hover
+   *  highlight jump with the rows for that one commit instead of springing
+   *  after them. */
+  snapKey?: string | number;
 }
 
 const NO_SELECTION: readonly number[] = [];
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, selectedIndices = NO_SELECTION, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
@@ -83,7 +90,26 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     // The same merged, merge/split-animated selection CheckboxGroup draws.
     const shape = useShape();
     const runs = useSelectionRuns(selectedIndices);
-    const blocks = useMergeSplitBlocks(runs, itemRects, shape.mergedRadius);
+    const mergedBlocks = useMergeSplitBlocks(runs, itemRects, shape.mergedRadius);
+    // A new snapKey snaps the fills for the commit it lands in, and the
+    // frame after hands them back to their springs.
+    const [snap, setSnap] = useState({ key: snapKey, on: false });
+    if (snap.key !== snapKey) setSnap({ key: snapKey, on: true });
+    useEffect(() => {
+      if (!snap.on) return;
+      const id = requestAnimationFrame(() => setSnap((s) => ({ ...s, on: false })));
+      return () => cancelAnimationFrame(id);
+    }, [snap.on]);
+    // The rows just moved: measure them now, before paint, so the snapped
+    // fills land on their new places in the same frame (the observer that
+    // usually measures runs a frame later).
+    const { measureItems } = hover;
+    useLayoutEffect(() => {
+      if (snap.on) measureItems();
+    }, [snap.on, measureItems]);
+    const blocks = snap.on
+      ? mergedBlocks.map((b) => ({ ...b, instant: true, exitInstant: true, enterFrom: undefined }))
+      : mergedBlocks;
 
     // Keyboard focus owns the highlight until the pointer really moves. A
     // scroll (the rows sliding under a still pointer, as arrow keys bring
@@ -153,11 +179,13 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           }}
         >
           {/* Selected backgrounds, merged per contiguous run */}
-          <SelectionBackgrounds blocks={blocks} />
+          {/* Keyed by the snap, so a block that leaves in a snap goes at
+              once instead of fading from where the rows no longer are. */}
+          <SelectionBackgrounds key={String(snap.key ?? "")} blocks={blocks} />
 
           {/* Hover background, rounded by the shape setting like the
               selection under it. */}
-          <FluidHoverHighlight hover={hover} className={shape.bg} transition={repeating ? false : undefined} />
+          <FluidHoverHighlight hover={hover} className={shape.bg} transition={repeating || snap.on ? false : undefined} />
 
           <table
             ref={ref}
