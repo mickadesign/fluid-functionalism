@@ -623,15 +623,21 @@ function DataTable<TData>({
   );
 
   // Editors hold the row order while they have focus (see heldOrder). A
-  // count, so moving from one editor to the next keeps the hold; the last
-  // one out records the layout, so the rows glide to their sorted places.
+  // count, since the next editor takes focus before the last one lets go.
+  // Each editor that lets go records the layout and catches the order up,
+  // so its row glides to its sorted place as soon as you leave it, even
+  // into another cell (which then holds the order from there).
   const holds = useRef(0);
   const editing: EditContextValue = {
     hold: () => {
       if (holds.current++ === 0) setHeldOrder(rows.map((r) => r.id));
     },
     release: () => {
-      if (--holds.current > 0) return;
+      if (--holds.current > 0) {
+        captureLayout();
+        setHeldOrder(table.getRowModel().rows.map((r) => r.id));
+        return;
+      }
       holds.current = 0;
       captureLayout();
       setHeldOrder(null);
