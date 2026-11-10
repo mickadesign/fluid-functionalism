@@ -22,6 +22,8 @@ export const dataTableProps: PropDef[] = [
   { name: "fill", type: "boolean", default: "false", description: "Fills a flex column: rows scroll under a sticky header, search and pages stay in view." },
   { name: "reorderColumns", type: "boolean", default: "false", description: "Drag a header to move its column, or press `Alt` + `←` / `→` on it." },
   { name: "onCellEdit", type: "({ row, columnId, value }) => void", description: "Turns on `meta.editor` and gets each change. Write `value` back to your data." },
+  { name: "onUndo", type: "() => void", description: "⌘Z (Ctrl+Z) while focus is in the table; a field being edited keeps its own undo. Pass useUndoableRows' `undo`." },
+  { name: "onRedo", type: "() => void", description: "⇧⌘Z (Ctrl+Shift+Z, Ctrl+Y) while focus is in the table. Pass useUndoableRows' `redo`." },
 ];
 
 export const columnMetaProps: PropDef[] = [
@@ -43,6 +45,16 @@ export const searchProps: PropDef[] = [
   { name: "column", type: "string", description: "The column to search. Omitted, it searches them all." },
   { name: "placeholder", type: "string", default: '"Search…"', description: "Also the field's accessible name." },
   { name: "size", type: '"default" | "compact"', description: "Pins the field to one size step." },
+];
+
+export const undoableRowsProps: PropDef[] = [
+  { name: "useUndoableRows(initial, { getId, limit? })", type: "hook", description: "Rows you change through it, each change a step. `limit` keeps the last 100 by default." },
+  { name: "→ rows", type: "T[]", description: "Pass to useDataTable's `data`." },
+  { name: "→ edit(id, change, label?)", type: "function", description: "Merges `change` into a row. One cell typed in a burst (within 1s) is one step, so ⌘Z takes back the word." },
+  { name: "→ remove(ids, label?) / insert(items, index?, label?)", type: "function", description: "Deletes or adds rows as one step, labelled \"Deleted 3 rows\" by default." },
+  { name: "→ apply(label, change)", type: "function", description: "Any change as one step: `change(rows)` returns the new rows." },
+  { name: "→ undo / redo / canUndo / canRedo", type: "function / boolean", description: "Pass undo and redo to DataTable's onUndo and onRedo, and to a toast's Undo." },
+  { name: "→ lastStep", type: "string | undefined", description: "The label of the step undo would take back." },
 ];
 
 export const filtersProps: PropDef[] = [
@@ -92,6 +104,7 @@ export const apiReference: ApiTable[] = [
   { title: "DataTableColumnHeader", props: columnHeaderProps },
   { title: "DataTableSearch", props: searchProps },
   { title: "DataTableFilters", props: filtersProps },
+  { title: "useUndoableRows", props: undoableRowsProps },
   { title: "DataTableViewOptions", props: viewOptionsProps },
   { title: "DataTableRowActions", props: rowActionsProps },
   { title: "DataTablePagination", props: paginationProps },

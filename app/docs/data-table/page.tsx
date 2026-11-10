@@ -10,6 +10,8 @@ import { DataTablePlayground } from "@/lib/docs/playgrounds/data-table";
 import {
   TeamTable,
   teamCode,
+  ViewsTable,
+  viewsCode,
   TasksTable,
   tasksCode,
   FilesTable,
@@ -106,10 +108,21 @@ export default function DataTableDoc() {
       <DocSection title="Selection and actions">
         <p className="text-site-body text-muted-foreground">
           Select a few people, then press ⌘K to act on all of them at once. Right-click a row for its
-          menu, or add a filter on a column.
+          menu, or add a filter on a column. Remove someone, then press ⌘Z in the table to bring them
+          back.
         </p>
         <ComponentPreview code={teamCode}>
           <TeamTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Saved views">
+        <p className="text-site-body text-muted-foreground">
+          A view is the table&apos;s state, named: filters, sort and visible columns. Save one, then
+          switch between them.
+        </p>
+        <ComponentPreview code={viewsCode}>
+          <ViewsTable />
         </ComponentPreview>
       </DocSection>
 

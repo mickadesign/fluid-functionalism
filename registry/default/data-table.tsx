@@ -388,6 +388,11 @@ interface DataTableProps<TData> {
    *  editor (an open list or calendar closes first); what was typed
    *  stays. */
   onCellEdit?: (edit: DataTableCellEdit<TData>) => void;
+  /** ⌘Z / Ctrl+Z while focus is in the table (a field being edited keeps
+   *  its own undo). Pair with useUndoableRows. */
+  onUndo?: () => void;
+  /** ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y while focus is in the table. */
+  onRedo?: () => void;
   className?: string;
 }
 
@@ -541,6 +546,8 @@ function DataTable<TData>({
   loading = false,
   loadingRows,
   onCellEdit,
+  onUndo,
+  onRedo,
   className,
 }: DataTableProps<TData>) {
   "use no memo";
@@ -1100,6 +1107,17 @@ function DataTable<TData>({
     // Typing in a field (a search, an editable cell) keeps its keys.
     if (target.closest("input, textarea, select, [contenteditable=true]")) return;
     const mod = e.metaKey || e.ctrlKey;
+    const letter = e.key.toLowerCase();
+    if (mod && !e.altKey && ((letter === "z" && e.shiftKey) || (letter === "y" && e.ctrlKey && !e.metaKey)) && onRedo) {
+      e.preventDefault();
+      onRedo();
+      return;
+    }
+    if (mod && !e.altKey && !e.shiftKey && letter === "z" && onUndo) {
+      e.preventDefault();
+      onUndo();
+      return;
+    }
     if (hasSelection && mod && !e.altKey && e.key.toLowerCase() === "a") {
       e.preventDefault();
       selectAllRows(table, true);
@@ -3408,6 +3426,119 @@ function DataTableSearch<TData>({
   );
 }
 
+// ── useUndoableRows ──────────────────────────────────────
+
+interface UndoStep<T> {
+  /** What the step did, for an Undo toast: "Deleted 3 rows". */
+  label: string;
+  before: T[];
+  after: T[];
+  /** Edits to one cell, typed in a burst, merge into one step. */
+  mergeKey?: string;
+  at: number;
+}
+
+interface UseUndoableRowsOptions<T> {
+  /** A row's id, as getRowId gives it to the table. */
+  getId: (row: T) => string;
+  /** Steps kept to undo. @default 100 */
+  limit?: number;
+}
+
+// A cell's keystrokes within this long of each other undo as one step.
+const MERGE_MS = 1000;
+
+/** Rows you can change and take back: every change through it is a step
+ *  that undo reverses and redo plays again. A cell typed in a burst is one
+ *  step, so ⌘Z takes back the word, not the last letter. Pass `rows` to
+ *  useDataTable and `undo` / `redo` to DataTable's onUndo / onRedo. */
+function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: UseUndoableRowsOptions<T>) {
+  const [state, setState] = useState(() => ({
+    rows: typeof initial === "function" ? initial() : initial,
+    past: [] as UndoStep<T>[],
+    future: [] as UndoStep<T>[],
+  }));
+
+  const apply = useCallback(
+    (label: string, change: (rows: T[]) => T[], mergeKey?: string) =>
+      setState((s) => {
+        const after = change(s.rows);
+        if (after === s.rows) return s;
+        const now = Date.now();
+        const last = s.past[s.past.length - 1];
+        if (mergeKey && last?.mergeKey === mergeKey && now - last.at < MERGE_MS)
+          return { rows: after, past: [...s.past.slice(0, -1), { ...last, after, at: now }], future: [] };
+        const step = { label, before: s.rows, after, mergeKey, at: now };
+        return { rows: after, past: [...s.past, step].slice(-limit), future: [] };
+      }),
+    [limit]
+  );
+
+  const edit = useCallback(
+    (id: string, change: Partial<T>, label = "Edited a row") =>
+      apply(
+        label,
+        (rows) => rows.map((r) => (getId(r) === id ? { ...r, ...change } : r)),
+        // One cell's burst merges: the same row and the same fields.
+        `${id}:${Object.keys(change).sort().join(",")}`
+      ),
+    [apply, getId]
+  );
+
+  const remove = useCallback(
+    (ids: readonly string[], label = `Deleted ${ids.length} ${ids.length === 1 ? "row" : "rows"}`) =>
+      apply(label, (rows) => {
+        const next = rows.filter((r) => !ids.includes(getId(r)));
+        return next.length === rows.length ? rows : next;
+      }),
+    [apply, getId]
+  );
+
+  const insert = useCallback(
+    (items: readonly T[], index?: number, label = `Added ${items.length} ${items.length === 1 ? "row" : "rows"}`) =>
+      apply(label, (rows) => {
+        const at = index === undefined ? rows.length : index;
+        return [...rows.slice(0, at), ...items, ...rows.slice(at)];
+      }),
+    [apply]
+  );
+
+  const undo = useCallback(
+    () =>
+      setState((s) => {
+        const step = s.past[s.past.length - 1];
+        if (!step) return s;
+        return { rows: step.before, past: s.past.slice(0, -1), future: [step, ...s.future] };
+      }),
+    []
+  );
+
+  const redo = useCallback(
+    () =>
+      setState((s) => {
+        const step = s.future[0];
+        if (!step) return s;
+        return { rows: step.after, past: [...s.past, step], future: s.future.slice(1) };
+      }),
+    []
+  );
+
+  return {
+    rows: state.rows,
+    /** Any change, as one step: `change` gets the rows and returns new ones. */
+    apply,
+    edit,
+    remove,
+    insert,
+    undo,
+    redo,
+    canUndo: state.past.length > 0,
+    canRedo: state.future.length > 0,
+    /** The step undo would take back, for a toast's text. */
+    lastStep: state.past[state.past.length - 1]?.label,
+  };
+}
+
 // ── DataTableFilters ─────────────────────────────────────
 
 /** A day as "YYYY-MM-DD", from a Date (its local day) or a string that
@@ -4369,6 +4500,7 @@ export {
   DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
+  useUndoableRows,
 };
 export type {
   DataTableInstance,
@@ -4383,6 +4515,7 @@ export type {
   DataTableColumnHeaderProps,
   DataTableSearchProps,
   DataTableFiltersProps,
+  UseUndoableRowsOptions,
   DataTableFilterKind,
   DataTableFilterValue,
   DataTableViewOptionsProps,
@@ -4390,4 +4523,4 @@ export type {
   DataTablePaginationProps,
   DataTableSelectionBarProps,
 };
-export type { ColumnDef } from "@tanstack/react-table";
+export type { ColumnDef, TableState } from "@tanstack/react-table";
