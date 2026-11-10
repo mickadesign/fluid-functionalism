@@ -201,13 +201,15 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    <div className="flex w-full flex-col gap-3">`);
   if (p.filter !== "none" || p.filters || p.viewMenu) {
     l.push(`      <div className="flex flex-wrap items-center gap-2">`);
-    if (p.filter === "column") {
-      l.push(`        <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
-    } else if (p.filter === "all") {
-      l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
-    }
     if (p.filters) l.push(`        <DataTableFilters table={table} />`);
-    if (p.viewMenu) l.push(`        <DataTableViewOptions table={table} className="ml-auto" />`);
+    l.push(`        <div className="ml-auto flex items-center gap-1">`);
+    if (p.viewMenu) l.push(`          <DataTableViewOptions table={table} />`);
+    if (p.filter === "column") {
+      l.push(`          <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
+    } else if (p.filter === "all") {
+      l.push(`          <DataTableSearch table={table} placeholder="Search all columns…" />`);
+    }
+    l.push(`        </div>`);
     l.push(`      </div>`);
   }
   const tableProps = [

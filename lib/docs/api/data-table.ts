@@ -44,6 +44,8 @@ export const searchProps: PropDef[] = [
   { name: "table", type: "Table<TData>", description: "What `useDataTable` returns." },
   { name: "column", type: "string", description: "The column to search. Omitted, it searches them all." },
   { name: "placeholder", type: "string", default: '"Search…"', description: "Also the field's accessible name." },
+  { name: "collapsible", type: "boolean", default: "true", description: "Rests as a ghost search button that opens into the field; an empty field closes on blur or Esc. `false` keeps the field open." },
+  { name: "width", type: "number", default: "224", description: "The open field's width, in px." },
   { name: "size", type: '"default" | "compact"', description: "Pins the field to one size step." },
 ];
 

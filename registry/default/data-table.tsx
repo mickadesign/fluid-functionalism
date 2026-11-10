@@ -651,6 +651,13 @@ function DataTable<TData>({
   // pagination under it glides. Nothing is measured on other renders.
   const reduceMotion = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null);
+  // The scroll box, as state too: expanding a preview (or any remount)
+  // gives the table a new one, and the effects that listen to it follow.
+  const [wrapEl, setWrapEl] = useState<HTMLDivElement | null>(null);
+  const setWrap = useCallback((node: HTMLDivElement | null) => {
+    wrapRef.current = node;
+    setWrapEl(node);
+  }, []);
   const snapshot = useRef<{
     lefts: Map<string, number>;
     tops: Map<string, number>;
@@ -683,7 +690,7 @@ function DataTable<TData>({
       viewport.removeEventListener("scroll", mark);
       root.removeAttribute("data-scrolled");
     };
-  }, [fill]);
+  }, [fill, wrapEl]);
 
   // Opening and closing sub-rows: rows below jump to their new places in
   // one frame, with the selection fill and the highlight (Table snaps them
@@ -985,7 +992,7 @@ function DataTable<TData>({
     });
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant]);
+  }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl]);
   const sized = resizeColumns ? seeded : fitted !== null;
   const widthOf = (id: string, size: number) => (resizeColumns ? size : (fitted?.[id] ?? undefined));
   // Pinned columns stick to their edge, each offset by the pinned columns
@@ -1042,9 +1049,8 @@ function DataTable<TData>({
       viewport.removeEventListener("scroll", mark);
       observer.disconnect();
     };
-    // Re-run once the widths are in: the scroll box can mount after the
-    // first render.
-  }, [sized]);
+    // Re-run once the widths are in, and for a new scroll box.
+  }, [sized, wrapEl]);
   // Keys, like a spreadsheet's rows (Google Sheets, Gmail):
   //   ↓ on a header  the first row
   //   ↑ / ↓          the row above / below; Home / End the first / last.
@@ -1357,9 +1363,9 @@ function DataTable<TData>({
       // crushing the column that takes the rest.
       className={cn(
         sized && "table-fixed",
-        // The 8px between box and text (the gap a Checkbox keeps from its
-        // label) belongs to the column after the boxes, not the boxes: its
-        // header fill then starts 8px before the label instead of on it.
+        // Most of the gap between box and text (8px of its 12) belongs to
+        // the column after the boxes, not the boxes: its header fill then
+        // starts 8px before the label instead of on it.
         "[&_[data-column-id=select]+[data-column-id]]:pl-2",
         // Measuring (see `natural`): every cell at its one-line width.
         "[&[data-measuring]_:is(th,td)]:!w-auto [&[data-measuring]_:is(th,td)]:!max-w-none [&[data-measuring]_*]:!whitespace-nowrap",
@@ -1460,20 +1466,21 @@ function DataTable<TData>({
                     meta?.className
                   )}
                 >
-                  {pins[column.id] && !fill && (movable || column.getCanSort()) && (
-                    // Opaque, a pinned header covers the row's gliding fill:
-                    // it draws its own, the same way.
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "pointer-events-none absolute inset-x-0 top-0 bottom-px -z-[1] hidden bg-transparent transition-[background-color] duration-80",
-                        pins[column.id].side === "left" ? "group-data-x-start/pin:block" : "group-data-x-end/pin:block",
-                        "group-hover/th:bg-hover group-active/th:bg-active",
-                        shape.bg
+                  {pins[column.id] && (
+                    <PinLayers pin={pins[column.id]}>
+                      {/* Opaque, a pinned header covers the row's gliding
+                          fill: it draws its own, the same way. */}
+                      {!fill && (movable || column.getCanSort()) && (
+                        <span
+                          className={cn(
+                            "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
+                            "group-hover/th:bg-hover group-active/th:bg-active",
+                            shape.bg
+                          )}
+                        />
                       )}
-                    />
+                    </PinLayers>
                   )}
-                  {pins[column.id] && <PinRule pin={pins[column.id]} />}
                   {header.isPlaceholder ? null : typeof column.columnDef.header === "string" &&
                     meta?.icon ? (
                     <HeaderLabel icon={meta.icon} title={column.columnDef.header} />
@@ -1589,8 +1596,13 @@ function DataTable<TData>({
           while there's more to that side. Filled, it scrolls both ways
           under a sticky header. Its root clips, so a height that eases
           never flashes a scrollbar. */}
+      {pinnedLeft || pinnedRight ? (
+        <style href="ff-data-table-pin" precedence="default">
+          {PIN_CSS}
+        </style>
+      ) : null}
       <ScrollArea
-        ref={wrapRef}
+        ref={setWrap}
         orientation={fill ? "both" : "horizontal"}
         className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
         // The edges fade while there's more to that side, except a pinned
@@ -1934,13 +1946,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
     enableHiding: false,
     enableResizing: false,
     // 8px before the 16px box, so its focus ring never meets the row's edge
-    // (or the scroll box's clip); the 8px after it is the next column's.
-    size: 24,
-    // w-0 shrinks the column to the box and its 8px before it. The row
+    // (or the scroll box's clip), and 4px after it; the next column's 8px
+    // left padding makes 12px from box to text.
+    size: 28,
+    // w-0 shrinks the column to the box and its padding. The row
     // dividers start after it: the cell's own transparent bottom border
     // wins the collapsed-border conflict with the row's, so no line runs
     // above or below a box.
-    meta: { className: "w-0 pl-2 pr-0 border-b border-b-transparent" },
+    meta: { className: "w-0 pl-2 pr-1 border-b border-b-transparent" },
     header: ({ table }) => {
       // Every row the search leaves, on every page: a page is a view, not
       // a scope, so "all" means the whole result.
@@ -2002,9 +2015,9 @@ function selectColumn<TData>(): ColumnDef<TData> {
 
 // ── Sub-rows ─────────────────────────────────────────────
 
-/** How far each level of sub-rows steps in: the chevron and its gap, so a
- *  child's chevron sits under its parent's text. */
-const SUB_ROW_INDENT = 20;
+/** How far each level of sub-rows steps in: a child's chevron starts where
+ *  its parent's ends, so the guide line runs clear of it. */
+const SUB_ROW_INDENT = 16;
 
 // A row whose right-click menu is open holds the hover fill in its own
 // cells, rounded at its ends like the highlight.
@@ -2037,41 +2050,55 @@ const PIN_RADIUS = {
 } as const;
 
 /** A pinned cell's classes and offset. It sticks always (a no-op until
- *  the table scrolls), and turns opaque, with its hairline, only while
- *  content passes under it (the root's data-x-start / data-x-end). */
+ *  the table scrolls), and its layers (PinLayers) show only while content
+ *  passes under it: `--ff-pin` turns 1 then. A scroll-driven animation sets
+ *  it (PIN_CSS), in the same frame as the scroll; without one (Firefox),
+ *  the root's data-x-start / data-x-end do, a frame late. */
 function pinProps(pin: PinInfo | undefined) {
   if (!pin) return { className: undefined, style: undefined };
   const left = pin.side === "left";
   return {
     className: cn(
-      "sticky z-[1]",
-      left ? "group-data-x-start/pin:bg-background" : "group-data-x-end/pin:bg-background"
+      "sticky z-[1] [--ff-pin:0]",
+      left ? "ff-pin-l group-data-x-start/pin:[--ff-pin:1]" : "ff-pin-r group-data-x-end/pin:[--ff-pin:1]"
     ),
     style: left ? { left: pin.offset } : { right: pin.offset },
   };
 }
 
-/** The hairline between the pinned columns and the ones scrolling under
- *  them, in the rows' rule color, inside the edge cell (a collapsed-border
- *  table paints no shadow on its cells). */
-function PinRule({ pin }: { pin: PinInfo }) {
-  if (!pin.edge) return null;
-  const left = pin.side === "left";
+// The scroll-driven half of pinning: a pinned cell's `--ff-pin` flips to 1
+// once the table has scrolled 1px past its side, read from the scroll box's
+// own timeline, so the cell turns opaque in the frame the content moves
+// (a scroll event lands a frame later, and the content shows through).
+// Rendered once per page (React hoists and dedupes it by href).
+const PIN_CSS = `
+@keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
+@keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
+@supports (animation-timeline: scroll()) {
+  .ff-pin-l { animation: ff-pin-on linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
+  .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
+}`;
+
+/** A pinned cell's own surface while content passes under it: the page
+ *  background, what the row's fills (drawn behind the table) would show
+ *  through it, and the hairline at the pinned columns' edge. All of it
+ *  fades with `--ff-pin`; none of it glides (the row's own fill does that
+ *  under them, at rest). */
+function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "pointer-events-none absolute inset-y-0 hidden w-px bg-accent/40",
-        left ? "right-0 group-data-x-start/pin:block" : "left-0 group-data-x-end/pin:block"
+    <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
+      <span className="absolute inset-0 bg-background" />
+      {children}
+      {pin.edge && (
+        // A collapsed-border table paints no shadow on its cells: the rule
+        // is a span inside the edge cell, in the rows' rule color.
+        <span className={cn("absolute inset-y-0 w-px bg-accent/40", pin.side === "left" ? "right-0" : "left-0")} />
       )}
-    />
+    </span>
   );
 }
 
-/** What the row's fills (drawn behind the table) would show through a
- *  pinned cell, drawn inside it while it's opaque: the selection, and the
- *  hover over it. They don't glide; the row's own fill does that under
- *  them. */
+/** A pinned body cell's layers: the selection, and the hover over it. */
 function PinFills({
   pin,
   selected,
@@ -2086,31 +2113,24 @@ function PinFills({
   shapeVariant: keyof typeof SKELETON_BAR_RADIUS;
 }) {
   const left = pin.side === "left";
-  const shown = left ? "group-data-x-start/pin:block" : "group-data-x-end/pin:block";
-  const layer = cn("pointer-events-none absolute inset-0 -z-[1] hidden", shown);
   return (
-    <>
+    <PinLayers pin={pin}>
       {selected && (
         <span
-          aria-hidden
           className={cn(
-            layer,
-            "bg-active",
+            "absolute inset-0 bg-active",
             pin.outer && runStart && PIN_RADIUS[left ? "tl" : "tr"][shapeVariant],
             pin.outer && runEnd && PIN_RADIUS[left ? "bl" : "br"][shapeVariant]
           )}
         />
       )}
       <span
-        aria-hidden
         className={cn(
-          layer,
-          "bg-hover opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100",
+          "absolute inset-0 bg-hover opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100",
           pin.outer && PIN_RADIUS[left ? "left" : "right"][shapeVariant]
         )}
       />
-      <PinRule pin={pin} />
-    </>
+    </PinLayers>
   );
 }
 
@@ -2128,10 +2148,10 @@ function SubRowGuides({ row, expanded, alignTop }: { row: Row<unknown>; expanded
         <span key={d} aria-hidden className={cn(rule, "-top-px bottom-0")} style={{ left: x(d) }} />
       ))}
       {expanded && row.subRows.length > 0 && (
-        // From 2px under the open chevron to the row's bottom.
+        // From 6px under the open chevron to the row's bottom.
         <span
           aria-hidden
-          className={cn(rule, "bottom-0", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+10px)]" : "top-[calc(50%+10px)]")}
+          className={cn(rule, "bottom-0", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+14px)]" : "top-[calc(50%+14px)]")}
           style={{ left: x(row.depth) }}
         />
       )}
@@ -3363,17 +3383,26 @@ interface DataTableSearchProps<TData> {
   /** The column id to search. Omitted, the field searches every column. */
   column?: string;
   placeholder?: string;
+  /** Starts as a ghost search button that opens into the field, and
+   *  closes back once the field is empty and loses focus. `false` keeps
+   *  the field open. @default true */
+  collapsible?: boolean;
+  /** The open field's width, in px. @default 224 */
+  width?: number;
   size?: SizeVariant;
   className?: string;
 }
 
-/** A search field that narrows the rows as you type, by one column or all.
- *  The magnifying glass sits over the field's left padding, where Input
- *  puts a file field's icon. */
+/** A search that narrows the rows as you type, by one column or all. It
+ *  rests as a ghost icon button; a click opens it into the field (its width
+ *  springs open from the button's), and an empty field closes on blur or
+ *  Esc. The magnifying glass stays put through both. */
 function DataTableSearch<TData>({
   table,
   column,
   placeholder = "Search…",
+  collapsible = true,
+  width = 224,
   size,
   className,
 }: DataTableSearchProps<TData>) {
@@ -3381,49 +3410,104 @@ function DataTableSearch<TData>({
   const icons = useIcons();
   const SearchIcon = icons.search;
   const sizeClasses = useSize(size);
+  const compact = sizeClasses.variant === "compact";
   const target = column ? table.getColumn(column) : undefined;
-  const value = (target ? target.getFilterValue() : table.getState().globalFilter) ?? "";
+  const value = String((target ? target.getFilterValue() : table.getState().globalFilter) ?? "");
+  const label = placeholder.replace(/…$/, "");
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const reduceMotion = useReducedMotion();
+  // A search with text stays open, whatever opened it.
+  const expanded = !collapsible || open || value !== "";
+  // Opened from the button: the field takes focus once it's live.
+  const focusOnOpen = useRef(false);
+  useEffect(() => {
+    if (!expanded || !focusOnOpen.current) return;
+    focusOnOpen.current = false;
+    inputRef.current?.focus();
+  }, [expanded]);
+  // The button's square: the icon sits at its center, open or closed.
+  const box = compact ? 28 : 36;
+
+  const setValue = (next: string) => {
+    if (target) target.setFilterValue(next);
+    else table.setGlobalFilter(next);
+    // A search that shrinks the rows starts over on the first page.
+    table.setPageIndex(0);
+  };
 
   return (
-    <span data-slot="data-table-search" className={cn("relative block w-full max-w-xs min-w-0", className)}>
+    <motion.span
+      data-slot="data-table-search"
+      className={cn("relative block min-w-0 shrink", className)}
+      initial={false}
+      animate={{ width: expanded ? width : box }}
+      transition={reduceMotion ? { duration: 0 } : spring.moderate}
+      style={{ maxWidth: "100%" }}
+    >
       <SearchIcon
         size={sizeClasses.icon}
         strokeWidth={1.5}
         aria-hidden
+        // Centered in the button's square (16px in 36, 14px in 28).
         className={cn(
-          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground",
-          "left-2"
+          "pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground",
+          compact ? "left-[7px]" : "left-2.5"
         )}
       />
+      {!expanded && (
+        <Tooltip content={label}>
+          <Button
+            variant="ghost"
+            size={compact ? "icon-compact" : "icon"}
+            aria-label={label}
+            aria-expanded={false}
+            className="absolute inset-0"
+            onClick={() => {
+              focusOnOpen.current = true;
+              setOpen(true);
+            }}
+          />
+        </Tooltip>
+      )}
       <Input
+        ref={inputRef}
         type="search"
         size={size}
         placeholder={placeholder}
-        aria-label={placeholder.replace(/…$/, "")}
-        value={String(value)}
-        onChange={(e) => {
-          const next = e.target.value;
-          if (target) target.setFilterValue(next);
-          else table.setGlobalFilter(next);
-          // A search that shrinks the rows starts over on the first page.
-          table.setPageIndex(0);
+        aria-label={label}
+        tabIndex={expanded ? undefined : -1}
+        aria-hidden={expanded ? undefined : true}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => {
+          if (collapsible && value === "") setOpen(false);
         }}
-        // ↓ steps from the search into the rows.
         onKeyDown={(e) => {
+          // Esc clears the search and closes it.
+          if (e.key === "Escape" && collapsible) {
+            e.preventDefault();
+            setValue("");
+            setOpen(false);
+            e.currentTarget.blur();
+            return;
+          }
+          // ↓ steps from the search into the rows.
           if (e.key !== "ArrowDown" || e.altKey || e.metaKey || e.ctrlKey) return;
           if ((table as Partial<DataTableExtras>).focusFirstRow?.()) e.preventDefault();
         }}
-        // The icon sits 8px in, on the selection checkbox's line; then the
-        // icon and an 8px gap (16 + 8, 14 + 6 compact).
+        // The text starts after the icon and an 8px gap (6px compact).
         // Ghost, like the toolbar's buttons: no hairline at rest, the hover
         // fill on hover, and the fill held while focused so the field still
-        // shows where typing goes.
+        // shows where typing goes. Closed, it's out of sight under the
+        // button.
         className={cn(
-          "pl-8",
-          "border-transparent focus:border-transparent aria-invalid:focus:border-transparent focus:bg-hover focus:hover:bg-hover"
+          compact ? "pl-[28px]" : "pl-9",
+          "border-transparent focus:border-transparent aria-invalid:focus:border-transparent focus:bg-hover focus:hover:bg-hover",
+          !expanded && "pointer-events-none opacity-0"
         )}
       />
-    </span>
+    </motion.span>
   );
 }
 

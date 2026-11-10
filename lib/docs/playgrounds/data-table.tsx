@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   useDataTable,
   DataTable,
@@ -12,6 +12,7 @@ import {
   DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
+  useUndoableRows,
   type ColumnDef,
 } from "@/registry/default/data-table";
 import type { Row } from "@tanstack/react-table";
@@ -183,6 +184,8 @@ function buildColumns(o: {
   /** The icon set, when headers show icons. */
   icons: Icons | null;
   editable: boolean;
+  /** Deletes a row (and its parts), as an undoable step. */
+  onDelete: (row: ComponentRow) => void;
 }): ColumnDef<ComponentRow>[] {
   const icon = (name: keyof Icons) => (o.icons ? o.icons[name] : undefined);
   // Text wrap on wraps every text column; off, names and links keep one
@@ -308,6 +311,7 @@ function buildColumns(o: {
                   )
                 }
               />
+              <MenuItem index={2} label="Delete" onSelect={() => o.onDelete(row.original)} />
             </>
           )),
         ]
@@ -316,6 +320,13 @@ function buildColumns(o: {
 }
 
 /** Writes one edit into the rows, a sub-row's into its parent's parts. */
+/** The rows without these slugs, at any depth. */
+function removeRows(list: ComponentRow[], slugs: readonly string[]): ComponentRow[] {
+  return list
+    .filter((r) => !slugs.includes(r.slug))
+    .map((r) => (r.subRows ? { ...r, subRows: removeRows(r.subRows, slugs) } : r));
+}
+
 function updateRow(list: ComponentRow[], slug: string, key: string, value: unknown): ComponentRow[] {
   return list.map((r) =>
     r.slug === slug
@@ -355,8 +366,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   const toolbar = o.filter !== "none" || o.filters || o.viewMenu;
   const filter =
     o.filter === "column"
-      ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
-      : `    <DataTableSearch table={table} placeholder="Search all columns…" />`;
+      ? `      <DataTableSearch table={table} column="name" placeholder="Search components…" />`
+      : `      <DataTableSearch table={table} placeholder="Search all columns…" />`;
   return [
     `import {`,
     `  ${parts.join(", ")},`,
@@ -454,9 +465,11 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(toolbar
       ? [
           `  <div className="flex flex-wrap items-center gap-2">`,
-          ...(o.filter !== "none" ? [filter] : []),
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
-          ...(o.viewMenu ? [`    <DataTableViewOptions table={table} className="ml-auto" />`] : []),
+          `    <div className="ml-auto flex items-center gap-1">`,
+          ...(o.viewMenu ? [`      <DataTableViewOptions table={table} />`] : []),
+          ...(o.filter !== "none" ? [filter] : []),
+          `    </div>`,
           `  </div>`,
         ]
       : []),
@@ -490,8 +503,14 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
 }
 
 /** The selection bar's actions, for the selected components. */
-function selectionActions(rows: Row<ComponentRow>[], icons: Icons) {
+function selectionActions(rows: Row<ComponentRow>[], icons: Icons, onDelete: (rows: Row<ComponentRow>[]) => void) {
   return [
+    {
+      value: "delete",
+      label: rows.length === 1 ? "Delete" : `Delete ${rows.length} rows`,
+      icon: icons.x,
+      onSelect: () => onDelete(rows),
+    },
     {
       value: "install",
       label: "Copy install command",
@@ -529,7 +548,15 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // Expanded, the table fills the layer's height (search and pagination
   // pinned, the rows scrolling between them).
   const [expanded, setExpanded] = useState(false);
-  const [data, setData] = useState(buildRows);
+  // Edits and deletes are undoable steps (⌘Z / ⇧⌘Z in the table). Nothing
+  // is saved: a refresh brings every row back.
+  const history = useUndoableRows(buildRows, { getId: (r) => r.slug });
+  const data = history.rows;
+  const { apply: applyStep } = history;
+  const deleteRows = useCallback(
+    (slugs: string[], label: string) => applyStep(label, (old) => removeRows(old, slugs)),
+    [applyStep]
+  );
   // Sub-rows on, the rows carry their parts; off, they're left out (a new
   // array, so the table builds its rows again).
   const tableData = useMemo(
@@ -545,8 +572,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         lines: state.lines,
         icons: state.headerIcons ? icons : null,
         editable: state.editable,
+        onDelete: (row) => deleteRows([row.slug], `Deleted ${row.name}`),
       }),
-    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons]
+    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
   );
 
   const table = useDataTable({
@@ -627,17 +655,20 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
 
   const toolbar = (state.filter !== "none" || state.filters || state.viewMenu) && (
     <div className="flex flex-wrap items-center gap-2">
-      {state.filter !== "none" && (
-        <DataTableSearch
-          // Remounts the field when the mode flips, so it starts empty.
-          key={state.filter}
-          table={table}
-          column={state.filter === "column" ? "name" : undefined}
-          placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
-        />
-      )}
       {state.filters && <DataTableFilters table={table} />}
-      {state.viewMenu && <DataTableViewOptions table={table} className="ml-auto" />}
+      {/* The Columns button, then the search, at the right end. */}
+      <div className="ml-auto flex items-center gap-1">
+        {state.viewMenu && <DataTableViewOptions table={table} />}
+        {state.filter !== "none" && (
+          <DataTableSearch
+            // Remounts the field when the mode flips, so it starts empty.
+            key={state.filter}
+            table={table}
+            column={state.filter === "column" ? "name" : undefined}
+            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+          />
+        )}
+      </div>
     </div>
   );
 
@@ -655,15 +686,29 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         onCellEdit={
           state.editable
             ? ({ row, columnId, value }) =>
-                setData((old) => updateRow(old, row.original.slug, columnId, value))
+                history.apply(
+                  `Edited ${row.original.name}`,
+                  (old) => updateRow(old, row.original.slug, columnId, value),
+                  `${row.original.slug}:${columnId}`
+                )
             : undefined
         }
+        onUndo={history.undo}
+        onRedo={history.redo}
       />
       {state.pagination && <DataTablePagination table={table} />}
       {state.selection && (
         <DataTableSelectionBar
           table={table}
-          actions={(rows) => selectionActions(rows, icons)}
+          actions={(rows) =>
+            selectionActions(rows, icons, (picked) => {
+              deleteRows(
+                picked.map((r) => r.original.slug),
+                picked.length === 1 ? `Deleted ${picked[0].original.name}` : `Deleted ${picked.length} rows`
+              );
+              table.resetRowSelection();
+            })
+          }
         />
       )}
     </div>

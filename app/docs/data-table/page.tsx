@@ -48,7 +48,9 @@ const table = useDataTable({ data: payments, columns });
 
 <div className="flex flex-col gap-3">
   {/* No column: the field searches every column. */}
-  <DataTableSearch table={table} placeholder="Search payments…" />
+  <div className="flex justify-end">
+    <DataTableSearch table={table} placeholder="Search payments…" />
+  </div>
   <DataTable
     table={table}
     empty={{ title: "No payments match", description: "Try an email, a status, or an amount." }}

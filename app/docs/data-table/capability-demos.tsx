@@ -125,9 +125,11 @@ export function TeamTable() {
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <DataTableSearch table={table} column="name" placeholder="Search people…" className="max-w-56" />
         <DataTableFilters table={table} />
-        <DataTableViewOptions table={table} className="ml-auto" />
+        <div className="ml-auto flex items-center gap-1">
+          <DataTableViewOptions table={table} />
+          <DataTableSearch table={table} column="name" placeholder="Search people…" />
+        </div>
       </div>
       <DataTable
         table={table}
@@ -218,9 +220,11 @@ const columns: ColumnDef<Member>[] = [
 const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
 <div className="flex flex-wrap items-center gap-2">
-  <DataTableSearch table={table} column="name" placeholder="Search people…" />
   <DataTableFilters table={table} />
-  <DataTableViewOptions table={table} className="ml-auto" />
+  <div className="ml-auto flex items-center gap-1">
+    <DataTableViewOptions table={table} />
+    <DataTableSearch table={table} column="name" placeholder="Search people…" />
+  </div>
 </div>
 <DataTable table={table} onUndo={history.undo} onRedo={history.redo} />
 <DataTablePagination table={table} pageSizes={[]} />
@@ -419,7 +423,9 @@ export function FilesTable() {
   });
   return (
     <div className="flex w-full flex-col gap-3">
-      <DataTableSearch table={table} column="name" placeholder="Search files…" />
+      <div className="flex justify-end">
+        <DataTableSearch table={table} column="name" placeholder="Search files…" />
+      </div>
       <DataTable table={table} />
     </div>
   );
@@ -448,7 +454,9 @@ const table = useDataTable({
   initialState: { expanded: { brand: true } },
 });
 
-<DataTableSearch table={table} column="name" placeholder="Search files…" />
+<div className="flex justify-end">
+  <DataTableSearch table={table} column="name" placeholder="Search files…" />
+</div>
 <DataTable table={table} />`;
 
 // ── Wrapped text: a changelog ────────────────────────────

@@ -64,7 +64,9 @@ export function SearchTable() {
   const table = useDataTable({ data, columns: sortOnlyColumns });
   return (
     <div className="flex w-full flex-col gap-3">
-      <DataTableSearch table={table} placeholder="Search payments…" />
+      <div className="flex justify-end">
+        <DataTableSearch table={table} placeholder="Search payments…" />
+      </div>
       <DataTable
         table={table}
         empty={{ title: "No payments match", description: "Try an email, a status, or an amount." }}
