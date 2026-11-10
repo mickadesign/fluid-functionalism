@@ -95,7 +95,7 @@ interface TooltipProps {
   delayDuration?: number;
   className?: string;
   /** Extra classes for the portalled positioner element — pass a z utility
-   *  here to lift the whole tooltip above other fixed layers (default z-50). */
+   *  here to lift the whole tooltip above other fixed layers (default: the --z-tooltip step, 70). */
   contentClassName?: string;
   /** When true, forces the tooltip open. When false, forces it closed. When undefined, uses default hover/focus behavior. */
   forceOpen?: boolean;
@@ -236,7 +236,7 @@ function Tooltip({
         <TooltipPrimitive.Positioner
           side={side}
           sideOffset={sideOffset}
-          className={cn("z-50", contentClassName)}
+          className={cn("z-[var(--z-tooltip,70)]", contentClassName)}
         >
           <TooltipPrimitive.Popup
             render={(props, state) => {

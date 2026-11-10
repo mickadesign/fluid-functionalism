@@ -16,6 +16,7 @@
 import { generateSidebarPresetFiles } from "@/lib/preset/sidebar-install";
 import { DEFAULT_PRESET } from "@/lib/preset/sidebar-options";
 import { starterSlug, type StarterSettings } from "./settings";
+import { ACCENT_PRESETS, accentCss } from "@/lib/accent";
 
 export const SITE = "https://www.fluidfunctionalism.com";
 
@@ -56,6 +57,9 @@ export function starterRegistryDeps(items: readonly ManifestItem[], s: StarterSe
     .filter(
       (name) =>
         !name.endsWith("-base") &&
+        // Standard hover's item is served as standard/use-fluid-hover; a
+        // standard starter reaches it through its dependency URLs.
+        !name.endsWith("-standard") &&
         !EXCLUDED.has(name) &&
         (!name.startsWith("icons-") || name === chosenSet),
     );
@@ -64,20 +68,25 @@ export function starterRegistryDeps(items: readonly ManifestItem[], s: StarterSe
 
 export const SETTING_LABELS = {
   theme: { system: "System", light: "Light", dark: "Dark" },
-  shape: { rounded: "Rounded", pill: "Pill" },
+  shape: { sharp: "Sharp", rounded: "Rounded", pill: "Pill" },
   size: { default: "Default", compact: "Compact" },
   icons: { lucide: "Lucide", tabler: "Tabler", phosphor: "Phosphor", hugeicons: "HugeIcons", untitledui: "Untitled UI" },
   base: { radix: "Radix", base: "Base UI" },
+  accent: Object.fromEntries(Object.entries(ACCENT_PRESETS).map(([k, v]) => [k, v.label])) as {
+    [K in keyof typeof ACCENT_PRESETS]: string;
+  },
 } as const;
 
-/** "Base UI, rounded, default size, Untitled UI icons, system theme". */
-export function describeSettings(s: StarterSettings): string {
+/** "Base UI, rounded, default size, Untitled UI icons, system theme, blue
+ *  accent". A custom accent (site-only, a hex) replaces the preset's name. */
+export function describeSettings(s: StarterSettings, customAccent: string | null = null): string {
   return [
     SETTING_LABELS.base[s.base],
     SETTING_LABELS.shape[s.shape].toLowerCase(),
     `${SETTING_LABELS.size[s.size].toLowerCase()} size`,
     `${SETTING_LABELS.icons[s.icons]} icons`,
     `${SETTING_LABELS.theme[s.theme].toLowerCase()} theme`,
+    `${customAccent ?? SETTING_LABELS.accent[s.accent].toLowerCase()} accent`,
   ].join(", ");
 }
 
@@ -88,7 +97,7 @@ function settingsComment(s: StarterSettings, kind: "starter" | "setup"): string 
 
 // ── Files ──────────────────────────────────────────────────────────────────
 
-function layoutFile(): string {
+function layoutFile(s: StarterSettings): string {
   return `import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 
@@ -116,6 +125,10 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       className={\`\${inter.variable} \${mono.variable} font-sans antialiased\`}
+      // The accent (${ACCENT_PRESETS[s.accent].label}): focus rings, the switch track and every other
+      // accented detail read --fluid-accent. Change it here.${accentCss(s.accent, null).startsWith("light-dark") ? `
+      // light-dark() picks the light or dark shade from the theme's color-scheme.` : ""}
+      style={{ "--fluid-accent": "${accentCss(s.accent, null)}" } as React.CSSProperties}
     >
       <body>
         <Providers>{children}</Providers>
@@ -230,6 +243,7 @@ const THEMES = [
   { value: "dark", label: "Dark" },
 ];
 const SHAPES: { value: ShapeVariant; label: string }[] = [
+  { value: "sharp", label: "Sharp" },
   { value: "rounded", label: "Rounded" },
   { value: "pill", label: "Pill" },
 ];
@@ -435,7 +449,7 @@ function shellFiles(s: StarterSettings): StarterFile[] {
 
 export function starterFiles(s: StarterSettings): StarterFile[] {
   return [
-    { path: "app/layout.tsx", type: "registry:file", target: "app/layout.tsx", content: layoutFile() },
+    { path: "app/layout.tsx", type: "registry:file", target: "app/layout.tsx", content: layoutFile(s) },
     { path: "app/page.tsx", type: "registry:page", target: "app/page.tsx", content: pageFile() },
     { path: "components/providers.tsx", type: "registry:file", target: "components/providers.tsx", content: providersFile(s) },
     { path: "components/theme-provider.tsx", type: "registry:file", target: "components/theme-provider.tsx", content: themeProviderFile() },

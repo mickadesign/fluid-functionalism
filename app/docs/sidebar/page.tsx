@@ -824,7 +824,7 @@ function IconRailVsPeekPreview({ paused }: { paused: boolean }) {
             <span
               aria-hidden
               className={`mb-1 flex size-6 shrink-0 items-center justify-center bg-foreground text-[11px] leading-3.5 text-background ${
-                shape.bgRadius >= 20 ? "rounded-full" : "rounded-md"
+                { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" }[shape.variant]
               }`}
               style={{ fontVariationSettings: fontWeights.semibold }}
             >
@@ -916,7 +916,7 @@ function IconRailVsPeekPreview({ paused }: { paused: boolean }) {
                 <div className="flex items-center gap-2 px-1 pb-1 pt-0.5">
                   <span
                     className={`flex size-5 items-center justify-center bg-foreground text-[10px] text-background ${
-                      shape.bgRadius >= 20 ? "rounded-full" : "rounded-md"
+                      { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" }[shape.variant]
                     }`}
                     style={{ fontVariationSettings: fontWeights.semibold }}
                   >

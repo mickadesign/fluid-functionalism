@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -35,6 +36,8 @@ function SidebarShortcutToast() {
   const pendingAtRef = useRef<number | null>(null);
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "[") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
@@ -74,8 +77,10 @@ function DesktopReopenTrigger() {
   return (
     <AnimatePresence>
       {!open && (
+        // One step over sticky chrome, so a fixed Banner scrolling under the
+        // corner never ties with the trigger; still under a dialog's scrim.
         <motion.div
-          className="max-xl:hidden fixed top-4 left-4 z-50"
+          className="max-xl:hidden fixed top-4 left-4 z-[calc(var(--z-sticky,30)+1)]"
           initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{
@@ -101,7 +106,7 @@ function CloseSheetOnNavigate() {
   return null;
 }
 
-const NO_MARKS: ReleaseMarks = { new: [], updated: [], ahead: [] };
+const NO_MARKS: ReleaseMarks = { updated: [], ahead: [] };
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -120,6 +125,7 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
     pathname === "/compare" ||
     pathname === "/stars" ||
     pathname === "/og" ||
+    pathname.startsWith("/og/") ||
     pathname.startsWith("/concepts");
 
   // Arrow key navigation between pages — ref-based so held keys keep advancing
@@ -131,8 +137,12 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      // A component already used this key (a DataTable resize handle).
+      if (e.defaultPrevented) return;
 
       const tag = (e.target as HTMLElement).tagName;
       const role = (e.target as HTMLElement).getAttribute("role");
@@ -142,6 +152,7 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
         tag === "SELECT" ||
         (e.target as HTMLElement).isContentEditable ||
         role === "slider" ||
+        role === "separator" ||
         role === "tablist" ||
         role === "radiogroup" ||
         role === "listbox" ||
@@ -196,9 +207,11 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
         <SiteSidebar />
         <CloseSheetOnNavigate />
 
-        {/* Mobile trigger for the sheet; desktop collapse uses [ or the rail */}
+        {/* Mobile trigger for the sheet; desktop collapse uses [ or the rail.
+            It floats over the page, so a blurred page-colored ground keeps
+            the icon legible over headings scrolling under it. */}
         <SidebarTrigger
-          className="xl:hidden fixed top-4 left-4 z-50"
+          className="xl:hidden fixed top-4 left-4 z-[calc(var(--z-sticky,30)+1)] bg-background/70 backdrop-blur-md"
           aria-label="Open navigation"
         />
         <DesktopReopenTrigger />

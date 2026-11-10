@@ -120,8 +120,8 @@ export default function DocsIndex() {
           </h3>
           <p>
             The panel on the right lets you change things on the fly.
-            Switch between light and dark mode, toggle the corner radius
-            from rounded to pill, cycle through different icon libraries,
+            Switch between light and dark mode, set the corner radius to
+            rounded, pill or sharp, cycle through different icon libraries,
             or pick whether the install command grabs the Radix flavor or
             the Base UI one. Press T, R, or I to flip the first three
             from the keyboard. The icon switcher is a preview tool that

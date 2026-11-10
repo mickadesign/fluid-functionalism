@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { parseRelease, releaseEntries, type Inline } from "@/lib/changelog/parse";
-import { AHEAD_OF_RELEASE, latestMarks, loadReleases } from "@/lib/changelog/load";
+import { AHEAD_OF_RELEASE, latestMarks, loadReleases, recentNew } from "@/lib/changelog/load";
 import { buildMigrationPrompt } from "@/lib/changelog/migration-prompt";
 import { highlightDiff } from "@/lib/docs/highlight";
 import { releasesToMarkdown } from "@/lib/changelog/markdown";
@@ -291,7 +291,7 @@ describe("latestMarks", () => {
     return dir;
   };
 
-  it("marks the latest release's docs pages: New, then Updated and Breaking", () => {
+  it("marks the latest release's Updated and Breaking docs pages, never its New ones", () => {
     const dir = dirWith({
       "2026-08.md": release("2026-08", "## New\n\n- [Badge](/docs/badge): Old news. (#1)\n"),
       "2026-09.md": release(
@@ -311,7 +311,7 @@ describe("latestMarks", () => {
       ),
     });
     try {
-      expect(latestMarks(dir, [])).toEqual({ new: ["combobox"], updated: ["select"], ahead: [] });
+      expect(latestMarks(dir, [])).toEqual({ updated: ["select"], ahead: [] });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -325,9 +325,9 @@ describe("latestMarks", () => {
     const after = dirWith({ "2026-09.md": september, "2026-10.md": october });
     try {
       // Ahead of its release it is New, not Updated; once October lands, the
-      // release marks it and the ahead list lapses.
-      expect(latestMarks(before, ahead)).toEqual({ new: [], updated: [], ahead: ["banner"] });
-      expect(latestMarks(after, ahead)).toEqual({ new: ["banner"], updated: [], ahead: [] });
+      // ahead list lapses and the New mark with it.
+      expect(latestMarks(before, ahead)).toEqual({ updated: [], ahead: ["banner"] });
+      expect(latestMarks(after, ahead)).toEqual({ updated: [], ahead: [] });
     } finally {
       rmSync(before, { recursive: true, force: true });
       rmSync(after, { recursive: true, force: true });
@@ -341,11 +341,30 @@ describe("latestMarks", () => {
     }
   });
 
+  it("dots every page added since NEW_SINCE, past its own release", () => {
+    const dir = dirWith({
+      "2026-09.md": release("2026-09", "## New\n\n- [Badge](/docs/badge): Too early. (#1)\n"),
+      "2026-10.md": release(
+        "2026-10",
+        "## New\n\n- [Banner](/docs/banner): A status message. (#2)\n- [Starter](/): Not a docs page. (#3)\n\n## Updated\n\n- [Select](/docs/select): A fix. (#4)\n",
+      ),
+    });
+    try {
+      const ahead = [
+        { month: "2026-09", slugs: ["card"] },
+        { month: "2026-11", slugs: ["field"] },
+      ];
+      expect(recentNew(dir, "2026-10", ahead).sort()).toEqual(["banner", "field"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("costs the site its markers, never the page, on a malformed release", () => {
     const dir = dirWith({ "2026-09.md": "no frontmatter" });
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      expect(latestMarks(dir)).toEqual({ new: [], updated: [], ahead: [] });
+      expect(latestMarks(dir)).toEqual({ updated: [], ahead: [] });
       expect(error).toHaveBeenCalledOnce();
     } finally {
       error.mockRestore();

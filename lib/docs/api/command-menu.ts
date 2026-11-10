@@ -36,7 +36,7 @@ export const dialogProps: PropDef[] = [
   { name: "open", type: "boolean", description: "Controlled open state." },
   { name: "defaultOpen", type: "boolean", default: "false", description: "Initial open state." },
   { name: "onOpenChange", type: "(open: boolean) => void", description: "Called when the dialog opens or closes, including from the shortcut." },
-  { name: "shortcut", type: "string | null", default: '"mod+k"', description: 'The combo that toggles the dialog from anywhere: "mod" is ⌘ on a Mac and Ctrl elsewhere, joined with "+" to alt, shift, and one key. null binds nothing.' },
+  { name: "shortcut", type: "string | null", default: '"mod+k"', description: 'The combo that toggles the dialog from anywhere: "mod" is ⌘ on a Mac and Ctrl elsewhere, joined with "+" to alt, shift, and one key. null binds nothing. Without shortcutScope it stands aside while focus is in a data-keyboard-scope region (an embedded preview) it sits outside of.' },
   { name: "shortcutScope", type: "RefObject<HTMLElement>", description: "Focus must be inside this element for the combo to open the dialog. For a demo or a pane that shares its combo with the palette at the root: the root palette keeps the key everywhere else." },
   { name: "title", type: "string", default: '"Command menu"', description: "The dialog's name for screen readers." },
   { name: "description", type: "string", default: '"Search for a command to run."', description: "Read after the title." },
@@ -67,7 +67,7 @@ export const itemProps: PropDef[] = [
 ];
 
 export const tabsProps: PropDef[] = [
-  { name: "tabs", type: "{ value: string; label: string; icon?: IconComponent }[]", description: "1 subtle tab each." },
+  { name: "tabs", type: "{ value: string; label: string; icon?: IconComponent }[]", description: "1 tab each." },
   { name: "value", type: "string", description: "The selected tab's value." },
   { name: "onValueChange", type: "(value: string) => void", description: "Called on a pick. Derive items from the value." },
 ];
@@ -81,6 +81,11 @@ export const shortcutProps: PropDef[] = [
   { name: "keys", type: "string | string[]", description: 'The combo, in the trigger syntax ("mod+shift+p") or pre-formatted ("⌘⇧P"). A list draws 1 cap per entry. Modifiers draw as symbols on a Mac and words elsewhere.' },
 ];
 
+export const platformProps: PropDef[] = [
+  { name: "mac", type: "boolean", description: "Whether the visitor is on a Mac, read on the server from the Sec-CH-UA-Platform or User-Agent header. Shortcut caps then paint as ⌘ or Ctrl from the first frame instead of swapping after hydration. Without it the server draws ⌘." },
+  { name: "children", type: "ReactNode", description: "The tree holding command menus." },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "Item data", props: itemDataProps },
@@ -92,4 +97,5 @@ export const apiReference: ApiTable[] = [
   { title: "CommandMenuItem", props: itemProps },
   { title: "CommandMenuFooter", props: footerProps },
   { title: "CommandMenuShortcut", props: shortcutProps },
+  { title: "CommandMenuPlatform", props: platformProps },
 ];

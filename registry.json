@@ -82,7 +82,7 @@
       "name": "tokens",
       "type": "registry:theme",
       "title": "Interaction Tokens",
-      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --focus-ring color, and the base-layer :focus-visible fallback ring.",
+      "description": "Shared interaction-state tokens: surface-relative hover/active overlays (bg-hover, bg-active), the selected fill, the see-through secondary-button tint (--tint, --tint-hover), the destructive-light ground, the --overlay RGB triplet, the --fluid-accent color (switch track, drop and swatch rings, copy highlight) with --focus-ring derived from it, the --z-* stacking scale (sticky, overlay, modal, popover, tooltip), the accent text selection, and the base-layer :focus-visible fallback ring.",
       "cssVars": {
         "theme": {
           "color-hover": "var(--hover)",
@@ -96,9 +96,15 @@
           "selected": "#D4D4D4",
           "destructive-light": "#FEF2F2",
           "overlay": "0 0 0",
-          "focus-ring": "#6B97FF",
+          "fluid-accent": "#6B97FF",
+          "focus-ring": "var(--fluid-accent)",
           "tint": "rgb(0 0 0 / 0.08)",
-          "tint-hover": "rgb(0 0 0 / 0.065)"
+          "tint-hover": "rgb(0 0 0 / 0.065)",
+          "z-sticky": "30",
+          "z-overlay": "40",
+          "z-modal": "50",
+          "z-popover": "60",
+          "z-tooltip": "70"
         },
         "dark": {
           "hover": "rgb(255 255 255 / 0.06)",
@@ -112,6 +118,12 @@
       },
       "css": {
         "@layer base": {
+          "::selection": {
+            "background-color": "color-mix(in oklab, var(--fluid-accent, #6B97FF) 25%, transparent)"
+          },
+          ".dark ::selection": {
+            "background-color": "color-mix(in oklab, var(--fluid-accent, #6B97FF) 40%, transparent)"
+          },
           ":focus-visible": {
             "outline": "1px solid var(--focus-ring, #6B97FF)",
             "outline-offset": "2px",
@@ -210,6 +222,7 @@
             "--typeset-check": "16px",
             "--typeset-check-radius": "5px",
             "--typeset-check-gap": "8px",
+            "--typeset-check-press": "0.875",
             "--typeset-indent": "24px",
             "--typeset-sub-indent": "20px",
             "font-size": "var(--typeset-body)",
@@ -238,6 +251,7 @@
             "--typeset-check": "14px",
             "--typeset-check-radius": "4px",
             "--typeset-check-gap": "4px",
+            "--typeset-check-press": "0.8571",
             "--typeset-indent": "18px",
             "--typeset-sub-indent": "16px"
           },
@@ -362,10 +376,14 @@
             "border-radius": "var(--typeset-check-radius)",
             "background": "none",
             "cursor": "pointer",
-            "transition": "border-color 80ms ease-out"
+            "transition": "border-color 80ms ease-out, scale 180ms cubic-bezier(0.23, 1, 0.32, 1)"
           },
           ":where(.typeset input[type=checkbox]:not(:disabled):hover):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "border-color": "color-mix(in oklab, var(--foreground, currentColor) 40%, transparent)"
+          },
+          ":where(.typeset input[type=checkbox]:not(:disabled):active):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+            "scale": "var(--typeset-check-press)",
+            "transition-duration": "80ms, 80ms"
           },
           ":where(.typeset input[type=checkbox]:checked):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "border-color": "transparent"
@@ -382,7 +400,12 @@
             "inset": "0",
             "background-color": "var(--foreground, currentColor)",
             "-webkit-mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat",
-            "mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat"
+            "mask": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12L10 16L18 8'/%3E%3C/svg%3E\") center / calc(var(--typeset-check) + 2px) no-repeat",
+            "transition": "scale 180ms cubic-bezier(0.23, 1, 0.32, 1)"
+          },
+          ":where(.typeset input[type=checkbox]:checked:not(:disabled):active):not(:where(.typeset .not-typeset, .typeset .not-typeset *))::before": {
+            "scale": "calc(1 / var(--typeset-check-press))",
+            "transition-duration": "80ms"
           },
           ":where(.typeset .task-list-item input[type=checkbox]):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "vertical-align": "-0.25em",
@@ -406,7 +429,19 @@
           },
           ":where(.typeset ul[data-type=\"taskList\"] > li[data-checked=\"true\"] > div > :not(ul, ol)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "color": "var(--muted-foreground, color-mix(in oklab, currentColor 65%, transparent))",
-            "text-decoration-line": "line-through"
+            "text-decoration-line": "line-through",
+            "transition": "color 80ms ease-out, background-size 80ms ease-out"
+          },
+          ":where(.typeset ul[data-type=\"taskList\"] > li > div > p:first-child):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+            "display": "inline",
+            "background-image": "linear-gradient(currentColor, currentColor)",
+            "background-repeat": "no-repeat",
+            "background-position": "0 0.641em",
+            "background-size": "0% max(1px, 0.0684em)"
+          },
+          ":where(.typeset ul[data-type=\"taskList\"] > li[data-checked=\"true\"] > div > p:first-child):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+            "text-decoration-line": "none",
+            "background-size": "100% max(1px, 0.0684em)"
           },
           ":where(.typeset blockquote):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "padding-left": "1em",
@@ -488,6 +523,11 @@
             },
             ":where(.typeset input[type=checkbox]:checked):not(:where(.typeset .not-typeset, .typeset .not-typeset *))::before": {
               "display": "none"
+            }
+          },
+          "@media (prefers-reduced-motion: reduce)": {
+            ":where(.typeset ul[data-type=\"taskList\"] > li > div > :not(ul, ol)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
+              "transition-property": "color"
             }
           }
         }
@@ -642,7 +682,7 @@
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
-      "description": "React context provider for runtime shape variant switching (pill or rounded). Controls border-radius across all Fluid Functionalism components.",
+      "description": "React context provider for runtime shape variant switching (rounded, pill or sharp). Controls border-radius across all Fluid Functionalism components.",
       "files": [
         {
           "path": "registry/default/lib/shape-context.tsx",
@@ -796,7 +836,7 @@
       "name": "fluid-provider",
       "type": "registry:lib",
       "title": "Fluid Provider",
-      "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded or pill), the size step (default or compact), and the icon set.",
+      "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded, pill or sharp), the size step (default or compact), and the icon set.",
       "dependencies": [
         "motion"
       ],
@@ -836,6 +876,30 @@
         },
         {
           "path": "registry/default/fluid-hover-highlight.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "hook"
+      ]
+    },
+    {
+      "name": "use-fluid-hover-standard",
+      "type": "registry:hook",
+      "title": "useFluidHover + FluidHoverHighlight (standard hover)",
+      "description": "Standard hover: the same API as fluid hover, without the glide. The item under the pointer lights with a plain fill; nothing travels between items. Served as r/standard/use-fluid-hover.json.",
+      "registryDependencies": [
+        "utils",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/standard/hooks/use-fluid-hover.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "registry/standard/fluid-hover-highlight.tsx",
           "type": "registry:component"
         }
       ],
@@ -1003,7 +1067,7 @@
       "name": "badge",
       "type": "registry:ui",
       "title": "Badge",
-      "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
+      "description": "Compact label with solid, dot, and ghost variants, Tailwind color palette, and three sizes.",
       "dependencies": [
         "class-variance-authority"
       ],
@@ -1011,7 +1075,8 @@
         "utils",
         "shape-context",
         "size-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {
@@ -1094,17 +1159,19 @@
         }
       ],
       "css": {
-        "@keyframes spinner-move": {
+        "@keyframes spinner-turn": {
           "to": {
-            "stroke-dashoffset": "-100"
+            "transform": "rotate(360deg)"
           }
         },
-        "@keyframes spinner-dash": {
+        "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "15 85"
+            "stroke-dasharray": "0.01 49.99",
+            "stroke-dashoffset": "-25"
           },
           "50%": {
-            "stroke-dasharray": "40 60"
+            "stroke-dasharray": "26 24",
+            "stroke-dashoffset": "-12"
           }
         }
       },
@@ -1142,17 +1209,19 @@
         }
       ],
       "css": {
-        "@keyframes spinner-move": {
+        "@keyframes spinner-turn": {
           "to": {
-            "stroke-dashoffset": "-100"
+            "transform": "rotate(360deg)"
           }
         },
-        "@keyframes spinner-dash": {
+        "@keyframes spinner-breathe": {
           "0%, 100%": {
-            "stroke-dasharray": "15 85"
+            "stroke-dasharray": "0.01 49.99",
+            "stroke-dashoffset": "-25"
           },
           "50%": {
-            "stroke-dasharray": "40 60"
+            "stroke-dasharray": "26 24",
+            "stroke-dashoffset": "-12"
           }
         }
       },
@@ -1263,6 +1332,61 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/dropdown. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#dropdown.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "title": "Checkbox",
+      "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Radix flavor.",
+      "dependencies": [
+        "motion",
+        "@radix-ui/react-checkbox"
+      ],
+      "registryDependencies": [
+        "utils",
+        "shape-context",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/checkbox.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/checkbox. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#checkbox.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "checkbox-base",
+      "type": "registry:ui",
+      "title": "Checkbox (Base UI)",
+      "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Base UI flavor.",
+      "dependencies": [
+        "motion",
+        "@base-ui/react@^1.9.0"
+      ],
+      "registryDependencies": [
+        "utils",
+        "shape-context",
+        "omit",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/base/checkbox.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/checkbox.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/checkbox. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#checkbox.",
       "categories": [
         "components"
       ]
@@ -1469,7 +1593,8 @@
       "registryDependencies": [
         "springs",
         "surface-context",
-        "surface-classes"
+        "surface-classes",
+        "tokens"
       ],
       "files": [
         {
@@ -1496,7 +1621,8 @@
         "springs",
         "omit",
         "surface-context",
-        "surface-classes"
+        "surface-classes",
+        "tokens"
       ],
       "files": [
         {
@@ -1536,6 +1662,119 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/input-copy. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input-copy.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "field",
+      "type": "registry:ui",
+      "title": "Field",
+      "description": "Compose a label, a control, helper text, and a validation message into one accessible field: fieldsets, legends, groups, separators, and vertical, horizontal, or responsive layouts.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "icon-context",
+        "size-context",
+        "tokens",
+        "type-scale",
+        "input",
+        "textarea"
+      ],
+      "files": [
+        {
+          "path": "registry/default/field.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/field. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#field.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "title": "Input",
+      "description": "Single-line text field drawn like the Select trigger: a fixed hairline, a hover fill, and a neutral focus border; file inputs get an icon. Pairs with Field.",
+      "dependencies": [
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "icon-context",
+        "shape-context",
+        "size-context",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/input.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/input. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "breadcrumb",
+      "type": "registry:ui",
+      "title": "Breadcrumb",
+      "description": "A trail of links to the current page with one fluid hover across every crumb. Steps can lead with an icon, open a Dropdown, or collapse behind an ellipsis.",
+      "dependencies": [
+        "motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "icon-context",
+        "use-fluid-hover",
+        "tooltip",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/breadcrumb.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/breadcrumb. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#breadcrumb.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "textarea",
+      "type": "registry:ui",
+      "title": "Textarea",
+      "description": "Multi-line text field with the Input's hairline that grows with its content. Pairs with Field.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/textarea.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/textarea. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#textarea.",
       "categories": [
         "components"
       ]
@@ -1610,7 +1849,7 @@
       "name": "file-thumbnail",
       "type": "registry:ui",
       "title": "File Thumbnail",
-      "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting.",
+      "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting. The pdf.js worker loads from jsDelivr by default; setPdfWorkerSrc() points it at a self-hosted copy for strict CSPs.",
       "dependencies": [
         "pdfjs-dist"
       ],
@@ -1689,9 +1928,9 @@
       ]
     },
     {
-      "name": "tabs-subtle",
+      "name": "tabs",
       "type": "registry:ui",
-      "title": "Tabs Subtle",
+      "title": "Tabs",
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-tabs",
@@ -1710,9 +1949,9 @@
       ],
       "files": [
         {
-          "path": "registry/radix/tabs-subtle.tsx",
+          "path": "registry/radix/tabs.tsx",
           "type": "registry:ui",
-          "target": "components/ui/tabs-subtle.tsx"
+          "target": "components/ui/tabs.tsx"
         }
       ],
       "css": {
@@ -1724,15 +1963,15 @@
           "display": "none"
         }
       },
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs-subtle. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs-subtle.",
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
       "categories": [
         "components"
       ]
     },
     {
-      "name": "tabs-subtle-base",
+      "name": "tabs-base",
       "type": "registry:ui",
-      "title": "Tabs Subtle",
+      "title": "Tabs",
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
@@ -1751,9 +1990,9 @@
       ],
       "files": [
         {
-          "path": "registry/base/tabs-subtle.tsx",
+          "path": "registry/base/tabs.tsx",
           "type": "registry:ui",
-          "target": "components/ui/tabs-subtle.tsx"
+          "target": "components/ui/tabs.tsx"
         }
       ],
       "css": {
@@ -1765,7 +2004,7 @@
           "display": "none"
         }
       },
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs-subtle. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs-subtle.",
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
       "categories": [
         "components"
       ]
@@ -1783,6 +2022,7 @@
         "utils",
         "springs",
         "font-weight",
+        "shape-context",
         "size-context",
         "tokens"
       ],
@@ -1812,6 +2052,7 @@
         "springs",
         "omit",
         "font-weight",
+        "shape-context",
         "size-context",
         "tokens"
       ],
@@ -1837,6 +2078,7 @@
       ],
       "registryDependencies": [
         "utils",
+        "shape-context",
         "springs",
         "use-fluid-hover",
         "tokens"
@@ -1866,7 +2108,9 @@
         "font-weight",
         "use-fluid-hover",
         "size-context",
-        "tokens"
+        "tokens",
+        "shape-context",
+        "use-merge-split"
       ],
       "files": [
         {
@@ -1875,6 +2119,51 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/table. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#table.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "data-table",
+      "type": "registry:ui",
+      "title": "Data Table",
+      "description": "TanStack Table drawn with the library's Table: the fluid hover row highlight plus resizable, draggable columns, sorting headers with an animated sort glyph, a ghost search field with a magnifying glass, an icon Columns menu that shows and hides columns, a checkbox selection column with a select-all dash, a row actions menu, pagination with arrow buttons, and skeleton loading rows that hand over cell by cell. A useDataTable hook wires the row models; every part reads and sets TanStack state, so each one is optional.",
+      "dependencies": [
+        "@tanstack/react-table@^8.21.3",
+        "motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "icon-context",
+        "size-context",
+        "table",
+        "checkbox",
+        "input",
+        "button",
+        "dropdown",
+        "switch",
+        "select",
+        "tooltip",
+        "tokens",
+        "font-weight",
+        "shape-context",
+        "scroll-area",
+        "skeleton",
+        "reveal",
+        "combobox",
+        "date-picker",
+        "command-menu",
+        "elevated",
+        "badge"
+      ],
+      "files": [
+        {
+          "path": "registry/default/data-table.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/data-table. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#data-table.",
       "categories": [
         "components"
       ]
@@ -2247,74 +2536,6 @@
       ]
     },
     {
-      "name": "tabs",
-      "type": "registry:ui",
-      "title": "Tabs",
-      "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Built on Radix UI Tabs.",
-      "dependencies": [
-        "motion",
-        "@radix-ui/react-tabs",
-        "lucide-react"
-      ],
-      "registryDependencies": [
-        "utils",
-        "springs",
-        "font-weight",
-        "shape-context",
-        "surface-context",
-        "surface-classes",
-        "icon-context",
-        "use-fluid-hover",
-        "size-context",
-        "tokens"
-      ],
-      "files": [
-        {
-          "path": "registry/radix/tabs.tsx",
-          "type": "registry:ui",
-          "target": "components/ui/tabs.tsx"
-        }
-      ],
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
-      "categories": [
-        "components"
-      ]
-    },
-    {
-      "name": "tabs-base",
-      "type": "registry:ui",
-      "title": "Tabs (Base UI)",
-      "description": "Segmented control tabs with sliding active indicator, fluid hover, and spring animations. Base UI flavor.",
-      "dependencies": [
-        "motion",
-        "@base-ui/react@^1.9.0",
-        "lucide-react"
-      ],
-      "registryDependencies": [
-        "utils",
-        "springs",
-        "font-weight",
-        "shape-context",
-        "surface-context",
-        "surface-classes",
-        "icon-context",
-        "use-fluid-hover",
-        "size-context",
-        "tokens"
-      ],
-      "files": [
-        {
-          "path": "registry/base/tabs.tsx",
-          "type": "registry:ui",
-          "target": "components/ui/tabs.tsx"
-        }
-      ],
-      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/tabs. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#tabs.",
-      "categories": [
-        "components"
-      ]
-    },
-    {
       "name": "thinking-indicator",
       "type": "registry:ui",
       "title": "Thinking Indicator",
@@ -2466,10 +2687,10 @@
           }
         },
         ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
-          "animation": "reveal-skeleton-in 250ms ease-in-out both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 250ms infinite"
+          "animation": "reveal-skeleton-in 250ms ease-in-out 160ms both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 410ms infinite"
         },
         ".reveal-swap > :first-child:not(:last-child) [data-slot=\"skeleton\"]": {
-          "animation": "none"
+          "animation-play-state": "paused"
         },
         "@keyframes reveal-leave": {
           "to": {
@@ -2524,7 +2745,7 @@
             "animation-delay": "calc(var(--reveal-load-delay, 0s) + var(--reveal-step))"
           },
           ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
-            "animation": "reveal-skeleton-in 250ms ease-in-out both"
+            "animation": "reveal-skeleton-in 250ms ease-in-out 160ms both"
           }
         }
       },
@@ -2635,6 +2856,9 @@
             "animation": "sf-divider-end both linear",
             "animation-timeline": "--sf-scroller",
             "animation-range": "calc(100% - var(--scroll-divider-size)) 100%"
+          },
+          ".scroll-divider:last-child::after": {
+            "content": "none"
           }
         },
         "@supports (animation-timeline: scroll())": {
@@ -2795,6 +3019,9 @@
             "animation": "sf-divider-end both linear",
             "animation-timeline": "--sf-scroller",
             "animation-range": "calc(100% - var(--scroll-divider-size)) 100%"
+          },
+          ".scroll-divider:last-child::after": {
+            "content": "none"
           }
         },
         "@supports (animation-timeline: scroll())": {
@@ -3017,7 +3244,7 @@
       "name": "command-menu",
       "type": "registry:ui",
       "title": "Command Menu",
-      "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; subtle tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
+      "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
       "dependencies": [
         "motion",
         "lucide-react"
@@ -3035,7 +3262,7 @@
         "popup",
         "scroll-area",
         "dialog",
-        "tabs-subtle",
+        "tabs",
         "tokens",
         "type-scale"
       ],
@@ -3046,6 +3273,131 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/command-menu. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#command-menu.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "calendar",
+      "type": "registry:ui",
+      "title": "Calendar",
+      "description": "Month grid on DayPicker v10 for a single day or a range: one fluid hover highlight across one or two months that follows keyboard focus, a range band that previews the end under the pointer, booked (struck through) and unavailable days, ISO week numbers, a cellSize prop and fill mode, and a direction-aware month slide.",
+      "dependencies": [
+        "@daypicker/react@~10.0.2",
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "omit",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "icon-context",
+        "popup",
+        "use-keyboard-nav-gate",
+        "use-fluid-hover",
+        "button",
+        "tooltip",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/default/calendar.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/calendar. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#calendar.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "date-picker",
+      "type": "registry:ui",
+      "title": "Date Picker",
+      "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Radix flavor.",
+      "dependencies": [
+        "@radix-ui/react-popover",
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "calendar",
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "surface-context",
+        "surface-classes",
+        "icon-context",
+        "elevated",
+        "popup",
+        "use-fluid-hover",
+        "scroll-area",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/radix/date-picker.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker.tsx"
+        },
+        {
+          "path": "registry/default/date-picker-core.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker-core.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/date-picker. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#date-picker.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "date-picker-base",
+      "type": "registry:ui",
+      "title": "Date Picker",
+      "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Base UI flavor.",
+      "dependencies": [
+        "@base-ui/react@^1.9.0",
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "calendar",
+        "utils",
+        "springs",
+        "font-weight",
+        "shape-context",
+        "size-context",
+        "surface-context",
+        "surface-classes",
+        "icon-context",
+        "elevated",
+        "popup",
+        "use-fluid-hover",
+        "scroll-area",
+        "tokens",
+        "type-scale"
+      ],
+      "files": [
+        {
+          "path": "registry/base/date-picker.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker.tsx"
+        },
+        {
+          "path": "registry/default/date-picker-core.tsx",
+          "type": "registry:ui",
+          "target": "components/ui/date-picker-core.tsx"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/date-picker. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#date-picker.",
       "categories": [
         "components"
       ]
@@ -3064,7 +3416,8 @@
         "springs",
         "font-weight",
         "shape-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {
@@ -3093,7 +3446,8 @@
         "omit",
         "font-weight",
         "shape-context",
-        "type-scale"
+        "type-scale",
+        "tokens"
       ],
       "files": [
         {
@@ -3229,6 +3583,7 @@
         "icon-context",
         "use-fluid-hover",
         "elevated",
+        "popup",
         "slider",
         "size-context",
         "tooltip",

@@ -3,15 +3,17 @@
 import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 
 export const hookOptions: PropDef[] = [
-  { name: "axis", type: '"y" | "x" | "xy"', default: '"y"', description: "Which way the list runs: y for lists, x for strips, xy for grids." },
+  { name: "nearest", type: "boolean", default: "false", description: "Lights the item nearest the pointer, so gaps and padding never go dark. Off, only the item under the pointer lights and empty space puts the highlight out." },
+  { name: "axis", type: '"y" | "x" | "xy"', default: '"y"', description: "With nearest, which way the list runs: y for lists, x for strips, xy for grids." },
   { name: "isItemDisabled", type: "(el: HTMLElement) => boolean", description: "Skips an item: never lit, never clicked. Runs on every move, so keep it cheap." },
-  { name: "gapClick", type: "boolean | { maxDistance?: number }", default: "true", description: "A click between items goes to the lit one. false turns it off. maxDistance limits it to clicks within that many px." },
+  { name: "gapClick", type: "boolean | { maxDistance?: number }", default: "true", description: "With nearest, a click between items goes to the lit one. false turns it off. maxDistance limits it to clicks within that many px." },
 ];
 
 export const hookReturn: PropDef[] = [
   { name: "handlers", type: "{ onMouseEnter, onMouseMove, onMouseLeave, onClick }", description: "Spread onto the container. Mouse only. onClick is the gap click." },
   { name: "registerItem", type: "(index, element | null) => void", description: "Give it to each row. Indices start at 0 and must not change while the list is on screen." },
   { name: "activeIndex", type: "number | null", description: "The lit item, or null. Also set as data-fluid-hover-active on the item." },
+  { name: "activeStore", type: "{ subscribe, get }", description: "activeIndex as a stable store. Pass it to rows through context and read it with useFluidHoverSelect, so a move re-renders two rows, not the list." },
   { name: "setActiveIndex", type: "(index | null) => void", description: "Light an item yourself, for keyboard focus. The hook never moves focus." },
   { name: "itemRects", type: "ItemRect[]", description: "Each item's box inside the container. Survives a parent scale, not a rotation." },
   { name: "isMeasured", type: "boolean", description: "True once every item has a box. Measured again on register and on resize." },
@@ -23,6 +25,7 @@ export const highlightProps: PropDef[] = [
   { name: "hover", type: "ReturnType<typeof useFluidHover>", description: "The hook. The highlight reads what it needs from it." },
   { name: "hidden", type: "boolean", default: "false", description: "Show nothing, keep the state. A closed popup." },
   { name: "from", type: "ItemRect | null", description: "Where a fresh entry fades in from. Dropdowns pass the checked row when the pointer enters." },
+  { name: "fadeIn", type: "boolean", default: "true", description: "false starts a fresh entry opaque. For a `from` under a filled item, so the highlight slides out of it." },
   { name: "className", type: "string", description: "Radius and z-index. The container must be position: relative." },
   { name: "transition", type: "Transition | false", default: "spring.fast", description: "The travel. false snaps in place after a reflow." },
 ];

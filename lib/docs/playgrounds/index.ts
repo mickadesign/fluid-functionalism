@@ -1,10 +1,14 @@
 import { AccordionPlayground } from "./accordion";
 import { AskUserQuestionsPlayground } from "./ask-user-questions";
 import { BannerPlayground } from "./banner";
+import { BreadcrumbPlayground } from "./breadcrumb";
 import { ButtonPlayground } from "./button";
+import { CalendarPlayground } from "./calendar";
 import { CardPlayground } from "./card";
 import { ComboboxPlayground } from "./combobox";
 import { CommandMenuPlayground } from "./command-menu";
+import { DataTablePlayground } from "./data-table";
+import { DatePickerPlayground } from "./date-picker";
 import { DropdownPlayground } from "./dropdown";
 import { InputMessagePlayground } from "./input-message";
 import { SidebarPlayground } from "./sidebar";
@@ -27,10 +31,14 @@ export const playgroundMap: Record<string, PlaygroundComponent> = {
   accordion: AccordionPlayground,
   "ask-user-questions": AskUserQuestionsPlayground,
   banner: BannerPlayground,
+  breadcrumb: BreadcrumbPlayground,
   button: ButtonPlayground,
+  calendar: CalendarPlayground,
   card: CardPlayground,
   combobox: ComboboxPlayground,
   "command-menu": CommandMenuPlayground,
+  "data-table": DataTablePlayground,
+  "date-picker": DatePickerPlayground,
   dropdown: DropdownPlayground,
   "input-message": InputMessagePlayground,
   sidebar: SidebarPlayground,

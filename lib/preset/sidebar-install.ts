@@ -660,14 +660,14 @@ function calloutLines(p: SidebarPreset): string[] {
 function pageFile(p: SidebarPreset): string {
   const l: string[] = [];
   const providers: [string, string][] = [];
-  if (p.shape === "pill") providers.push(["ShapeProvider", ` defaultShape="pill"`]);
+  if (p.shape !== "rounded") providers.push(["ShapeProvider", ` defaultShape="${p.shape}"`]);
   if (p.size === "compact") providers.push(["SizeProvider", ` size="compact"`]);
   l.push(`"use client";`);
   l.push(``);
   l.push(`import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";`);
   l.push(`import { AppSidebar } from "@/components/sidebar-preset/app-sidebar";`);
   l.push(`import { SidebarInsetTopbar } from "@/components/sidebar-app/inset-topbar";`);
-  if (p.shape === "pill") l.push(`import { ShapeProvider } from "@/lib/shape-context";`);
+  if (p.shape !== "rounded") l.push(`import { ShapeProvider } from "@/lib/shape-context";`);
   if (p.size === "compact") l.push(`import { SizeProvider } from "@/lib/size-context";`);
   l.push(``);
   l.push(`// Generated from a fluidfunctionalism.com playground preset.`);
@@ -745,7 +745,7 @@ export function presetRegistryDeps(p: SidebarPreset): string[] {
     deps.add("springs");
   }
   if (p.l1Primary === "menu" && p.l1Children) deps.add("springs");
-  if (p.shape === "pill") deps.add("shape-context");
+  if (p.shape !== "rounded") deps.add("shape-context");
   return [...deps];
 }
 

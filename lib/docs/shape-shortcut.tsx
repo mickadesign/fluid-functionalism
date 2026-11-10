@@ -1,10 +1,13 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { useEffect } from "react";
 
-import { useShapeContext, shapeMap, type ShapeVariant } from "@/lib/shape-context";
+import { useShapeContext } from "@/lib/shape-context";
+import { SETTING_VALUES } from "@/lib/docs/site-settings";
 
-const shapeOrder = Object.keys(shapeMap) as ShapeVariant[];
+// Cycles in the order the settings panel lists the shapes.
+const shapeOrder = SETTING_VALUES.shape;
 
 /**
  * Docs-site-only global shortcut: R cycles the radius variant. Mount once
@@ -16,6 +19,8 @@ export function ShapeShortcut() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "r" && e.key !== "R") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target as HTMLElement)?.tagName;

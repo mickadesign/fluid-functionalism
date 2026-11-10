@@ -23,6 +23,7 @@ import HiMonitor from "@hugeicons/core-free-icons/ComputerIcon";
 import HiSun from "@hugeicons/core-free-icons/Sun01Icon";
 import HiMoon from "@hugeicons/core-free-icons/Moon01Icon";
 import HiRectangle from "@hugeicons/core-free-icons/DashboardCircleIcon";
+import HiSquare from "@hugeicons/core-free-icons/SquareIcon";
 import HiLibrary from "@hugeicons/core-free-icons/LibraryIcon";
 import HiClock from "@hugeicons/core-free-icons/Clock01Icon";
 import HiStar from "@hugeicons/core-free-icons/StarIcon";
@@ -68,6 +69,13 @@ import HiCalendar from "@hugeicons/core-free-icons/Calendar01Icon";
 import HiFolder from "@hugeicons/core-free-icons/Folder01Icon";
 import HiSliders from "@hugeicons/core-free-icons/SlidersHorizontalIcon";
 import HiInfo from "@hugeicons/core-free-icons/InformationCircleIcon";
+import HiAlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
+import HiFile from "@hugeicons/core-free-icons/File01Icon";
+import HiMinus from "@hugeicons/core-free-icons/MinusSignIcon";
+import HiMaximize from "@hugeicons/core-free-icons/ArrowExpand01Icon";
+import HiMinimize from "@hugeicons/core-free-icons/ArrowShrink02Icon";
+import HiGripVertical from "@hugeicons/core-free-icons/DragDropVerticalIcon";
+import HiTag from "@hugeicons/core-free-icons/Tag01Icon";
 import { Play, Pause } from "lucide-react";
 import type { IconComponent, IconComponentProps, IconName } from "@/lib/icon-context";
 
@@ -99,6 +107,7 @@ export const hugeiconsIcons: Record<IconName, IconComponent> = {
   "moon": hugeicons(HiMoon),
   "rectangle-horizontal": hugeicons(HiRectangle),
   "circle": hugeicons(HiDot),
+  "square": hugeicons(HiSquare),
   "square-library": hugeicons(HiLibrary),
   "clock": hugeicons(HiClock),
   "star": hugeicons(HiStar),
@@ -146,4 +155,11 @@ export const hugeiconsIcons: Record<IconName, IconComponent> = {
   "folder": hugeicons(HiFolder),
   "sliders-horizontal": hugeicons(HiSliders),
   "info": hugeicons(HiInfo),
+  "circle-alert": hugeicons(HiAlertCircle),
+  "file": hugeicons(HiFile),
+  "minus": hugeicons(HiMinus),
+  "maximize": hugeicons(HiMaximize),
+  "minimize": hugeicons(HiMinimize),
+  "grip-vertical": hugeicons(HiGripVertical),
+  tag: hugeicons(HiTag),
 };

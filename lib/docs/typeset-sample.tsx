@@ -23,6 +23,7 @@ import { Switch } from "@/registry/radix/switch";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { typeStyles } from "@/lib/type-scale";
 import { selectorList, typesetRules } from "@/lib/typeset/generate";
+import { ACCENT_VAR } from "@/lib/accent";
 
 /** Starting HTML of the Markdown section on /docs/typography: a
  *  getting-started doc with most of what markdown writes: 3 heading levels,
@@ -144,8 +145,8 @@ interface InspectMark {
 }
 
 const INSPECT_BLOCKS = ".ProseMirror :is(h1, h2, h3, h4, h5, h6, p, pre, figcaption)";
-const INSPECT_BLUE = "#6B97FF";
-const INSPECT_BAND = "rgba(107, 151, 255, 0.16)";
+const INSPECT_LINE = ACCENT_VAR;
+const INSPECT_BAND = "color-mix(in oklab, var(--fluid-accent, #6B97FF) 16%, transparent)";
 const INSPECT_TONES = {
   margin: { fill: "rgba(255, 168, 82, 0.28)", line: "rgba(240, 140, 40, 0.9)" },
   padding: { fill: "rgba(153, 255, 201, 0.35)", line: "rgba(83, 214, 145, 0.9)" },
@@ -464,7 +465,7 @@ export function TypesetEditor({ content, label }: { content: string; label: stri
               style={{
                 ...mark.content,
                 backgroundImage: `repeating-linear-gradient(to bottom, ${INSPECT_BAND} 0 ${mark.lineHeight}px, transparent ${mark.lineHeight}px ${mark.lineHeight * 2}px)`,
-                outline: `1px solid ${INSPECT_BLUE}`,
+                outline: `1px solid ${INSPECT_LINE}`,
               }}
             />
           )}

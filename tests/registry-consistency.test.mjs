@@ -108,8 +108,15 @@ describe("docs pages", () => {
   });
 
   it("every public docs page is listed; the skill page is navigation only", async () => {
-    const { componentList, systemList, systemNavList } = await import("../lib/docs/components.ts");
-    const listed = new Set([...componentList, ...systemList].map((e) => e.slug));
+    const { componentList, componentEntries, UNLISTED_SLUGS, systemList, systemNavList } = await import(
+      "../lib/docs/components.ts"
+    );
+    const listed = new Set([...componentEntries, ...systemList].map((e) => e.slug));
+    // An unlisted page has its entry but stays out of navigation.
+    for (const slug of UNLISTED_SLUGS) {
+      expect(listed.has(slug), `${slug} is unlisted but has no entry`).toBe(true);
+      expect(componentList.some((e) => e.slug === slug)).toBe(false);
+    }
     const pages = readdirSync(join(ROOT, "app/docs"), { withFileTypes: true })
       .filter((e) => e.isDirectory() && existsSync(join(ROOT, "app/docs", e.name, "page.tsx")))
       .map((e) => e.name);
@@ -120,7 +127,7 @@ describe("docs pages", () => {
     expect(listed.has("skill")).toBe(false);
     expect(systemNavList.some((e) => e.slug === "skill")).toBe(true);
     for (const page of pages.filter((slug) => slug !== "skill")) {
-      expect(listed.has(page), `app/docs/${page} is not in componentList/systemList`).toBe(true);
+      expect(listed.has(page), `app/docs/${page} is not in componentEntries/systemList`).toBe(true);
     }
   });
 });
@@ -234,6 +241,11 @@ describe("shipped CSS variables reach installers", () => {
     "--color-accent", // Tailwind-emitted alias of the shadcn `accent` theme color
     "--spacing",
     "--font-sans",
+    // Tailwind's default palette, used by Button's destructive variant (each
+    // with its oklch value as a var() fallback too)
+    "--color-red-400",
+    "--color-red-500",
+    "--color-red-700",
   ]);
   // 1b. Variables the primitives set on their own nodes at runtime — they are
   //     never defined in any stylesheet.
@@ -302,8 +314,9 @@ describe("shipped imports reach installers", () => {
   // install writes: the payload's own files plus everything its
   // registryDependencies chain installs. Files the installer's project already
   // has don't count (a stock components/ui/button.tsx would satisfy the import
-  // and quietly stand in for ours), except lib/utils.ts, which the plain
-  // "utils" dep installs from ui.shadcn.com.
+  // and quietly stand in for ours), except the stock shadcn items a payload
+  // names on purpose: lib/utils.ts from the plain "utils" dep, and shadcn's
+  // unchanged Skeleton from "skeleton" (installed with @fluid/reveal).
   //
   // The shadcn CLI (4.21: resolveFilePath, transformImport,
   // resolveModuleByProbablePath) resolves an import in three steps:
@@ -318,7 +331,10 @@ describe("shipped imports reach installers", () => {
   //     registry:component at components/fluid-hover-highlight.tsx.
   // Anything else is "Cannot find module" in the installer's tsc and build.
   const EXTENSIONS = [".tsx", ".ts", ".js", ".jsx", ".css"];
-  const SHADCN_DEFAULT_FILES = { utils: ["lib/utils.ts"] };
+  const SHADCN_DEFAULT_FILES = {
+    utils: ["lib/utils.ts"],
+    skeleton: ["components/ui/skeleton.tsx"],
+  };
   const TYPE_DIRS = { "registry:ui": "components/ui", "registry:lib": "lib", "registry:hook": "hooks" };
 
   function installPath(file) {

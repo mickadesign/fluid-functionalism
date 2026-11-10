@@ -3,7 +3,7 @@ name: fluid-functionalism
 description: >-
   Build React UIs with Fluid Functionalism — a shadcn/ui registry (@fluid) of
   animated components with a shared motion system: three spring speeds, a
-  hover highlight that glides to the item nearest the cursor, labels that
+  hover highlight that glides from item to item under the cursor, labels that
   change weight without layout shift. Use whenever the user mentions Fluid
   Functionalism, @fluid, or fluidfunctionalism.com, asks for UI with
   satisfying/fluid/polished motion in a React, Next.js, shadcn, Radix, or Base
@@ -21,7 +21,7 @@ description: >-
 
 A [shadcn/ui](https://ui.shadcn.com) registry of components where every
 transition makes a state change legible: springs instead of durations, one
-hover highlight per list that glides to the item nearest the cursor, and
+hover highlight per list that glides from item to item under the cursor, and
 labels that get heavier without moving their neighbours. Components that touch
 a primitive ship in two flavors — Radix and Base UI — with the same API.
 
@@ -298,10 +298,38 @@ system:
   another, derive `inner radius = max(0, outer radius - inset - border)`; the
   inset is the interior spacing, usually parent padding, and the border is the
   parent's border width. The shipped shape pair (`container` 12/24px → `bg`
-  8/20px) is fixed for a 4px total inset. For any other inset use
-  `nestedRadius()` from `@/lib/shape-context` rather than reusing the pair. Past
+  8/20px) is fixed for a 4px total inset; sharp stays 1px at both levels. For
+  any other inset use `nestedRadius()` from `@/lib/shape-context` rather than
+  reusing the pair. Past
   24px, with asymmetric gaps, or when the inner surface does not reach the
   corner, treat the layers independently and tune by eye.
+- **Icon-only controls name themselves.** Every icon-only button gets an
+  `aria-label` and a tooltip with the same words. A tooltip on a menu's
+  trigger is forced closed while the menu is open: React carries the
+  portalled menu's pointer events up to the trigger's ancestors, so it would
+  reopen over the menu. A tooltip whose trigger is a component must reach a
+  DOM node: the component forwards its ref and spreads the props, or the
+  tooltip wraps a span around it.
+- **Rows of controls share edges.** In a toolbar, table and footer, left
+  content starts on one line (DataTable: 8px in) and the right-side icon
+  buttons share one center line. Status badges inside table rows are
+  `variant="ghost"`. Labels in a row of controls never wrap (Button is
+  `whitespace-nowrap`): wrap or restructure the row instead.
+- **Anything clickable that isn't a Button behaves like a ghost Button.**
+  Hover fills with `--hover` and pressed with `--active` on a surface 1px
+  inside the hit area, with a same-color 1px ring that collapses on press;
+  the label lifts from muted to foreground on hover. A drag ghost is that
+  pressed state lifted off the page (opaque over `--background`), and the
+  slot it left stays empty, not dimmed.
+- **Layout changes play from a snapshot.** Measure positions right before a
+  change (not on every render), let it commit, then slide each element from
+  its old place to 0 (FLIP) on the tier its size calls for. Expanding or
+  collapsing a container swaps its content first, so the box moves around
+  what it will show; the dismissal uses the tier's `.exit` tween. Recipe:
+  [references/custom-motion.md](references/custom-motion.md#layout-changes-measure-change-play).
+- **Menus never reflow under their own fills.** A menu row that comes and
+  goes (a switch, a section) shifts every row below it out from under its
+  selection fill: keep the row and disable it instead.
 - **Move with `transform`/`opacity`**, never `top`/`left`/`width`/`height` —
   that keeps motion on the compositor and lets `MotionConfig` reduce it for
   free.
@@ -339,7 +367,7 @@ written down. In order of reach:
   wrap or compose instead. Edits are lost on the next `--overwrite` install
   and drift the app away from the system.
 - Components built on a flavored one (AskUserQuestions, ColorPicker,
-  CommandMenu, InputCopy, InputMessage, and the blocks) also take the `base/`
+  CommandMenu, DataTable, InputCopy, InputMessage, and the blocks) also take the `base/`
   prefix. Single-source items (badge, card, table, input-group, chat-message,
   thinking-indicator, the libs and hooks) have one name for both kinds of
   project.
@@ -348,8 +376,7 @@ written down. In order of reach:
   installing half a tree.
 - If an install fails on a name, check the catalog in
   [references/components.md](references/components.md) — the registry name is
-  not always the component's display name (e.g. TabsSubtle → `tabs-subtle`,
-  Fluid Hover → `use-fluid-hover`, Motion → `springs`).
+  not always the component's display name (e.g. Fluid Hover → `use-fluid-hover`, Motion → `springs`).
 - The base flavor lives at the `base/<name>` **path** — `@fluid/base/select`,
   URL `/r/base/select.json`. Names like `<name>-base` are internal build
   names; `/r/<name>-base.json` 404s **by design** (the build moves those

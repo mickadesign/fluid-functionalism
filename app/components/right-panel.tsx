@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { inKeyboardScope } from "@/lib/keyboard-scope";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, animate, motion, useReducedMotion } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
-import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/registry/radix/button";
 import {
   Select,
@@ -17,7 +28,7 @@ import {
   useShapeContext,
   type ShapeVariant,
 } from "@/lib/shape-context";
-import { useSizeContext, type SizeVariant } from "@/lib/size-context";
+import { useSize, useSizeContext, type SizeVariant } from "@/lib/size-context";
 import { useThemeContext, type Theme } from "@/registry/default/lib/theme-context";
 import { useIcon } from "@/lib/icon-context";
 import {
@@ -26,14 +37,345 @@ import {
   iconLibraryLabels,
   type IconLibrary,
 } from "@/lib/docs/icon-playground";
-import { SurfaceProvider } from "@/lib/surface-context";
-import { RightRailTarget } from "@/lib/right-rail";
+import { RailHairline, RightRailTarget } from "@/lib/right-rail";
+import { cn } from "@/lib/utils";
+import { useFluidHover } from "@/hooks/use-fluid-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { showShortcutToast } from "@/lib/docs/settings-toast";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useBase, type Base } from "@/lib/base-context";
+import { StarterPromptButton } from "@/app/components/starter-install";
+import { ColorPickerPopover } from "@/registry/default/color-picker";
+import { accentHexOf, accentSwatches, useAccent } from "@/lib/docs/accent";
+import { ACCENT_ORDER, LOW_ACCENT_CONTRAST, accentLabel, contrastRatio } from "@/lib/accent";
+import { useHeadingFont, headingFontLabel, HeadingWeightSelect } from "@/lib/docs/heading-font";
+import { HOVER_MODE_LABELS, useHoverModeSetting } from "@/lib/docs/hover-mode";
+import { HOVER_MODES, type HeadingFont, type HoverMode } from "@/lib/docs/site-settings";
 
 const REPO = "mickadesign/fluid-functionalism";
+
+/** The heading font select's action row: opens the Google Fonts picker. */
+const BROWSE = "__browse";
+
+/** The page background on each theme, as globals.css's --surface-1. Read
+ *  as constants, not off the screen: the accent flips shade the moment the
+ *  theme does, while the painted background is still crossfading, and a
+ *  read mid-fade paired the new shade with a half-changed page. */
+const PAGE_BG = { light: "#FAFAFA", dark: "#171717" };
+
+/** Warns under the Accent row when a custom color nearly vanishes against
+ *  the page: focus rings are 1px of the accent. Worded and styled like a
+ *  field's error caption, after the Banner's warning glyph. */
+function AccentContrastNote({ hex, dark }: { hex: string; dark: boolean }) {
+  if (contrastRatio(hex, PAGE_BG[dark ? "dark" : "light"]) >= LOW_ACCENT_CONTRAST) return null;
+  return (
+    <p className="flex items-start gap-1.5 py-2 text-site-caption text-destructive">
+      {/* Banner's filled warning triangle, its mark cut out in the page
+          color; one caption line tall, centered on the first line. */}
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mt-px shrink-0">
+        <path
+          d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 9.5v3.5M12 17h.01"
+          className="stroke-background"
+          strokeWidth={2.25}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      Low contrast: Accent color will be hard to see
+    </p>
+  );
+}
+
+/** How far a setting's value travels as it rolls in or out. */
+const ROLL = 16;
+/** The trigger's edge fade while values roll: clear across the text's
+ *  line, fading out over the top and bottom quarter. */
+const ROLL_MASK = "linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent)";
+
+/** The trigger's parts as they line up on screen (the key and chevron are
+ *  reordered with CSS order), the key included, the chevron not. */
+function inVisualOrder(trigger: HTMLElement): HTMLElement[] {
+  return [...trigger.children]
+    .filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el.dataset.rollCopy === undefined
+    )
+    .map((el, i) => ({ el, i, order: Number(getComputedStyle(el).order) || 0 }))
+    .sort((a, b) => a.order - b.order || a.i - b.i)
+    .map(({ el }) => el);
+}
+
+/** A shortcut key's chip, pressed: down 2px a side on its 18px. */
+const KEY_PRESS = 0.85;
+
+/** What rolls in a trigger: its first part, the value's text (a select's
+ *  icon and label, the accent's name). The key and chevron hold still, and
+ *  the accent's swatch fades from one color to the next instead (the
+ *  site's color transition). */
+function rollingParts(trigger: HTMLElement): HTMLElement[] {
+  const first = trigger.firstElementChild;
+  return first instanceof HTMLElement ? [first] : [];
+}
+
+/** The settings list's fluid hover: each row hands it its trigger. */
+const SettingHoverContext = createContext<
+  ((index: number, element: HTMLElement | null) => void) | null
+>(null);
+
+/** Whether rows inset their label 8px, to line up with a group label. */
+const SettingInsetContext = createContext(true);
+
+/** A setting: its label, then its control with the keyboard shortcut inside
+ *  it, in view without a hover, in the key chip the settings toast shows
+ *  when it's pressed. Touch screens drop the keys: there's no keyboard to
+ *  press them on.
+ *
+ *  `index` is the value's place in its menu. When it changes (a shortcut
+ *  cycling it, or a pick), the values roll like a list: the new one comes
+ *  in from where it sits, from below going down the menu, from above going
+ *  up or wrapping back to the top, while the old one leaves the other way,
+ *  blurring as it fades. Both pass through a fade at the trigger's top and
+ *  bottom edges, as a list scrolls under a scroll fade. */
+function SettingRow({
+  label,
+  shortcut,
+  index,
+  hoverIndex,
+  children,
+}: {
+  label: string;
+  shortcut?: string;
+  index?: number;
+  /** The row's fixed place in the list's fluid hover. */
+  hoverIndex: number;
+  children: ReactNode;
+}) {
+  // The chevron's size, for the accent swatch to take the same room.
+  const { icon } = useSize();
+  const inset = useContext(SettingInsetContext);
+  const reduceMotion = useReducedMotion();
+  const controlRef = useRef<HTMLSpanElement>(null);
+  // The control's trigger button, once mounted, to hold the shortcut key.
+  const [trigger, setTrigger] = useState<HTMLButtonElement | null>(null);
+  useLayoutEffect(() => {
+    setTrigger(controlRef.current?.querySelector("button") ?? null);
+  }, []);
+  // The trigger joins the list's fluid hover: the highlight sits on it, and
+  // a click anywhere on the row (its label too) goes to it.
+  const registerHover = useContext(SettingHoverContext);
+  useEffect(() => {
+    if (!registerHover || !trigger) return;
+    registerHover(hoverIndex, trigger);
+    return () => registerHover(hoverIndex, null);
+  }, [registerHover, hoverIndex, trigger]);
+  // Pressing the key presses its chip, the way the settings toast dips on a
+  // repeat press: down, held 80ms, then back on the fast spring. On window,
+  // after the shortcut's own listener on document: it marks a key it acted
+  // on with preventDefault, so a key typed into a field never presses.
+  const keyRef = useRef<HTMLElement>(null);
+  // When the shortcut last fired: only a change it caused rolls the value.
+  // A pick from the open menu shows up in place, the menu already moved.
+  const pressedAt = useRef(-Infinity);
+  useEffect(() => {
+    if (!shortcut) return;
+    let release: ReturnType<typeof setTimeout> | undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.defaultPrevented || e.key.toLowerCase() !== shortcut.toLowerCase()) return;
+      const key = keyRef.current;
+      if (!key) return;
+      clearTimeout(release);
+      animate(key, { scale: KEY_PRESS }, spring.fast);
+      release = setTimeout(() => animate(key, { scale: 1 }, spring.fast), 80);
+    };
+    // Capture phase, ahead of the shortcut's listener: React renders the
+    // change before a later listener runs. A key typed into a field is
+    // stamped too, harmlessly: it changes no value.
+    const onKeyCapture = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === shortcut.toLowerCase()) pressedAt.current = performance.now();
+    };
+    window.addEventListener("keydown", onKeyCapture, true);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyCapture, true);
+      window.removeEventListener("keydown", onKeyDown);
+      clearTimeout(release);
+    };
+  }, [shortcut]);
+  const prevIndex = useRef(index);
+  // The trigger's content as last rendered, to play the old value out: by
+  // the time the index changes, the trigger already shows the new one.
+  const snapshot = useRef<HTMLElement | null>(null);
+  const leaving = useRef<HTMLElement | null>(null);
+  const rolls = useRef(0);
+  const entering = useRef<ReturnType<typeof animate> | null>(null);
+  const lastChange = useRef(0);
+  // Layout effects: the new value is already in the DOM, and the roll has
+  // to start before it paints at rest.
+  useLayoutEffect(() => {
+    const from = prevIndex.current;
+    prevIndex.current = index;
+    if (index === undefined || from === undefined || from === index) return;
+    if (performance.now() - pressedAt.current > 100) return;
+    const trigger = controlRef.current?.querySelector("button");
+    if (!trigger) return;
+    // A press mid-roll drops the value still leaving.
+    leaving.current?.remove();
+    leaving.current = null;
+    const content = rollingParts(trigger);
+    if (!content.length) return;
+    const y = index > from ? ROLL : -ROLL;
+
+    // A held key repeats faster than a roll lasts: restarting it each time
+    // keeps the value faded out at its start. A change within a roll's
+    // length of the last one snaps to the new value instead, so a held key
+    // steps through values and the next press after a pause rolls again.
+    const now = performance.now();
+    const quick = now - lastChange.current < spring.moderate.duration * 1000;
+    lastChange.current = now;
+    if (quick) {
+      entering.current?.stop();
+      entering.current = null;
+      rolls.current++;
+      animate(content, { opacity: 1, y: 0 }, { duration: 0 });
+      trigger.style.removeProperty("mask-image");
+      trigger.style.removeProperty("-webkit-mask-image");
+      return;
+    }
+
+    const old = snapshot.current;
+    if (old) {
+      if (getComputedStyle(trigger).position === "static") trigger.style.position = "relative";
+      // Over the new value's line, pinned by its right edge, where the
+      // chevron keeps it: the trigger has already resized to the new value.
+      const box = trigger.getBoundingClientRect();
+      // The copy holds the key's and swatch's room too, so it spans the
+      // same parts.
+      const line = inVisualOrder(trigger);
+      const first = line[0].getBoundingClientRect();
+      const last = line[line.length - 1].getBoundingClientRect();
+      Object.assign(old.style, {
+        position: "absolute",
+        top: `${first.top - box.top - trigger.clientTop}px`,
+        right: `${box.right - last.right - trigger.clientLeft}px`,
+        height: `${first.height}px`,
+        display: "flex",
+        alignItems: "center",
+        gap: getComputedStyle(trigger).columnGap,
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+      });
+      trigger.append(old);
+      leaving.current = old;
+    }
+
+    trigger.style.setProperty("mask-image", ROLL_MASK);
+    trigger.style.setProperty("-webkit-mask-image", ROLL_MASK);
+    const roll = ++rolls.current;
+    const done = () => {
+      if (roll !== rolls.current) return;
+      trigger.style.removeProperty("mask-image");
+      trigger.style.removeProperty("-webkit-mask-image");
+    };
+
+    // Moderate tier: the spring moves the value, while opacity and blur run
+    // linear over the same time, so the fade reads evenly across the travel.
+    const enter = animate(
+      content,
+      reduceMotion ? { opacity: [0, 1] } : { opacity: [0, 1], y: [y, 0] },
+      { ...spring.moderate, opacity: { duration: spring.moderate.duration, ease: "linear" } }
+    );
+    if (old) {
+      const fade = { duration: spring.moderate.exit.duration, ease: "linear" } as const;
+      animate(
+        old,
+        reduceMotion
+          ? { opacity: [1, 0] }
+          : { opacity: [1, 0], y: [0, -y], filter: ["blur(0px)", "blur(2px)"] },
+        { ...spring.moderate.exit, ease: "easeIn", opacity: fade, filter: fade }
+      ).then(() => {
+        old.remove();
+        if (leaving.current === old) leaving.current = null;
+      });
+    }
+    entering.current = enter;
+    enter.then(() => {
+      if (entering.current === enter) entering.current = null;
+      done();
+    });
+  }, [index, reduceMotion]);
+  // After every render, so the copy has whatever the trigger shows now (an
+  // icon set swapped, a label renamed), with none of a roll's inline styles.
+  useLayoutEffect(() => {
+    const trigger = controlRef.current?.querySelector("button");
+    const parts = trigger ? inVisualOrder(trigger) : [];
+    if (!parts.length) return;
+    const copy = document.createElement("span");
+    copy.setAttribute("aria-hidden", "true");
+    copy.dataset.rollCopy = "";
+    for (const part of parts) {
+      const clone = part.cloneNode(true) as HTMLElement;
+      clone.style.removeProperty("transform");
+      clone.style.removeProperty("opacity");
+      clone.removeAttribute("id");
+      // At the size it has in the trigger: out of it, the trigger's own
+      // rules (the swatch's size) no longer reach the copy.
+      clone.style.width = getComputedStyle(part).width;
+      clone.style.flexShrink = "0";
+      // Only the value leaves: the rest stays put in the trigger, so the
+      // copy only keeps its room.
+      if (part !== trigger?.firstElementChild) clone.style.visibility = "hidden";
+      copy.append(clone);
+    }
+    snapshot.current = copy;
+  });
+  return (
+    // The label holds one line; a long value truncates in its trigger. The
+    // Select wraps its trigger in a div, which has to give way too.
+    // relative: painted over the list's highlight, which sits behind the
+    // trigger in place of the trigger's own hover fill.
+    // pl-2: the label starts where the group label above it does.
+    // The trigger's icons follow the row's highlight too, not the button's
+    // own hover: a lit row thickens and darkens them wherever the pointer
+    // is on it, label included, and an unlit row never does.
+    <div className={cn("relative flex items-center justify-between gap-3", inset && "pl-2")}>
+      <span className="shrink-0 whitespace-nowrap text-site-body text-muted-foreground">{label}</span>
+      <span
+        ref={controlRef}
+        className={cn(
+          "flex min-w-0 items-center [&>div]:min-w-0 [&_button:hover]:bg-transparent [&_button>span:nth-child(2)]:order-1 [&_button>span:nth-child(2)]:size-(--swatch)! [&_button>svg]:order-1",
+          "[&_button:not([data-fluid-hover-active])>span>svg]:stroke-[1.5] [&_button:not([data-fluid-hover-active])>span>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>span>svg]:stroke-[2] [&_button[data-fluid-hover-active]>span>svg]:text-foreground",
+          "[&_button:not([data-fluid-hover-active])>svg]:text-muted-foreground [&_button[data-fluid-hover-active]>svg]:text-foreground"
+        )}
+        style={{ "--swatch": `${icon}px` } as CSSProperties}
+      >
+        {children}
+        {/* The key sits in the trigger, after the value and before the
+            chevron (ordered last above), so it reads as part of the control.
+            Hidden from the combobox's name: the value is what it reads. */}
+        {shortcut &&
+          trigger &&
+          createPortal(
+            <kbd
+              ref={keyRef}
+              aria-hidden
+              data-shortcut=""
+              className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-mono text-site-micro leading-none text-muted-foreground rounded-[2px] pointer-coarse:hidden"
+            >
+              {shortcut}
+            </kbd>,
+            trigger
+          )}
+      </span>
+    </div>
+  );
+}
 
 function formatStars(n: number): string {
   if (n >= 1000) {
@@ -60,40 +402,59 @@ function GitHubIcon({ size = 16, className }: { size?: number; className?: strin
 }
 
 /** Standalone GitHub star-count button — rendered next to the "Make them yours" heading. */
-// One fetch per page load, shared by every instance (right panel + the
-// sidebar sheet's footer). Without the cache, each sheet open remounted the
-// button and refired the unauthenticated API call — GitHub rate-limits those
-// per IP, after which the count silently disappeared.
+// The count comes from the root layout, rendered on the server, so the button
+// paints with its number. Only when that came back empty (GitHub slow or
+// refusing) does the client ask, through /api/stars: that route shares one
+// GitHub call a minute across visitors, where calling GitHub from the browser
+// spent each visitor's own 60-an-hour limit, after which the count vanished.
+const GitHubStarsContext = createContext<number | null>(null);
+
+export function GitHubStarsProvider({
+  stars,
+  children,
+}: {
+  stars: number | null;
+  children: ReactNode;
+}) {
+  return <GitHubStarsContext.Provider value={stars}>{children}</GitHubStarsContext.Provider>;
+}
+
+// One client fetch at a time, shared by every instance (right panel + the
+// sidebar sheet's footer). A miss clears it, so the next mount asks again.
 let cachedStars: number | null = null;
 let starsPromise: Promise<number | null> | null = null;
 
 function fetchStars(): Promise<number | null> {
-  starsPromise ??= fetch(`https://api.github.com/repos/${REPO}`, {
-    headers: { Accept: "application/vnd.github.v3+json" },
-  })
+  starsPromise ??= fetch("/api/stars")
     .then((res) => (res.ok ? res.json() : null))
     .then((data) => {
-      if (data?.stargazers_count != null) cachedStars = data.stargazers_count;
+      if (typeof data?.stars === "number") cachedStars = data.stars;
       return cachedStars;
     })
-    .catch(() => null);
+    .catch(() => null)
+    .then((count) => {
+      if (count === null) starsPromise = null;
+      return count;
+    });
   return starsPromise;
 }
 
 export function GitHubStarButton() {
   const shapeCtx = useShape();
-  const [stars, setStars] = useState<number | null>(cachedStars);
+  const serverStars = useContext(GitHubStarsContext);
+  const [fetchedStars, setFetchedStars] = useState<number | null>(cachedStars);
+  const stars = serverStars ?? fetchedStars;
 
   useEffect(() => {
-    if (cachedStars !== null) return;
+    if (serverStars !== null || cachedStars !== null) return;
     let cancelled = false;
     fetchStars().then((count) => {
-      if (!cancelled && count !== null) setStars(count);
+      if (!cancelled && count !== null) setFetchedStars(count);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [serverStars]);
 
   return (
     <Button
@@ -119,19 +480,95 @@ export function GitHubStarButton() {
   );
 }
 
-/** The inner settings content — reused in the right column and mobile drawer. */
-export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left" | "right" | "top" | "bottom" }) {
+/** The author's avatar, shaped as an IconComponent so it can ride Button's
+ *  leadingIcon slot the way the GitHub mark does. A face reads at 20px, not
+ *  at the button's 14px icon size, so it ignores the size it is handed. */
+const AVATAR_SIZE = 20;
+function AuthorAvatar({ className }: { size?: number; className?: string }) {
+  const size = AVATAR_SIZE;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- a 16px avatar, served as is
+    <img
+      src="/micka.png"
+      alt=""
+      width={size}
+      height={size}
+      className={cn(
+        "shrink-0 rounded-full object-cover outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
+        className
+      )}
+    />
+  );
+}
+
+/** "Created by" on the left, the author on the right as a ghost button (the
+ *  avatar and the handle), opening their X profile like the GitHub button
+ *  opens the repo. The label is inset like the group labels. */
+export function Credit({ className }: { className?: string }) {
+  const shapeCtx = useShape();
+  return (
+    <div className={cn("flex items-center justify-between gap-2 pl-2", className)}>
+      <p className="text-site-body text-muted-foreground">Created by</p>
+      <Button
+        variant="ghost"
+        size="sm"
+        leadingIcon={AuthorAvatar}
+        aria-label="@micka_design on X"
+        className={shapeCtx.button}
+        onClick={() => window.open("https://x.com/micka_design", "_blank", "noopener,noreferrer")}
+      >
+        @micka_design
+      </Button>
+    </div>
+  );
+}
+
+/** The inner settings content: reused in the right column and mobile drawer.
+ *  `credit={false}` where the host shows the credit elsewhere. `inset` (on
+ *  by default) starts the labels 8px in, under the right panel's group
+ *  label; the mobile sheet turns it off, so they start under its heading. */
+export function SettingsContent({ credit = true, inset = true }: { credit?: boolean; inset?: boolean }) {
   const { theme, setTheme } = useThemeContext();
   const { shape, setShape } = useShapeContext();
   const { size, setSize } = useSizeContext();
   const { iconLibrary, setIconLibrary } = useIconLibrary();
   const { base, setBase } = useBase();
+  const { font, fonts, custom, setFont, browse } = useHeadingFont();
+  const accent = useAccent();
+  const { mode: hoverMode, setMode: setHoverMode } = useHoverModeSetting();
+  const reduceMotion = useReducedMotion();
+  const shapeClasses = useShape();
+  const listRef = useRef<HTMLDivElement>(null);
+  const hover = useFluidHover(listRef);
+  // registerItem is stable; the handlers object is new each render.
+  const { registerItem: registerHover, handlers: hoverHandlers } = hover;
+  // While a row's menu is open the list's highlight goes out and stays out:
+  // the menu has the pointer's attention. Moves in the menu are already
+  // ignored, but the pointer still crosses the trigger on its way there.
+  // Closing it, the next move lights a row again, fading in where it lands.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const sync = () => setMenuOpen(!!list.querySelector('[aria-expanded="true"]'));
+    const observer = new MutationObserver(sync);
+    observer.observe(list, { subtree: true, attributes: true, attributeFilter: ["aria-expanded"] });
+    sync();
+    return () => observer.disconnect();
+  }, []);
+  const { onMouseLeave: putOut, onMouseEnter: fadeInNext } = hoverHandlers;
+  useEffect(() => {
+    if (!menuOpen) return;
+    putOut();
+    fadeInNext();
+  }, [menuOpen, putOut, fadeInNext]);
 
   const MonitorIcon = useIcon("monitor");
   const SunIcon = useIcon("sun");
   const MoonIcon = useIcon("moon");
   const RectHorizIcon = useIcon("rectangle-horizontal");
   const CircleIcon = useIcon("circle");
+  const SquareIcon = useIcon("square");
   const PaletteIcon = useIcon("palette");
   const RadixIcon = useIcon("circle");
   const BaseUiIcon = useIcon("square-library");
@@ -143,6 +580,7 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
   ];
 
   const shapeOptions = [
+    { label: "Sharp", value: "sharp" as ShapeVariant, icon: SquareIcon },
     { label: "Rounded", value: "rounded" as ShapeVariant, icon: RectHorizIcon },
     { label: "Pill", value: "pill" as ShapeVariant, icon: CircleIcon },
   ];
@@ -165,88 +603,176 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Theme, Radius & Icons selects */}
-      <div className="flex flex-col gap-1.5 py-3">
-        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">T</kbd>&ensp; to cycle</span>} side={tooltipSide}>
-          <div className="flex items-center justify-between">
-            <span className="text-site-body text-muted-foreground">Theme</span>
-            <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
-              <SelectTrigger
-                variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-site-body"
-                icon={themeOptions.find((o) => o.value === theme)?.icon}
-              />
-              <SelectContent>
-                {themeOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </Tooltip>
-        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">R</kbd>&ensp; to toggle</span>} side={tooltipSide}>
-          <div className="flex items-center justify-between">
-            <span className="text-site-body text-muted-foreground">Radius</span>
-            <Select value={shape} onValueChange={(v) => setShape(v as ShapeVariant)}>
-              <SelectTrigger
-                variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-site-body"
-                icon={shapeOptions.find((o) => o.value === shape)?.icon}
-              />
-              <SelectContent>
-                {shapeOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </Tooltip>
-        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">S</kbd>&ensp; to toggle</span>} side={tooltipSide}>
-          <div className="flex items-center justify-between">
-            <span className="text-site-body text-muted-foreground">Size</span>
-            <Select value={size} onValueChange={(v) => setSize(v as SizeVariant)}>
-              <SelectTrigger
-                variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-site-body"
-              />
-              <SelectContent>
-                {sizeOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </Tooltip>
-        <Tooltip content={<span>Press &ensp;<kbd className="font-mono opacity-50">I</kbd>&ensp; to cycle</span>} side={tooltipSide}>
-          <div className="flex items-center justify-between">
-            <span className="text-site-body text-muted-foreground">Icons</span>
-            <Select value={iconLibrary} onValueChange={(v) => setIconLibrary(v as IconLibrary)}>
-              <SelectTrigger
-                variant="borderless"
-                className="min-w-0 w-auto h-7 px-2 text-site-body"
-              />
-              <SelectContent>
-                {iconOptions.map((o, i) => (
-                  <SelectItem key={o.value} value={o.value} index={i}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </Tooltip>
-        <div className="flex items-center justify-between">
-          <span className="text-site-body text-muted-foreground">Primitive</span>
+      {/* The settings, stacked with no gap under one fluid hover. */}
+      <SettingInsetContext.Provider value={inset}>
+      <SettingHoverContext.Provider value={registerHover}>
+      <div
+        ref={listRef}
+        className="relative flex flex-col"
+        {...hoverHandlers}
+        onMouseMove={menuOpen ? undefined : hoverHandlers.onMouseMove}
+      >
+        <FluidHoverHighlight hover={hover} className={shapeClasses.input} />
+        <SettingRow label="Theme" hoverIndex={0} shortcut="T" index={themeOptions.findIndex((o) => o.value === theme)}>
+          <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+              icon={themeOptions.find((o) => o.value === theme)?.icon}
+            />
+            <SelectContent>
+              {themeOptions.map((o, i) => (
+                <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow
+          label="Accent"
+          hoverIndex={1}
+          shortcut="A"
+          index={accent.custom ? ACCENT_ORDER.length : ACCENT_ORDER.indexOf(accent.preset)}
+        >
+          {/* The presets are the picker's swatches; any other color is a
+              custom accent. The trigger reads like the selects: the name
+              (or hex) in the foreground, then the color. */}
+          <ColorPickerPopover
+            value={accent.hex}
+            onValueChange={(_, parsed) => accent.setColor(accentHexOf(parsed))}
+            swatches={accentSwatches(accent.dark)}
+            triggerLabel={accentLabel(accent.preset, accent.custom)}
+            triggerShowValue={false}
+            triggerClassName="border-transparent px-2 text-site-body [&_span]:px-0 [&_span]:text-foreground"
+          />
+        </SettingRow>
+        <AccentContrastNote hex={accent.hex} dark={accent.dark} />
+        <SettingRow label="Heading font" hoverIndex={2} shortcut="F" index={fonts.indexOf(font)}>
+          {/* The last row is an action, not a value: it opens the
+              Google Fonts picker and leaves the selection alone. */}
+          <Select
+            value={font}
+            onValueChange={(v) => (v === BROWSE ? browse() : setFont(v as HeadingFont))}
+          >
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+            />
+            <SelectContent>
+              {fonts.map((f, i) => (
+                <SelectItem key={f} value={f} index={i}>
+                  {headingFontLabel(f, custom)}
+                </SelectItem>
+              ))}
+              <SelectItem value={BROWSE} index={fonts.length}>
+                Browse Google Fonts…
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        {/* Only while a custom Google Fonts family is the heading font. It
+            opens and closes in place (grid rows 0fr to 1fr), so the rows
+            below slide instead of jumping. Clipped only while it moves: at rest
+            the select's focus ring needs the room. */}
+        <AnimatePresence initial={false}>
+          {font === "custom" && custom && (
+            <motion.div
+              key="heading-weight"
+              className="grid"
+              initial={{ gridTemplateRows: "0fr", opacity: 0, overflow: "hidden" }}
+              animate={{
+                gridTemplateRows: "1fr",
+                opacity: 1,
+                transitionEnd: { overflow: "visible" },
+              }}
+              exit={{
+                gridTemplateRows: "0fr",
+                opacity: 0,
+                overflow: "hidden",
+                transition: reduceMotion
+                  ? { duration: 0, opacity: spring.moderate.exit }
+                  : spring.moderate.exit,
+              }}
+              // Reduced motion: the row snaps open or shut, and only fades.
+              transition={
+                reduceMotion ? { duration: 0, opacity: { duration: spring.moderate.duration } } : spring.moderate
+              }
+            >
+              <div className="min-h-0">
+                <SettingRow label="Heading weight" hoverIndex={3}>
+                  <HeadingWeightSelect triggerClassName="min-w-0 w-auto px-2 text-site-body" />
+                </SettingRow>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <SettingRow label="Radius" hoverIndex={4} shortcut="R" index={shapeOptions.findIndex((o) => o.value === shape)}>
+          <Select value={shape} onValueChange={(v) => setShape(v as ShapeVariant)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+              icon={shapeOptions.find((o) => o.value === shape)?.icon}
+            />
+            <SelectContent>
+              {shapeOptions.map((o, i) => (
+                <SelectItem key={o.value} value={o.value} index={i} icon={o.icon}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Size" hoverIndex={5} shortcut="S" index={sizeOptions.findIndex((o) => o.value === size)}>
+          <Select value={size} onValueChange={(v) => setSize(v as SizeVariant)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+            />
+            <SelectContent>
+              {sizeOptions.map((o, i) => (
+                <SelectItem key={o.value} value={o.value} index={i}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Icons" hoverIndex={6} shortcut="I" index={iconOptions.findIndex((o) => o.value === iconLibrary)}>
+          <Select value={iconLibrary} onValueChange={(v) => setIconLibrary(v as IconLibrary)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+            />
+            <SelectContent>
+              {iconOptions.map((o, i) => (
+                <SelectItem key={o.value} value={o.value} index={i}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Hover" hoverIndex={7} shortcut="H" index={HOVER_MODES.indexOf(hoverMode)}>
+          <Select value={hoverMode} onValueChange={(v) => setHoverMode(v as HoverMode)}>
+            <SelectTrigger
+              variant="borderless"
+              className="min-w-0 w-auto px-2 text-site-body"
+            />
+            <SelectContent>
+              {HOVER_MODES.map((m, i) => (
+                <SelectItem key={m} value={m} index={i}>
+                  {HOVER_MODE_LABELS[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Primitive" hoverIndex={8} index={baseOptions.findIndex((o) => o.value === base)}>
           <Select value={base} onValueChange={(v) => setBase(v as Base)}>
             <SelectTrigger
               variant="borderless"
-              className="min-w-0 w-auto h-7 px-2 text-site-body"
+              className="min-w-0 w-auto px-2 text-site-body"
             />
             <SelectContent>
               {baseOptions.map((o, i) => (
@@ -256,34 +782,47 @@ export function SettingsContent({ tooltipSide = "left" }: { tooltipSide?: "left"
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </SettingRow>
       </div>
+      </SettingHoverContext.Provider>
+      </SettingInsetContext.Provider>
 
-      {/* Credit */}
-      <div className="flex items-center gap-2">
-        <img
-          src="/micka.png"
-          alt=""
-          className="w-5 h-5 rounded-full object-cover shrink-0 outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
-        />
-        <p className="text-site-body text-muted-foreground">
-          Created by{" "}
-          <a
-            href="https://x.com/micka_design"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded text-muted-foreground hover:text-foreground transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2"
-          >
-            @micka_design
-          </a>
-        </p>
-      </div>
+      {/* The home page's install prompt, carrying everything set above.
+          mt-2 + the column's gap-2: 16px under the rows, and the same 16px
+          (mb-2 + gap-2) on to the credit when it follows. */}
+      <StarterPromptButton size="sm" className={cn("mt-2 w-full", credit && "mb-2")} />
+
+      {credit && <Credit className={inset ? undefined : "pl-0"} />}
 
     </div>
   );
 }
 
 /** Desktop-only right column that mirrors the left sidebar styling. */
+// The panel's own read of the xl breakpoint (the concept screens mount it
+// outside any SidebarProvider, so it can't borrow the sidebar's isMobile).
+// The server and the first client render assume desktop.
+const XL_QUERY = "(min-width: 1280px)";
+function subscribeXl(onChange: () => void) {
+  const mql = window.matchMedia(XL_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+function useIsXl() {
+  return useSyncExternalStore(
+    subscribeXl,
+    () => window.matchMedia(XL_QUERY).matches,
+    () => true
+  );
+}
+const subscribeNever = () => () => {};
+/** False on the server and while hydrating, true after. Gates the
+ *  xl-fade-block transition, so the panel is on screen at first paint
+ *  instead of fading in on its own. */
+function useIsClient() {
+  return useSyncExternalStore(subscribeNever, () => true, () => false);
+}
+
 export function RightPanel() {
   // The bare "]" key shows/hides the panel — the mirror of the left rail's
   // "[" (the sidebar provider only ever claims its own side's key, so "]" is
@@ -297,6 +836,8 @@ export function RightPanel() {
   openRef.current = open;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "]") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Below xl the panel doesn't render — a shortcut that visibly does
@@ -321,10 +862,13 @@ export function RightPanel() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Below xl the panel also gives its width back while xl-fade-block fades
+  // it, so the page slides into the space instead of snapping once
+  // display:none lands (the exit tween matches the CSS fade's 160ms).
+  const isXl = useIsXl();
+  const isClient = useIsClient();
+  const shown = open && isXl;
   const PanelRightIcon = useIcon("panel-right");
-  // The rail's cards take the shape's container radius, so they round with
-  // the pill and rounded settings like the items inside them.
-  const shape = useShape();
   // The changelog's rail holds its Releases index alone: nothing on that
   // page reacts to the settings, which stay a ⌘K or a shortcut away.
   const showSettings = usePathname() !== "/changelog";
@@ -338,7 +882,7 @@ export function RightPanel() {
           <motion.div
             // Mirrors the left rail's reopen trigger: same top-4 inset from
             // its edge, same default trigger size.
-            className="fixed top-4 right-4 z-40 max-xl:hidden"
+            className="fixed top-4 right-4 z-[calc(var(--z-sticky,30)+1)] max-xl:hidden"
             initial={reduceMotion ? false : { opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{
@@ -389,15 +933,21 @@ export function RightPanel() {
         opacity instead of fading. */}
     <motion.div
       className="shrink-0 overflow-hidden sticky top-4 self-start mt-4 xl-fade-block max-xl:pointer-events-none"
+      data-ready={isClient || undefined}
       initial={false}
       animate={{
-        width: open ? 256 : 0,
+        // 256px of panel plus 4px either side, which the negative left
+        // margin and the trimmed right one give back: the clip (here and
+        // the scroll area's) sits 4px out, so focus rings drawn 2px outside
+        // the controls flush with the panel's edges aren't cut off.
+        width: shown ? 264 : 0,
+        marginLeft: shown ? -4 : 0,
         // 16px on the right, matching the 16px top (sticky top-4) and the
         // 16px the max-h calc leaves at the bottom — one even inset.
-        marginRight: open ? 16 : 0,
+        marginRight: shown ? 12 : 0,
       }}
       transition={
-        reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit
+        reduceMotion ? { duration: 0 } : shown ? spring.slow : spring.slow.exit
       }
       style={{ pointerEvents: open ? undefined : "none" }}
       // Collapsed is width:0 + opacity:0 — still in the DOM, so without
@@ -405,7 +955,7 @@ export function RightPanel() {
       inert={open ? undefined : true}
     >
       <motion.div
-        className="w-64"
+        className="w-[264px]"
         initial={false}
         animate={{ opacity: open ? 1 : 0 }}
         transition={
@@ -418,22 +968,25 @@ export function RightPanel() {
           edges. The fade sits on the viewport itself, so it starts at the
           panel's true edge — any breathing room lives INSIDE the scroller,
           under the mask, never outside pushing the gradient down. */}
-      <ScrollArea viewportClassName="scroll-fade max-h-[calc(100svh-2rem)]">
-      <div className="flex flex-col gap-3">
+      {/* max-h leaves room for the credit pinned under the panel: its 32px
+          row and 16px over it, on top of the 16px insets above and below. */}
+      <ScrollArea viewportClassName="scroll-fade max-h-[calc(100svh-2rem-48px)]">
+      {/* Groups stack like the left sidebar's: each later one brings its own
+          16px (pt-4) above its label. */}
+      <div className="flex flex-col px-1">
         {showSettings && (
-        <aside className={`p-4 ${shape.container} bg-muted`}>
-          <SurfaceProvider value={2}>
-            <div className="flex items-center justify-between pt-2 pb-2">
-              <h2
-                className="text-site-title text-foreground leading-none"
-                style={{ fontVariationSettings: fontWeights.semibold }}
-              >
-                Make them yours
-              </h2>
-              <GitHubStarButton />
-            </div>
-            <SettingsContent tooltipSide="left" />
-          </SurfaceProvider>
+        // contain-inline-size: the rail's scroll area sizes to its content,
+        // so the card's one-line labels would widen it past the rail;
+        // contained, it takes the rail's width and the values truncate.
+        // A group like the left sidebar's: no card, a small label with the
+        // star count on its right, a hairline under it.
+        <aside className="contain-inline-size">
+          <div className="flex h-8 items-center justify-between pl-2">
+            <h2 className="text-site-caption text-foreground">Make them yours</h2>
+            <GitHubStarButton />
+          </div>
+          <RailHairline />
+          <SettingsContent credit={false} />
         </aside>
         )}
 
@@ -441,6 +994,10 @@ export function RightPanel() {
         <RightRailTarget />
       </div>
       </ScrollArea>
+      {/* The credit, pinned to the page's bottom-right corner in the panel's
+          column: 16px off the bottom like the panel's 16px off the top, and
+          fading with it. */}
+      <Credit className="fixed bottom-4 right-4 h-8 w-64" />
       </motion.div>
     </motion.div>
     </>

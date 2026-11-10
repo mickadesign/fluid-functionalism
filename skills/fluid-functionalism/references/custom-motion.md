@@ -79,10 +79,11 @@ not system drift. Judge the app's own chrome, not what it depicts.
 
 ## Fluid hover for custom lists
 
-One highlight per list: `useFluidHover` picks the item whose center is nearest
-the cursor, and a single `bg-hover` overlay springs to its rect on
-`spring.fast`. The cursor in a gap still lights the nearest row, and never
-blinks off between rows. Install `@fluid/use-fluid-hover`; it ships the hook
+One highlight per list: `useFluidHover` lights the item under the cursor, and
+a single `bg-hover` overlay springs to its rect on `spring.fast`, gliding
+between touching rows instead of blinking. Empty space (padding, a gap, the end
+of a grid row) puts it out; pass `nearest: true` to keep the nearest row lit
+there instead. Install `@fluid/use-fluid-hover`; it ships the hook
 and the `FluidHoverHighlight` component, and pulls in `@fluid/tokens` for the
 `bg-hover` fill. The component lands in
 `components/`, not `components/ui/`, so import it from
@@ -116,10 +117,12 @@ Rules that keep it honest:
 
 - **Render `<FluidHoverHighlight hover={hover} />`** — never a hand-rolled
   `motion.div` fill. It handles measurement readiness, the pointer session
-  (fade in at the nearest row instead of sliding across the screen), reduced
+  (fade in where it lands instead of sliding across the screen), reduced
   motion, and z-order. `className` carries radius; `hidden` keeps state while
   a popup is closed; `from` seeds where a fresh entry starts.
-- **Axis matches the shape:** `y` for lists, `x` for strips, `xy` for grids.
+- **Rows touch (gap 0)** so the highlight glides from row to row; a gap puts
+  it out for the crossing. **With `nearest`, the axis matches the shape:** `y`
+  for lists, `x` for strips, `xy` for grids.
 - **One list per group of alternatives.** A divider between different kinds
   of rows means a new container and a new hook. Children of a parent row
   belong to the parent's list.
@@ -222,6 +225,51 @@ when **it** toggles. When the measured height changes because a *child*
 collapsed, snap (`{ duration: 0 }`) — otherwise the outer wrapper chases a
 moving target every frame, lags its own child, and lands ~100ms late; each
 nesting level multiplies the sludge.
+
+## Layout changes: measure, change, play
+
+When something moves because the layout changed (a column reordered, rows
+that wrap, a panel that expands), animate from a snapshot (FLIP) instead of
+animating layout properties:
+
+```tsx
+const snapshot = useRef<Map<string, number> | null>(null);
+
+// 1. Right before the change: read where things are.
+const capture = () => {
+  snapshot.current = new Map(
+    [...list.children].map((el) => [el.dataset.id!, (el as HTMLElement).offsetTop])
+  );
+};
+
+// 2. The change commits; 3. each element starts where it was and springs to 0.
+useLayoutEffect(() => {
+  const before = snapshot.current;
+  if (!before) return;
+  snapshot.current = null;
+  for (const el of list.children as HTMLCollectionOf<HTMLElement>) {
+    const dy = (before.get(el.dataset.id!) ?? el.offsetTop) - el.offsetTop;
+    if (dy) animate(el, { y: [dy, 0] }, spring.moderate).then(() => (el.style.transform = ""));
+  }
+});
+```
+
+- Measure only when a change is coming, from the code that makes it. A
+  layout effect that reads positions after every render forces a layout on
+  every keystroke.
+- Read `offsetTop` / `offsetLeft`, not `getBoundingClientRect()`: they
+  ignore transforms, so a measurement taken mid-animation is still true.
+- An element that just appeared fades in; one that left lets its neighbors
+  slide into its place.
+- A container that expands or collapses swaps its content first (more
+  rows, a fill mode), without its own layout spring, so it never outgrows
+  the box while the box moves. The way in rides the tier's spring; the way
+  back is the tier's `.exit` tween, which can't overshoot the slot.
+- Clear the inline styles when it lands, and once more a frame later:
+  motion commits a finished animation's last values after its promise
+  resolves. Guard anything that must finish (unlocking scroll, restoring
+  state) with a timer a beat after the animation's length: background tabs
+  stall animation frames.
 
 ## Page reveals (`@fluid/reveal`)
 
@@ -326,9 +374,12 @@ import { Skeleton } from "@/components/ui/skeleton";
   too, for a sidebar.
 - Load blocks independently: each request lands on its own time and in any
   order. Never fake a tidy sequence; give each metric its own swap.
-- Skeletons fade in over 250ms before shadcn's pulse starts, so they arrive
-  instead of popping in. Keep Skeletons inside a block: a Skeleton that is
-  itself an animated child loses its pulse.
+- Skeletons wait 160ms, then fade in over 250ms before shadcn's pulse
+  starts: data that lands within 160ms never shows one, and a slower one
+  arrives instead of popping in. A swapped-out skeleton fades from wherever
+  its fade or pulse was, never jumping back to full first. Keep Skeletons
+  inside a block: a Skeleton that is itself an animated child loses its
+  pulse.
 
 ### Accessibility
 

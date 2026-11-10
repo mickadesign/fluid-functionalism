@@ -9,6 +9,7 @@ import { spring } from "@/registry/default/lib/springs";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/registry/radix/button";
 import { cn } from "@/registry/default/lib/utils";
+import { useShape } from "@/lib/shape-context";
 
 /** Inline code chip used throughout the prose. */
 function Code({ children }: { children: ReactNode }) {
@@ -66,6 +67,7 @@ const REFERENCE_TIERS = [
       { label: "Combobox",            slug: "/docs/combobox" },
       { label: "Command menu",        slug: "/docs/command-menu" },
       { label: "Color picker",        slug: "/docs/color-picker" },
+      { label: "Date picker",         slug: "/docs/date-picker" },
       { label: "Accordion",           slug: "/docs/accordion" },
     ],
   },
@@ -82,6 +84,7 @@ const REFERENCE_TIERS = [
       { label: "Dropdown",                slug: "/docs/dropdown" },
       { label: "Tabs indicator",          slug: "/docs/tabs" },
       { label: "Carousel dots",           slug: "/docs/carousel-dots" },
+      { label: "Calendar month",          slug: "/docs/calendar" },
       { label: "Banner dismiss",          slug: "/docs/banner" },
       { label: "Switch thumb",            slug: "/docs/switch" },
       { label: "Chat bubbles",            slug: "/docs/chat-message" },
@@ -115,6 +118,7 @@ const ENTER_SETTLE = { fast: 220, moderate: 400, slow: 560 } as const;
 const EXIT_SETTLE  = { fast: 150, moderate: 200, slow: 250 } as const;
 
 function SpringReferenceSection() {
+  const round = useShape().variant === "sharp" ? "rounded-none" : "rounded-full";
   const [atEnds, setAtEnds] = useState([false, false, false]);
   const [transitions, setTransitions] = useState<Transition[]>([
     spring.fast, spring.moderate, spring.slow,
@@ -168,7 +172,8 @@ function SpringReferenceSection() {
             onClick={() => fire(i)}
             aria-label={`Play ${key} enter then exit`}
             className={cn(
-              "flex h-7 cursor-pointer items-center rounded-full bg-muted px-0.5 outline-none",
+              "flex h-7 cursor-pointer items-center bg-muted px-0.5 outline-none",
+              round,
               "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
               trackWidth,
               atEnds[i] ? "justify-end" : "justify-start"
@@ -177,7 +182,7 @@ function SpringReferenceSection() {
             <motion.div
               layout
               transition={transitions[i]}
-              className="h-6 w-6 rounded-full bg-foreground"
+              className={cn("h-6 w-6 bg-foreground", round)}
             />
           </button>
 
@@ -231,6 +236,7 @@ const SPRING_TIERS = [
 ] as const;
 
 function SpringTokensDemo() {
+  const round = useShape().variant === "sharp" ? "rounded-none" : "rounded-full";
   const [atEnd, setAtEnd] = useState(false);
 
   return (
@@ -259,14 +265,15 @@ function SpringTokensDemo() {
               onClick={() => setAtEnd((v) => !v)}
               aria-label={`Run the ${key} spring`}
               className={cn(
-                "flex h-10 w-full cursor-pointer items-center rounded-full bg-muted px-1 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+                "flex h-10 w-full cursor-pointer items-center bg-muted px-1 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+                round,
                 atEnd ? "justify-end" : "justify-start"
               )}
             >
               <motion.div
                 layout
                 transition={token}
-                className="h-8 w-8 rounded-full bg-foreground"
+                className={cn("h-8 w-8 bg-foreground", round)}
               />
             </button>
           </div>

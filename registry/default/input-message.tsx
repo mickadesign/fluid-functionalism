@@ -217,9 +217,10 @@ interface FilePreviewTileProps {
   file: File;
   onRemove: () => void;
   size: number;
+  isTouch: boolean;
 }
 
-function FilePreviewTile({ file, onRemove, size }: FilePreviewTileProps) {
+function FilePreviewTile({ file, onRemove, size, isTouch }: FilePreviewTileProps) {
   const icons = useIcons();
   const XIcon = icons.x;
   const shape = useShape();
@@ -255,7 +256,18 @@ function FilePreviewTile({ file, onRemove, size }: FilePreviewTileProps) {
           // of theme — the close badge needs to read as a "delete affordance"
           // over arbitrary image/PDF content, so it sits at a fixed contrast
           // instead of flipping with the surrounding surface.
-          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-neutral-900 text-white opacity-0 group-hover/tile:opacity-100 transition-opacity duration-80 flex items-center justify-center cursor-pointer outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
+          className={cn(
+            "absolute top-1 right-1 w-5 h-5 rounded-full bg-neutral-900 text-white transition-opacity duration-80 flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+            // The 20px badge takes taps across a 32px square (a pseudo-element
+            // that stays inside the tile's corner).
+            "before:absolute before:-inset-1.5",
+            // Hover devices reveal × on tile-hover; touch has no hover, so keep
+            // it persistently visible there. While hidden it must not take
+            // taps meant for the thumbnail.
+            isTouch
+              ? "opacity-100"
+              : "pointer-events-none opacity-0 group-hover/tile:pointer-events-auto group-hover/tile:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+          )}
         >
           <XIcon size={12} strokeWidth={2.5} />
         </button>
@@ -361,8 +373,10 @@ function QueuedRow({
           }}
           aria-label={`Remove queued message: ${label}`}
           className={cn(
-            "shrink-0 flex h-5 w-5 items-center justify-center rounded-full",
+            "relative shrink-0 flex h-5 w-5 items-center justify-center rounded-full",
             "text-muted-foreground hover:text-foreground hover:bg-hover",
+            // A 32px target that stays inside the row's padding.
+            "before:absolute before:-inset-1.5",
             // Hover devices reveal × on row-hover; touch has no hover, so keep
             // it persistently visible there.
             isTouch
@@ -651,7 +665,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     // `shadow-surface-2` supplies the resting edge.
     const EDGE_DROP = "0 1px 1px -0.5px var(--shadow-color)";
     const edgeShadow = dragOver
-      ? `0 0 0 1px #6B97FF, ${EDGE_DROP}`
+      ? `0 0 0 1px var(--fluid-accent, #6B97FF), ${EDGE_DROP}`
       : focusVisible
         ? `0 0 0 1px color-mix(in oklab, var(--foreground) 20%, transparent), ${EDGE_DROP}`
         : hovered && clickToFocus && !disabled
@@ -1109,6 +1123,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                         file={file}
                         onRemove={() => removeFile(i)}
                         size={filePreviewSize}
+                        isTouch={isTouch}
                       />
                     ))}
                   </AnimatePresence>

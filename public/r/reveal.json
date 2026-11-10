@@ -107,10 +107,10 @@
       }
     },
     ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
-      "animation": "reveal-skeleton-in 250ms ease-in-out both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 250ms infinite"
+      "animation": "reveal-skeleton-in 250ms ease-in-out 160ms both, reveal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 410ms infinite"
     },
     ".reveal-swap > :first-child:not(:last-child) [data-slot=\"skeleton\"]": {
-      "animation": "none"
+      "animation-play-state": "paused"
     },
     "@keyframes reveal-leave": {
       "to": {
@@ -165,7 +165,7 @@
         "animation-delay": "calc(var(--reveal-load-delay, 0s) + var(--reveal-step))"
       },
       ":is(.reveal-product, .reveal-product-subtle, .reveal-items, .reveal-swap) [data-slot=\"skeleton\"]": {
-        "animation": "reveal-skeleton-in 250ms ease-in-out both"
+        "animation": "reveal-skeleton-in 250ms ease-in-out 160ms both"
       }
     }
   },

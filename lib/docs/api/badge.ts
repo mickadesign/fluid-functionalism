@@ -5,9 +5,9 @@ import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 export const badgeProps: PropDef[] = [
   {
     name: "variant",
-    type: '"solid" | "dot"',
+    type: '"solid" | "dot" | "ghost"',
     default: '"solid"',
-    description: "Visual style. Solid uses a tinted background; dot shows a colored indicator.",
+    description: "Visual style. Solid uses a tinted background; dot shows a colored indicator in a neutral outline; ghost keeps the indicator and drops the outline and side padding, for rows and tables.",
   },
   {
     name: "size",
@@ -21,7 +21,7 @@ export const badgeProps: PropDef[] = [
     type: "BadgeColor",
     default: '"gray"',
     description:
-      "Color from the Tailwind palette: gray, red, orange, amber, yellow, lime, green, emerald, teal, cyan, blue, indigo, violet, purple, fuchsia, pink, rose.",
+      "accent (the app's --fluid-accent), or a Tailwind palette name: gray, red, orange, amber, yellow, lime, green, emerald, teal, cyan, blue, indigo, violet, purple, fuchsia, pink, rose.",
   },
 ];
 

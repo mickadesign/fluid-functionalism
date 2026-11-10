@@ -17,7 +17,7 @@ import { Tooltip } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
 import { useBase } from "@/lib/base-context";
-import { useRightRailNode } from "@/lib/right-rail";
+import { RailHairline, useRightRailNode } from "@/lib/right-rail";
 import { docOrder } from "@/lib/docs/components";
 import { CopyPromptButton } from "@/lib/docs/copy-prompt-button";
 import { cn } from "@/lib/utils";
@@ -432,7 +432,12 @@ function Entry({ entry, month, first }: { entry: EntryView; month: string; first
         </div>
       )}
       {staged && (
-        <div ref={stageRef} className={cn("bento-card-border relative mt-3 overflow-hidden border", shape.container)}>
+        <div
+          ref={stageRef}
+          // Keys typed in here reach the component, not the site's shortcuts.
+          data-keyboard-scope=""
+          className={cn("bento-card-border relative mt-3 overflow-hidden border", shape.container)}
+        >
           {animated && (
             <Tooltip content={paused ? "Play all previews" : "Pause all previews"} side="top">
               <Button
@@ -567,35 +572,26 @@ function ReleaseIndexCard({
   const activeRect = activeIndex >= 0 && hover.isMeasured ? hover.itemRects[activeIndex] : null;
 
   return (
-    // The shape's container radius, like the settings card it replaces, so
-    // the card rounds with the pill and rounded settings.
-    <aside aria-label="Releases" className={cn("p-4 bg-muted", shape.container)}>
-      {/* The same header as "Make them yours": 8px above and below a 28px
-          row (the height of its star button), the title centered in it. */}
-      <div className="py-2">
-        <h2
-          className="flex h-7 items-center text-site-title text-foreground"
-          style={{ fontVariationSettings: fontWeights.semibold }}
-        >
-          Releases
-        </h2>
+    // A group like "Make them yours" on every other page: no card, a small
+    // label, a hairline under it, then the rows.
+    <aside aria-label="Releases" className="contain-inline-size">
+      <div className="flex h-8 items-center pl-2">
+        <h2 className="text-site-caption text-foreground">Releases</h2>
       </div>
-      {/* mt-2.5: "Make them yours" starts its 28px rows 12px under the
-          header; these rows are 32px, so 10px puts the first month's text as
-          far under the title as "Theme" sits. */}
-      <div ref={containerRef} className="relative -mx-2 mt-2.5 flex flex-col" {...hover.handlers}>
+      <RailHairline />
+      <div ref={containerRef} className="relative flex flex-col" {...hover.handlers}>
         {/* The month in view: a filled pill that glides as the page scrolls,
             under the hover highlight's lighter fill. */}
         {activeRect && (
           <motion.div
             aria-hidden
-            className={cn("absolute left-0 top-0 bg-active pointer-events-none", shape.bg)}
+            className={cn("absolute left-0 top-0 bg-active pointer-events-none", shape.input)}
             initial={false}
             animate={{ x: activeRect.left, y: activeRect.top, width: activeRect.width, height: activeRect.height }}
             transition={reduceMotion ? { duration: 0 } : spring.moderate}
           />
         )}
-        <FluidHoverHighlight hover={hover} className={shape.bg} />
+        <FluidHoverHighlight hover={hover} className={shape.input} />
         {releases.map((release, i) => (
           <IndexRow
             key={release.month}
@@ -643,7 +639,7 @@ function IndexRow({
       className={cn(
         "relative z-10 flex h-8 items-center px-2 text-site-body outline-none transition-[color,opacity] duration-80",
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
-        shape.item,
+        shape.input,
         active ? "text-foreground" : "text-muted-foreground"
       )}
     >

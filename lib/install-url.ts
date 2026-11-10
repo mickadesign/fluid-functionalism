@@ -1,7 +1,9 @@
 import {
   DUAL_FLAVOR_SLUGS as DUAL_FLAVOR_SLUG_LIST,
   FLAVORED_SINGLE_SOURCE_SLUGS as FLAVORED_SINGLE_SOURCE_LIST,
+  FLUID_HOVER_SLUGS as FLUID_HOVER_LIST,
 } from "./dual-flavor-slugs.mjs";
+import type { HoverMode } from "@/lib/docs/site-settings";
 
 /** The primitive library a component is installed for. */
 export type Base = "radix" | "base";
@@ -17,6 +19,10 @@ export const DUAL_FLAVOR_SLUGS: Set<string> = new Set(DUAL_FLAVOR_SLUG_LIST);
  *  depend on a dual-flavour one (see lib/dual-flavor-slugs.mjs). */
 export const FLAVORED_SINGLE_SOURCE_SLUGS: Set<string> = new Set(FLAVORED_SINGLE_SOURCE_LIST);
 
+/** Items that pull in fluid hover: each has a standard-hover twin under
+ *  `r/standard/` (see lib/dual-flavor-slugs.mjs). */
+export const FLUID_HOVER_SLUGS: Set<string> = new Set(FLUID_HOVER_LIST);
+
 /**
  * Build the full registry install URL for a given slug + currently-selected
  * base. A dual-flavour component has a Base UI source of its own; a
@@ -25,12 +31,13 @@ export const FLAVORED_SINGLE_SOURCE_SLUGS: Set<string> = new Set(FLAVORED_SINGLE
  * flavours. Everything else (Badge, Table, etc.) has one payload, and the
  * base is ignored.
  */
-export function installUrl(slug: string, base: Base): string {
+export function installUrl(slug: string, base: Base, hover: HoverMode = "fluid"): string {
+  const standard = hover === "standard" && FLUID_HOVER_SLUGS.has(slug) ? "standard/" : "";
   if (
     base === "base" &&
     (DUAL_FLAVOR_SLUGS.has(slug) || FLAVORED_SINGLE_SOURCE_SLUGS.has(slug))
   ) {
-    return `https://www.fluidfunctionalism.com/r/base/${slug}.json`;
+    return `https://www.fluidfunctionalism.com/r/${standard}base/${slug}.json`;
   }
-  return `https://www.fluidfunctionalism.com/r/${slug}.json`;
+  return `https://www.fluidfunctionalism.com/r/${standard}${slug}.json`;
 }

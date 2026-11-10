@@ -162,7 +162,7 @@ export function WorkspaceTile({
     <span
       className={cn(
         "flex size-5 shrink-0 items-center justify-center bg-foreground text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background",
-        shape.bgRadius >= 20 ? "rounded-full" : "rounded-md",
+        { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" }[shape.variant],
         className
       )}
       style={{ fontVariationSettings: fontWeights.semibold }}

@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -21,14 +22,13 @@ const SLIDE_ORDER = [
   "dropdown",
   "checkbox-group",
   "accordion",
-  "tabs",
   "radio-group",
   "slider",
   "color-picker",
   "input-group",
   "switch",
   "table",
-  "tabs-subtle",
+  "tabs",
   "thinking-indicator",
   "thinking-steps",
   "input-copy",
@@ -101,6 +101,8 @@ function ComparePageInner() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
 
       const tag = (e.target as HTMLElement).tagName;

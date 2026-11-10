@@ -21,6 +21,9 @@ export const dropdownTriggerProps: PropDef[] = [
   { name: "render", type: "ReactElement", description: "The element that becomes the trigger, e.g. a Button." },
   { name: "children", type: "ReactNode", description: "Trigger content when there is no render element." },
   { name: "disabled", type: "boolean", default: "false", description: "Disables the trigger." },
+  { name: "openOnHover", type: "boolean", default: "false", description: "Opens the menu when a mouse rests on the trigger and closes it once the pointer leaves the trigger and the menu. A click pins it open; touch and the keyboard open it as usual." },
+  { name: "delay", type: "number", default: "100", description: "With openOnHover: ms the pointer rests before the menu opens." },
+  { name: "closeDelay", type: "number", default: "150 (Radix), 0 (Base UI)", description: "With openOnHover: ms before the menu closes once the pointer has left. Base UI keeps a safe area toward the menu instead." },
 ];
 
 export const dropdownContentProps: PropDef[] = [
@@ -30,6 +33,8 @@ export const dropdownContentProps: PropDef[] = [
   { name: "side", type: "\"top\" | \"bottom\" | \"left\" | \"right\"", default: "\"bottom\"", description: "Side of the trigger the popup prefers." },
   { name: "align", type: "\"start\" | \"center\" | \"end\"", default: "\"start\"", description: "Alignment against the trigger." },
   { name: "sideOffset", type: "number", default: "6", description: "Gap to the trigger, in px." },
+  { name: "collisionBoundary", type: "Element | null", description: "Keeps the popup inside this element's box rather than the window's (a table, a panel): it shifts or flips to stay within." },
+  { name: "collisionPadding", type: "number", default: "0", description: "Space kept from the boundary's edges, in px." },
 ];
 
 export const subProps: PropDef[] = [
@@ -90,6 +95,7 @@ export const menuItemProps: PropDef[] = [
   { name: "onSelect", type: "() => void", description: "Called on select." },
   { name: "disabled", type: "boolean", default: "false", description: "Disables the row." },
   { name: "closeOnClick", type: "boolean", default: "true", description: "Popup only: close on select. Defaults to false under checkedIndices." },
+  { name: "leading", type: "ReactNode", description: "Content before the icon, e.g. a drag handle. Its clicks don't activate the item." },
 ];
 
 /** The page's tables in page order, titled as on the page. */

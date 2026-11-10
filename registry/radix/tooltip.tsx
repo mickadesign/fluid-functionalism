@@ -54,6 +54,10 @@ interface TooltipProviderProps {
   /** After a tooltip closes, adjacent tooltips opened within this window
    *  skip the hover delay, in ms. Defaults to 300. */
   skipDelayDuration?: number;
+  /** Closes a tooltip as soon as the pointer leaves its trigger. By default
+   *  the pointer may cross to the tooltip, and while it does, triggers in
+   *  its path don't open theirs: set this for dense rows of short labels. */
+  disableHoverableContent?: boolean;
 }
 
 /** Groups descendant Tooltips so that once one opens, moving to an adjacent
@@ -64,12 +68,14 @@ function TooltipProvider({
   children,
   delayDuration = DEFAULT_DELAY,
   skipDelayDuration = 300,
+  disableHoverableContent,
 }: TooltipProviderProps) {
   return (
     <TooltipGroupContext.Provider value={true}>
       <TooltipPrimitive.Provider
         delayDuration={delayDuration}
         skipDelayDuration={skipDelayDuration}
+        disableHoverableContent={disableHoverableContent}
       >
         {children}
       </TooltipPrimitive.Provider>
@@ -94,7 +100,7 @@ interface TooltipProps {
   className?: string;
   /** Extra classes for the portalled content element — Radix copies its
    *  z-index onto the popper wrapper, so pass a z utility here to lift the
-   *  whole tooltip above other fixed layers (default z-50). */
+   *  whole tooltip above other fixed layers (default: the --z-tooltip step, 70). */
   contentClassName?: string;
   /** When true, forces the tooltip open. When false, forces it closed. When undefined, uses default hover/focus behavior. */
   forceOpen?: boolean;
@@ -197,7 +203,7 @@ function Tooltip({
             side={side}
             sideOffset={sideOffset}
             forceMount
-            className={cn("z-50", contentClassName)}
+            className={cn("z-[var(--z-tooltip,70)]", contentClassName)}
           >
             <motion.div
               style={

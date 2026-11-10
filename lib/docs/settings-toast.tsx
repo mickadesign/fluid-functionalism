@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Toaster, toast } from "sonner";
@@ -182,6 +183,8 @@ export function SettingsToast() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       const setting =
         shortcutSettings[e.key.toLowerCase() as keyof typeof shortcutSettings];
       if (!setting) return;

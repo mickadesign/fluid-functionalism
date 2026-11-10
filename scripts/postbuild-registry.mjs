@@ -31,6 +31,13 @@
  *    `radix/<name>.json` with flavour-matched dep URLs and with component
  *    imports rewritten to their installed location (`@/components/ui/<name>`),
  *    so the embedded source is flavour-neutral.
+ *
+ * 5. **Emit standard-hover payloads.** Every item whose install pulls in
+ *    fluid hover gets a twin under `r/standard/` (`standard/<name>.json`,
+ *    `standard/radix/…`, `standard/base/…`). The twin is the same payload
+ *    with its dependency URLs pointed at the standard twins, so the chain
+ *    ends at `standard/use-fluid-hover.json`: the `use-fluid-hover-standard`
+ *    item, renamed. Same API, so the components' sources are unchanged.
  */
 
 import { mkdir, readdir, readFile, writeFile, rm } from "node:fs/promises";
@@ -38,6 +45,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { DUAL_FLAVOR_SLUGS } from "../lib/dual-flavor-slugs.mjs";
+import { fluidHoverClosure, standardHoverUrl } from "../lib/registry-urls.mjs";
 
 const REGISTRY_DIR = new URL("../public/r", import.meta.url).pathname;
 export const BASE_URL = "https://www.fluidfunctionalism.com/r";
@@ -88,18 +96,24 @@ export const CUSTOM_ITEMS = new Set([
   // primitive-agnostic UI components (single source under @fluid)
   "badge",
   "banner",
+  "breadcrumb",
+  "calendar",
   "carousel-dots",
   "chat-message",
   "color-picker",
   "command-menu",
+  "data-table",
   "dropdown",
+  "field",
   "file-thumbnail",
+  "input",
   "input-copy",
   "input-group",
   "input-message",
   "select",
   "table",
-  "tabs-subtle",
+  "tabs",
+  "textarea",
   "thinking-indicator",
   "thinking-steps",
 ]);
@@ -279,11 +293,86 @@ export async function processRegistry(registryDir = REGISTRY_DIR) {
   }
 }
 
+/** Items whose install pulls in fluid hover (see lib/registry-urls.mjs). */
+export const FLUID_HOVER_CLOSURE = fluidHoverClosure(REGISTRY_MANIFEST.items);
+
+/** The standard-hover item, as shadcn build writes it, and where it is served. */
+const STANDARD_HOVER_ITEM = "use-fluid-hover-standard";
+
+function toStandard(item, closure) {
+  if (Array.isArray(item.registryDependencies)) {
+    item.registryDependencies = item.registryDependencies.map((dep) => standardHoverUrl(dep, closure));
+  }
+}
+
+/**
+ * Writes `standard/` twins of every payload in the closure, after the flavour
+ * pass has settled every dependency URL. Runs over the root, `radix/` and
+ * `base/`; anything else (a nested `standard/` from an earlier run) is left.
+ */
+export async function emitStandardHover(registryDir = REGISTRY_DIR, closure = FLUID_HOVER_CLOSURE) {
+  const standardDir = join(registryDir, "standard");
+  await rm(standardDir, { recursive: true, force: true });
+
+  const hoverFile = join(registryDir, `${STANDARD_HOVER_ITEM}.json`);
+  let hover = null;
+  try {
+    hover = await readJson(hoverFile);
+  } catch {
+    // Not built (a synthetic fixture): no twins to point at.
+  }
+  if (hover) {
+    await mkdir(standardDir, { recursive: true });
+    hover.name = "use-fluid-hover";
+    await writeJson(join(standardDir, "use-fluid-hover.json"), hover);
+    await rm(hoverFile);
+    console.log("  ✓ standard/use-fluid-hover.json");
+  }
+
+  // The served index lists the standard item where it now lives.
+  const indexFile = join(registryDir, "registry.json");
+  try {
+    const index = await readJson(indexFile);
+    if (Array.isArray(index.items)) {
+      for (const item of index.items) {
+        if (item.name === STANDARD_HOVER_ITEM) item.name = "standard/use-fluid-hover";
+      }
+      await writeJson(indexFile, index);
+    }
+  } catch {
+    // No index in a synthetic fixture.
+  }
+
+  if (!hover) return;
+  for (const sub of ["", "radix", "base"]) {
+    const dir = sub ? join(registryDir, sub) : registryDir;
+    let files;
+    try {
+      files = await readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const file of files.filter((f) => f.endsWith(".json"))) {
+      const name = file.replace(/\.json$/, "");
+      if (name === "use-fluid-hover" || !closure.has(name)) continue;
+      const data = await readJson(join(dir, file));
+      if (Array.isArray(data.items)) continue;
+      toStandard(data, closure);
+      const outDir = sub ? join(standardDir, sub) : standardDir;
+      await mkdir(outDir, { recursive: true });
+      await writeJson(join(outDir, file), data);
+      console.log(`  ✓ standard/${sub ? `${sub}/` : ""}${file}`);
+    }
+  }
+}
+
 // Run only when invoked directly (`node scripts/postbuild-registry.mjs`), so
 // tests can import the functions above without triggering a build pass.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  processRegistry().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  processRegistry()
+    .then(() => emitStandardHover())
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 }

@@ -53,7 +53,7 @@ export interface PlayState {
  *  payload namespace; shape/size pin the providers in the emitted page). */
 export interface PresetGlobals {
   flavor: "radix" | "base";
-  shape: "rounded" | "pill";
+  shape: "rounded" | "pill" | "sharp";
   size: "default" | "compact";
 }
 
@@ -81,6 +81,10 @@ export const DEFAULT_STATE: PlayState = {
   footerCallout: "none",
   footerCalloutStacked: false,
 };
+
+/** The globals' keys, for a playground that hydrates its rail from a
+ *  decoded preset and leaves these to the site settings. */
+export const PRESET_GLOBAL_KEYS = ["flavor", "shape", "size"] as const satisfies readonly (keyof PresetGlobals)[];
 
 export const DEFAULT_GLOBALS: PresetGlobals = {
   flavor: "radix",
@@ -120,7 +124,7 @@ export const SIDEBAR_PRESET_FIELDS: readonly PresetField[] = [
   { key: "footerCallout", values: ["none", "inline", "banner"], bits: 3 },
   { key: "footerCalloutStacked", values: [false, true], bits: 1 },
   { key: "flavor", values: ["radix", "base"], bits: 3 },
-  { key: "shape", values: ["rounded", "pill"], bits: 2 },
+  { key: "shape", values: ["rounded", "pill", "sharp"], bits: 2 },
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 

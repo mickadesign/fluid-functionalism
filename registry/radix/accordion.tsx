@@ -24,7 +24,12 @@ import { useIcons } from "@/lib/icon-context";
 import { spring } from "@/lib/springs";
 import { omit } from "@/lib/omit";
 import { fontWeights } from "@/lib/font-weight";
-import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+import {
+  useFluidHover,
+  useFluidHoverSelect,
+  useRegisterFluidHoverItem,
+  type FluidHoverActiveStore,
+} from "@/hooks/use-fluid-hover";
 import { useShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
@@ -41,11 +46,11 @@ interface ItemRect {
 interface AccordionGroupContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
   registerFullItem: (index: number, element: HTMLElement | null) => void;
-  activeIndex: number | null;
+  /** Read per trigger with `useFluidHoverSelect`. */
+  activeStore: FluidHoverActiveStore;
   grouped: true;
   remeasure: () => void;
   openValues: Set<string>;
-  openItemRects: Map<number, ItemRect>;
 }
 
 const AccordionGroupContext =
@@ -128,6 +133,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     const hover = useFluidHover(containerRef);
     const {
       activeIndex,
+      activeStore,
       setActiveIndex,
       itemRects,
       handlers,
@@ -163,8 +169,8 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       });
       // Skip the state update when nothing moved (mirrors the fluid hover
       // hook's measureItems guard) — this runs per animation frame via
-      // onUpdate, and an unconditional set would invalidate the group
-      // context and re-render every item even on no-op remeasures.
+      // onUpdate, and an unconditional set would re-render the group and
+      // its overlays even on no-op remeasures.
       const prev = openItemRectsRef.current;
       let changed = prev.size !== next.size;
       if (!changed) {
@@ -313,26 +319,22 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
       measureFullItems();
     }, [measureItems, measureFullItems]);
 
-    // Memoized: the group re-renders on every fluid-hover mousemove; a
-    // fresh context object each time would re-render every item with it.
+    // Holds nothing that changes per frame or per mousemove: the group
+    // re-renders on every fluid-hover move and, while a panel's height
+    // springs, on every frame (it re-measures the rows to move its
+    // overlays). The hover index reaches triggers through `activeStore`, and
+    // the open rects stay here, so items re-render only when what they show
+    // changes.
     const groupContextValue = useMemo<AccordionGroupContextValue>(
       () => ({
         registerItem,
         registerFullItem,
-        activeIndex,
+        activeStore,
         grouped: true,
         remeasure,
         openValues,
-        openItemRects,
       }),
-      [
-        registerItem,
-        registerFullItem,
-        activeIndex,
-        remeasure,
-        openValues,
-        openItemRects,
-      ]
+      [registerItem, registerFullItem, activeStore, remeasure, openValues]
     );
 
     const group = (
@@ -705,9 +707,11 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
     const sizeClasses = useSize();
     const [isHovered, setIsHovered] = useState(false);
 
-    const isActive = groupCtx?.grouped
-      ? groupCtx.activeIndex === index
-      : isHovered;
+    const groupHover = useFluidHoverSelect(
+      groupCtx?.activeStore,
+      (active) => active !== null && active === index
+    );
+    const isActive = groupCtx?.grouped ? groupHover : isHovered;
 
     const triggerContent = (
       <AccordionPrimitive.Header asChild>
