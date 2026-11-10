@@ -185,6 +185,15 @@ type UseDataTableOptions<TData> = Omit<TableOptions<TData>, "getCoreRowModel"> &
   pageSize?: number;
 };
 
+function defaultPinning<TData>(columns: ColumnDef<TData, unknown>[]) {
+  const ids = columns.map((def) => def.id ?? ("accessorKey" in def ? String(def.accessorKey) : undefined));
+  const first = ids.find((id) => id !== undefined && id !== "select" && id !== "actions");
+  return {
+    left: [...(ids.includes("select") ? ["select"] : []), ...(first ? [first] : [])],
+    right: ids.includes("actions") ? ["actions"] : [],
+  };
+}
+
 /** useReactTable with the row models every part here reads: sorted,
  *  filtered and paginated. Anything TanStack accepts still goes through. */
 function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDataTableOptions<TData>) {
@@ -208,6 +217,11 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     columnResizeMode: "onChange",
     ...options,
     initialState: {
+      // A wide table keeps its edges in view: the boxes and the first data
+      // column on the left, the row menus on the right. They only stick
+      // once the table scrolls sideways. Pass `columnPinning` to choose
+      // others, or `enableColumnPinning: false` for none.
+      columnPinning: defaultPinning(options.columns),
       ...initialState,
       pagination: { pageIndex: 0, pageSize, ...initialState?.pagination },
     },
@@ -462,8 +476,9 @@ function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number |
 const NATURAL_CAP = 240;
 
 /** Data columns (with an accessor) move; selection and action columns hold
- *  their place at the ends. */
-const canReorder = <TData,>(column: Column<TData, unknown>) => column.accessorFn !== undefined;
+ *  their place at the ends, and pinned columns at theirs. */
+const canReorder = <TData,>(column: Column<TData, unknown>) =>
+  column.accessorFn !== undefined && !column.getIsPinned();
 
 /** Moves `id` before or after `refId` among the reorderable columns, leaving
  *  every other column in its slot. */
@@ -907,12 +922,13 @@ function DataTable<TData>({
       const floor = Math.ceil(Math.max(head, parseFloat(css.minWidth) || 0));
       const content = th.getBoundingClientRect().width;
       const size = ownSize(table.options.columns, id);
-      const fixed = size !== undefined || !column?.getCanResize();
+      const own = size !== undefined || !column?.getCanResize();
       return {
         id,
-        width: size !== undefined ? size : Math.ceil(fixed ? content : Math.max(Math.min(content, NATURAL_CAP), floor)),
+        width: size !== undefined ? size : Math.ceil(own ? content : Math.max(Math.min(content, NATURAL_CAP), floor)),
         floor,
-        fixed,
+        // Pinned columns keep theirs too: scrolling, not cutting, makes room.
+        fixed: own || !!column?.getIsPinned(),
       };
     });
     tableNode.removeAttribute("data-measuring");
@@ -935,6 +951,63 @@ function DataTable<TData>({
   }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant]);
   const sized = resizeColumns ? seeded : fitted !== null;
   const widthOf = (id: string, size: number) => (resizeColumns ? size : (fitted?.[id] ?? undefined));
+  // Pinned columns stick to their edge, each offset by the pinned columns
+  // between it and the edge. Unsized (before the widths are measured),
+  // nothing sticks.
+  const pinWidth = (column: Column<TData, unknown>) =>
+    (resizeColumns ? column.getSize() : fitted?.[column.id]) ?? 0;
+  const pinsKey = sized
+    ? [
+        ...table.getLeftVisibleLeafColumns().map((c) => `l:${c.id}:${pinWidth(c)}`),
+        ...table.getRightVisibleLeafColumns().map((c) => `r:${c.id}:${pinWidth(c)}`),
+      ].join("|")
+    : "";
+  const pins = useMemo(() => {
+    const map: Record<string, PinInfo> = {};
+    if (!pinsKey) return map;
+    const lefts = pinsKey.split("|").filter((p) => p.startsWith("l:")).map((p) => p.split(":"));
+    const rights = pinsKey.split("|").filter((p) => p.startsWith("r:")).map((p) => p.split(":"));
+    let at = 0;
+    lefts.forEach(([, id, w], i) => {
+      map[id] = { side: "left", offset: at, edge: i === lefts.length - 1, outer: i === 0 && visible[0]?.id === id };
+      at += Number(w);
+    });
+    at = 0;
+    [...rights].reverse().forEach(([, id, w], i) => {
+      map[id] = { side: "right", offset: at, edge: i === rights.length - 1, outer: i === 0 && visible[visible.length - 1]?.id === id };
+      at += Number(w);
+    });
+    return map;
+    // visible is read for the outer column only, which pinsKey's order settles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinsKey]);
+  const pinnedLeft = pinsKey.includes("l:");
+  const pinnedRight = pinsKey.includes("r:");
+  // Where the table sits in its sideways scroll, on the root, for the
+  // pinned cells: opaque (with copies of the row fills) and edged with a
+  // hairline only while content passes under them.
+  useEffect(() => {
+    const root = wrapRef.current;
+    const viewport = root?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!root || !viewport) return;
+    const mark = () => {
+      const max = viewport.scrollWidth - viewport.clientWidth;
+      root.toggleAttribute("data-x-start", viewport.scrollLeft > 0.5);
+      root.toggleAttribute("data-x-end", max - viewport.scrollLeft > 0.5);
+    };
+    mark();
+    viewport.addEventListener("scroll", mark, { passive: true });
+    const observer = new ResizeObserver(mark);
+    observer.observe(viewport);
+    const content = viewport.firstElementChild;
+    if (content) observer.observe(content);
+    return () => {
+      viewport.removeEventListener("scroll", mark);
+      observer.disconnect();
+    };
+    // Re-run once the widths are in: the scroll box can mount after the
+    // first render.
+  }, [sized]);
   // Keys, like a spreadsheet's rows (Google Sheets, Gmail):
   //   ↓ on a header  the first row
   //   ↑ / ↓          the row above / below; Home / End the first / last.
@@ -1286,18 +1359,20 @@ function DataTable<TData>({
                   onKeyDown={movable ? (e) => moveByKey(e, column.id) : undefined}
                   // A column with no width of its own (one shown after the
                   // widths were read) shares what's left with the flex one.
-                  style={
-                    sized &&
+                  style={{
+                    ...(sized &&
                     column.id !== restId &&
                     (resizeColumns
                       ? column.id in sizing || column.columnDef.size !== undefined
                       : fitted?.[column.id] !== undefined)
                       ? { width: widthOf(column.id, header.getSize()) }
-                      : undefined
-                  }
+                      : undefined),
+                    ...pinProps(pins[column.id]).style,
+                  }}
                   className={cn(
                     // Headers step back to muted so the content leads.
-                    "relative text-muted-foreground",
+                    "group/th relative text-muted-foreground",
+                    pinProps(pins[column.id]).className,
                     // Filled, the header stays put while the rows scroll,
                     // and once they do, a hairline in the rows' rule color
                     // (accent/40) separates it from the rows passing under.
@@ -1332,6 +1407,20 @@ function DataTable<TData>({
                     meta?.className
                   )}
                 >
+                  {pins[column.id] && !fill && (movable || column.getCanSort()) && (
+                    // Opaque, a pinned header covers the row's gliding fill:
+                    // it draws its own, the same way.
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute inset-x-0 top-0 bottom-px -z-[1] hidden bg-transparent transition-[background-color] duration-80",
+                        pins[column.id].side === "left" ? "group-data-x-start/pin:block" : "group-data-x-end/pin:block",
+                        "group-hover/th:bg-hover group-active/th:bg-active",
+                        shape.bg
+                      )}
+                    />
+                  )}
+                  {pins[column.id] && <PinRule pin={pins[column.id]} />}
                   {header.isPlaceholder ? null : typeof column.columnDef.header === "string" &&
                     meta?.icon ? (
                     <HeaderLabel icon={meta.icon} title={column.columnDef.header} />
@@ -1405,6 +1494,9 @@ function DataTable<TData>({
               row={row}
               i={i}
               selected={row.getIsSelected()}
+              runStart={row.getIsSelected() && !rows[i - 1]?.getIsSelected()}
+              runEnd={row.getIsSelected() && !rows[i + 1]?.getIsSelected()}
+              pins={pins}
               someSelected={row.getIsSomeSelected()}
               expanded={row.getIsExpanded()}
               expanderId={expanderId}
@@ -1446,8 +1538,19 @@ function DataTable<TData>({
       <ScrollArea
         ref={wrapRef}
         orientation={fill ? "both" : "horizontal"}
-        className={cn("w-full", fill && "group/scroll min-h-0 flex-1")}
-        viewportClassName="scroll-fade-x"
+        className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
+        // The edges fade while there's more to that side, except a pinned
+        // side: its columns stay put, and a hairline marks the edge.
+        viewportClassName={cn(
+          "scroll-fade-x",
+          pinnedLeft && pinnedRight && "[mask-image:none]! [-webkit-mask-image:none]!",
+          pinnedLeft &&
+            !pinnedRight &&
+            "[mask-image:linear-gradient(to_right,#000_calc(100%-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_100%)]! [-webkit-mask-image:linear-gradient(to_right,#000_calc(100%-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_100%)]!",
+          !pinnedLeft &&
+            pinnedRight &&
+            "[mask-image:linear-gradient(to_right,rgba(0,0,0,var(--sf-start))_0,#000_var(--scroll-fade-size))]! [-webkit-mask-image:linear-gradient(to_right,rgba(0,0,0,var(--sf-start))_0,#000_var(--scroll-fade-size))]!"
+        )}
       >
         {tableEl}
       </ScrollArea>
@@ -1827,6 +1930,106 @@ function selectColumn<TData>(): ColumnDef<TData> {
  *  child's chevron sits under its parent's text. */
 const SUB_ROW_INDENT = 20;
 
+interface PinInfo {
+  side: "left" | "right";
+  /** Px from its edge: the pinned columns' widths between. */
+  offset: number;
+  /** The pinned column nearest the scrolling ones: it carries the hairline. */
+  edge: boolean;
+  /** The table's first (or last) column: its fills round like the row's. */
+  outer: boolean;
+}
+
+// Corner radii for a pinned cell's fills on the table's outer edge, per
+// shape, matching the row highlight and selection (literal classes, so
+// Tailwind sees them).
+const PIN_RADIUS = {
+  left: { rounded: "rounded-l-lg", pill: "rounded-l-[20px]", sharp: "rounded-l-[1px]" },
+  right: { rounded: "rounded-r-lg", pill: "rounded-r-[20px]", sharp: "rounded-r-[1px]" },
+  tl: { rounded: "rounded-tl-lg", pill: "rounded-tl-[20px]", sharp: "rounded-tl-[1px]" },
+  bl: { rounded: "rounded-bl-lg", pill: "rounded-bl-[20px]", sharp: "rounded-bl-[1px]" },
+  tr: { rounded: "rounded-tr-lg", pill: "rounded-tr-[20px]", sharp: "rounded-tr-[1px]" },
+  br: { rounded: "rounded-br-lg", pill: "rounded-br-[20px]", sharp: "rounded-br-[1px]" },
+} as const;
+
+/** A pinned cell's classes and offset. It sticks always (a no-op until
+ *  the table scrolls), and turns opaque, with its hairline, only while
+ *  content passes under it (the root's data-x-start / data-x-end). */
+function pinProps(pin: PinInfo | undefined) {
+  if (!pin) return { className: undefined, style: undefined };
+  const left = pin.side === "left";
+  return {
+    className: cn(
+      "sticky z-[1]",
+      left ? "group-data-x-start/pin:bg-background" : "group-data-x-end/pin:bg-background"
+    ),
+    style: left ? { left: pin.offset } : { right: pin.offset },
+  };
+}
+
+/** The hairline between the pinned columns and the ones scrolling under
+ *  them, in the rows' rule color, inside the edge cell (a collapsed-border
+ *  table paints no shadow on its cells). */
+function PinRule({ pin }: { pin: PinInfo }) {
+  if (!pin.edge) return null;
+  const left = pin.side === "left";
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute inset-y-0 hidden w-px bg-accent/40",
+        left ? "right-0 group-data-x-start/pin:block" : "left-0 group-data-x-end/pin:block"
+      )}
+    />
+  );
+}
+
+/** What the row's fills (drawn behind the table) would show through a
+ *  pinned cell, drawn inside it while it's opaque: the selection, and the
+ *  hover over it. They don't glide; the row's own fill does that under
+ *  them. */
+function PinFills({
+  pin,
+  selected,
+  runStart,
+  runEnd,
+  shapeVariant,
+}: {
+  pin: PinInfo;
+  selected: boolean;
+  runStart: boolean;
+  runEnd: boolean;
+  shapeVariant: keyof typeof SKELETON_BAR_RADIUS;
+}) {
+  const left = pin.side === "left";
+  const shown = left ? "group-data-x-start/pin:block" : "group-data-x-end/pin:block";
+  const layer = cn("pointer-events-none absolute inset-0 -z-[1] hidden", shown);
+  return (
+    <>
+      {selected && (
+        <span
+          aria-hidden
+          className={cn(
+            layer,
+            "bg-active",
+            pin.outer && runStart && PIN_RADIUS[left ? "tl" : "tr"][shapeVariant],
+            pin.outer && runEnd && PIN_RADIUS[left ? "bl" : "br"][shapeVariant]
+          )}
+        />
+      )}
+      <span
+        aria-hidden
+        className={cn(
+          layer,
+          "bg-hover opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100",
+          pin.outer && PIN_RADIUS[left ? "left" : "right"][shapeVariant]
+        )}
+      />
+      <PinRule pin={pin} />
+    </>
+  );
+}
+
 /** The tree lines under an open row: one 1px rule per depth, dropped from
  *  the center of the parent's chevron through every row below it, so a
  *  sub-row reads as its parent's without a fill of its own (a fill would
@@ -1908,6 +2111,11 @@ interface DataTableBodyRowProps<TData> {
   row: Row<TData>;
   i: number;
   selected: boolean;
+  /** Selected, and the first (or last) of its run: its pinned fills round. */
+  runStart: boolean;
+  runEnd: boolean;
+  /** The pinned columns, by id. Stable until a pin or its width changes. */
+  pins: Record<string, PinInfo>;
   /** Compared only: some, not all, of its sub-rows are selected. */
   someSelected: boolean;
   expanded: boolean;
@@ -1940,6 +2148,9 @@ const DataTableBodyRow = memo(
       row,
       i,
       selected,
+      runStart,
+      runEnd,
+      pins,
       expanded,
       expanderId,
       onToggleExpand,
@@ -2075,6 +2286,7 @@ const DataTableBodyRow = memo(
               // Anchors the skeleton that fades over it on landing, and
               // the sub-row guides.
               (swapping || cell.column.id === expanderId) && "relative",
+              pinProps(pins[cell.column.id]).className,
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
@@ -2094,7 +2306,17 @@ const DataTableBodyRow = memo(
               meta?.className
             )}
             onClick={editor ? pressCellEditor : undefined}
+            style={pinProps(pins[cell.column.id]).style}
           >
+            {pins[cell.column.id] && (
+              <PinFills
+                pin={pins[cell.column.id]}
+                selected={selected}
+                runStart={runStart}
+                runEnd={runEnd}
+                shapeVariant={shapeVariant}
+              />
+            )}
             {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} alignTop={alignTop} />}
             {swapping && (
               // The hand-over: a skeleton over the cell's content box,
