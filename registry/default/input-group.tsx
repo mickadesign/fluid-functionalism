@@ -7,6 +7,7 @@ import {
   createContext,
   useContext,
   forwardRef,
+  type FocusEvent,
   type ReactNode,
   type HTMLAttributes,
   type InputHTMLAttributes,
@@ -119,6 +120,8 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
       error,
       disabled,
       className,
+      onFocus,
+      onBlur,
       ...props
     },
     ref
@@ -139,12 +142,16 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
     const isActive = activeIndex === index;
     const labelActive = isActive || isFocused;
 
-    const handleFocus = () => {
+    // The caller's onFocus / onBlur run after the field's own: replacing
+    // them would leave the focus ring stuck on, or never shown.
+    const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
+      onFocus?.(e);
     };
 
-    const handleBlur = () => {
+    const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
       setIsFocused(false);
+      onBlur?.(e);
     };
 
     // The ring never moves at rest, like the Select trigger's border. Focus

@@ -328,6 +328,9 @@ function QueuedRow({
       tabIndex={0}
       onDoubleClick={() => onEdit(item)}
       onKeyDown={(e) => {
+        // Keys on the Remove button bubble here: Enter there removes, it
+        // doesn't edit the row.
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === "F2") {
           e.preventDefault();
           onEdit(item);
@@ -801,7 +804,9 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.nativeEvent.isComposing) return;
+        // Safari reports the Enter that commits a composition as keyCode 229
+        // after compositionend.
+        if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
 
         // Suggested prompts: plain ArrowDown moves the highlight into / down
         // the list, ArrowUp walks it back up (then out, returning to plain

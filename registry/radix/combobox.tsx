@@ -17,7 +17,7 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { motion, AnimatePresence, animate, useMotionValue, type MotionValue } from "framer-motion";
+import { motion, AnimatePresence, animate, useMotionValue, type MotionValue } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
@@ -1188,7 +1188,7 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
     // glide must survive) and holds until the rects measured from that row
     // set land — measurement coalesces on a rAF, one render behind.
     const rowsSig = useMemo(
-      () => filteredItems.map(itemValue).join(" "),
+      () => filteredItems.map(itemValue).join("\u0000"),
       [filteredItems]
     );
     // `armedRects` holds the rects of the old row set while armed; the flag

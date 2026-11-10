@@ -344,7 +344,9 @@ export function useRegisterFluidHoverItem(
   index: number | undefined,
   ref: RefObject<HTMLElement | null>
 ) {
-  useEffect(() => {
+  // Before paint, so a list that measures in its own layout effect already
+  // sees every item at its new index.
+  useIsoLayoutEffect(() => {
     if (!registerItem || index === undefined) return;
     registerItem(index, ref.current);
     return () => registerItem(index, null);

@@ -75,14 +75,18 @@ function SidebarSheet({ side, open, onClose, children }: SidebarSheetProps) {
   const [closing, setClosing] = useState(false);
   const visible = open && !closing;
 
+  const wasOpen = useRef(open);
   const finishClose = useCallback(() => {
     setClosing(false);
+    // The exit has played: the parent's `open` turning false right after
+    // must not start a second one, which would hold the hidden dialog (and
+    // its backdrop) over the page until the fallback fires.
+    wasOpen.current = false;
     onClose();
   }, [onClose]);
 
   // A parent-driven close (trigger, shortcut, route change) gets the same
   // exit as a primitive-driven one.
-  const wasOpen = useRef(open);
   useEffect(() => {
     if (wasOpen.current && !open) setClosing(true);
     wasOpen.current = open;

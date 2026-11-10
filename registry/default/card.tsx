@@ -113,6 +113,11 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
       separated = false,
       fluidHover = true,
       className,
+      style,
+      onMouseEnter,
+      onMouseMove,
+      onMouseLeave,
+      onClick,
       children,
       ...props
     },
@@ -193,12 +198,26 @@ const CardGroup = forwardRef<HTMLDivElement, CardGroupProps>(
             className
           )}
           style={{
+            ...style,
             gridTemplateColumns: `repeat(${Math.max(1, columns)}, minmax(0, 1fr))`,
           }}
-          onMouseEnter={fluidHover ? handlers.onMouseEnter : undefined}
-          onMouseMove={fluidHover ? handlers.onMouseMove : undefined}
-          onMouseLeave={fluidHover ? handlers.onMouseLeave : undefined}
-          onClick={fluidHover ? handlers.onClick : undefined}
+          // The caller's handlers run too, with or without fluid hover.
+          onMouseEnter={(e) => {
+            if (fluidHover) handlers.onMouseEnter();
+            onMouseEnter?.(e);
+          }}
+          onMouseMove={(e) => {
+            if (fluidHover) handlers.onMouseMove(e);
+            onMouseMove?.(e);
+          }}
+          onMouseLeave={(e) => {
+            if (fluidHover) handlers.onMouseLeave();
+            onMouseLeave?.(e);
+          }}
+          onClick={(e) => {
+            if (fluidHover) handlers.onClick(e);
+            onClick?.(e);
+          }}
         >
           {/* Fluid hover highlight — a single magnetic layer that springs to the
               card nearest the cursor, previewing where a click will land. */}

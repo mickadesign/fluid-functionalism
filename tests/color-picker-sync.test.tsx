@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { ColorPicker } from "@/registry/default/color-picker";
 
 // Without vitest globals, Testing Library does not clean up between tests.
@@ -65,6 +65,26 @@ describe("ColorPicker controlled sync", () => {
     fireEvent.keyDown(field, { key: "Enter" });
     fireEvent.blur(field);
     expect(emitted.at(-1)?.toLowerCase()).toBe("#123456");
+    expect(hexField(container).value).toBe("123456");
+  });
+
+  it("shows an emitted string again when the parent returns to it", () => {
+    // Pick a color, the parent resets to another, then undoes back to the pick.
+    let set: (v: string) => void = () => {};
+    function Host() {
+      const [color, setColor] = useState("#6b97ff");
+      set = setColor;
+      return <ColorPicker value={color} hideEyedropper onValueChange={setColor} />;
+    }
+    const { container } = render(<Host />);
+    const field = hexField(container);
+    fireEvent.change(field, { target: { value: "123456" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    fireEvent.blur(field);
+    const emitted = `#${hexField(container).value}`;
+    act(() => set("#ff0000"));
+    expect(hexField(container).value).toBe("FF0000");
+    act(() => set(emitted));
     expect(hexField(container).value).toBe("123456");
   });
 });

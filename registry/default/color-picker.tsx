@@ -300,7 +300,7 @@ function oklchToRgb(L: number, C: number, H: number): { r: number; g: number; b:
   const a = C * Math.cos(H * Math.PI / 180);
   const b = C * Math.sin(H * Math.PI / 180);
   const lin = oklabToLinearRgb(L, a, b);
-  // Clamp to sRGB silently (option a from plan)
+  // Clamp to sRGB silently
   return {
     r: clamp255(linearToSrgb(lin.r)),
     g: clamp255(linearToSrgb(lin.g)),
@@ -515,7 +515,6 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
   // State (not a ref): this gates the ghost hover cursor during render, and a
   // ref mutation wouldn't re-render, letting the ghost stick around.
   const [dragging, setDragging] = useState(false);
-  const hasMoved = useRef(false);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
@@ -557,7 +556,6 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       e.preventDefault();
       setDragging(true);
-      hasMoved.current = false;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       updateFromPointer(e.clientX, e.clientY);
     },
@@ -568,7 +566,6 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
     (e: React.PointerEvent<HTMLDivElement>) => {
       updateCursorPos(e.clientX, e.clientY);
       if (!dragging) return;
-      hasMoved.current = true;
       updateFromPointer(e.clientX, e.clientY);
     },
     [dragging, updateFromPointer, updateCursorPos]
@@ -576,7 +573,6 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
 
   const onPointerUp = useCallback(() => {
     setDragging(false);
-    hasMoved.current = false;
   }, []);
 
   const onKeyDown = useCallback(
@@ -812,7 +808,6 @@ const FORMATS = ["hex", "rgb", "hsl", "oklch"] as const;
 interface FormatMenuContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
-  checkedIndex?: number;
 }
 
 const FormatMenuContext = createContext<FormatMenuContextValue | null>(null);
@@ -939,11 +934,10 @@ function FormatDropdown({
   // Release Base UI's deferred unmount once the exit tween has played.
   // onAnimationComplete on the motion.div is the primary signal; this timeout
   // is a fallback for throttled/background tabs where rAF-driven animation
-  // callbacks can stall (spring.fast.exit is 60ms — 120ms covers it with
-  // margin without holding the portal open perceptibly).
+  // callbacks can stall.
   useEffect(() => {
     if (open) return;
-    const id = setTimeout(() => actionsRef.current?.unmount(), 120);
+    const id = setTimeout(() => actionsRef.current?.unmount(), exitFallbackMs(spring.fast));
     return () => clearTimeout(id);
   }, [open, actionsRef]);
 
@@ -958,8 +952,8 @@ function FormatDropdown({
   const checkedRect = checkedIndex !== -1 ? itemRects[checkedIndex] : null;
   const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
   const menuCtx = useMemo(
-    () => ({ registerItem, activeIndex, checkedIndex }),
-    [registerItem, activeIndex, checkedIndex]
+    () => ({ registerItem, activeIndex }),
+    [registerItem, activeIndex]
   );
 
   return (
@@ -1968,8 +1962,6 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
     ref
   ) => {
     const isControlled = value !== undefined;
-    const [internalValue, setInternalValue] = useState(value ?? defaultValue);
-    const currentRawValue = isControlled ? (value as string) : internalValue;
 
     const isFormatControlled = format !== undefined;
     const [internalFormat, setInternalFormat] = useState<ColorFormat>(defaultFormat);
@@ -1978,7 +1970,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
     // Internal HSV state (canonical). H is preserved across S=0 / V=0
     // transitions. Deliberately computed once from the initial value only.
     const [hsv, setHsv] = useState(() => {
-      const p = parseColor(currentRawValue);
+      const p = parseColor(value ?? defaultValue);
       if (!p) return { h: 0, s: 1, v: 1, a: 1 };
       const hsv = rgbToHsv(p.r, p.g, p.b);
       return { h: hsv.s === 0 ? 0 : hsv.h, s: hsv.s, v: hsv.v, a: p.a };
@@ -2001,7 +1993,11 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
     const [syncedValue, setSyncedValue] = useState(value);
     if (isControlled && value !== syncedValue) {
       setSyncedValue(value);
-      const p = value !== lastEmitted ? parseColor(value as string) : null;
+      const outside = value !== lastEmitted;
+      // An outside value ends the echo: if the parent later sets the string
+      // this panel emitted before it (an undo), that one syncs too.
+      if (outside && lastEmitted !== "") setLastEmitted("");
+      const p = outside ? parseColor(value as string) : null;
       if (p) {
         setOklchHue(null);
         const newHsv = rgbToHsv(p.r, p.g, p.b);
@@ -2029,10 +2025,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
         const p = buildParsed(merged.h, merged.s, merged.v, merged.a);
         const formatted = formatValueByFormat(p, currentFormat);
         setLastEmitted(formatted);
-        if (!isControlled) setInternalValue(formatted);
         onValueChange?.(formatted, p);
       },
-      [hsv, currentFormat, isControlled, onValueChange]
+      [hsv, currentFormat, onValueChange]
     );
 
     // Switching format re-emits the same color as a string in the new format
@@ -2045,10 +2040,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
         // Re-emit value in new format
         const formatted = formatValueByFormat(parsed, f);
         setLastEmitted(formatted);
-        if (!isControlled) setInternalValue(formatted);
         onValueChange?.(formatted, parsed);
       },
-      [isFormatControlled, isControlled, onFormatChange, onValueChange, parsed]
+      [isFormatControlled, onFormatChange, onValueChange, parsed]
     );
 
     // Whole-color entry point shared by the hex field, swatches and the
@@ -2074,10 +2068,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
         const next = buildParsed(merged.h, merged.s, merged.v, merged.a);
         const formatted = formatValueByFormat(next, currentFormat);
         setLastEmitted(formatted);
-        if (!isControlled) setInternalValue(formatted);
         onValueChange?.(formatted, next);
       },
-      [hsv.h, currentFormat, isControlled, onValueChange]
+      [hsv.h, currentFormat, onValueChange]
     );
 
     const handleSwatchPick = useCallback(

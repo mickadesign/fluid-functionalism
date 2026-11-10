@@ -38,16 +38,23 @@ async function loadPdfjs(): Promise<PdfjsModule> {
 async function renderPdfFirstPage(file: File, targetWidth: number): Promise<string> {
   const pdfjs = await loadPdfjs();
   const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-  const page = await pdf.getPage(1);
-  const baseViewport = page.getViewport({ scale: 1 });
-  const scale = (targetWidth * 2) / baseViewport.width; // 2× for retina
-  const viewport = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  await page.render({ canvas, viewport }).promise;
-  return canvas.toDataURL("image/png");
+  const task = pdfjs.getDocument({ data: buffer });
+  try {
+    const pdf = await task.promise;
+    const page = await pdf.getPage(1);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const scale = (targetWidth * 2) / baseViewport.width; // 2× for retina
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvas, viewport }).promise;
+    return canvas.toDataURL("image/png");
+  } finally {
+    // pdf.js starts a worker per document and keeps it, with the parsed
+    // file, until the task is destroyed.
+    await task.destroy();
+  }
 }
 
 // ─── Object URLs ──────────────────────────────────────────────────────────

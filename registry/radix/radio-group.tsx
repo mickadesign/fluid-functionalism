@@ -172,6 +172,10 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           }
         }}
         role="radiogroup"
+        // Value mode: Radix makes its root a tab stop that hands focus to the
+        // hidden primitive below. The rows are the tab stops, so the root
+        // leaves the tab order.
+        tabIndex={value !== undefined ? -1 : undefined}
         // select-none keeps rapid clicks on rows from selecting the label text.
         className={cn(
           "relative flex flex-col w-72 max-w-full select-none",
