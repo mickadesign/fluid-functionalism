@@ -2124,6 +2124,28 @@
       ]
     },
     {
+      "name": "context-menu",
+      "type": "registry:ui",
+      "title": "Context Menu",
+      "description": "The Dropdown opened where you right-click: a zero-size trigger placed at the pointer, so the items are the Dropdown's own (MenuItem, submenus, search, labels, separators) with its fluid hover, keys and motion. A filter picks which elements open it, text fields keep the browser's menu, Shift + F10 or the Menu key opens it from the keyboard, and focus returns where it was on close.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/dropdown.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/context-menu.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/context-menu.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "data-table",
       "type": "registry:ui",
       "title": "Data Table",
@@ -2155,7 +2177,8 @@
         "https://www.fluidfunctionalism.com/r/date-picker.json",
         "https://www.fluidfunctionalism.com/r/command-menu.json",
         "https://www.fluidfunctionalism.com/r/elevated.json",
-        "https://www.fluidfunctionalism.com/r/badge.json"
+        "https://www.fluidfunctionalism.com/r/badge.json",
+        "https://www.fluidfunctionalism.com/r/context-menu.json"
       ],
       "files": [
         {

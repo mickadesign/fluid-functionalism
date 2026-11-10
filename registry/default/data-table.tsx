@@ -73,6 +73,7 @@ import {
   DropdownTrigger,
 } from "@/components/ui/dropdown";
 import { MenuItem } from "@/components/ui/menu-item";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,6 +130,9 @@ declare module "@tanstack/react-table" {
     /** An icon before the header's title. DataTable draws it for a string
      *  `header`; DataTableColumnHeader draws it inside its sort button. */
     icon?: IconComponent;
+    /** A row's menu items, opened from its ⋯ and by right-clicking the row
+     *  (rowActionsColumn sets it). */
+    rowMenu?: (row: Row<TData>) => ReactNode;
     /** Makes the column's cells editable when DataTable has `onCellEdit`:
      *  `"text"` a text field, `"number"` a field with a list of `options`
      *  that also takes any number typed, `"date"` a date picker, `"tags"` a
@@ -1287,6 +1291,11 @@ function DataTable<TData>({
     ? visible.find((c) => c.accessorFn !== undefined)?.id
     : undefined;
 
+  // The row a right-click opened the menu for.
+  const rowMenu = table.getAllLeafColumns().find((c) => c.columnDef.meta?.rowMenu)?.columnDef.meta?.rowMenu;
+  const [menuRowId, setMenuRowId] = useState<string | null>(null);
+  const menuRow = menuRowId ? table.getCoreRowModel().rowsById[menuRowId] : undefined;
+
   const tableEl = (
     <EditContext.Provider value={stableEditing}>
     <Table
@@ -1497,6 +1506,7 @@ function DataTable<TData>({
               runStart={row.getIsSelected() && !rows[i - 1]?.getIsSelected()}
               runEnd={row.getIsSelected() && !rows[i + 1]?.getIsSelected()}
               pins={pins}
+              menuOpen={menuRowId === row.id}
               someSelected={row.getIsSomeSelected()}
               expanded={row.getIsExpanded()}
               expanderId={expanderId}
@@ -1552,7 +1562,29 @@ function DataTable<TData>({
             "[mask-image:linear-gradient(to_right,rgba(0,0,0,var(--sf-start))_0,#000_var(--scroll-fade-size))]! [-webkit-mask-image:linear-gradient(to_right,rgba(0,0,0,var(--sf-start))_0,#000_var(--scroll-fade-size))]!"
         )}
       >
-        {tableEl}
+        {rowMenu ? (
+          // Right-clicking a row (or Shift + F10 on a focused one) opens
+          // its ⋯ menu's items at the pointer. The selection stays as it is.
+          <ContextMenu onOpenChange={(open) => !open && setMenuRowId(null)}>
+            <ContextMenuTrigger
+              className="contents"
+              filter={(target) => !!target.closest("tbody tr[data-row-id]")}
+              onContextMenu={(e) => {
+                const tr = (e.target as Element).closest<HTMLElement>("tbody tr[data-row-id]");
+                setMenuRowId(tr?.dataset.rowId ?? null);
+              }}
+              onKeyDown={(e) => {
+                const tr = (e.target as Element).closest<HTMLElement>("tbody tr[data-row-id]");
+                if (tr) setMenuRowId(tr.dataset.rowId ?? null);
+              }}
+            >
+              {tableEl}
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-56">{menuRow && rowMenu(menuRow)}</ContextMenuContent>
+          </ContextMenu>
+        ) : (
+          tableEl
+        )}
       </ScrollArea>
       {ghost &&
         createPortal(
@@ -1930,6 +1962,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
  *  child's chevron sits under its parent's text. */
 const SUB_ROW_INDENT = 20;
 
+// A row whose right-click menu is open holds the hover fill in its own
+// cells, rounded at its ends like the highlight.
+const MENU_ROW = {
+  rounded: "[&>td]:bg-hover [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg",
+  pill: "[&>td]:bg-hover [&>td:first-child]:rounded-l-[20px] [&>td:last-child]:rounded-r-[20px]",
+  sharp: "[&>td]:bg-hover [&>td:first-child]:rounded-l-[1px] [&>td:last-child]:rounded-r-[1px]",
+} as const;
+
 interface PinInfo {
   side: "left" | "right";
   /** Px from its edge: the pinned columns' widths between. */
@@ -2116,6 +2156,9 @@ interface DataTableBodyRowProps<TData> {
   runEnd: boolean;
   /** The pinned columns, by id. Stable until a pin or its width changes. */
   pins: Record<string, PinInfo>;
+  /** Its right-click menu is open: it stays lit while the pointer is on
+   *  the menu. */
+  menuOpen: boolean;
   /** Compared only: some, not all, of its sub-rows are selected. */
   someSelected: boolean;
   expanded: boolean;
@@ -2151,6 +2194,7 @@ const DataTableBodyRow = memo(
       runStart,
       runEnd,
       pins,
+      menuOpen,
       expanded,
       expanderId,
       onToggleExpand,
@@ -2205,6 +2249,7 @@ const DataTableBodyRow = memo(
       className={cn(
         onRowClick && "cursor-pointer",
         rowsFocusable && "outline-none",
+        menuOpen && MENU_ROW[shapeVariant],
         // Rows each stack on their own (z-10); the one holding a raised
         // editor lifts above the rows after it, so the field covers them.
         "has-[[data-cell-expanded]]:z-30",
@@ -3633,7 +3678,7 @@ function rowActionsColumn<TData>(
     enableHiding: false,
     enableResizing: false,
     size: 40,
-    meta: { className: "w-0 pl-2 pr-1" },
+    meta: { className: "w-0 pl-2 pr-1", rowMenu: items },
     cell: ({ row }) => <DataTableRowActions label={label}>{items(row)}</DataTableRowActions>,
   };
 }

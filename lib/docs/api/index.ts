@@ -16,6 +16,7 @@ import { apiReference as checkboxGroupApi } from "@/lib/docs/api/checkbox-group"
 import { apiReference as colorPickerApi } from "@/lib/docs/api/color-picker";
 import { apiReference as comboboxApi } from "@/lib/docs/api/combobox";
 import { apiReference as commandMenuApi } from "@/lib/docs/api/command-menu";
+import { apiReference as contextMenuApi } from "@/lib/docs/api/context-menu";
 import { apiReference as dataTableApi } from "@/lib/docs/api/data-table";
 import { apiReference as datePickerApi } from "@/lib/docs/api/date-picker";
 import { apiReference as dialogApi } from "@/lib/docs/api/dialog";
@@ -57,6 +58,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   "color-picker": colorPickerApi,
   combobox: comboboxApi,
   "command-menu": commandMenuApi,
+  "context-menu": contextMenuApi,
   "data-table": dataTableApi,
   "date-picker": datePickerApi,
   dialog: dialogApi,

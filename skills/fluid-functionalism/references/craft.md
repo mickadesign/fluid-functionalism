@@ -36,6 +36,7 @@ Systems first — their craft applies across every component below.
 - [ColorPicker](#color-picker)
 - [Combobox](#combobox)
 - [CommandMenu](#command-menu)
+- [ContextMenu](#context-menu)
 - [DataTable](#data-table)
 - [DatePicker](#date-picker)
 - [Dialog](#dialog)
@@ -356,6 +357,15 @@ Systems first — their craft applies across every component below.
 - Shortcut system: `"mod+k"` is ⌘K on a Mac, Ctrl+K elsewhere ("mod" matches either while listening); physical-key (`code`) fallback applies when `key` isn't a Latin letter/digit or when ⌥ is held, so an unmodified Dvorak "t" is never read as physical K; a bare key stays out of editable fields. Among mounted dialogs sharing a combo, an open one answers first (the press closes it), else the most recently mounted one whose `shortcutScope` holds focus.
 - The footer's Enter hint names the highlighted row's `action` (default: its label) so it reads as the thing Enter does ("Open Showcase") rather than a generic "Run"; it sits at the trailing edge so its changing width never moves the other hints, which follow the menu (tabs add ← →, a dialog adds Esc).
 - Suggested rows lead under their own heading while nothing is typed, and leave their original group so nothing is listed twice; the default filter matches every query word against label + description + keywords and never re-sorts, so rows don't move under the cursor as the query grows.
+
+<a id="context-menu"></a>
+## ContextMenu
+
+- ContextMenu is the Dropdown opened at the pointer, not a second menu: a zero-size trigger is portalled to the body at the click point (fixed, so a scaled or scrolled ancestor can't offset it) and the flavored DropdownMenu opens from it. Items, fluid hover, typeahead, submenus and motion are the Dropdown's own in both flavors, with nothing duplicated.
+- The menu opens down and to the right of the pointer, 2px off it, and flips at the window's edges like any Dropdown.
+- Only what `filter` accepts opens the menu; everything else keeps the browser's. Text fields always keep the browser's menu (paste, spelling), and a nested trigger that already opened claims the event through defaultPrevented, so the outer one stays shut.
+- Shift + F10 or the Menu key opens it under the focused element (8px in from its left edge, at its bottom). On close, focus goes back to what held it when the menu opened, never to the hidden trigger.
+- In DataTable, rowActionsColumn's items are the right-click menu too (meta.rowMenu), so a row's actions are written once; the right-clicked row holds the hover fill in its own cells while its menu is open, rounded at its ends, and the selection is left alone.
 
 <a id="data-table"></a>
 ## DataTable

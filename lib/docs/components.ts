@@ -45,6 +45,7 @@ export const componentEntries: ComponentEntry[] = [
   { slug: "color-picker", name: "ColorPicker", description: "Color picker with HEX/RGB/HSL/OKLCH formats, alpha, swatches, and popover trigger.", gridSize: "large" },
   { slug: "combobox", name: "Combobox", description: "Type-to-filter field with keyboard highlight, fluid hover, and a spring-animated list — items are data, rows are yours.", gridSize: "small" },
   { slug: "command-menu", name: "CommandMenu", description: "Type to filter a list of actions, arrow through them, press Enter to run: rows with shortcut caps, groups, suggestions, and a dialog shell on a global shortcut.", gridSize: "large" },
+  { slug: "context-menu", name: "ContextMenu", description: "The Dropdown, opened where you right-click: the same items, submenus and keys, in both flavors.", gridSize: "small" },
   { slug: "data-table", name: "DataTable", description: "A table you can sort, search, select from and edit in place. Turn on only the parts you need.", gridSize: "large" },
   { slug: "date-picker", name: "DatePicker", description: "Outline or ghost trigger for a date, a range, or a date and a time: a calendar popover with presets, and time slot lists that show each duration.", gridSize: "small" },
   { slug: "dialog", name: "Dialog", description: "Modal dialog with smooth enter/exit animations and overlay — three widths, the largest a canvas for a sidebar.", gridSize: "small" },
@@ -71,7 +72,7 @@ export const componentEntries: ComponentEntry[] = [
  *  few people before the launch: not in the sidebar, ⌘K, the Showcase,
  *  /demo, prev/next, the changelog marks, the sitemap, llms.txt or the
  *  README, and noindex. Delete a slug here to launch it. */
-export const UNLISTED_SLUGS: ReadonlySet<string> = new Set(["data-table"]);
+export const UNLISTED_SLUGS: ReadonlySet<string> = new Set(["context-menu", "data-table"]);
 
 /** The listed components: what navigation, search and indexes show. */
 export const componentList: ComponentEntry[] = componentEntries.filter((c) => !UNLISTED_SLUGS.has(c.slug));

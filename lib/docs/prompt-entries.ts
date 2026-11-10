@@ -1585,6 +1585,32 @@ import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
       "TooltipGroup.skipDelayDuration: number (default 300). After a tooltip closes, the others in the group open without the delay for this many milliseconds.",
     ],
   },
+  "context-menu": {
+    craft: [
+      "ContextMenu is the Dropdown opened at the pointer, not a second menu: a zero-size trigger is portalled to the body at the click point (fixed, so a scaled or scrolled ancestor can't offset it) and the flavored DropdownMenu opens from it. Items, fluid hover, typeahead, submenus and motion are the Dropdown's own in both flavors, with nothing duplicated.",
+      "The menu opens down and to the right of the pointer, 2px off it, and flips at the window's edges like any Dropdown.",
+      "Only what `filter` accepts opens the menu; everything else keeps the browser's. Text fields always keep the browser's menu (paste, spelling), and a nested trigger that already opened claims the event through defaultPrevented, so the outer one stays shut.",
+      "Shift + F10 or the Menu key opens it under the focused element (8px in from its left edge, at its bottom). On close, focus goes back to what held it when the menu opened, never to the hidden trigger.",
+      "In DataTable, rowActionsColumn's items are the right-click menu too (meta.rowMenu), so a row's actions are written once; the right-clicked row holds the hover fill in its own cells while its menu is open, rounded at its ends, and the selection is left alone.",
+    ],
+    usage: `import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
+import { MenuItem } from "@/components/ui/menu-item";
+
+<ContextMenu>
+  <ContextMenuTrigger className="h-40 rounded-lg border border-dashed">
+    Right-click here
+  </ContextMenuTrigger>
+  <ContextMenuContent className="w-56">
+    <MenuItem index={0} label="Rename" onSelect={rename} />
+    <MenuItem index={1} label="Delete" onSelect={remove} />
+  </ContextMenuContent>
+</ContextMenu>`,
+    props: [
+      "ContextMenu: onOpenChange (open) => void; disabled keeps the browser's menu; size pins the rows to one ladder step.",
+      "ContextMenuTrigger: filter (target: Element) => boolean picks which elements open it; render swaps the default div for your element (its handlers run first); onContextMenu runs first, so record what was clicked there.",
+      "ContextMenuContent: DropdownContent's props (checkedIndex, checkedIndices, collisionBoundary, className), side and align fixed; sideOffset defaults to 2.",
+    ],
+  },
   "command-menu": {
     craft: [
       "The input keeps DOM focus the whole time and points at the highlighted row through `aria-activedescendant`; there is no list primitive \u2014 the one thing a primitive would add, the modal shell, comes from the library's own Dialog. Row mousedown is `preventDefault`ed so a click never blurs the field.",
