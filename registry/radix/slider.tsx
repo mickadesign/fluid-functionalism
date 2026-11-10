@@ -989,7 +989,9 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
         ref={ref}
         className={cn(
           // touch-none: a touch drag moves the thumb instead of scrolling.
-          "flex flex-col gap-0 w-full select-none touch-none overflow-visible",
+          // isolate: the thumb and tooltip z-indexes order against the
+          // slider's own track only, never the page around it.
+          "isolate flex flex-col gap-0 w-full select-none touch-none overflow-visible",
           valuePosition === "left" || valuePosition === "right"
             ? "flex-row items-center gap-2 mb-2"
             : "flex-col",
@@ -1581,7 +1583,8 @@ const ComfortableSlider = forwardRef<HTMLDivElement, SliderComfortableProps>(
     // count as hovering too.
     return (
       <div
-        className="relative w-full touch-none"
+        // isolate keeps the inner z-[1..3] layers inside the slider.
+        className="isolate relative w-full touch-none"
         onPointerEnter={() => { if (!disabled) setIsHovered(true); }}
         onPointerLeave={() => {
           if (!disabled) {
