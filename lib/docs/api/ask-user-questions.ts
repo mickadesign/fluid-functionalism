@@ -14,18 +14,18 @@ export const componentProps: PropDef[] = [
   { name: "onAnswersChange", type: "(answers: Record<string, AskUserAnswer>) => void", description: "Called whenever any answer changes." },
   { name: "onComplete", type: "(answers: Record<string, AskUserAnswer>) => void", description: "Called after the last question is answered or submitted." },
   { name: "onSkip", type: "(questionId: string, index: number) => void", description: "Called when the user clicks Skip on a question." },
-  { name: "skipLabel", type: "string", default: '"Skip"', description: "Label for the skip control in the header." },
+  { name: "skipLabel", type: "string", default: '"Skip"', description: "Label for the skip control in the footer." },
 ];
 
 export const questionProps: PropDef[] = [
   { name: "id", type: "string", description: "Stable identifier used to key the answer. Falls back to position." },
   { name: "title", type: "string", description: "Question text shown above the options." },
   { name: "options", type: "AskUserOption[]", description: "2–5 options to choose from. Omit for freeText questions." },
-  { name: "multiSelect", type: "boolean", default: "false", description: "Allow multiple options to be selected. Adds a Next button at the bottom." },
+  { name: "multiSelect", type: "boolean", default: "false", description: "Allow multiple options to be selected. Adds a Continue button at the bottom." },
   { name: "allowOther", type: "boolean", default: "false", description: "Render an always-visible inline textarea for free-form, multi-line answers. Enter submits (single-select); Shift+Enter inserts a newline." },
   { name: "otherPlaceholder", type: "string", default: '"Describe in your own words…"', description: "Placeholder for the Other textarea." },
-  { name: "skippable", type: "boolean", default: "true", description: "Show the Skip control in the header." },
-  { name: "nextLabel", type: "string", description: "Label for the Next button in multi-select mode. Defaults to 'Next' or 'Finish'." },
+  { name: "skippable", type: "boolean", default: "true", description: "Show the Skip control in the footer." },
+  { name: "nextLabel", type: "string", description: "Label for the Continue button in multi-select mode. Defaults to 'Continue' or 'Finish'." },
   { name: "layout", type: '"inline" | "stacked"', default: '"inline"', description: "Row layout. 'stacked' places the description on its own line under the title — use when descriptions are long enough to wrap." },
   { name: "chipPosition", type: '"left" | "right"', default: '"right"', description: "Which side of the row the numbered chip sits on. With 'left', the single-select submit arrow still appears on the row's right edge. Works with single/multi-select, allowOther, and inline/stacked layouts." },
   { name: "freeText", type: "boolean", default: "false", description: "Render a single multi-line textarea as the only answer — no option rows. The field auto-focuses; ⌘/⌃+Enter or the bottom submit button commits, and the answer is returned in otherText. Distinct from allowOther (which appends a free-text row alongside options); options is ignored when set." },

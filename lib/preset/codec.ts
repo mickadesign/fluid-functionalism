@@ -81,10 +81,6 @@ export function registerPresetComponent(def: PresetComponentDef): void {
   COMPONENTS.set(def.tag, def);
 }
 
-export function getPresetComponent(tag: string): PresetComponentDef | undefined {
-  return COMPONENTS.get(tag);
-}
-
 export function getAllPresetComponents(): PresetComponentDef[] {
   return [...COMPONENTS.values()];
 }

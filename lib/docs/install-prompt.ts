@@ -1,5 +1,5 @@
 import { componentEntries, systemList } from "@/lib/docs/components";
-import { installUrl, DUAL_FLAVOR_SLUGS, FLUID_HOVER_SLUGS, type Base } from "@/lib/install-url";
+import { installUrl, DUAL_FLAVOR_SLUGS, FLAVORED_SINGLE_SOURCE_SLUGS, FLUID_HOVER_SLUGS, type Base } from "@/lib/install-url";
 import { PROMPT_ENTRIES, type PromptEntry } from "@/lib/docs/prompt-entries";
 import { decodePreset, type PresetComponentDef } from "@/lib/preset/components";
 import { PRESET_GENERATORS } from "@/lib/preset/generators";
@@ -44,7 +44,9 @@ export function buildInstallPrompt({ slug, installSlug, base, hover = "fluid" }:
   const name = entry?.name ?? slug;
   const description = plainDescription(entry?.description ?? "");
   const details: PromptEntry | undefined = PROMPT_ENTRIES[slug];
-  const dual = DUAL_FLAVOR_SLUGS.has(registrySlug);
+  // A single-source component built on a flavored one (a command menu over
+  // the Dialog) installs per flavor too, so its brief names the flavor.
+  const dual = DUAL_FLAVOR_SLUGS.has(registrySlug) || FLAVORED_SINGLE_SOURCE_SLUGS.has(registrySlug);
 
   const lines: string[] = [];
   lines.push(
@@ -119,7 +121,7 @@ export function buildPresetPrompt({ def, code, base, hover = "fluid" }: BuildPre
   const name = entry?.name ?? def.label;
   const description = plainDescription(entry?.description ?? "");
   const details = PROMPT_ENTRIES[slug];
-  const dual = DUAL_FLAVOR_SLUGS.has(slug);
+  const dual = DUAL_FLAVOR_SLUGS.has(slug) || FLAVORED_SINGLE_SOURCE_SLUGS.has(slug);
 
   // The generator is pure, so the exact file list is available client-side.
   const decoded = decodePreset(code);

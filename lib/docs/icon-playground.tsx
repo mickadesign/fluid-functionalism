@@ -61,6 +61,14 @@ function IconPlaygroundProvider({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      // An open popup's typeahead owns the key while it has focus, as in
+      // SizeShortcut.
+      if (
+        (e.target as HTMLElement | null)?.closest?.(
+          '[role="listbox"], [role="menu"], [role="dialog"], [role="combobox"], [role="option"]'
+        )
+      )
+        return;
       e.preventDefault();
       setIconLibraryState((prev) => {
         const idx = iconLibraryOrder.indexOf(prev);

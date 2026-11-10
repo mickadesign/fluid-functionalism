@@ -66,18 +66,28 @@ Run the registry build script (`npm run registry:build`) to generate the JSON fi
 
 ### 4. Component List Entry (`lib/docs/components.ts`)
 
-Add an entry to `componentList`:
+Add an entry to `componentEntries` (`componentList` is derived from it,
+minus the slugs in `UNLISTED_SLUGS`):
 
 ```ts
-{ slug: "component-name", name: "ComponentName", description: "Short description." }
+{ slug: "component-name", name: "ComponentName", description: "Short description.", gridSize: "small" }
 ```
 
 - `slug` must match the folder name under `app/docs/`
 - `description` should be concise (one sentence)
+- `gridSize` is the Showcase tile on the home page: `small`, `medium` or `large`
 
 ### 5. Documentation Page (`app/docs/<component-name>/page.tsx`)
 
-This is the main deliverable. Structure:
+This is the main deliverable. Two files sit beside it:
+
+- `app/docs/<component-name>/layout.tsx` exports `metadata = docMetadata("<component-name>")`.
+- `lib/docs/api/<component-name>.ts` holds the props tables and an
+  `apiReference` list, registered in `lib/docs/api/index.ts`. The page and
+  `/docs/<component-name>.md` both read them, so the two cannot drift
+  (`tests/docs-markdown.test.ts` checks it).
+
+Structure:
 
 ```tsx
 "use client";
@@ -85,24 +95,26 @@ This is the main deliverable. Structure:
 import { useState } from "react";
 import { ComponentName } from "@/registry/default/component-name";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
-import { PropsTable, type PropDef } from "@/lib/docs/PropsTable";
+import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
+import { componentProps } from "@/lib/docs/api/component-name";
 
 // --- Code snippets as string constants ---
 const basicCode = `import { ComponentName } from "./components";
 
 <ComponentName />`;
 
-// --- Props table data ---
-const componentProps: PropDef[] = [
-  { name: "variant", type: '"a" | "b"', default: '"a"', description: "Visual style." },
-  // ...
-];
+// --- Props table data, in lib/docs/api/component-name.ts ---
+// export const componentProps: PropDef[] = [
+//   { name: "variant", type: '"a" | "b"', default: '"a"', description: "Visual style." },
+// ];
+// export const apiReference: ApiTable[] = [{ title: "ComponentName", props: componentProps }];
 
 export default function ComponentNameDoc() {
   return (
     <DocPage
       title="ComponentName"
+      slug="component-name"
       description="One-two sentence description matching the registry."
     >
       <DocSection title="Basic">
@@ -333,14 +345,16 @@ lib/docs/
   PropsTable.tsx               ← props documentation table
   DocPage.tsx                  ← DocPage + DocSection wrappers
   components.ts                ← component list for sidebar nav
+  api/<component-name>.ts      ← props tables, read by the page and its Markdown
   highlight.ts                 ← Shiki syntax highlighting
   icon-map.tsx                 ← docs-only multi-library icon map (Tabler/Phosphor/…)
   icon-playground.tsx          ← docs-only library switcher provider + "I" shortcut
   shape-shortcut.tsx           ← docs-only "R" radius shortcut
 
 app/docs/
-  layout.tsx                   ← sidebar layout (reads componentList)
-  page.tsx                     ← index page (lists all components)
+  layout.tsx                   ← column width for every doc page
+  page.tsx                     ← the Introduction
+  <component-name>/layout.tsx  ← the page's metadata (docMetadata)
   <component-name>/page.tsx    ← individual doc pages
 
 registry.json                  ← shadcn registry source of truth

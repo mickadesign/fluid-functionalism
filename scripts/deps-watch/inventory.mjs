@@ -18,9 +18,11 @@
 import { execFile } from "node:child_process";
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-const ROOT = new URL("../..", import.meta.url).pathname;
+// fileURLToPath, not .pathname: a checkout path with a space stays a path.
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const { values: opts } = parseArgs({
   options: {
     days: { type: "string", default: "8" },

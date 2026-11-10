@@ -32,7 +32,7 @@ A run whose page rendered but got no `looks` verdict shows as `?`, unverified: t
 
 ## Which briefs run
 
-70 briefs: every doc page in each flavor it ships, plus each installable playground's default preset. Each week runs about 25 of them:
+87 briefs: every doc page in each flavor it ships, plus each installable playground's default preset. Each week runs about 30 of them:
 
 - **Top 10:** the most installed briefs over the last 28 days, from the "Registry fetch" analytics in `middleware.ts`. Reading them needs a logged-in `vercel` CLI and a linked project (`.vercel/project.json`). Systems are left out, because every component install fetches springs and the other shared libs as dependencies.
 - **Rotation:** everything else, in 4 buckets by ISO week, so every brief runs at least once every 4 weeks.
@@ -58,4 +58,4 @@ Useful flags: `--briefs dropdown@base,preset:card@radix`, `--agents claude`, `--
 - The judge runs on `claude` with `--judge-model` (default `opus`).
 - Runs happen in a temp folder outside the repo, deleted afterwards. Claude Code and Cursor run with full permissions there. Codex runs in its workspace sandbox with network on.
 - Each agent starts as cold as its CLI allows. Claude Code runs without skills, MCP servers or user settings. Codex runs with memories off. Cursor runs as configured, on its default `Auto` model. The brief itself suggests adding the skill, so an agent may install it mid-run: that is the brief working as written.
-- Each run installs from the live registry, so it also counts in the "Registry fetch" numbers: about 25 briefs × 4 installs a week.
+- Each run installs from the live registry, so it also counts in the "Registry fetch" numbers: about 30 briefs × 4 installs a week.

@@ -1177,7 +1177,6 @@ html.transitioning *::after {
    apart from the page's own reveal. Browsers without `transition-behavior`
    degrade gracefully to the old instant switch. */
 
-.xl-fade-flex,
 .xl-fade-block {
   display: none;
   opacity: 0;
@@ -1187,21 +1186,14 @@ html.transitioning *::after {
 }
 
 @media (min-width: 1280px) {
-  .xl-fade-flex {
-    display: flex;
-  }
   .xl-fade-block {
     display: block;
-  }
-  .xl-fade-flex,
-  .xl-fade-block {
     opacity: 1;
     transition:
       opacity 0.24s ease-out,
       display 0.24s allow-discrete;
   }
   @starting-style {
-    .xl-fade-flex,
     .xl-fade-block {
       opacity: 0;
     }
@@ -1209,12 +1201,10 @@ html.transitioning *::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .xl-fade-flex,
   .xl-fade-block {
     transition: none;
   }
 }
-.xl-fade-flex:not([data-ready]),
 .xl-fade-block:not([data-ready]) {
   transition: none;
 }

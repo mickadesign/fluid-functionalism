@@ -40,7 +40,7 @@ describe("every doc page has a Markdown version", () => {
     if (!used.length) return;
     // Tables come from lib/docs/api/<slug>.ts, the module the Markdown reads.
     expect(page).toContain(`from "@/lib/docs/api/${slug}"`);
-    const mod = await import(`@/lib/docs/api/${slug}`);
+    const mod = await import(`@/lib/docs/api/${slug}.ts`);
     expect(API_REFERENCE[slug]).toBe(mod.apiReference);
     for (const name of used) {
       expect(mod[name], `${name} is not exported by lib/docs/api/${slug}.ts`).toBeDefined();

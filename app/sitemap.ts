@@ -6,9 +6,11 @@ import { UNLISTED_SLUGS } from "@/lib/docs/components";
 const SITE_URL = "https://www.fluidfunctionalism.com";
 
 // Internal/dev-only routes, plus noindex pages (see robots metadata in
-// app/concepts/layout.tsx and app/stars/layout.tsx), kept out of the sitemap.
+// app/concepts/layout.tsx, app/stars/layout.tsx and app/og/layout.tsx), kept
+// out of the sitemap.
 const EXCLUDE = [
   "/demo",
+  "/og",
   "/compare-bases",
   "/slider",
   "/table",

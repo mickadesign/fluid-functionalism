@@ -35,8 +35,6 @@ export interface AheadOfRelease {
  *  for its month exists, so nothing needs undoing on release day. The
  *  sidebar dots them too, so a new page is marked from the day it lands. */
 export const AHEAD_OF_RELEASE: AheadOfRelease[] = [
-  // Merged in October 2026; the October release ships Friday 2026-11-06.
-  { month: "2026-10", slugs: ["banner", "typography", "reveal", "calendar", "date-picker"] },
   { month: "2026-11", slugs: ["field", "checkbox", "input", "textarea", "breadcrumb"] },
 ];
 
