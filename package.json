@@ -78,7 +78,7 @@
     "eslint-config-next": "^15.3.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jiti": "^2.7.0",
-    "jsdom": "^29.1.1",
+    "jsdom": "^31.0.0",
     "next-themes": "^0.4.6",
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4.1.18",
