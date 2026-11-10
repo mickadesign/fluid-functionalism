@@ -250,7 +250,8 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
       // column on the left, the row menus on the right. They only stick
       // once the table scrolls sideways. Pass `columnPinning` to choose
       // others, or `enableColumnPinning: false` for none.
-      columnPinning: defaultPinning(options.columns),
+      columnPinning:
+        options.enableColumnPinning === false ? { left: [], right: [] } : defaultPinning(options.columns),
       ...initialState,
       pagination: { pageIndex: 0, pageSize, ...initialState?.pagination },
     },
@@ -3606,10 +3607,15 @@ function filterOf<TData>(table: TanStackTable<TData>, column: Column<TData, unkn
     if (type === "number" || type === "date") return { type };
     if (type === "text") return { type: "text" };
   }
-  const values = table
-    .getCoreRowModel()
-    .flatRows.slice(0, 500)
-    .map((r) => r.getValue(column.id))
+  // Read from the data through the accessor, not a row model: building a
+  // row model here, in a part that renders before DataTable, arms
+  // TanStack's page reset during hydration and fires it on a table that
+  // hasn't mounted yet.
+  const accessor = column.accessorFn;
+  if (!accessor) return { type: "text" };
+  const values = table.options.data
+    .slice(0, 500)
+    .map((original, i) => accessor(original, i))
     .filter((v) => v !== null && v !== undefined && v !== "");
   if (values.length === 0) return { type: "text" };
   if (values.every((v) => typeof v === "number")) return { type: "number" };

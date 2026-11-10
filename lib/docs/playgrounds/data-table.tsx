@@ -6,6 +6,7 @@ import {
   DataTable,
   DataTableColumnHeader,
   DataTableSearch,
+  DataTableFilters,
   DataTableViewOptions,
   DataTablePagination,
   DataTableSelectionBar,
@@ -343,6 +344,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     "DataTable",
     "DataTableColumnHeader",
     ...(o.filter !== "none" ? ["DataTableSearch"] : []),
+    ...(o.filters ? ["DataTableFilters"] : []),
     ...(o.viewMenu ? ["DataTableViewOptions"] : []),
     ...(o.rowActions ? ["rowActionsColumn"] : []),
     ...(o.pagination ? ["DataTablePagination"] : []),
@@ -350,7 +352,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.selection ? ["selectColumn"] : []),
     "type ColumnDef",
   ];
-  const toolbar = o.filter !== "none" || o.viewMenu;
+  const toolbar = o.filter !== "none" || o.filters || o.viewMenu;
   const filter =
     o.filter === "column"
       ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
@@ -441,6 +443,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
+    ...(o.pinning ? [] : [`  // No sticky edge columns when the table scrolls sideways.`, `  enableColumnPinning: false,`]),
     `  initialState: {`,
     `    sorting: [{ id: "added", desc: true }],`,
     `    columnVisibility: { fluidHover: false },`,
@@ -450,8 +453,9 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `<div className="flex flex-col gap-3">`,
     ...(toolbar
       ? [
-          `  <div className="flex items-center gap-2">`,
+          `  <div className="flex flex-wrap items-center gap-2">`,
           ...(o.filter !== "none" ? [filter] : []),
+          ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
           ...(o.viewMenu ? [`    <DataTableViewOptions table={table} className="ml-auto" />`] : []),
           `  </div>`,
         ]
@@ -579,6 +583,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     if (!next.resize || next.editable !== prev.editable) table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
+    if (!next.filters) table.resetColumnFilters();
+    if (next.pinning !== prev.pinning)
+      table.setColumnPinning(next.pinning ? table.initialState.columnPinning : { left: [], right: [] });
     // The Text wrap switch sets the columns' own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
     if (next.lines !== prev.lines)
@@ -614,10 +621,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       headerIcons: Math.random() > 0.3,
       editable: Math.random() > 0.5,
       expandable: Math.random() > 0.5,
+      filters: Math.random() > 0.5,
+      pinning: Math.random() > 0.3,
     });
 
-  const toolbar = (state.filter !== "none" || state.viewMenu) && (
-    <div className="flex items-center gap-2">
+  const toolbar = (state.filter !== "none" || state.filters || state.viewMenu) && (
+    <div className="flex flex-wrap items-center gap-2">
       {state.filter !== "none" && (
         <DataTableSearch
           // Remounts the field when the mode flips, so it starts empty.
@@ -627,6 +636,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
         />
       )}
+      {state.filters && <DataTableFilters table={table} />}
       {state.viewMenu && <DataTableViewOptions table={table} className="ml-auto" />}
     </div>
   );
@@ -680,6 +690,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           label="Columns menu"
           checked={state.viewMenu}
           onToggle={() => set("viewMenu", !state.viewMenu)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Filters"
+          checked={state.filters}
+          onToggle={() => set("filters", !state.filters)}
           className={PLAY_SWITCH}
         />
         <Switch
@@ -749,6 +765,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           label="Reorder columns"
           checked={state.reorder}
           onToggle={() => set("reorder", !state.reorder)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sticky columns"
+          checked={state.pinning}
+          onToggle={() => set("pinning", !state.pinning)}
           className={PLAY_SWITCH}
         />
         <PlayDivider />

@@ -114,7 +114,26 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tdIPp"`);
+    expect(code).toMatchInlineSnapshot(`"te17Yv"`);
+  });
+
+  // Version "d" codes were published before filters and sticky columns.
+  it("a version-d code still decodes", () => {
+    const back = decodeDataTablePreset("tdIPp");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("d");
+    expect(back.preset).toEqual({
+      ...DEFAULT_DATA_TABLE_PRESET,
+      filter: "all",
+      selection: false,
+      pageSize: "20",
+      lines: "wrap",
+      align: "top",
+      headerIcons: false,
+      flavor: "base",
+    });
+    expect(back.preset.filters).toBe(false);
+    expect(back.preset.pinning).toBe(true);
   });
 
   // Version "c" codes were published while header icons defaulted on.

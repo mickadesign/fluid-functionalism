@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
   useEffect,
   useRef,
@@ -32,6 +33,10 @@ const PANEL_WIDTH = 300;
 const PANEL_GAP = 8;
 // Breathing room between the panel and the viewport edge it grows toward.
 const VIEWPORT_MARGIN = 16;
+
+/** True inside the pen menu: PlaygroundPanel then drops the rail's top
+ *  break, and the menu pads it evenly. */
+export const InPlaygroundMenuContext = createContext(false);
 
 export function PlaygroundMenu({
   label,
@@ -220,7 +225,9 @@ export function PlaygroundMenu({
                     {/* Measured for the height above — must not be the
                         scrolling box itself, so its height stays
                         content-driven. */}
-                    <div ref={contentRef}>{children}</div>
+                    <div ref={contentRef} className="p-2">
+                      <InPlaygroundMenuContext.Provider value>{children}</InPlaygroundMenuContext.Provider>
+                    </div>
                   </ScrollArea>
                 </Elevated>
               </motion.div>

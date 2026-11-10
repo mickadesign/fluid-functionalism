@@ -45,6 +45,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     "DataTable",
     "DataTableColumnHeader",
     ...(p.filter !== "none" ? ["DataTableSearch"] : []),
+    ...(p.filters ? ["DataTableFilters"] : []),
     ...(p.viewMenu ? ["DataTableViewOptions"] : []),
     ...(p.pagination ? ["DataTablePagination"] : []),
     ...(p.selection ? ["DataTableSelectionBar"] : []),
@@ -192,18 +193,20 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    pageSize: ${p.pagination ? p.pageSize : "ROWS.length"},`);
   l.push(`    getRowId: (row) => row.slug,`);
   if (tree) l.push(`    getSubRows: (row) => row.subRows,`);
+  if (!p.pinning) l.push(`    enableColumnPinning: false,`);
   l.push(`    initialState: { sorting: [{ id: "added", desc: true }] },`);
   l.push(`  });`);
   l.push(``);
   l.push(`  return (`);
   l.push(`    <div className="flex w-full flex-col gap-3">`);
-  if (p.filter !== "none" || p.viewMenu) {
-    l.push(`      <div className="flex items-center gap-2">`);
+  if (p.filter !== "none" || p.filters || p.viewMenu) {
+    l.push(`      <div className="flex flex-wrap items-center gap-2">`);
     if (p.filter === "column") {
       l.push(`        <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
     } else if (p.filter === "all") {
       l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
     }
+    if (p.filters) l.push(`        <DataTableFilters table={table} />`);
     if (p.viewMenu) l.push(`        <DataTableViewOptions table={table} className="ml-auto" />`);
     l.push(`      </div>`);
   }

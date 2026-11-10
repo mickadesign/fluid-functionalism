@@ -12,7 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { PreviewExpandContext } from "@/lib/docs/preview-expand";
-import { PlaygroundMenu } from "@/app/components/playground-menu";
+import { InPlaygroundMenuContext, PlaygroundMenu } from "@/app/components/playground-menu";
 import { Shuffle } from "lucide-react";
 import { animate } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
@@ -140,6 +140,7 @@ export function PlaygroundPanel({
   // small label with the shuffle on its right, a hairline under it.
   const shape = useShape();
   const inline = useContext(InlinePlaygroundContext);
+  const inMenu = useContext(InPlaygroundMenuContext);
 
   // X shuffles, like the settings' single-key shortcuts and with their
   // guards: not while typing, not from inside a menu or a dialog.
@@ -216,7 +217,8 @@ export function PlaygroundPanel({
     // double the sidebar's 16px between groups. Under the preview there is no
     // group above, and -mx-2 hangs the rows' 8px inset outside the column, so
     // the labels, chevrons and hairline line up with the preview's edges.
-    <div className={cn("w-full", inline ? "-mx-2 w-auto" : "pt-8")}>
+    // In the pen menu, the menu's own 8px padding is the whole frame.
+    <div className={cn("w-full", inline ? "-mx-2 w-auto" : !inMenu && "pt-8")}>
       <div className="flex h-8 items-center justify-between pl-2">
         <h2 className="text-site-caption text-foreground">{title}</h2>
         {/* The X key chip, then the icon: px-1.5 + mr-0.5 end the icon 8px
