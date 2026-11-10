@@ -30,6 +30,7 @@ export const columnMetaProps: PropDef[] = [
   { name: "icon", type: "IconComponent", description: "A 14px icon before the header's title." },
   { name: "editor", type: '"text" | "number" | "date" | "tags" | { type, options?, creatable?, placeholder? } | { type: "select", options }', description: "Edits the column in place: text, a link, a number, a date, tags or a select." },
   { name: "lines", type: '1 | 2 | "wrap"', description: '`1` cuts text to a line, `2` stops after two, `"wrap"` lets it run.' },
+  { name: "filter", type: '"text" | "number" | "date" | { type: "options", options } | false', description: "How DataTableFilters filters the column. Omitted, it follows the editor, then the values: numbers, ISO days, a few repeated strings, or text. `false` leaves it out." },
 ];
 
 export const columnHeaderProps: PropDef[] = [
@@ -42,6 +43,12 @@ export const searchProps: PropDef[] = [
   { name: "column", type: "string", description: "The column to search. Omitted, it searches them all." },
   { name: "placeholder", type: "string", default: '"Search…"', description: "Also the field's accessible name." },
   { name: "size", type: '"default" | "compact"', description: "Pins the field to one size step." },
+];
+
+export const filtersProps: PropDef[] = [
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. A Filter button lists the columns to filter; each filter is a chip with its value and a × to remove it." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the button and chips to one size step." },
+  { name: "className", type: "string", description: "Classes for its box, which is `display: contents`: the chips and the button join your toolbar's row, so give the toolbar `flex-wrap`." },
 ];
 
 export const viewOptionsProps: PropDef[] = [
@@ -70,7 +77,7 @@ export const selectionBarProps: PropDef[] = [
 ];
 
 export const rowActionsColumnProps: PropDef[] = [
-  { name: "rowActionsColumn(items)", type: "ColumnDef<TData>", description: "A last column of ⋯ menus. `items(row)` returns the row's `MenuItem`s; `{ label }` names the button." },
+  { name: "rowActionsColumn(items)", type: "ColumnDef<TData>", description: "A last column of ⋯ menus. `items(row)` returns the row's `MenuItem`s, which a right-click on the row opens too; `{ label }` names the button." },
 ];
 
 export const selectColumnProps: PropDef[] = [
@@ -84,6 +91,7 @@ export const apiReference: ApiTable[] = [
   { title: "Column meta", props: columnMetaProps },
   { title: "DataTableColumnHeader", props: columnHeaderProps },
   { title: "DataTableSearch", props: searchProps },
+  { title: "DataTableFilters", props: filtersProps },
   { title: "DataTableViewOptions", props: viewOptionsProps },
   { title: "DataTableRowActions", props: rowActionsProps },
   { title: "DataTablePagination", props: paginationProps },

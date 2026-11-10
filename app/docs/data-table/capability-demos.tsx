@@ -9,6 +9,7 @@ import {
   DataTable,
   DataTableColumnHeader,
   DataTableSearch,
+  DataTableFilters,
   DataTableViewOptions,
   DataTablePagination,
   DataTableSelectionBar,
@@ -106,8 +107,9 @@ export function TeamTable() {
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <DataTableSearch table={table} column="name" placeholder="Search people…" />
+      <div className="flex flex-wrap items-center gap-2">
+        <DataTableSearch table={table} column="name" placeholder="Search people…" className="max-w-56" />
+        <DataTableFilters table={table} />
         <DataTableViewOptions table={table} className="ml-auto" />
       </div>
       <DataTable table={table} />
@@ -136,7 +138,7 @@ export function TeamTable() {
 }
 
 export const teamCode = `import {
-  useDataTable, DataTable, DataTableColumnHeader, DataTableSearch, DataTableViewOptions,
+  useDataTable, DataTable, DataTableColumnHeader, DataTableSearch, DataTableFilters, DataTableViewOptions,
   DataTablePagination, DataTableSelectionBar, selectColumn, rowActionsColumn, type ColumnDef,
 } from "./components";
 
@@ -162,8 +164,11 @@ const columns: ColumnDef<Member>[] = [
 
 const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
-<DataTableSearch table={table} column="name" placeholder="Search people…" />
-<DataTableViewOptions table={table} />
+<div className="flex flex-wrap items-center gap-2">
+  <DataTableSearch table={table} column="name" placeholder="Search people…" />
+  <DataTableFilters table={table} />
+  <DataTableViewOptions table={table} className="ml-auto" />
+</div>
 <DataTable table={table} />
 <DataTablePagination table={table} pageSizes={[]} />
 <DataTableSelectionBar
@@ -248,6 +253,9 @@ export function TasksTable() {
   });
   return (
     <div className="flex w-full flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <DataTableFilters table={table} />
+      </div>
       <DataTable
         table={table}
         resizeColumns

@@ -105,7 +105,8 @@ export default function DataTableDoc() {
 
       <DocSection title="Selection and actions">
         <p className="text-site-body text-muted-foreground">
-          Select a few people, then press ⌘K to act on all of them at once.
+          Select a few people, then press ⌘K to act on all of them at once. Right-click a row for its
+          menu, or add a filter on a column.
         </p>
         <ComponentPreview code={teamCode}>
           <TeamTable />
@@ -115,6 +116,7 @@ export default function DataTableDoc() {
       <DocSection title="Editable cells">
         <p className="text-site-body text-muted-foreground">
           6 editors, each one the cell itself: click a cell to edit it, press Enter or Esc to leave.
+          Filters follow each editor: a number range on Points, a range of days on Due.
         </p>
         <ComponentPreview code={tasksCode}>
           <TasksTable />

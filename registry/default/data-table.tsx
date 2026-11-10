@@ -130,6 +130,12 @@ declare module "@tanstack/react-table" {
     /** An icon before the header's title. DataTable draws it for a string
      *  `header`; DataTableColumnHeader draws it inside its sort button. */
     icon?: IconComponent;
+    /** How DataTableFilters filters the column: `"text"` (contains),
+     *  `"number"` (a min and a max), `"date"` (a range of days), options
+     *  (pick any of them), or `false` to leave it out. Omitted, it follows
+     *  the column's editor, then its values (numbers, ISO days, a few
+     *  repeated strings, or text). */
+    filter?: DataTableFilterKind | false;
     /** A row's menu items, opened from its ⋯ and by right-clicking the row
      *  (rowActionsColumn sets it). */
     rowMenu?: (row: Row<TData>) => ReactNode;
@@ -166,6 +172,22 @@ type DataTableEditor =
 /** A select editor's option: a value, or a value with a Badge color that
  *  the menu shows as the option's dot (match the cell's badge). */
 type DataTableSelectOption = string | { value: string; label?: string; color?: BadgeColor };
+
+/** How a column filters (see `meta.filter`). */
+type DataTableFilterKind =
+  | "text"
+  | "number"
+  | "date"
+  | { type: "options"; options: readonly DataTableSelectOption[] };
+
+/** A column's filter value, as DataTableFilters sets it. A plain string
+ *  (DataTableSearch on one column) means "contains". */
+type DataTableFilterValue =
+  | string
+  | { kind: "text"; query: string }
+  | { kind: "options"; values: string[] }
+  | { kind: "number"; min?: number; max?: number }
+  | { kind: "date"; from?: string; to?: string };
 
 /** One edit, as DataTable's `onCellEdit` receives it. Write `value` into
  *  your data: the table shows what your data holds. */
@@ -220,6 +242,9 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     // Widths follow the pointer while a resize handle is dragged.
     columnResizeMode: "onChange",
     ...options,
+    // Every column filters the way DataTableFilters and DataTableSearch set
+    // it, unless it brings its own filterFn.
+    defaultColumn: { filterFn: dataTableFilterFn, ...options.defaultColumn },
     initialState: {
       // A wide table keeps its edges in view: the boxes and the first data
       // column on the left, the row menus on the right. They only stick
@@ -3383,6 +3408,341 @@ function DataTableSearch<TData>({
   );
 }
 
+// ── DataTableFilters ─────────────────────────────────────
+
+/** A day as "YYYY-MM-DD", from a Date (its local day) or a string that
+ *  starts with one. */
+function dayOf(value: unknown): string | undefined {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : toIsoDay(value);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return undefined;
+}
+
+/** The filterFn every column gets by default: it reads the shapes
+ *  DataTableFilters sets (and a plain string, "contains"). An empty filter
+ *  keeps every row, so a chip being filled in hides nothing yet. */
+function dataTableFilterFn<TData>(row: Row<TData>, columnId: string, filter: DataTableFilterValue) {
+  const value = row.getValue(columnId);
+  if (filter == null) return true;
+  if (typeof filter === "string" || filter.kind === "text") {
+    const query = (typeof filter === "string" ? filter : filter.query).trim().toLowerCase();
+    if (!query) return true;
+    const text = Array.isArray(value) ? value.join(" ") : String(value ?? "");
+    return text.toLowerCase().includes(query);
+  }
+  if (filter.kind === "options") {
+    if (filter.values.length === 0) return true;
+    const have = Array.isArray(value) ? value.map(String) : [String(value ?? "")];
+    return have.some((v) => filter.values.includes(v));
+  }
+  if (filter.kind === "number") {
+    if (filter.min === undefined && filter.max === undefined) return true;
+    if (value === null || value === undefined || value === "") return false;
+    const n = Number(value);
+    if (Number.isNaN(n)) return false;
+    return (filter.min === undefined || n >= filter.min) && (filter.max === undefined || n <= filter.max);
+  }
+  if (!filter.from && !filter.to) return true;
+  const day = dayOf(value);
+  if (!day) return false;
+  return (!filter.from || day >= filter.from) && (!filter.to || day <= filter.to);
+}
+
+type ResolvedFilter =
+  | { type: "text" | "number" | "date" }
+  | { type: "options"; options: { value: string; label: string; color?: BadgeColor }[] };
+
+const optionOf = (o: DataTableSelectOption) =>
+  typeof o === "string" ? { value: o, label: o } : { value: o.value, label: o.label ?? o.value, color: o.color };
+
+/** How a column filters: its `meta.filter`, else its editor, else what its
+ *  values look like. */
+function filterOf<TData>(table: TanStackTable<TData>, column: Column<TData, unknown>): ResolvedFilter | null {
+  const meta = column.columnDef.meta;
+  if (meta?.filter === false) return null;
+  if (meta?.filter) {
+    return typeof meta.filter === "string"
+      ? { type: meta.filter }
+      : { type: "options", options: meta.filter.options.map(optionOf) };
+  }
+  const editor = meta?.editor;
+  if (editor) {
+    const type = editorType(editor);
+    if (type === "select" && typeof editor === "object" && "options" in editor && editor.options)
+      return { type: "options", options: (editor.options as readonly DataTableSelectOption[]).map(optionOf) };
+    if (type === "tags" && typeof editor === "object" && "options" in editor && editor.options?.length)
+      return { type: "options", options: (editor.options as readonly string[]).map(optionOf) };
+    if (type === "number" || type === "date") return { type };
+    if (type === "text") return { type: "text" };
+  }
+  const values = table
+    .getCoreRowModel()
+    .flatRows.slice(0, 500)
+    .map((r) => r.getValue(column.id))
+    .filter((v) => v !== null && v !== undefined && v !== "");
+  if (values.length === 0) return { type: "text" };
+  if (values.every((v) => typeof v === "number")) return { type: "number" };
+  if (values.every((v) => dayOf(v) !== undefined)) return { type: "date" };
+  const flat = values.flatMap((v) => (Array.isArray(v) ? v : [v]));
+  if (flat.every((v) => typeof v === "string")) {
+    const distinct = [...new Set(flat as string[])];
+    // A few values, each repeated: a set to pick from rather than text.
+    if (distinct.length <= 12 && distinct.length < flat.length)
+      return { type: "options", options: distinct.sort().map((v) => ({ value: v, label: v })) };
+  }
+  return { type: "text" };
+}
+
+const emptyFilter = (type: ResolvedFilter["type"]): DataTableFilterValue =>
+  type === "options"
+    ? { kind: "options", values: [] }
+    : type === "number"
+      ? { kind: "number" }
+      : type === "date"
+        ? { kind: "date" }
+        : { kind: "text", query: "" };
+
+interface DataTableFiltersProps<TData> {
+  table: TanStackTable<TData>;
+  size?: SizeVariant;
+  className?: string;
+}
+
+/** A Filter button that adds a filter on a column, and one chip per
+ *  filter: the column, what it matches, the value, and × to remove it. Each
+ *  column filters by its kind (see `meta.filter`): text it contains,
+ *  options to pick, a number range, or a range of days. */
+function DataTableFilters<TData>({ table, size, className }: DataTableFiltersProps<TData>) {
+  "use no memo";
+  const icons = useIcons();
+  const Plus = icons.plus;
+  const sizeClasses = useSize(size);
+  const compact = sizeClasses.variant === "compact";
+  // The chip just added opens its editor.
+  const [added, setAdded] = useState<string | null>(null);
+
+  const active = table
+    .getState()
+    .columnFilters.filter((f) => typeof f.value === "object" && f.value !== null && "kind" in f.value);
+  const filterable = table
+    .getAllLeafColumns()
+    .filter((c) => c.accessorFn !== undefined && c.getCanFilter())
+    .map((column) => ({ column, filter: filterOf(table, column) }))
+    .filter((c): c is { column: Column<TData, unknown>; filter: ResolvedFilter } => c.filter !== null);
+  const available = filterable.filter(({ column }) => !active.some((f) => f.id === column.id));
+
+  const set = (column: Column<TData, unknown>, value: DataTableFilterValue | undefined) => {
+    column.setFilterValue(value);
+    table.setPageIndex(0);
+  };
+
+  return (
+    // display: contents, so the chips and the button join the toolbar's
+    // own row and wrap with it (give the toolbar flex-wrap).
+    <div data-slot="data-table-filters" className={cn("contents", className)}>
+      {active.map((f) => {
+        const entry = filterable.find(({ column }) => column.id === f.id);
+        if (!entry) return null;
+        return (
+          <FilterChip
+            key={f.id}
+            label={columnLabel(entry.column)}
+            filter={entry.filter}
+            value={f.value as Exclude<DataTableFilterValue, string>}
+            autoOpen={added === f.id}
+            compact={compact}
+            size={size}
+            onChange={(value) => set(entry.column, value)}
+            onRemove={() => set(entry.column, undefined)}
+          />
+        );
+      })}
+      {available.length > 0 && (
+        <DropdownMenu size={size}>
+          <DropdownTrigger
+            render={
+              <Button variant="ghost" size={compact ? "compact" : "default"} leadingIcon={Plus}>
+                Filter
+              </Button>
+            }
+          />
+          <DropdownContent className="w-48">
+            {available.map(({ column, filter }, i) => (
+              <MenuItem
+                key={column.id}
+                index={i}
+                icon={column.columnDef.meta?.icon}
+                label={columnLabel(column)}
+                onSelect={() => {
+                  setAdded(column.id);
+                  set(column, emptyFilter(filter.type));
+                }}
+              />
+            ))}
+          </DropdownContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+}
+
+interface FilterChipProps {
+  label: string;
+  filter: ResolvedFilter;
+  value: Exclude<DataTableFilterValue, string>;
+  autoOpen: boolean;
+  compact: boolean;
+  size?: SizeVariant;
+  onChange: (value: DataTableFilterValue) => void;
+  onRemove: () => void;
+}
+
+// A chip's field: the chip's own text on no fill, so the chip reads as one
+// phrase ("Name contains ada").
+const CHIP_FIELD =
+  "min-w-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+
+/** One filter: "Status is Active, Invited ×". */
+function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, onRemove }: FilterChipProps) {
+  const icons = useIcons();
+  const X = icons.x;
+  const shape = useShape();
+  const sizeClasses = useSize(size);
+  const [open, setOpen] = useState(autoOpen);
+
+  let op: string;
+  let control: ReactNode;
+  if (value.kind === "text") {
+    op = "contains";
+    control = (
+      <input
+        aria-label={`${label} contains`}
+        autoFocus={autoOpen}
+        value={value.query}
+        placeholder="text"
+        onChange={(e) => onChange({ kind: "text", query: e.target.value })}
+        className={cn(CHIP_FIELD, sizeClasses.field, "w-24")}
+      />
+    );
+  } else if (value.kind === "number") {
+    op = "from";
+    const num = (raw: string) => (raw === "" || Number.isNaN(Number(raw)) ? undefined : Number(raw));
+    control = (
+      <span className="flex items-center gap-1">
+        <input
+          type="number"
+          inputMode="decimal"
+          aria-label={`${label} from`}
+          autoFocus={autoOpen}
+          value={value.min ?? ""}
+          placeholder="min"
+          onChange={(e) => onChange({ ...value, min: num(e.target.value) })}
+          className={cn(CHIP_FIELD, sizeClasses.field, "w-12")}
+        />
+        <span className="text-muted-foreground">to</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          aria-label={`${label} to`}
+          value={value.max ?? ""}
+          placeholder="max"
+          onChange={(e) => onChange({ ...value, max: num(e.target.value) })}
+          className={cn(CHIP_FIELD, sizeClasses.field, "w-12")}
+        />
+      </span>
+    );
+  } else if (value.kind === "date") {
+    op = "between";
+    const range =
+      value.from || value.to
+        ? { from: value.from ? toDate(value.from) : undefined, to: value.to ? toDate(value.to) : undefined }
+        : undefined;
+    control = (
+      <DatePicker
+        mode="range"
+        variant="ghost"
+        size={size}
+        aria-label={`${label} between`}
+        value={range}
+        placeholder="any day"
+        onValueChange={(next) =>
+          onChange({
+            kind: "date",
+            from: next?.from ? toIsoDay(next.from) : undefined,
+            to: next?.to ? toIsoDay(next.to) : undefined,
+          })
+        }
+        className="-my-1 min-w-0"
+      />
+    );
+  } else {
+    op = value.values.length > 1 ? "is any of" : "is";
+    const options = filter.type === "options" ? filter.options : [];
+    const picked = options.filter((o) => value.values.includes(o.value));
+    const toggle = (v: string) =>
+      onChange({
+        kind: "options",
+        values: value.values.includes(v) ? value.values.filter((x) => x !== v) : [...value.values, v],
+      });
+    control = (
+      <DropdownMenu size={size} open={open} onOpenChange={setOpen}>
+        <DropdownTrigger
+          render={
+            <button
+              type="button"
+              aria-label={`${label}: ${picked.length ? picked.map((o) => o.label).join(", ") : "any"}`}
+              className="max-w-48 truncate text-left text-foreground outline-none data-[placeholder]:text-muted-foreground"
+              data-placeholder={picked.length ? undefined : ""}
+            >
+              {picked.length ? picked.map((o) => o.label).join(", ") : "any"}
+            </button>
+          }
+        />
+        <DropdownContent
+          className="w-48"
+          checkedIndices={options.flatMap((o, i) => (value.values.includes(o.value) ? [i] : []))}
+        >
+          {options.map((o, i) => (
+            <MenuItem
+              key={o.value}
+              index={i}
+              label={o.label}
+              checked={value.values.includes(o.value)}
+              onSelect={() => toggle(o.value)}
+            />
+          ))}
+        </DropdownContent>
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <span
+      data-slot="data-table-filter"
+      className={cn(
+        "inline-flex items-center gap-1 border border-border pl-2.5 text-muted-foreground transition-colors duration-80",
+        "focus-within:border-foreground/25",
+        compact ? "h-7 pl-2" : "h-9",
+        sizeClasses.text,
+        shape.bg
+      )}
+    >
+      <span className="text-foreground">{label}</span>
+      <span>{op}</span>
+      {control}
+      <Button
+        variant="ghost"
+        size={compact ? "icon-compact" : "icon"}
+        aria-label={`Remove the ${label} filter`}
+        onClick={onRemove}
+        className="-ml-0.5 scale-[0.78]"
+      >
+        <X />
+      </Button>
+    </span>
+  );
+}
+
 // ── DataTableViewOptions ─────────────────────────────────
 
 interface DataTableViewOptionsProps<TData> {
@@ -3394,9 +3754,14 @@ interface DataTableViewOptionsProps<TData> {
   className?: string;
 }
 
+/** A column's name in menus and filters: `meta.label`, a string header,
+ *  or its id made readable ("lastActive" reads "Last active"). */
 function columnLabel<TData>(column: Column<TData, unknown>) {
   const header = column.columnDef.header;
-  return column.columnDef.meta?.label ?? (typeof header === "string" ? header : column.id);
+  if (column.columnDef.meta?.label) return column.columnDef.meta.label;
+  if (typeof header === "string") return header;
+  const words = column.id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** Every leaf column's id in display order: the saved columnOrder, then
@@ -3997,6 +4362,7 @@ export {
   DataTable,
   DataTableColumnHeader,
   DataTableSearch,
+  DataTableFilters,
   DataTableViewOptions,
   DataTableRowActions,
   DataTablePagination,
@@ -4016,6 +4382,9 @@ export type {
   DataTableEmpty,
   DataTableColumnHeaderProps,
   DataTableSearchProps,
+  DataTableFiltersProps,
+  DataTableFilterKind,
+  DataTableFilterValue,
   DataTableViewOptionsProps,
   DataTableRowActionsProps,
   DataTablePaginationProps,
