@@ -69,8 +69,9 @@ export function TeamTable() {
     history.apply(label, (old) => old.map((m) => (ids.includes(m.id) ? { ...m, ...change } : m)));
   const remove = (ids: string[]) => {
     const label = `Removed ${people(ids.length)}`;
+    const before = history.stepCount;
     history.remove(ids, label);
-    showUndoToast(label, history.undo);
+    showUndoToast(label, () => history.undoTo(before));
   };
 
   const columns: ColumnDef<Member>[] = [
@@ -171,9 +172,10 @@ const history = useUndoableRows(team, { getId: (m) => m.id });
 const members = history.rows;
 const remove = (ids: string[]) => {
   const label = \`Removed \${ids.length} people\`;
+  const before = history.stepCount;
   history.remove(ids, label);
-  // Your app's toast: the step's label and a way back.
-  showToast(label, { action: { label: "Undo", onClick: history.undo } });
+  // Your app's toast: the step's label and a way back to before it.
+  showToast(label, { action: { label: "Undo", onClick: () => history.undoTo(before) } });
 };
 const makeAdmin = (ids: string[]) =>
   history.apply("Made admins", (rows) => rows.map((m) => (ids.includes(m.id) ? { ...m, role: "Admin" } : m)));

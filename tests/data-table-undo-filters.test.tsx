@@ -93,3 +93,17 @@ describe("the default filterFn", () => {
     expect(ids([{ id: "points", value: { kind: "number" } }])).toHaveLength(3);
   });
 });
+
+describe("useUndoableRows undoTo", () => {
+  it("takes back its own step and what came after, not just the latest", () => {
+    const { result } = renderHook(() => useUndoableRows(ROWS, { getId: (r) => r.id }));
+    const before = result.current.stepCount;
+    act(() => result.current.remove(["a"]));
+    act(() => result.current.edit("b", { name: "Kenji M." }));
+    act(() => result.current.undoTo(before));
+    expect(result.current.rows.map((r) => r.id)).toEqual(["a", "b", "c"]);
+    expect(result.current.rows[1].name).toBe("Kenji");
+    act(() => result.current.redo());
+    expect(result.current.rows.map((r) => r.id)).toEqual(["b", "c"]);
+  });
+});

@@ -55,7 +55,8 @@ export const undoableRowsProps: PropDef[] = [
   { name: "→ edit(id, change, label?)", type: "function", description: "Merges `change` into a row. One cell typed in a burst (within 1s) is one step, so ⌘Z takes back the word." },
   { name: "→ remove(ids, label?) / insert(items, index?, label?)", type: "function", description: "Deletes or adds rows as one step, labelled \"Deleted 3 rows\" by default." },
   { name: "→ apply(label, change)", type: "function", description: "Any change as one step: `change(rows)` returns the new rows." },
-  { name: "→ undo / redo / canUndo / canRedo", type: "function / boolean", description: "Pass undo and redo to DataTable's onUndo and onRedo, and to a toast's Undo." },
+  { name: "→ undo / redo / canUndo / canRedo", type: "function / boolean", description: "Pass undo and redo to DataTable's onUndo and onRedo." },
+  { name: "→ stepCount / undoTo(count)", type: "number / function", description: "Read stepCount before a change; a toast's Undo calls undoTo(it) to go back to before that change, whatever came after." },
   { name: "→ lastStep", type: "string | undefined", description: "The label of the step undo would take back." },
 ];
 

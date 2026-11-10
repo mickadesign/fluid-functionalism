@@ -557,14 +557,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // is saved: a refresh brings every row back.
   const history = useUndoableRows(buildRows, { getId: (r) => r.slug });
   const data = history.rows;
-  const { apply: applyStep, undo: undoStep } = history;
-  // A delete says what went, with its way back.
+  const { apply: applyStep, undoTo, stepCount } = history;
+  // A delete says what went, with its way back to before it.
   const deleteRows = useCallback(
     (slugs: string[], label: string) => {
       applyStep(label, (old) => removeRows(old, slugs));
-      showUndoToast(label, undoStep);
+      showUndoToast(label, () => undoTo(stepCount));
     },
-    [applyStep, undoStep]
+    [applyStep, undoTo, stepCount]
   );
   // Sub-rows on, the rows carry their parts; off, they're left out (a new
   // array, so the table builds its rows again).

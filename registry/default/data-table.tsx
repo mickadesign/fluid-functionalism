@@ -502,7 +502,13 @@ function headerWidth(th: HTMLElement) {
   let right = -Infinity;
   const range = document.createRange();
   th.childNodes.forEach((node) => {
-    if (node instanceof HTMLElement && node.hasAttribute("data-resize-handle")) return;
+    // Layers laid over the cell (the resize handle, the menu's hidden
+    // trigger, a pinned cell's fills) aren't its content.
+    if (node instanceof HTMLElement) {
+      if (node.hasAttribute("data-resize-handle")) return;
+      const position = getComputedStyle(node).position;
+      if (position === "absolute" || position === "fixed") return;
+    }
     range.selectNode(node);
     const r = range.getBoundingClientRect();
     if (r.width === 0) return;
@@ -720,10 +726,9 @@ function DataTable<TData>({
     if (!hasUndo || !root) return;
     const use = (e: Event) => {
       const target = e.target as Element | null;
+      // The table stays the one in use until another is: its menus, the
+      // selection bar and a toast's Undo all live outside its box.
       if (target && root.contains(target)) lastUsedTable = root;
-      // Menus, dialogs and toasts the table opened keep it the one in use.
-      else if (!target?.closest?.("[role=menu], [role=dialog], [role=listbox], [data-sonner-toast]"))
-        if (lastUsedTable === root) lastUsedTable = null;
     };
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (lastUsedTable !== root || e.defaultPrevented) return;
@@ -1018,7 +1023,10 @@ function DataTable<TData>({
       cols.map((c) => [c.id, Math.round(c.fixed ? c.width : c.width - (c.width - c.floor) * share)])
     );
   }, []);
-  const pageKey = rows.map((r) => r.id).join(",");
+  // Measured again when the rows change in number, not when they're
+  // sorted, searched or edited: widths that jumped with every keystroke
+  // and every sort would be worse than ones read once.
+  const pageKey = `${table.options.data.length}:${table.getState().pagination.pageSize}`;
   useLayoutEffect(() => {
     if (resizeColumns && seeded) return;
     const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
@@ -1422,6 +1430,7 @@ function DataTable<TData>({
   // The row a right-click opened the menu for.
   const rowMenu = table.getAllLeafColumns().find((c) => c.columnDef.meta?.rowMenu)?.columnDef.meta?.rowMenu;
   const [menuRowId, setMenuRowId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const menuRow = menuRowId ? table.getCoreRowModel().rowsById[menuRowId] : undefined;
 
   const tableEl = (
@@ -1637,7 +1646,7 @@ function DataTable<TData>({
               runStart={row.getIsSelected() && !rows[i - 1]?.getIsSelected()}
               runEnd={row.getIsSelected() && !rows[i + 1]?.getIsSelected()}
               pins={pins}
-              menuOpen={menuRowId === row.id}
+              menuOpen={menuOpen && menuRowId === row.id}
               someSelected={row.getIsSomeSelected()}
               expanded={row.getIsExpanded()}
               expanderId={expanderId}
@@ -1701,7 +1710,9 @@ function DataTable<TData>({
         {rowMenu ? (
           // Right-clicking a row (or Shift + F10 on a focused one) opens
           // its ⋯ menu's items at the pointer. The selection stays as it is.
-          <ContextMenu onOpenChange={(open) => !open && setMenuRowId(null)}>
+          // The row stays named through the menu's exit, so its items don't
+          // empty while it fades; only the row's lit state drops at once.
+          <ContextMenu onOpenChange={setMenuOpen}>
             <ContextMenuTrigger
               className="contents"
               filter={(target) => !!target.closest("tbody tr[data-row-id]")}
@@ -1980,8 +1991,14 @@ function DataTableColumnHeader<TData, TValue>({
         open={menuOpen}
         onOpenChange={(next) => {
           setMenuOpen(next);
-          // Focus returns to the header, not the hidden trigger.
-          if (!next) requestAnimationFrame(() => buttonRef.current?.focus({ preventScroll: true }));
+          // Focus returns to the header rather than the hidden trigger,
+          // unless it already went somewhere (a field, a filter chip).
+          if (!next)
+            requestAnimationFrame(() => {
+              const active = document.activeElement;
+              if (!active || active === document.body || active.getAttribute("aria-hidden") === "true")
+                buttonRef.current?.focus({ preventScroll: true });
+            });
         }}
       >
         <DropdownTrigger
@@ -3788,6 +3805,19 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
     []
   );
 
+  // Back to how the rows were with `count` steps behind them: a toast's
+  // Undo takes back its own step (and anything done since), not whatever
+  // happened last.
+  const undoTo = useCallback(
+    (count: number) =>
+      setState((s) => {
+        if (count >= s.past.length) return s;
+        const undone = s.past.slice(count);
+        return { rows: undone[0].before, past: s.past.slice(0, count), future: [...undone, ...s.future] };
+      }),
+    []
+  );
+
   const redo = useCallback(
     () =>
       setState((s) => {
@@ -3806,7 +3836,10 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
     remove,
     insert,
     undo,
+    undoTo,
     redo,
+    /** Steps taken so far: read it before a change, pass it to undoTo. */
+    stepCount: state.past.length,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
     /** The step undo would take back, for a toast's text. */
@@ -3952,16 +3985,26 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
   const Plus = icons.plus;
   const sizeClasses = useSize(size);
   const compact = sizeClasses.variant === "compact";
-  // The chip just added opens its editor.
-  const [added, setAdded] = useState<string | null>(null);
+  // The chip just added (or asked for again from a header) opens its
+  // editor; the count remounts a chip that's already there.
+  const [added, setAdded] = useState<{ id: string; n: number } | null>(null);
 
   const active = table
     .getState()
     .columnFilters.filter((f) => typeof f.value === "object" && f.value !== null && "kind" in f.value);
+  // Each column's kind, read again only when the data or the columns do.
+  const data = table.options.data;
+  const defs = table.options.columns;
+  const kinds = useMemo(
+    () => new Map(table.getAllLeafColumns().map((c) => [c.id, filterOf(table, c)] as const)),
+    // table is a new view on every state change; the kinds follow data and defs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, defs]
+  );
   const filterable = table
     .getAllLeafColumns()
     .filter((c) => c.accessorFn !== undefined && c.getCanFilter())
-    .map((column) => ({ column, filter: filterOf(table, column) }))
+    .map((column) => ({ column, filter: kinds.get(column.id) ?? filterOf(table, column) }))
     .filter((c): c is { column: Column<TData, unknown>; filter: ResolvedFilter } => c.filter !== null);
   const available = filterable.filter(({ column }) => !active.some((f) => f.id === column.id));
 
@@ -3977,7 +4020,7 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
     openRef.current = (id) => {
       const entry = filterable.find(({ column }) => column.id === id);
       if (!entry) return;
-      setAdded(id);
+      setAdded((old) => ({ id, n: (old?.n ?? 0) + 1 }));
       if (!active.some((f) => f.id === id)) set(entry.column, emptyFilter(entry.filter.type));
     };
   });
@@ -3996,11 +4039,11 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
         if (!entry) return null;
         return (
           <FilterChip
-            key={f.id}
+            key={added?.id === f.id ? `${f.id}:${added.n}` : f.id}
             label={columnLabel(entry.column)}
             filter={entry.filter}
             value={f.value as Exclude<DataTableFilterValue, string>}
-            autoOpen={added === f.id}
+            autoOpen={added?.id === f.id}
             compact={compact}
             size={size}
             onChange={(value) => set(entry.column, value)}
@@ -4025,7 +4068,7 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
                 icon={column.columnDef.meta?.icon}
                 label={columnLabel(column)}
                 onSelect={() => {
-                  setAdded(column.id);
+                  setAdded((old) => ({ id: column.id, n: (old?.n ?? 0) + 1 }));
                   set(column, emptyFilter(filter.type));
                 }}
               />
