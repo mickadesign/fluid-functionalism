@@ -48,6 +48,8 @@ export interface DataTablePlayState {
   filters: boolean;
   /** Sticky edge columns while the table scrolls sideways. */
   pinning: boolean;
+  /** A DataTableTitle heading above the toolbar. */
+  title: boolean;
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -68,6 +70,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   expandable: false,
   filters: false,
   pinning: true,
+  title: true,
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -156,12 +159,20 @@ export const DATA_TABLE_PRESET_FIELDS_D: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
-// Version e adds column filters and sticky edge columns.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version e adds column filters and sticky edge columns. Kept so its
+// codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_E: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_D.slice(0, -3),
   { key: "filters", values: [false, true], bits: 1 },
   { key: "pinning", values: [true, false], bits: 1 },
   ...DATA_TABLE_PRESET_FIELDS_D.slice(-3),
+];
+
+// Version f adds the title heading, on by default.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_E.slice(0, -3),
+  { key: "title", values: [true, false], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_E.slice(-3),
 ];
 
 // ── Registration (tag "t") ──────────────────────────────────────────────────
@@ -170,8 +181,8 @@ export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "e",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "f",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };

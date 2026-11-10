@@ -114,7 +114,16 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"te17Yv"`);
+    expect(code).toMatchInlineSnapshot(`"tf2Dl3"`);
+  });
+
+  // Version "e" codes were published before the title heading.
+  it("a version-e code still decodes", () => {
+    const back = decodeDataTablePreset("te17Yv");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("e");
+    expect(back.preset.filter).toBe("all");
+    expect(back.preset.title).toBe(true);
   });
 
   // Version "d" codes were published before filters and sticky columns.

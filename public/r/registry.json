@@ -2178,7 +2178,8 @@
         "https://www.fluidfunctionalism.com/r/command-menu.json",
         "https://www.fluidfunctionalism.com/r/elevated.json",
         "https://www.fluidfunctionalism.com/r/badge.json",
-        "https://www.fluidfunctionalism.com/r/context-menu.json"
+        "https://www.fluidfunctionalism.com/r/context-menu.json",
+        "https://www.fluidfunctionalism.com/r/use-fluid-hover.json"
       ],
       "files": [
         {

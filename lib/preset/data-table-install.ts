@@ -44,6 +44,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     "useDataTable",
     "DataTable",
     "DataTableColumnHeader",
+    ...(p.title ? ["DataTableTitle"] : []),
     ...(p.filter !== "none" ? ["DataTableSearch"] : []),
     ...(p.filters ? ["DataTableFilters"] : []),
     ...(p.viewMenu ? ["DataTableViewOptions"] : []),
@@ -199,6 +200,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(``);
   l.push(`  return (`);
   l.push(`    <div className="flex w-full flex-col gap-3">`);
+  if (p.title) l.push(`      <DataTableTitle>Components</DataTableTitle>`);
   if (p.filter !== "none" || p.filters || p.viewMenu) {
     l.push(`      <div className="flex flex-wrap items-center gap-2">`);
     if (p.filters) l.push(`        <DataTableFilters table={table} />`);

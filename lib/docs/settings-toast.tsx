@@ -75,6 +75,48 @@ export function showSuccessToast(message: string) {
   });
 }
 
+/** Surface an action that can be taken back (a delete): the same inverted
+ *  shell, the message, and an Undo button. Its own slot, held longer than
+ *  the others so there's time to reach the button. */
+export function showUndoToast(message: string, onUndo: () => void) {
+  toast.custom((id) => <UndoToast message={message} onUndo={() => {
+    onUndo();
+    toast.dismiss(id);
+  }} />, {
+    id: "site-undo",
+    duration: 6000,
+    style: { width: "100%" },
+  });
+}
+
+function UndoToast({ message, onUndo }: { message: string; onUndo: () => void }) {
+  const shapeClasses = useShape();
+  return (
+    <div
+      role="status"
+      className={cn(
+        "mx-auto flex h-9 w-max items-center gap-3 bg-foreground pl-3 pr-1 text-site-body text-background",
+        shapeClasses.bg
+      )}
+      style={{ fontVariationSettings: fontWeights.normal }}
+    >
+      <span className="[text-box:trim-both_cap_alphabetic]">{message}</span>
+      <button
+        type="button"
+        onClick={onUndo}
+        className={cn(
+          "inline-flex h-7 cursor-pointer items-center gap-1.5 px-2 text-background outline-none transition-colors duration-80 hover:bg-background/15 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+          shapeClasses.input
+        )}
+        style={{ fontVariationSettings: fontWeights.semibold }}
+      >
+        Undo
+        <kbd className="font-mono text-site-micro">⌘Z</kbd>
+      </button>
+    </div>
+  );
+}
+
 function SuccessToast({ message }: { message: string }) {
   const shapeClasses = useShape();
   const CheckIcon = useIcon("check");

@@ -3,13 +3,14 @@
 // The DataTable page's capability sections: each one a table built for the
 // thing it shows, on data that suits it, with the code it runs.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   useDataTable,
   DataTable,
   DataTableColumnHeader,
   DataTableSearch,
   DataTableFilters,
+  DataTableTitle,
   DataTableViewOptions,
   useUndoableRows,
   type TableState,
@@ -21,6 +22,8 @@ import {
 } from "@/components/ui/data-table";
 import { MenuItem } from "@/components/ui/menu-item";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsItem } from "@/components/ui/tabs";
+import { showUndoToast } from "@/lib/docs/settings-toast";
 import { Badge } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
 
@@ -61,19 +64,13 @@ export function TeamTable() {
   // toast's Undo does.
   const history = useUndoableRows(MEMBERS, { getId: (m) => m.id });
   const members = history.rows;
-  const [toast, setToast] = useState<string | null>(null);
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 6000);
-    return () => clearTimeout(id);
-  }, [toast]);
   const people = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
   const update = (ids: string[], change: Partial<Member>, label: string) =>
     history.apply(label, (old) => old.map((m) => (ids.includes(m.id) ? { ...m, ...change } : m)));
   const remove = (ids: string[]) => {
     const label = `Removed ${people(ids.length)}`;
     history.remove(ids, label);
-    setToast(label);
+    showUndoToast(label, history.undo);
   };
 
   const columns: ColumnDef<Member>[] = [
@@ -115,7 +112,7 @@ export function TeamTable() {
     rowActionsColumn<Member>((row) => (
       <>
         <MenuItem index={0} label="Make admin" onSelect={() => update([row.original.id], { role: "Admin" }, `Made ${row.original.name} an admin`)} />
-        <MenuItem index={1} label="Remove" onSelect={() => remove([row.original.id])} />
+        <MenuItem index={1} label="Remove" destructive onSelect={() => remove([row.original.id])} />
       </>
     )),
   ];
@@ -124,6 +121,8 @@ export function TeamTable() {
 
   return (
     <div className="flex w-full flex-col gap-3">
+      {/* h3 here: the docs section above is the h2. */}
+      <DataTableTitle as="h3">Team</DataTableTitle>
       <div className="flex flex-wrap items-center gap-2">
         <DataTableFilters table={table} />
         <div className="ml-auto flex items-center gap-1">
@@ -133,31 +132,10 @@ export function TeamTable() {
       </div>
       <DataTable
         table={table}
-        onUndo={() => {
-          history.undo();
-          setToast(null);
-        }}
+        onUndo={history.undo}
         onRedo={history.redo}
       />
       <DataTablePagination table={table} pageSizes={[]} />
-      {/* The toast: what the last removal did, and its way back. */}
-      <div role="status" className="-mt-2 flex h-7 items-center gap-1 pl-2 text-site-caption text-muted-foreground">
-        {toast && (
-          <>
-            {toast}
-            <Button
-              variant="ghost"
-              size="compact"
-              onClick={() => {
-                history.undo();
-                setToast(null);
-              }}
-            >
-              Undo
-            </Button>
-          </>
-        )}
-      </div>
       <DataTableSelectionBar
         table={table}
         actions={(rows) => {
@@ -169,6 +147,7 @@ export function TeamTable() {
               value: "remove",
               label: "Remove from team",
               icon: icons.x,
+              destructive: true,
               onSelect: () => {
                 remove(ids);
                 table.resetRowSelection();
@@ -182,7 +161,7 @@ export function TeamTable() {
 }
 
 export const teamCode = `import {
-  useDataTable, DataTable, DataTableColumnHeader, DataTableSearch, DataTableFilters, DataTableViewOptions,
+  useDataTable, DataTable, DataTableColumnHeader, DataTableTitle, DataTableSearch, DataTableFilters, DataTableViewOptions,
   DataTablePagination, DataTableSelectionBar, selectColumn, rowActionsColumn, useUndoableRows,
   type ColumnDef,
 } from "./components";
@@ -212,13 +191,14 @@ const columns: ColumnDef<Member>[] = [
   rowActionsColumn<Member>((row) => (
     <>
       <MenuItem index={0} label="Make admin" onSelect={() => makeAdmin([row.original.id])} />
-      <MenuItem index={1} label="Remove" onSelect={() => remove([row.original.id])} />
+      <MenuItem index={1} label="Remove" destructive onSelect={() => remove([row.original.id])} />
     </>
   )),
 ];
 
 const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
+<DataTableTitle>Team</DataTableTitle>
 <div className="flex flex-wrap items-center gap-2">
   <DataTableFilters table={table} />
   <div className="ml-auto flex items-center gap-1">
@@ -233,7 +213,7 @@ const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) 
   actions={(rows) => [
     { value: "admin", label: "Make admins", onSelect: () => makeAdmin(rows.map((r) => r.original.id)) },
     { value: "suspend", label: "Suspend", onSelect: () => suspend(rows.map((r) => r.original.id)) },
-    { value: "remove", label: "Remove from team", onSelect: () => remove(rows.map((r) => r.original.id)) },
+    { value: "remove", label: "Remove from team", destructive: true, onSelect: () => remove(rows.map((r) => r.original.id)) },
   ]}
 />`;
 
@@ -310,6 +290,7 @@ export function TasksTable() {
   });
   return (
     <div className="flex w-full flex-col gap-3">
+      <DataTableTitle as="h3">Tasks</DataTableTitle>
       <div className="flex flex-wrap items-center gap-2">
         <DataTableFilters table={table} />
       </div>
@@ -561,18 +542,19 @@ export function ViewsTable() {
   };
   return (
     <div className="flex w-full flex-col gap-3">
+      <DataTableTitle as="h3">People</DataTableTitle>
       <div className="flex flex-wrap items-center gap-1">
-        {views.map((view) => (
-          <Button
-            key={view.name}
-            variant={current === view.name ? "secondary" : "ghost"}
-            size="compact"
-            aria-pressed={current === view.name}
-            onClick={() => pick(view)}
-          >
-            {view.name}
-          </Button>
-        ))}
+        {/* The views as subtle tabs: one gliding hover, the open view's pill. */}
+        <Tabs
+          size="compact"
+          selectedIndex={Math.max(0, views.findIndex((v) => v.name === current))}
+          onSelect={(i) => pick(views[i])}
+          aria-label="Views"
+        >
+          {views.map((view, i) => (
+            <TabsItem key={view.name} index={i} label={view.name} />
+          ))}
+        </Tabs>
         <Button variant="ghost" size="compact" onClick={save} className="ml-auto">
           Save view
         </Button>
@@ -585,7 +567,7 @@ export function ViewsTable() {
   );
 }
 
-export const viewsCode = `import { useDataTable, DataTable, DataTableFilters, type TableState } from "./components";
+export const viewsCode = `import { useDataTable, DataTable, DataTableFilters, Tabs, TabsItem, type TableState } from "./components";
 
 // A view is the table's state, named: filters, sort, visible columns.
 // Keep views wherever your app keeps settings (the URL, localStorage, your
@@ -602,10 +584,10 @@ const saveView = (name: string) => {
 const openView = (view: View) =>
   table.setState((old) => ({ ...old, ...view.state, pagination: { ...old.pagination, pageIndex: 0 } }));
 
-{views.map((view) => (
-  <Button key={view.name} variant="ghost" size="compact" onClick={() => openView(view)}>
-    {view.name}
-  </Button>
-))}
+<Tabs size="compact" selectedIndex={views.indexOf(current)} onSelect={(i) => openView(views[i])}>
+  {views.map((view, i) => (
+    <TabsItem key={view.name} index={i} label={view.name} />
+  ))}
+</Tabs>
 <DataTableFilters table={table} />
 <DataTable table={table} />`;

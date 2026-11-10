@@ -2178,7 +2178,8 @@
         "command-menu",
         "elevated",
         "badge",
-        "context-menu"
+        "context-menu",
+        "use-fluid-hover"
       ],
       "files": [
         {

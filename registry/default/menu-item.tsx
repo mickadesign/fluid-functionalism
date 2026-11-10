@@ -138,6 +138,9 @@ export interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   /** Content before the icon, e.g. a drag handle. Its clicks are its own:
    *  they don't activate the item. */
   leading?: ReactNode;
+  /** An action that destroys something (Delete): the label and icon read
+   *  in the destructive color. */
+  destructive?: boolean;
 }
 
 const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
@@ -151,6 +154,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
       disabled,
       closeOnClick,
       leading,
+      destructive = false,
       className,
       onClick,
       ...props
@@ -217,9 +221,13 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
               strokeWidth={isActive || checked ? 2 : 1.5}
               className={cn(
                 "col-start-1 row-start-1 transition-[color,stroke-width] duration-80",
-                isActive || checked
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                destructive
+                  ? isActive
+                    ? "text-destructive"
+                    : "text-destructive/80"
+                  : isActive || checked
+                    ? "text-foreground"
+                    : "text-muted-foreground"
               )}
             />
           </span>
@@ -241,9 +249,13 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           <span
             className={cn(
               "col-start-1 row-start-1 truncate pt-[0.25em] -mt-[0.25em] pb-[0.25em] -mb-[0.25em] transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
-              isActive || checked
-                ? "text-foreground"
-                : "text-muted-foreground"
+              destructive
+                ? isActive
+                  ? "text-destructive"
+                  : "text-destructive/80"
+                : isActive || checked
+                  ? "text-foreground"
+                  : "text-muted-foreground"
             )}
             style={{
               fontVariationSettings: checked

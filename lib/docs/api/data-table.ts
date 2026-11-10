@@ -59,6 +59,12 @@ export const undoableRowsProps: PropDef[] = [
   { name: "→ lastStep", type: "string | undefined", description: "The label of the step undo would take back." },
 ];
 
+export const titleProps: PropDef[] = [
+  { name: "children", type: "ReactNode", description: "The table's name, above its toolbar: the type scale's title role, semibold. Optional." },
+  { name: "as", type: '"h1" | "h2" | "h3"', default: '"h2"', description: "The heading level. Use h3 under a section that already has an h2." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the heading to one size step." },
+];
+
 export const filtersProps: PropDef[] = [
   { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. A Filter button lists the columns to filter; each filter is a chip with its value and a × to remove it." },
   { name: "size", type: '"default" | "compact"', description: "Pins the button and chips to one size step." },
@@ -104,6 +110,7 @@ export const apiReference: ApiTable[] = [
   { title: "DataTable", props: dataTableProps },
   { title: "Column meta", props: columnMetaProps },
   { title: "DataTableColumnHeader", props: columnHeaderProps },
+  { title: "DataTableTitle", props: titleProps },
   { title: "DataTableSearch", props: searchProps },
   { title: "DataTableFilters", props: filtersProps },
   { title: "useUndoableRows", props: undoableRowsProps },

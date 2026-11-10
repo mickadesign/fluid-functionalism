@@ -52,7 +52,7 @@ import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
-import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
+import { SizeProvider, typeClass, useSize, type SizeVariant } from "@/lib/size-context";
 import {
   Table,
   TableBody,
@@ -73,6 +73,8 @@ import {
   DropdownTrigger,
 } from "@/components/ui/dropdown";
 import { MenuItem } from "@/components/ui/menu-item";
+import { useFluidHover } from "@/hooks/use-fluid-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
@@ -271,6 +273,8 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // can hand focus to the rows.
   const focusRef = useRef<() => boolean>(() => false);
   const rootRef = useRef<() => HTMLElement | null>(() => null);
+  // DataTableFilters installs this, so a header's menu can add a filter.
+  const filterRef = useRef<((id: string) => void) | null>(null);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -287,6 +291,15 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           rootRef.current = get;
         },
         getRootElement: () => rootRef.current(),
+        _registerFilters: (open: ((id: string) => void) | null) => {
+          filterRef.current = open;
+        },
+        openFilter: (id: string) => {
+          if (!filterRef.current) return false;
+          filterRef.current(id);
+          return true;
+        },
+        canOpenFilter: () => !!filterRef.current,
         setColumnLines: (id: string, lines: ColumnLines | undefined) => {
           captureRef.current();
           setLines((old) => {
@@ -324,6 +337,13 @@ interface DataTableExtras {
   _registerRoot: (get: () => HTMLElement | null) => void;
   /** Overrides a column's `meta.lines`; `undefined` hands it back. */
   setColumnLines: (id: string, lines: ColumnLines | undefined) => void;
+  /** Adds a filter on the column through DataTableFilters, its chip open.
+   *  False when no DataTableFilters is mounted. */
+  openFilter: (id: string) => boolean;
+  /** Whether a DataTableFilters is mounted to add filters. */
+  canOpenFilter: () => boolean;
+  /** @internal DataTableFilters installs openFilter here. */
+  _registerFilters: (open: ((id: string) => void) | null) => void;
 }
 
 type DataTableInstance<TData> = TanStackTable<TData> & DataTableExtras;
@@ -510,6 +530,15 @@ function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number |
 // text wraps or cuts short rather than crowd the columns beside it.
 const NATURAL_CAP = 240;
 
+/** What a header's menu acts on: the table, and whether its columns move. */
+const HeaderMenuContext = createContext<{
+  table: TanStackTable<unknown>;
+  reorder: boolean;
+} | null>(null);
+
+// The table last clicked or focused, for the page-level undo keys.
+let lastUsedTable: HTMLElement | null = null;
+
 /** Data columns (with an accessor) move; selection and action columns hold
  *  their place at the ends, and pinned columns at theirs. */
 const canReorder = <TData,>(column: Column<TData, unknown>) =>
@@ -677,6 +706,51 @@ function DataTable<TData>({
     snapshot.current = { lefts, tops, height: wrap.offsetHeight };
   };
   // Parts outside the table (the Columns menu) reach it through the table.
+  // Undo keys from the page too: a row menu, the selection bar or a toast
+  // can hand focus back to the page after an action, and ⌘Z should still
+  // take it back. Only the table used last answers, and only while nothing
+  // else holds focus (a field keeps its own undo).
+  const undoRef = useRef({ onUndo, onRedo });
+  useLayoutEffect(() => {
+    undoRef.current = { onUndo, onRedo };
+  });
+  const hasUndo = !!(onUndo || onRedo);
+  useEffect(() => {
+    const root = wrapEl;
+    if (!hasUndo || !root) return;
+    const use = (e: Event) => {
+      const target = e.target as Element | null;
+      if (target && root.contains(target)) lastUsedTable = root;
+      // Menus, dialogs and toasts the table opened keep it the one in use.
+      else if (!target?.closest?.("[role=menu], [role=dialog], [role=listbox], [data-sonner-toast]"))
+        if (lastUsedTable === root) lastUsedTable = null;
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (lastUsedTable !== root || e.defaultPrevented) return;
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.altKey) return;
+      const letter = e.key.toLowerCase();
+      const { onUndo: undo, onRedo: redo } = undoRef.current;
+      if (((letter === "z" && e.shiftKey) || (letter === "y" && e.ctrlKey && !e.metaKey)) && redo) {
+        e.preventDefault();
+        redo();
+      } else if (letter === "z" && !e.shiftKey && undo) {
+        e.preventDefault();
+        undo();
+      }
+    };
+    document.addEventListener("pointerdown", use, true);
+    document.addEventListener("focusin", use, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", use, true);
+      document.removeEventListener("focusin", use, true);
+      document.removeEventListener("keydown", onKey);
+      if (lastUsedTable === root) lastUsedTable = null;
+    };
+  }, [hasUndo, wrapEl]);
+
   // Filled, the header's hairline shows once the rows have scrolled: the
   // viewport marks the root, without a re-render on every scroll.
   useEffect(() => {
@@ -1341,6 +1415,10 @@ function DataTable<TData>({
     ? visible.find((c) => c.accessorFn !== undefined)?.id
     : undefined;
 
+  const headerMenu = useMemo(
+    () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns }),
+    [table, reorderColumns]
+  );
   // The row a right-click opened the menu for.
   const rowMenu = table.getAllLeafColumns().find((c) => c.columnDef.meta?.rowMenu)?.columnDef.meta?.rowMenu;
   const [menuRowId, setMenuRowId] = useState<string | null>(null);
@@ -1384,6 +1462,7 @@ function DataTable<TData>({
           : undefined
       }
     >
+      <HeaderMenuContext.Provider value={headerMenu}>
       <TableHeader>
         {table.getHeaderGroups().map((group) => (
           // Sticky header rows ride above the body rows (both z-10 by
@@ -1522,6 +1601,7 @@ function DataTable<TData>({
           </TableRow>
         ))}
       </TableHeader>
+      </HeaderMenuContext.Provider>
       <TableBody>
         {loading ? (
           // Loading: a page of rows the real rows' size, each cell holding a
@@ -1753,9 +1833,10 @@ const HIDDEN = { opacity: 0, scale: 0.6, filter: "blur(4px)" };
 const enter = { type: "tween" as const, duration: spring.fast.duration, ease: "easeOut" as const };
 const leave = { type: "tween" as const, ...spring.fast.exit, ease: "easeIn" as const };
 
-/** A header that sorts its column: click for ascending, again for
- *  descending, a third time to clear. Shift-click adds a column to the
- *  sort. Columns that can't sort render the title alone. */
+/** A column's header: its title, and a menu on click with what the column
+ *  can do (sort either way, add a filter, move left or right, freeze the
+ *  columns up to it). Shift-click still adds the column to the sort.
+ *  Columns that can do none of it render the title alone. */
 function DataTableColumnHeader<TData, TValue>({
   column,
   title,
@@ -1765,59 +1846,168 @@ function DataTableColumnHeader<TData, TValue>({
   const icons = useIcons();
   const Unsorted = icons["chevrons-up-down"];
   const Arrow = icons["arrow-up"];
+  const ctx = useContext(HeaderMenuContext);
+  const table = ctx?.table as TanStackTable<TData> | undefined;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const icon = column.columnDef.meta?.icon;
-  if (!column.getCanSort())
+  const col = column as unknown as Column<TData, unknown>;
+  const canSort = column.getCanSort();
+  const canFilter = !!table && (table as Partial<DataTableExtras>).canOpenFilter?.() && column.getCanFilter();
+  // Moving follows the table's reorderColumns; the neighbors are the
+  // visible columns that move too.
+  const movable = !!table && !!ctx?.reorder && canReorder(col);
+  const order = movable ? table!.getVisibleLeafColumns().filter(canReorder).map((c) => c.id) : [];
+  const at = order.indexOf(column.id);
+  const canPin = !!table && column.getCanPin() && column.getIsPinned() !== "right";
+  const leftPins = table?.getState().columnPinning.left ?? [];
+  const frozenHere = leftPins[leftPins.length - 1] === column.id;
+  const hasMenu = !!table && (canSort || canFilter || movable || canPin);
+
+  const sorted = column.getIsSorted();
+  const label = (
+    <>
+      {icon && <Icon14 icon={icon} />}
+      {title}
+    </>
+  );
+  if (!hasMenu && !canSort)
     return (
       <span className={className}>
         <HeaderLabel icon={icon} title={title} />
       </span>
     );
 
-  const sorted = column.getIsSorted();
+  const move = (place: "before" | "after") => {
+    const refId = order[place === "before" ? at - 1 : at + 1];
+    if (!table || !refId) return;
+    (table as Partial<DataTableExtras>).captureLayout?.();
+    moveColumn(table, column.id, refId, place);
+  };
+  const freeze = () => {
+    if (!table) return;
+    (table as Partial<DataTableExtras>).captureLayout?.();
+    if (frozenHere) {
+      // Unfreeze: the selection boxes stay put, the rest scroll.
+      table.setColumnPinning((old) => ({ ...old, left: old.left?.includes("select") && column.id !== "select" ? ["select"] : [] }));
+      return;
+    }
+    const right = new Set(table.getState().columnPinning.right ?? []);
+    const ids = table.getVisibleLeafColumns().map((c) => c.id).filter((id) => !right.has(id));
+    table.setColumnPinning((old) => ({ ...old, left: ids.slice(0, ids.indexOf(column.id) + 1) }));
+  };
 
-  return (
+  const items: { label: string; icon?: IconComponent; onSelect: () => void; disabled?: boolean }[] = [];
+  if (canSort) {
+    items.push(
+      { label: "Sort ascending", icon: icons["arrow-up"], onSelect: () => column.toggleSorting(false) },
+      { label: "Sort descending", icon: icons["arrow-down"], onSelect: () => column.toggleSorting(true) }
+    );
+    if (sorted) items.push({ label: "Clear sort", icon: icons.x, onSelect: () => column.clearSorting() });
+  }
+  if (canFilter) items.push({ label: "Filter", icon: icons.search, onSelect: () => (table as Partial<DataTableExtras>).openFilter?.(column.id) });
+  if (movable) {
+    items.push(
+      { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0 },
+      { label: "Move right", icon: icons["arrow-right"], onSelect: () => move("after"), disabled: at === -1 || at >= order.length - 1 }
+    );
+  }
+  if (canPin) items.push({ label: frozenHere ? "Unfreeze columns" : "Freeze up to here", icon: icons["panel-left"], onSelect: freeze });
+
+  const button = (
     <button
+      ref={buttonRef}
       type="button"
-      onClick={column.getToggleSortingHandler()}
+      aria-haspopup={hasMenu ? "menu" : undefined}
+      aria-expanded={hasMenu ? menuOpen : undefined}
+      onClick={(e) => {
+        // Shift-click adds the column to the sort, as before; a plain click
+        // opens the column's menu.
+        if (e.shiftKey && canSort) column.toggleSorting(undefined, true);
+        else if (hasMenu) setMenuOpen(true);
+        else column.toggleSorting();
+      }}
       className={cn(
         "group/sort inline-flex cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
         // The sorted column reads at full contrast, its icon and label with
         // the arrow, so the sort shows from across the table.
-        sorted && "text-foreground",
+        (sorted || menuOpen) && "text-foreground",
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
     >
-      {icon && <Icon14 icon={icon} />}
-      {title}
-      {/* One 14px cell for both glyphs, so the label never shifts. The arrow
-          turns over for descending instead of swapping glyphs. */}
-      <span
-        aria-hidden
-        className={cn(
-          "grid size-3.5 shrink-0 transition-colors duration-80",
-          sorted ? "text-foreground" : "text-muted-foreground group-hover/sort:text-foreground"
-        )}
-      >
-        <motion.span
-          className="col-start-1 row-start-1 flex"
-          initial={false}
-          animate={sorted ? HIDDEN : SHOWN}
-          transition={sorted ? leave : enter}
+      {label}
+      {canSort && (
+        // One 14px cell for both glyphs, so the label never shifts. The
+        // arrow turns over for descending instead of swapping glyphs.
+        <span
+          aria-hidden
+          className={cn(
+            "grid size-3.5 shrink-0 transition-colors duration-80",
+            sorted ? "text-foreground" : "text-muted-foreground group-hover/sort:text-foreground"
+          )}
         >
-          <Unsorted size={14} />
-        </motion.span>
-        <motion.span
-          className="col-start-1 row-start-1 flex"
-          initial={false}
-          animate={sorted ? { ...SHOWN, rotate: sorted === "desc" ? 180 : 0 } : { ...HIDDEN, rotate: 0 }}
-          transition={sorted ? { ...enter, rotate: spring.moderate } : leave}
-        >
-          <Arrow size={14} />
-        </motion.span>
-      </span>
+          <motion.span
+            className="col-start-1 row-start-1 flex"
+            initial={false}
+            animate={sorted ? HIDDEN : SHOWN}
+            transition={sorted ? leave : enter}
+          >
+            <Unsorted size={14} />
+          </motion.span>
+          <motion.span
+            className="col-start-1 row-start-1 flex"
+            initial={false}
+            animate={sorted ? { ...SHOWN, rotate: sorted === "desc" ? 180 : 0 } : { ...HIDDEN, rotate: 0 }}
+            transition={sorted ? { ...enter, rotate: spring.moderate } : leave}
+          >
+            <Arrow size={14} />
+          </motion.span>
+        </span>
+      )}
     </button>
+  );
+  if (!hasMenu) return button;
+
+  return (
+    <>
+      {button}
+      {/* The menu opens from the whole header cell: a hidden trigger over
+          it that never takes the pointer, so a press can still start a
+          column drag and only a click opens the menu. */}
+      <DropdownMenu
+        open={menuOpen}
+        onOpenChange={(next) => {
+          setMenuOpen(next);
+          // Focus returns to the header, not the hidden trigger.
+          if (!next) requestAnimationFrame(() => buttonRef.current?.focus({ preventScroll: true }));
+        }}
+      >
+        <DropdownTrigger
+          render={
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-0"
+            />
+          }
+        />
+        <DropdownContent align="start" sideOffset={2} className="w-52">
+          {items.map((item, i) => (
+            <MenuItem
+              key={item.label}
+              index={i}
+              icon={item.icon}
+              label={item.label}
+              disabled={item.disabled}
+              onSelect={item.onSelect}
+            />
+          ))}
+        </DropdownContent>
+      </DropdownMenu>
+    </>
   );
 }
 
@@ -3624,6 +3814,29 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
   };
 }
 
+// ── DataTableTitle ───────────────────────────────────────
+
+interface DataTableTitleProps extends HTMLAttributes<HTMLHeadingElement> {
+  /** The heading level. @default "h2" */
+  as?: "h1" | "h2" | "h3";
+  size?: SizeVariant;
+}
+
+/** The table's heading, above its toolbar: the title role of the type
+ *  scale, semibold, as Dialog's title. Optional; give the table a name
+ *  when the page doesn't already. */
+function DataTableTitle({ as: Tag = "h2", size, className, style, ...props }: DataTableTitleProps) {
+  const compact = useSize(size).variant === "compact";
+  return (
+    <Tag
+      data-slot="data-table-title"
+      className={cn(typeClass("title", compact ? "compact" : "default"), "text-foreground", className)}
+      style={{ fontVariationSettings: fontWeights.semibold, ...style }}
+      {...props}
+    />
+  );
+}
+
 // ── DataTableFilters ─────────────────────────────────────
 
 /** A day as "YYYY-MM-DD", from a Date (its local day) or a string that
@@ -3757,6 +3970,23 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
     table.setPageIndex(0);
   };
 
+  // A header's menu adds a filter here: its chip opens (one already set
+  // just opens again).
+  const openRef = useRef<(id: string) => void>(() => {});
+  useLayoutEffect(() => {
+    openRef.current = (id) => {
+      const entry = filterable.find(({ column }) => column.id === id);
+      if (!entry) return;
+      setAdded(id);
+      if (!active.some((f) => f.id === id)) set(entry.column, emptyFilter(entry.filter.type));
+    };
+  });
+  const register = (table as Partial<DataTableExtras>)._registerFilters;
+  useEffect(() => {
+    register?.((id) => openRef.current(id));
+    return () => register?.(null);
+  }, [register]);
+
   return (
     // display: contents, so the chips and the button join the toolbar's
     // own row and wrap with it (give the toolbar flex-wrap).
@@ -3830,6 +4060,21 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const shape = useShape();
   const sizeClasses = useSize(size);
   const [open, setOpen] = useState(autoOpen);
+  // The DatePicker field's recipe: a hairline box, its parts 2px inside
+  // with corners nested in its radius (8 - 3 = 5px, 20 - 3 = 17px), and one
+  // fluid hover gliding between the filter and its ×.
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const hover = useFluidHover(boxRef, { axis: "x", gapClick: false });
+  const { registerItem } = hover;
+  const mainRef = useCallback((el: HTMLElement | null) => registerItem(0, el), [registerItem]);
+  const clearRef = useCallback((el: HTMLElement | null) => registerItem(1, el), [registerItem]);
+  const innerRadius = { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[shape.variant];
+  const segment = cn(
+    "relative z-[1] inline-flex h-full min-w-0 items-center gap-1 outline-none",
+    compact ? "px-1.5" : "px-2",
+    "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+    innerRadius
+  );
 
   let op: string;
   let control: ReactNode;
@@ -3910,12 +4155,15 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
         <DropdownTrigger
           render={
             <button
+              ref={mainRef}
               type="button"
-              aria-label={`${label}: ${picked.length ? picked.map((o) => o.label).join(", ") : "any"}`}
-              className="max-w-48 truncate text-left text-foreground outline-none data-[placeholder]:text-muted-foreground"
-              data-placeholder={picked.length ? undefined : ""}
+              aria-label={`${label} ${op} ${picked.length ? picked.map((o) => o.label).join(", ") : "any"}`}
+              className={cn(segment, "max-w-72 cursor-pointer")}
             >
-              {picked.length ? picked.map((o) => o.label).join(", ") : "any"}
+              <Phrase label={label} op={op} />
+              <span className={cn("truncate", picked.length ? "text-foreground" : "text-muted-foreground")}>
+                {picked.length ? picked.map((o) => o.label).join(", ") : "any"}
+              </span>
             </button>
           }
         />
@@ -3939,27 +4187,56 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
 
   return (
     <span
+      ref={boxRef}
       data-slot="data-table-filter"
       className={cn(
-        "inline-flex items-center gap-1 border border-border pl-2.5 text-muted-foreground transition-colors duration-80",
+        "relative inline-flex max-w-full items-center border border-border p-0.5 text-muted-foreground transition-colors duration-80",
         "focus-within:border-foreground/25",
-        compact ? "h-7 pl-2" : "h-9",
+        sizeClasses.control,
         sizeClasses.text,
-        shape.bg
+        shape.input
       )}
+      {...hover.handlers}
     >
-      <span className="text-foreground">{label}</span>
-      <span>{op}</span>
-      {control}
-      <Button
-        variant="ghost"
-        size={compact ? "icon-compact" : "icon"}
+      <FluidHoverHighlight hover={hover} className={cn("z-0", innerRadius)} />
+      {value.kind === "options" ? (
+        control
+      ) : value.kind === "date" ? (
+        // The DatePicker brings its own hover over its dates.
+        <span className={cn(segment, "pr-0")}>
+          <Phrase label={label} op={op} />
+          {control}
+        </span>
+      ) : (
+        // The phrase is the fields' label: a click anywhere in it types.
+        <label ref={mainRef} className={cn(segment, "cursor-text")}>
+          <Phrase label={label} op={op} />
+          {control}
+        </label>
+      )}
+      <button
+        ref={clearRef}
+        type="button"
         aria-label={`Remove the ${label} filter`}
         onClick={onRemove}
-        className="-ml-0.5 scale-[0.78]"
+        className={cn(
+          "relative z-[1] inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
+          "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+          compact ? "w-6" : "w-7",
+          innerRadius
+        )}
       >
-        <X />
-      </Button>
+        <X size={sizeClasses.icon} strokeWidth={1.5} />
+      </button>
+    </span>
+  );
+}
+
+/** "Status is": the column in the foreground, what it matches muted. */
+function Phrase({ label, op }: { label: string; op: string }) {
+  return (
+    <span className="shrink-0 whitespace-nowrap">
+      <span className="text-foreground">{label}</span> {op}
     </span>
   );
 }
@@ -4582,6 +4859,7 @@ export {
   useDataTable,
   DataTable,
   DataTableColumnHeader,
+  DataTableTitle,
   DataTableSearch,
   DataTableFilters,
   DataTableViewOptions,
@@ -4603,6 +4881,7 @@ export type {
   DataTableProps,
   DataTableEmpty,
   DataTableColumnHeaderProps,
+  DataTableTitleProps,
   DataTableSearchProps,
   DataTableFiltersProps,
   UseUndoableRowsOptions,

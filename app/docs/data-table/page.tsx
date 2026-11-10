@@ -158,8 +158,9 @@ export default function DataTableDoc() {
 
       <DocSection title="Sorting">
         <p className="text-site-body text-muted-foreground">
-          A column header sorts ascending, then descending, then clears. Shift-click a second header
-          to sort by both. The arrow turns over instead of swapping.
+          Click a column header for its menu: sort either way, add a filter, move the column, or
+          freeze the columns up to it. Shift-click a second header to sort by both. The arrow turns
+          over instead of swapping.
         </p>
         <ComponentPreview code={sortCode}>
           <div className="w-full">

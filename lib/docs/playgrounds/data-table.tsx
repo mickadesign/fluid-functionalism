@@ -5,6 +5,7 @@ import {
   useDataTable,
   DataTable,
   DataTableColumnHeader,
+  DataTableTitle,
   DataTableSearch,
   DataTableFilters,
   DataTableViewOptions,
@@ -17,6 +18,7 @@ import {
 } from "@/registry/default/data-table";
 import type { Row } from "@tanstack/react-table";
 import { MenuItem } from "@/registry/default/menu-item";
+import { showUndoToast } from "@/lib/docs/settings-toast";
 import { Badge } from "@/registry/default/badge";
 import { Switch } from "@/registry/radix/switch";
 import {
@@ -311,7 +313,7 @@ function buildColumns(o: {
                   )
                 }
               />
-              <MenuItem index={2} label="Delete" onSelect={() => o.onDelete(row.original)} />
+              <MenuItem index={2} label="Delete" destructive onSelect={() => o.onDelete(row.original)} />
             </>
           )),
         ]
@@ -354,6 +356,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     "useDataTable",
     "DataTable",
     "DataTableColumnHeader",
+    ...(o.title ? ["DataTableTitle"] : []),
     ...(o.filter !== "none" ? ["DataTableSearch"] : []),
     ...(o.filters ? ["DataTableFilters"] : []),
     ...(o.viewMenu ? ["DataTableViewOptions"] : []),
@@ -462,6 +465,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `});`,
     ``,
     `<div className="flex flex-col gap-3">`,
+    ...(o.title ? [`  <DataTableTitle>Components</DataTableTitle>`] : []),
     ...(toolbar
       ? [
           `  <div className="flex flex-wrap items-center gap-2">`,
@@ -509,6 +513,7 @@ function selectionActions(rows: Row<ComponentRow>[], icons: Icons, onDelete: (ro
       value: "delete",
       label: rows.length === 1 ? "Delete" : `Delete ${rows.length} rows`,
       icon: icons.x,
+      destructive: true,
       onSelect: () => onDelete(rows),
     },
     {
@@ -552,10 +557,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // is saved: a refresh brings every row back.
   const history = useUndoableRows(buildRows, { getId: (r) => r.slug });
   const data = history.rows;
-  const { apply: applyStep } = history;
+  const { apply: applyStep, undo: undoStep } = history;
+  // A delete says what went, with its way back.
   const deleteRows = useCallback(
-    (slugs: string[], label: string) => applyStep(label, (old) => removeRows(old, slugs)),
-    [applyStep]
+    (slugs: string[], label: string) => {
+      applyStep(label, (old) => removeRows(old, slugs));
+      showUndoToast(label, undoStep);
+    },
+    [applyStep, undoStep]
   );
   // Sub-rows on, the rows carry their parts; off, they're left out (a new
   // array, so the table builds its rows again).
@@ -651,6 +660,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       expandable: Math.random() > 0.5,
       filters: Math.random() > 0.5,
       pinning: Math.random() > 0.3,
+      title: Math.random() > 0.3,
     });
 
   const toolbar = (state.filter !== "none" || state.filters || state.viewMenu) && (
@@ -674,6 +684,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
 
   const body = (
     <div className={cn("flex w-full flex-col gap-3", expanded && "h-full")}>
+      {state.title && <DataTableTitle>Components</DataTableTitle>}
       {toolbar}
       <DataTable
         table={table}
@@ -720,6 +731,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const controls = useMemo(
     () => (
       <PlaygroundPanel onShuffle={randomize}>
+        <Switch
+          label="Title"
+          checked={state.title}
+          onToggle={() => set("title", !state.title)}
+          className={PLAY_SWITCH}
+        />
         <PlayField label="Search">
           <PlaySelect
             value={state.filter}

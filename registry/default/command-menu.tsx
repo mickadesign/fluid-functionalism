@@ -87,6 +87,9 @@ export interface CommandMenuItemData {
    *  item appears in; ungrouped items form an unlabelled section. */
   group?: string;
   disabled?: boolean;
+  /** An action that destroys something (Delete): the row reads in the
+   *  destructive color. */
+  destructive?: boolean;
   /** Runs when the row is picked, before the root's `onSelect`. */
   onSelect?: () => void;
 }
@@ -1329,7 +1332,13 @@ const CommandMenuItem = memo(forwardRef<HTMLDivElement, CommandMenuItemProps>(
           sizeClasses.text,
           listShape.item,
           "transition-[color] duration-80",
-          isActive ? "text-foreground" : "text-muted-foreground",
+          item.destructive
+            ? isActive
+              ? "text-destructive"
+              : "text-destructive/80"
+            : isActive
+              ? "text-foreground"
+              : "text-muted-foreground",
           item.disabled && "opacity-50 pointer-events-none",
           className
         )}
