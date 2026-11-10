@@ -388,7 +388,6 @@ interface CommandMenuContextValue {
   itemsByValue: Map<string, CommandMenuItemData>;
   listId: string;
   listRef: RefObject<HTMLDivElement | null>;
-  inputRef: RefObject<HTMLInputElement | null>;
   /** The fluid hover hook's stable parts. The changing parts (the index,
    *  the rects) travel through `highlight` and CommandMenuFillContext so
    *  this value holds still while the pointer moves. */
@@ -487,7 +486,6 @@ const CommandMenu = forwardRef<HTMLDivElement, CommandMenuProps>(
   ) => {
     const listId = useId();
     const listRef = useRef<HTMLDivElement | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
     const dialog = useContext(CommandMenuDialogContext);
     const tabsRef = useRef<CommandMenuTabsHandle | null>(null);
     const [tabsMounted, setTabsMounted] = useState(false);
@@ -666,7 +664,6 @@ const CommandMenu = forwardRef<HTMLDivElement, CommandMenuProps>(
         itemsByValue,
         listId,
         listRef,
-        inputRef,
         registerItem,
         setActiveIndex,
         listHandlers,
@@ -767,8 +764,7 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
     const Icon = icon === undefined ? SearchIcon : icon;
     const sizeClasses = useSize();
     const compact = sizeClasses.variant === "compact";
-    const { query, setQuery, rows, listId, inputRef, highlight, select, move, tabsRef } =
-      useCommandMenu();
+    const { query, setQuery, rows, listId, highlight, select, move, tabsRef } = useCommandMenu();
     const activeIndex = useSyncExternalStore(highlight.subscribe, highlight.get, () => null);
     const dialog = useContext(CommandMenuDialogContext);
 
@@ -855,11 +851,7 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
           />
         )}
         <input
-          ref={(node) => {
-            inputRef.current = node;
-            if (typeof ref === "function") ref(node);
-            else if (ref) ref.current = node;
-          }}
+          ref={ref}
           type="text"
           role="combobox"
           aria-expanded

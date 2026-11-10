@@ -48,9 +48,6 @@ interface ComponentPreviewProps {
   /** Show the Inspect toggle (pixel rulers + box-model inspector). Defaults to
    *  true; set false for previews where an overlay would get in the way. */
   inspectable?: boolean;
-  /** Start with Inspect already on — for previews whose subject IS the
-   *  geometry. The toggle still works. */
-  defaultInspect?: boolean;
   /** Draw the inspector's top/left pixel rulers. Defaults to true; set false
    *  for full-width/full-height demos where the rulers would overlap (or be
    *  masked by) the component's own chrome — the crosshair, box model, and
@@ -74,14 +71,13 @@ export function ComponentPreview({
   minHeightClass = "min-h-[120px]",
   align = "center",
   inspectable = true,
-  defaultInspect = false,
   inspectRulers = true,
   hideHeader = false,
   caption,
   children,
 }: ComponentPreviewProps) {
   const [tab, setTab] = useState(0);
-  const [inspect, setInspect] = useState(defaultInspect);
+  const [inspect, setInspect] = useState(false);
   // The highlighted sample, keyed by the code it came from so a changed
   // sample never shows the previous one's colors.
   const [highlighted, setHighlighted] = useState<{ code: string; html: string } | null>(null);

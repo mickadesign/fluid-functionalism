@@ -231,16 +231,18 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
 
     const handleSingleValueChange = useCallback(
       (value: string) => {
-        if (singleOnValueChange) singleOnValueChange(value);
-        else setInternalSingleValue(value);
+        // Uncontrolled with a listener still opens and closes: the internal
+        // value only shows while `value` is unset.
+        setInternalSingleValue(value);
+        singleOnValueChange?.(value);
       },
       [singleOnValueChange]
     );
 
     const handleMultipleValueChange = useCallback(
       (value: string[]) => {
-        if (multipleOnValueChange) multipleOnValueChange(value);
-        else setInternalMultipleValue(value);
+        setInternalMultipleValue(value);
+        multipleOnValueChange?.(value);
       },
       [multipleOnValueChange]
     );
@@ -552,16 +554,18 @@ const Accordion = forwardRef<HTMLDivElement, AccordionProps>(
 
     const handleSingleChange = useCallback(
       (v: string) => {
-        if (onValueChange) (onValueChange as (v: string) => void)(v);
-        else setInternalSingleValue(v);
+        // Uncontrolled with a listener still opens and closes: the internal
+        // value only shows while `value` is unset.
+        setInternalSingleValue(v);
+        (onValueChange as ((v: string) => void) | undefined)?.(v);
       },
       [onValueChange]
     );
 
     const handleMultipleChange = useCallback(
       (v: string[]) => {
-        if (onValueChange) (onValueChange as (v: string[]) => void)(v);
-        else setInternalMultipleValue(v);
+        setInternalMultipleValue(v);
+        (onValueChange as ((v: string[]) => void) | undefined)?.(v);
       },
       [onValueChange]
     );

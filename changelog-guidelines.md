@@ -55,7 +55,7 @@ Rules of thumb:
 - Internal tooling: `evals/`, `tests/`, `scripts/`, CI, git hooks, lint rules
   that only guard this repo.
 - `README.md`, the `*-guidelines.md` files, `tone-of-voice.md`, memory notes.
-- Hidden or unlisted pages: `/demo`, `/concepts`, `/stars`, `/500stars`,
+- Hidden or unlisted pages: `/demo`, `/concepts`, `/stars`,
   `/compare-bases`, `/slider`, `/table`.
 - Site chrome: the sidebar and its dots, the "Make them yours" panel, shortcut
   toasts, Showcase tiles, the 404 page, metadata, OG images, favicons,

@@ -119,9 +119,6 @@ export const SELECT_ROLES = ["Owner", "Editor", "Viewer", "Guest"] as const;
 export const SELECT_DEFAULT = "Viewer";
 
 
-
-export const SIDEBAR_GROUP_LABEL = "Platform";
-
 export const SIDEBAR_ITEMS: readonly {
   icon: IconName;
   label: string;
@@ -149,12 +146,6 @@ export const SIDEBAR_THREADS: readonly {
   { label: "Scrollbar fade regression", status: "idle", badge: "1" },
   { label: "Registry deploy pipeline", status: "unread", badge: "7" },
 ];
-
-export const SIDEBAR_PROJECTS = [
-  "Design system",
-  "Marketing site",
-  "Travel app",
-] as const;
 
 export const SLIDER_OPACITY = { label: "Opacity", initial: 35 } as const;
 export const SLIDER_VOLUME = { label: "Volume", initial: 60 } as const;

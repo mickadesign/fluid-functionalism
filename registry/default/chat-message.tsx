@@ -1,7 +1,7 @@
 "use client";
 
-import { forwardRef, useState, type ReactNode } from "react";
-import { motion, type HTMLMotionProps } from "motion/react";
+import { forwardRef, useContext, useState, type ReactNode } from "react";
+import { motion, PresenceContext, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
@@ -55,7 +55,10 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
     // Layout motion waits for the entrance to finish. Page load still moves
     // things (the column settles to its width, fonts swap), and a message
     // mid-entrance would glide sideways on top of its own rise.
-    const [entered, setEntered] = useState(false);
+    // A message already there under <AnimatePresence initial={false}> has no
+    // entrance to wait for, and its onAnimationComplete never fires.
+    const skipsEntrance = useContext(PresenceContext)?.initial === false;
+    const [entered, setEntered] = useState(skipsEntrance);
 
     return (
       <motion.div

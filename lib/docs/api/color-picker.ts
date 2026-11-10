@@ -11,6 +11,9 @@ export const colorPickerProps: PropDef[] = [
   { name: "onFormatChange", type: "(format) => void", description: "Fired when the user switches format." },
   { name: "swatches", type: "(string | { color: string; label?: string })[]", description: "Optional preset swatches. A label names the color in a tooltip and to screen readers. When omitted, the strip is hidden." },
   { name: "hideEyedropper", type: "boolean", default: "false", description: "Force-hide the eyedropper button (it is automatically hidden in unsupported browsers)." },
+  { name: "formatOpen", type: "boolean", description: "Controlled open state of the format dropdown. When set, user toggles are ignored." },
+  { name: "defaultFormatOpen", type: "boolean", default: "false", description: "Initial open state of the format dropdown when uncontrolled." },
+  { name: "size", type: '"default" | "compact"', default: "from SizeProvider", description: "Step on the size ladder (see /docs/sizes). Wins over the surrounding SizeProvider." },
 ];
 
 export const popoverProps: PropDef[] = [
@@ -20,6 +23,9 @@ export const popoverProps: PropDef[] = [
   { name: "triggerShowRemove", type: "boolean", default: "false", description: "Render an X button on the trigger." },
   { name: "onTriggerRemove", type: "() => void", description: "Fired when the X button is clicked." },
   { name: "triggerClassName", type: "string", description: "Custom classes on the trigger button." },
+  { name: "open", type: "boolean", description: "Controlled open state of the popover. When set, trigger clicks are ignored." },
+  { name: "defaultOpen", type: "boolean", default: "false", description: "Initial open state of the popover when uncontrolled." },
+  { name: "onOpenChange", type: "(open: boolean) => void", description: "Called when the open state would change, controlled or not." },
   { name: "...ColorPickerProps", type: "ColorPickerProps", description: "All ColorPicker props are forwarded to the panel." },
 ];
 

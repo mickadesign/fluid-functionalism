@@ -30,7 +30,7 @@ A new app can start with every component installed and wired, from one command:
 npx shadcn@latest create -n my-app -t next https://www.fluidfunctionalism.com/r/starter/default.json
 ```
 
-Replace `default` with the settings you want, joined by dashes: `radix`, `sharp`, `pill`, `compact`, `lucide`/`tabler`/`phosphor`/`hugeicons`, `light`/`dark`. The home page builds this command from your Make them yours settings.
+Replace `default` with the settings you want, joined by dashes: `radix`, `sharp`, `pill`, `compact`, `lucide`/`tabler`/`phosphor`/`hugeicons`, `light`/`dark`, and an accent such as `violet`. The home page builds this command from your Make them yours settings.
 
 In an existing project, add the registry once:
 
@@ -170,7 +170,7 @@ Compositions that install as one item each, with every component they use.
 
 ## Presets
 
-The Sidebar, Card, InputMessage, AskUserQuestions, Dropdown, Combobox, and CommandMenu playgrounds encode the configuration you build in the rail into a short code. Nothing is stored: the code is the configuration itself. Install it as one block that composes the component with the options you picked:
+The Sidebar, Card, InputMessage, AskUserQuestions, Dropdown, Combobox, CommandMenu, Calendar, and DatePicker playgrounds encode the configuration you build in the rail into a short code. Nothing is stored: the code is the configuration itself. Install it as one block that composes the component with the options you picked:
 
 ```bash
 npx shadcn@latest add https://www.fluidfunctionalism.com/r/preset/<code>.json

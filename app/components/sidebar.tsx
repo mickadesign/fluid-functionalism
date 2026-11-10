@@ -163,5 +163,3 @@ export function SiteSidebar() {
     </Sidebar>
   );
 }
-
-export default SiteSidebar;

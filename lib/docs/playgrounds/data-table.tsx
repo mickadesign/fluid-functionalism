@@ -64,6 +64,7 @@ const ADDED: Record<string, string> = {
   "ask-user-questions": "2026-05-16",
   badge: "2026-03-09",
   banner: "2026-09-29",
+  breadcrumb: "2026-11-08",
   button: "2026-02-16",
   calendar: "2026-10-19",
   card: "2026-07-20",

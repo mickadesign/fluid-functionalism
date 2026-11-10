@@ -28,25 +28,6 @@ export interface PresetFile {
 
 const DIR = "components/sidebar-preset";
 
-/** Icon-context keys the generated files may reference — kept to keys that
- *  exist in the shipped icon-context (guarded by tests). */
-export const PRESET_ICON_KEYS = [
-  "plus",
-  "pencil",
-  "users",
-  "settings",
-  "moon",
-  "folder",
-  "more-vertical",
-  "sliders-horizontal",
-  "chevron-right",
-  "user",
-  "arrow-left",
-  "panel-left",
-  "link",
-  "x",
-] as const;
-
 function navDataFile(p: SidebarPreset): string {
   const l: string[] = [];
   l.push(`// Seed navigation data for the generated sidebar — replace with your own.`);

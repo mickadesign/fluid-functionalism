@@ -43,11 +43,12 @@
 import { mkdir, readdir, readFile, writeFile, rm } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { DUAL_FLAVOR_SLUGS } from "../lib/dual-flavor-slugs.mjs";
 import { fluidHoverClosure, standardHoverUrl } from "../lib/registry-urls.mjs";
 
-const REGISTRY_DIR = new URL("../public/r", import.meta.url).pathname;
+// fileURLToPath, not .pathname: a checkout path with a space stays a path.
+const REGISTRY_DIR = fileURLToPath(new URL("../public/r", import.meta.url));
 export const BASE_URL = "https://www.fluidfunctionalism.com/r";
 
 // Single source of truth lives in lib/dual-flavor-slugs.mjs.

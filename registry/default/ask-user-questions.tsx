@@ -270,7 +270,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     );
     const otherText = currentAnswer?.otherText ?? "";
 
-    const options = question?.options ?? NO_OPTIONS;
+    // A freeText question ignores its options: no rows, no digit shortcuts.
+    const options = isFreeText ? NO_OPTIONS : question?.options ?? NO_OPTIONS;
     const otherIndex = allowOther ? options.length : -1;
     const rowCount = options.length + (allowOther ? 1 : 0);
 
@@ -369,7 +370,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       const ro = new ResizeObserver(update);
       ro.observe(el);
       return () => ro.disconnect();
-    }, []);
+      // The measured element only exists while there is a question.
+    }, [hasQuestion]);
 
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
     // Ref mirror so callbacks (markFocusRestore) can read the latest value
@@ -1170,6 +1172,9 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                   // multi-select has its own Continue button as the
                   // primary submit affordance.
                   if (e.key !== "Enter") return;
+                  // Enter inside an IME composition commits a candidate.
+                  // (Safari reports it as keyCode 229 after compositionend.)
+                  if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                   if (e.shiftKey) return; // Shift+Enter = newline
                   if (!isMulti) {
                     e.preventDefault();
@@ -1352,6 +1357,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                           // plain Enter submits like an input, so a newline is
                           // never inserted.
                           if (e.key !== "Enter") return;
+                          // Enter inside an IME composition commits a candidate.
+                          if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                           if (e.shiftKey || e.metaKey || e.ctrlKey) return;
                           if (!isFreeTextMultiline) {
                             e.preventDefault();

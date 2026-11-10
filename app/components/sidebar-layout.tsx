@@ -200,7 +200,7 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
     <SiteCommandMenu />
     <RightRailProvider>
       {/* The Sidebar component, dogfooded: the provider owns the desktop
-          collapse (⌘B + cookie persistence via app/layout.tsx) and the
+          collapse ([ + cookie persistence via app/layout.tsx) and the
           mobile sheet. The site switches rail ↔ sheet at xl, so the
           breakpoint is 1280 instead of the component's 768 default. */}
       <SidebarProvider defaultOpen={defaultOpen} mobileBreakpoint={1280} className="min-h-screen [&:has([data-not-found])_[data-site-right-panel]]:hidden">
@@ -232,5 +232,3 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
     </ReleaseMarksProvider>
   );
 }
-
-export default SidebarLayout;

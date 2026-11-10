@@ -1527,6 +1527,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
             type="button"
             aria-label="Clear"
             data-slot="date-picker-clear"
+            disabled={disabled}
             className={cn(
               "relative z-[1] ml-auto inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
               // Two rows: the clear sits right after the date it clears.

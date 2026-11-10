@@ -120,7 +120,12 @@ export function useSubmenuHost(
       const p = pointerRef.current;
       const r = container.getBoundingClientRect();
       if (p && p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom) {
-        hoverMove({ clientX: p.x, clientY: p.y } as React.MouseEvent);
+        // The hook lights the item holding the event's target.
+        hoverMove({
+          clientX: p.x,
+          clientY: p.y,
+          target: document.elementFromPoint(p.x, p.y),
+        } as unknown as React.MouseEvent);
       } else {
         setActiveIndex(null);
       }

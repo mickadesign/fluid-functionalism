@@ -3,6 +3,9 @@
   "name": "use-merge-split",
   "title": "useMergeSplitBlocks",
   "description": "React hook + renderer for the selected-background merge/split animation. When one row bridges or splits two contiguous selected runs, their inner edges glide together (or apart) and swap to a single block, instead of one block spring-growing over the union.",
+  "dependencies": [
+    "motion"
+  ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/springs.json",
     "https://www.fluidfunctionalism.com/r/standard/use-fluid-hover.json",

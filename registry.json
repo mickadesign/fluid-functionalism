@@ -948,6 +948,9 @@
       "type": "registry:hook",
       "title": "useMergeSplitBlocks",
       "description": "React hook + renderer for the selected-background merge/split animation. When one row bridges or splits two contiguous selected runs, their inner edges glide together (or apart) and swap to a single block, instead of one block spring-growing over the union.",
+      "dependencies": [
+        "motion"
+      ],
       "registryDependencies": [
         "springs",
         "use-fluid-hover",
@@ -1067,7 +1070,7 @@
       "name": "badge",
       "type": "registry:ui",
       "title": "Badge",
-      "description": "Compact label with solid, dot, and ghost variants, Tailwind color palette, and three sizes.",
+      "description": "Compact label with solid, dot, and ghost variants, Tailwind color palette, and two sizes.",
       "dependencies": [
         "class-variance-authority"
       ],
@@ -1903,7 +1906,7 @@
       "name": "chat-message",
       "type": "registry:ui",
       "title": "Chat Message",
-      "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
+      "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned plain text for the assistant, with optional file attachments. Adapts to the global shape setting.",
       "dependencies": [
         "motion"
       ],
@@ -2539,7 +2542,7 @@
       "name": "thinking-indicator",
       "type": "registry:ui",
       "title": "Thinking Indicator",
-      "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through customizable status words.",
+      "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through status words.",
       "dependencies": [
         "motion"
       ],

@@ -1,5 +1,5 @@
 import { createHighlighter, type Highlighter } from "shiki/bundle/web";
-import { DIFF_LANGS, type DiffLang } from "@/lib/changelog/parse";
+import type { DiffLang } from "@/lib/changelog/parse";
 
 let highlighter: Highlighter | null = null;
 let loading: Promise<Highlighter> | null = null;
@@ -7,9 +7,11 @@ let loading: Promise<Highlighter> | null = null;
 async function getHighlighter(): Promise<Highlighter> {
   if (highlighter) return highlighter;
   if (!loading) {
+    // TSX only: it is all the browser highlights (the previews' code tabs).
+    // highlightDiff loads a release's other languages when it meets one.
     loading = createHighlighter({
       themes: ["github-dark", "github-light"],
-      langs: [...DIFF_LANGS],
+      langs: ["tsx"],
     }).then((h) => {
       highlighter = h;
       return h;
@@ -33,6 +35,7 @@ export async function highlight(code: string): Promise<string> {
  *  tinted line with the marker in a gutter. */
 export async function highlightDiff(diff: string, lang: DiffLang = "tsx"): Promise<string> {
   const h = await getHighlighter();
+  if (!h.getLoadedLanguages().includes(lang)) await h.loadLanguage(lang);
   const lines = diff.replace(/\n+$/, "").split("\n");
   const marks = lines.map((line) => (line.startsWith("+") ? "add" : line.startsWith("-") ? "remove" : null));
   // Releases write `- code`, a space after the marker; plain unified diffs

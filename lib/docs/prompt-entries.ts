@@ -354,7 +354,7 @@ const questions: AskUserQuestion[] = [
       "answers: Record<string, AskUserAnswer>. Controlled answers map keyed by question id; pair with onAnswersChange.",
       "onComplete: (answers: Record<string, AskUserAnswer>) => void. Called after the last question is answered or submitted.",
       "onSkip: (questionId: string, index: number) => void. Called when the user clicks Skip on a question.",
-      "skipLabel: string (default \"Skip\"). Label for the skip control in the header.",
+      "skipLabel: string (default \"Skip\"). Label for the skip control in the footer.",
       "AskUserQuestion: { id, title, options?, multiSelect?, allowOther?, skippable?, layout?: \"inline\" | \"stacked\", chipPosition?: \"left\" | \"right\", freeText?, freeTextValidate? }. multiSelect adds a Next button; allowOther adds an inline textarea; freeText makes a textarea the only answer.",
       "AskUserOption: { id, title, description? }. Bold title plus muted description per row.",
       "AskUserAnswer: { questionId, selectedIds: string[], otherText?, skipped? }. What each question resolves to.",

@@ -224,13 +224,13 @@ const SidebarProvider = forwardRef<HTMLDivElement, SidebarProviderProps>(
     const setOpen = useCallback(
       (value: boolean | ((prev: boolean) => boolean)) => {
         const next = typeof value === "function" ? value(openRef.current) : value;
-        if (onOpenChange) onOpenChange(next);
-        else setInternalOpen(next);
+        if (openProp === undefined) setInternalOpen(next);
+        onOpenChange?.(next);
         if (persist) {
           document.cookie = `${SIDEBAR_COOKIE_NAME}=${next}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
         }
       },
-      [onOpenChange, persist]
+      [openProp, onOpenChange, persist]
     );
 
     const toggleSidebar = useCallback(() => {
