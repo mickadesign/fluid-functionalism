@@ -169,6 +169,25 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       rows.forEach((tr, i) => tr.toggleAttribute("data-under-highlight", covered[i]));
     }, []);
 
+    const headCell =
+      !hideHeadHighlight && headHover.isMeasured && headHover.activeIndex !== null
+        ? headHover.itemRects[headHover.activeIndex]
+        : undefined;
+    const headRect = headCell ? { ...headCell, height: headCell.height - 1 } : null;
+    // A header cell in the gliding scope held down (the pointer still on
+    // it): its fill shows pressed.
+    const [headPressed, setHeadPressed] = useState(false);
+    useEffect(() => {
+      if (!headPressed) return;
+      const release = () => setHeadPressed(false);
+      window.addEventListener("pointerup", release);
+      window.addEventListener("pointercancel", release);
+      return () => {
+        window.removeEventListener("pointerup", release);
+        window.removeEventListener("pointercancel", release);
+      };
+    }, [headPressed]);
+
     const contextValue = useMemo(
       () => ({ registerItem, activeStore, selected, registerHead }),
       [registerItem, activeStore, selected, registerHead]
@@ -192,6 +211,11 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onMouseLeave={(e) => {
             headHover.handlers.onMouseLeave();
             if (fromPointer(e)) handlers.onMouseLeave();
+          }}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            const th = (e.target as HTMLElement).closest("th[data-head-hover]");
+            if (th && containerRef.current?.contains(th)) setHeadPressed(true);
           }}
           onClick={handlers.onClick}
           onKeyDown={(e) => {
@@ -229,7 +253,14 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             transition={repeating || snap.on ? false : undefined}
             onFrame={hideCoveredRules}
           />
-          <FluidHoverHighlight hover={headHover} hidden={hideHeadHighlight} className={shape.bg} />
+          {/* The header's fill stops 1px short of the header's bottom line,
+              and turns --active while its cell is pressed: one surface for
+              hover and press. */}
+          <FluidHoverHighlight
+            rect={headRect}
+            session={headHover.session}
+            className={cn(shape.bg, "transition-[background-color] duration-80", headPressed && "bg-active")}
+          />
 
           <table
             ref={ref}
@@ -357,6 +388,7 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(({ hoverIndex
         if (typeof ref === "function") ref(node);
         else if (ref) ref.current = node;
       }}
+      data-head-hover={hoverIndex !== undefined || undefined}
       className={cn(
         "text-left text-foreground",
         // py + line box lands the row on the ladder (36px / 28px).

@@ -7,6 +7,7 @@ import {
   memo,
   useContext,
   useEffect,
+  useCallback,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -425,6 +426,41 @@ const EDGE_SCROLL_MAX_DT = 50;
 const RESIZE_STEP = 16;
 const MIN_COLUMN_WIDTH = 48;
 
+/** How wide a header's own content is (text or elements), leaving out the
+ *  resize handle and the drop marker. */
+function headerWidth(th: HTMLElement) {
+  let left = Infinity;
+  let right = -Infinity;
+  const range = document.createRange();
+  th.childNodes.forEach((node) => {
+    if (node instanceof HTMLElement && node.hasAttribute("data-resize-handle")) return;
+    range.selectNode(node);
+    const r = range.getBoundingClientRect();
+    if (r.width === 0) return;
+    left = Math.min(left, r.left);
+    right = Math.max(right, r.right);
+  });
+  return right > left ? right - left : 0;
+}
+
+/** The `size` a column definition sets itself (TanStack fills in 150 for
+ *  the rest), looked up by id through any column groups. */
+function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number | undefined {
+  for (const def of defs) {
+    const own = def.id ?? ("accessorKey" in def ? String(def.accessorKey) : undefined);
+    if (own === id) return def.size;
+    if ("columns" in def && def.columns) {
+      const found = ownSize(def.columns, id);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
+// The most width a column takes for its content alone: past this, its
+// text wraps or cuts short rather than crowd the columns beside it.
+const NATURAL_CAP = 240;
+
 /** Data columns (with an accessor) move; selection and action columns hold
  *  their place at the ends. */
 const canReorder = <TData,>(column: Column<TData, unknown>) => column.accessorFn !== undefined;
@@ -488,6 +524,12 @@ function DataTable<TData>({
         return l === 2 || l === "wrap";
       }));
   const flexId = [...visible].reverse().find((c) => c.getCanResize())?.id;
+  // What a body row's cells depend on beyond the row itself: the visible
+  // columns in order and how each fits its text. Rows re-render when this,
+  // their record, their selection or the columns change, and not on every
+  // state change of the table (a Shift + arrow step re-rendered every cell,
+  // editors and all).
+  const layoutKey = visible.map((c) => `${c.id}:${linesOf(table, c) ?? ""}`).join("|");
   // An empty body holds a page's worth of rows (as many as were showing
   // before the filter emptied it), so the pagination under the table stays
   // put while a filter runs dry.
@@ -813,23 +855,86 @@ function DataTable<TData>({
     moveColumn(table, id, refId, e.key === "ArrowLeft" ? "before" : "after");
   };
 
-  // Resizing starts from the widths the table lays out on its own: the
-  // first render is auto layout, then each column's width is read once and
-  // the table switches to fixed layout at those widths.
+  // Columns start at their content's width. Each column is measured once
+  // per page of rows at its widest on one line, header included, and
+  // capped at NATURAL_CAP (a column's min width, or its header, can take
+  // it past). Those widths fill the box; the column that takes the rest (a
+  // `w-full` one, or the last resizable) gets what's left over. Short of
+  // room, the columns that can shrink give it up together, none narrower
+  // than its header, and past that the table scrolls sideways instead of
+  // cutting a name in two. A column `size` always wins.
+  // With resizeColumns the widths seed the sizing once and are yours from
+  // there; without, they follow the box as it resizes.
   const sizing = table.getState().columnSizing;
   const seeded = Object.keys(sizing).length > 0;
+  const restId = resizeColumns
+    ? flexId
+    : (visible.find((c) => /(^|\s)w-full(\s|$)/.test(c.columnDef.meta?.className ?? ""))?.id ??
+      [...visible].reverse().find((c) => c.accessorFn !== undefined)?.id);
+  const natural = useRef<{ id: string; width: number; floor: number; fixed: boolean }[] | null>(null);
+  const [fitted, setFitted] = useState<Record<string, number> | null>(null);
+  const fit = useCallback(() => {
+    const cols = natural.current;
+    const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!cols || !viewport) return null;
+    const total = cols.reduce((sum, c) => sum + c.width, 0);
+    const deficit = total - viewport.clientWidth;
+    const give = cols.reduce((sum, c) => sum + (c.fixed ? 0 : c.width - c.floor), 0);
+    const share = deficit > 0 && give > 0 ? Math.min(1, deficit / give) : 0;
+    return Object.fromEntries(
+      cols.map((c) => [c.id, Math.round(c.fixed ? c.width : c.width - (c.width - c.floor) * share)])
+    );
+  }, []);
+  const pageKey = rows.map((r) => r.id).join(",");
   useLayoutEffect(() => {
-    if (!resizeColumns || seeded) return;
-    const widths: Record<string, number> = {};
-    headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]").forEach((th) => {
-      widths[th.dataset.columnId!] = Math.round(th.getBoundingClientRect().width);
-    });
-    // Nothing measured (no visible columns yet): setting an empty sizing
+    if (resizeColumns && seeded) return;
+    const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
+    const ths = headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]");
+    // Nothing measured (no visible columns yet): setting empty widths
     // would only re-render into this same effect, forever.
-    if (Object.keys(widths).length === 0) return;
-    table.setColumnSizing((old) => ({ ...widths, ...old }));
-  }, [resizeColumns, seeded, table]);
-  const sized = resizeColumns && seeded;
+    if (!tableNode || !ths?.length) return;
+    // Measured at max-content, every cell on one line, in one synchronous
+    // pass that never paints.
+    const saved = tableNode.style.cssText;
+    tableNode.style.cssText = "table-layout:auto;width:max-content;min-width:0";
+    tableNode.setAttribute("data-measuring", "");
+    natural.current = Array.from(ths).map((th) => {
+      const id = th.dataset.columnId!;
+      const column = table.getColumn(id);
+      const css = getComputedStyle(th);
+      const pad = parseFloat(css.paddingLeft) + parseFloat(css.paddingRight);
+      const head = headerWidth(th) + pad;
+      const floor = Math.ceil(Math.max(head, parseFloat(css.minWidth) || 0));
+      const content = th.getBoundingClientRect().width;
+      const size = ownSize(table.options.columns, id);
+      const fixed = size !== undefined || !column?.getCanResize();
+      return {
+        id,
+        width: size !== undefined ? size : Math.ceil(fixed ? content : Math.max(Math.min(content, NATURAL_CAP), floor)),
+        floor,
+        fixed,
+      };
+    });
+    tableNode.removeAttribute("data-measuring");
+    tableNode.style.cssText = saved;
+    if (resizeColumns) {
+      const widths = fit();
+      if (widths) table.setColumnSizing((old) => ({ ...widths, ...old }));
+      return;
+    }
+    // Without resizing, the widths follow the box. The observer reports
+    // the box once on observing too, before the next paint.
+    const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => {
+      const widths = fit();
+      if (widths) setFitted((old) => (JSON.stringify(old) === JSON.stringify(widths) ? old : widths));
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant]);
+  const sized = resizeColumns ? seeded : fitted !== null;
+  const widthOf = (id: string, size: number) => (resizeColumns ? size : (fitted?.[id] ?? undefined));
   // Keys, like a spreadsheet's rows (Google Sheets, Gmail):
   //   ↓ on a header  the first row
   //   ↑ / ↓          the row above / below; Home / End the first / last.
@@ -1103,12 +1208,6 @@ function DataTable<TData>({
     registerRoot?.(() => wrapRef.current);
   });
 
-  // What a body row's cells depend on beyond the row itself: the visible
-  // columns in order and how each fits its text. Rows re-render when this,
-  // their record, their selection or the columns change, and not on every
-  // state change of the table (a Shift + arrow step re-rendered every cell,
-  // editors and all).
-  const layoutKey = visible.map((c) => `${c.id}:${linesOf(table, c) ?? ""}`).join("|");
   // With sub-rows, the first data column carries the chevron and the
   // indent.
   const expanderId = table.getCanSomeRowsExpand()
@@ -1132,12 +1231,26 @@ function DataTable<TData>({
       // crushing the column that takes the rest.
       className={cn(
         sized && "table-fixed",
-        // The column after the boxes drops its left padding: 8px from box
-        // to text, the gap a Checkbox keeps from its label.
-        "[&_[data-column-id=select]+[data-column-id]]:pl-0",
+        // The 8px between box and text (the gap a Checkbox keeps from its
+        // label) belongs to the column after the boxes, not the boxes: its
+        // header fill then starts 8px before the label instead of on it.
+        "[&_[data-column-id=select]+[data-column-id]]:pl-2",
+        // Measuring (see `natural`): every cell at its one-line width.
+        "[&[data-measuring]_:is(th,td)]:!w-auto [&[data-measuring]_:is(th,td)]:!max-w-none [&[data-measuring]_*]:!whitespace-nowrap",
+        // The sub-row guides start from the first column's left padding.
+        sizeClasses.variant === "compact" ? "[--expander-pl:10px]" : "[--expander-pl:12px]",
+        "[&_[data-column-id=select]+[data-column-id]]:[--expander-pl:8px]",
         className
       )}
-      style={sized ? { minWidth: table.getTotalSize() } : undefined}
+      style={
+        sized
+          ? {
+              minWidth: resizeColumns
+                ? table.getTotalSize()
+                : Object.values(fitted ?? {}).reduce((sum, w) => sum + w, 0),
+            }
+          : undefined
+      }
     >
       <TableHeader>
         {table.getHeaderGroups().map((group) => (
@@ -1175,9 +1288,11 @@ function DataTable<TData>({
                   // widths were read) shares what's left with the flex one.
                   style={
                     sized &&
-                    column.id !== flexId &&
-                    (column.id in sizing || column.columnDef.size !== undefined)
-                      ? { width: header.getSize() }
+                    column.id !== restId &&
+                    (resizeColumns
+                      ? column.id in sizing || column.columnDef.size !== undefined
+                      : fitted?.[column.id] !== undefined)
+                      ? { width: widthOf(column.id, header.getSize()) }
                       : undefined
                   }
                   className={cn(
@@ -1200,19 +1315,20 @@ function DataTable<TData>({
                     "data-[drop=after]:before:-right-px data-[drop=after]:before:opacity-100",
                     // A header that sorts or moves behaves like a ghost
                     // Button: its label lifts from muted to foreground on
-                    // hover, and a surface 1px inside the cell fills with
-                    // --hover, spread back out by a same-color 1px ring;
-                    // pressed it turns --active and the ring collapses, so
-                    // the surface shrinks 1px a side. Once it drags, the
-                    // ghost takes over and the slot stays empty.
-                    (movable || column.getCanSort()) && [
+                    // hover. Its fill is the header row's gliding one,
+                    // which Table turns --active while pressed: one surface.
+                    (movable || column.getCanSort()) &&
                       "hover:text-foreground transition-colors duration-80",
-                      "after:pointer-events-none after:absolute after:inset-px after:-z-10 after:bg-transparent after:shadow-[0_0_0_1px_transparent] after:transition-[background-color,box-shadow] after:duration-80",
-                      fill &&
-                        "not-data-dragging:hover:after:bg-hover not-data-dragging:hover:after:shadow-[0_0_0_1px_var(--hover)]",
-                      "not-data-dragging:active:after:bg-active not-data-dragging:active:after:shadow-[0_0_0_0px_var(--active)]",
-                      PRESS_RADIUS[shape.variant],
-                    ],
+                    // Filled, the sticky header paints over that fill, so
+                    // the cell draws its own, the same way: --hover, then
+                    // --active, clear of the header's bottom line. Once it
+                    // drags, the ghost takes over and the slot stays empty.
+                    fill &&
+                      (movable || column.getCanSort()) && [
+                        "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
+                        "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
+                        PRESS_RADIUS[shape.variant],
+                      ],
                     meta?.className
                   )}
                 >
@@ -1638,14 +1754,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
-    // 8px either side of the 16px box, so its focus ring never meets the
-    // row's edge (or the scroll box's clip).
-    size: 32,
-    // w-0 shrinks the column to the box and its 8px either side. The row
+    // 8px before the 16px box, so its focus ring never meets the row's edge
+    // (or the scroll box's clip); the 8px after it is the next column's.
+    size: 24,
+    // w-0 shrinks the column to the box and its 8px before it. The row
     // dividers start after it: the cell's own transparent bottom border
     // wins the collapsed-border conflict with the row's, so no line runs
     // above or below a box.
-    meta: { className: "w-0 px-2 border-b border-b-transparent" },
+    meta: { className: "w-0 pl-2 pr-0 border-b border-b-transparent" },
     header: ({ table }) => {
       // Every row the search leaves, on every page: a page is a view, not
       // a scope, so "all" means the whole result.
@@ -1710,6 +1826,31 @@ function selectColumn<TData>(): ColumnDef<TData> {
 /** How far each level of sub-rows steps in: the chevron and its gap, so a
  *  child's chevron sits under its parent's text. */
 const SUB_ROW_INDENT = 20;
+
+/** The tree lines under an open row: one 1px rule per depth, dropped from
+ *  the center of the parent's chevron through every row below it, so a
+ *  sub-row reads as its parent's without a fill of its own (a fill would
+ *  cover the hover and selection drawn behind the table). Placed from the
+ *  cell's left padding, `--expander-pl`, which the table sets. */
+function SubRowGuides({ row, expanded, alignTop }: { row: Row<unknown>; expanded: boolean; alignTop: boolean }) {
+  const x = (depth: number) => `calc(var(--expander-pl) + ${depth * SUB_ROW_INDENT + 7.5}px)`;
+  const rule = "pointer-events-none absolute w-px bg-border";
+  return (
+    <>
+      {Array.from({ length: row.depth }, (_, d) => (
+        <span key={d} aria-hidden className={cn(rule, "-top-px bottom-0")} style={{ left: x(d) }} />
+      ))}
+      {expanded && row.subRows.length > 0 && (
+        // From 2px under the open chevron to the row's bottom.
+        <span
+          aria-hidden
+          className={cn(rule, "bottom-0", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+10px)]" : "top-[calc(50%+10px)]")}
+          style={{ left: x(row.depth) }}
+        />
+      )}
+    </>
+  );
+}
 
 /** The chevron that opens a row's sub-rows. Not a tab stop: from the row,
  *  → opens and ← closes. Turns a quarter on spring.fast. */
@@ -1931,8 +2072,9 @@ const DataTableBodyRow = memo(
               // Content reads at full strength, above the muted
               // headers.
               "text-foreground",
-              // Anchors the skeleton that fades over it on landing.
-              swapping && "relative",
+              // Anchors the skeleton that fades over it on landing, and
+              // the sub-row guides.
+              (swapping || cell.column.id === expanderId) && "relative",
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
@@ -1953,6 +2095,7 @@ const DataTableBodyRow = memo(
             )}
             onClick={editor ? pressCellEditor : undefined}
           >
+            {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} alignTop={alignTop} />}
             {swapping && (
               // The hand-over: a skeleton over the cell's content box,
               // shown at once (its delayed reveal and pulse turned
