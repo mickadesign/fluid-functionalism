@@ -27,7 +27,9 @@ export const systemList: SystemEntry[] = [
   { slug: "typography", name: "Typography", description: "Bold rules that create consistency across the whole component library.", installSlug: "typography", installNote: "The 5 styles for any text, markdown included." },
 ];
 
-export const componentList: ComponentEntry[] = [
+/** Every component doc page, listed or not: for lookups by slug (page
+ *  metadata, install prompts, the page's own Markdown). */
+export const componentEntries: ComponentEntry[] = [
   { slug: "accordion", name: "Accordion", description: "Collapsible sections with animated expand/collapse and fluid hover in grouped mode.", gridSize: "medium" },
   { slug: "ask-user-questions", name: "AskUserQuestions", description: "Stepped question flow with single/multi-select, optional 'other' input, and skip.", gridSize: "large" },
   { slug: "badge", name: "Badge", description: "Compact label with solid, dot, and ghost variants, Tailwind color palette, and the two-step size ladder.", gridSize: "small" },
@@ -64,6 +66,15 @@ export const componentList: ComponentEntry[] = [
   { slug: "thinking-steps", name: "ThinkingSteps", description: "Chain-of-thought display with sequential animation and collapsible steps.", gridSize: "large" },
   { slug: "tooltip", name: "Tooltip", description: "Floating tooltip with spring-based animations and configurable placement.", gridSize: "small" },
 ];
+
+/** Pages live at their URL but listed nowhere yet, so a link can go to a
+ *  few people before the launch: not in the sidebar, ⌘K, the Showcase,
+ *  /demo, prev/next, the changelog marks, the sitemap, llms.txt or the
+ *  README, and noindex. Delete a slug here to launch it. */
+export const UNLISTED_SLUGS: ReadonlySet<string> = new Set(["data-table"]);
+
+/** The listed components: what navigation, search and indexes show. */
+export const componentList: ComponentEntry[] = componentEntries.filter((c) => !UNLISTED_SLUGS.has(c.slug));
 
 /** The skill page. It sits with the systems in navigation but stays out of
  *  `systemList`: it is not a registry item, and `systemList` feeds the

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MARKDOWN_PAGES } from "@/lib/docs/markdown";
+import { UNLISTED_SLUGS } from "@/lib/docs/components";
 import { plainDescription } from "@/lib/docs/install-brief";
 import { OG_IMAGES, OG_VIDEOS } from "@/lib/og-media";
 
@@ -28,5 +29,7 @@ export function docMetadata(slug?: string): Metadata {
     // Replaced wholesale, not merged, over the root layout's: repeat the card.
     openGraph: { title, description, url: path, images: OG_IMAGES, videos: OG_VIDEOS },
     twitter: { card: "summary_large_image", title, description, images: ["/metadata/og.png"] },
+    // Shared by link before its launch: kept out of search results.
+    ...(slug && UNLISTED_SLUGS.has(slug) ? { robots: { index: false, follow: false } } : {}),
   };
 }
