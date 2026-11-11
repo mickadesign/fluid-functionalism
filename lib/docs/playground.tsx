@@ -339,28 +339,35 @@ export function PlaygroundLayout({
   // instead of popping in once the box has landed.
   const [collapsing, setCollapsing] = useState(false);
   const fromRect = useRef<DOMRect | null>(null);
+  const tableToWidth = useRef<number | null>(null);
   const animating = useRef(false);
 
-  // While the layer moves, the demo keeps one width: its expanded one, so
-  // the box clips it instead of laying it out again every frame (a table's
-  // columns, its sticky edges and their fills re-placed at each width read
-  // as a flicker). Height still follows the box: a filled table just shows
-  // more or fewer rows. Anchored left; released once the layer lands.
+  // While the layer moves, a table in the demo keeps its expanded width:
+  // the box's width springs through every value, and a table that fills
+  // its scroll box would hand each frame's width to its one free column,
+  // re-wrapping its text (rows jumping between one and two lines) and
+  // flipping its sticky columns' surfaces as the overflow came and went.
+  // Held at the expanded width, only the scroll box follows the box: the
+  // sticky columns ride its edges and nothing inside re-lays out. Released
+  // once the layer lands (see globals.css, [data-preview-moving]).
   const demo = () =>
     frameRef.current?.querySelector<HTMLElement>("[data-preview-stage]")?.firstElementChild as HTMLElement | null;
-  const lockDemoWidth = (width: number) => {
-    const el = demo();
-    if (!el) return;
-    Object.assign(el.style, { width: `${width}px`, minWidth: `${width}px`, flex: "none" });
-    // The stage centers its demo: wider than the stage, it would spill to
-    // both sides and lose its left edge.
-    if (el.parentElement) el.parentElement.style.justifyContent = "flex-start";
+  const demoTable = () => {
+    const table = demo()?.querySelector<HTMLTableElement>("[data-slot=scroll-area-viewport] table");
+    const viewport = table?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    return table && viewport ? { table, viewport } : null;
   };
-  const releaseDemoWidth = () => {
+  const holdTable = (width: number) => {
     const el = demo();
     if (!el) return;
-    Object.assign(el.style, { width: "", minWidth: "", flex: "" });
-    if (el.parentElement) el.parentElement.style.justifyContent = "";
+    el.style.setProperty("--preview-table-w", `${width}px`);
+    el.setAttribute("data-preview-moving", "");
+  };
+  const releaseTable = () => {
+    const el = demo();
+    if (!el) return;
+    el.style.removeProperty("--preview-table-w");
+    el.removeAttribute("data-preview-moving");
   };
 
   const target = () => {
@@ -382,6 +389,14 @@ export function PlaygroundLayout({
     const el = frameRef.current;
     if (!el || animating.current) return;
     fromRect.current = el.getBoundingClientRect();
+    // The table's expanded width, read in the page (once the box turns
+    // fixed, and before it's sized, it shrink-wraps): its scroll box grows
+    // with the box, and the table fills it or keeps its columns' total.
+    const held = demoTable();
+    const to = target();
+    tableToWidth.current = held
+      ? Math.max(parseFloat(getComputedStyle(held.table).minWidth) || 0, held.viewport.clientWidth + (to.width - fromRect.current.width))
+      : null;
     setPlaceholderHeight(fromRect.current.height);
     setBackdrop(true);
     setExpanded(true);
@@ -393,8 +408,8 @@ export function PlaygroundLayout({
     const home = placeholderRef.current?.getBoundingClientRect();
     if (!el || !home || animating.current) return;
     animating.current = true;
-    const demoWidth = demo()?.offsetWidth;
-    if (demoWidth) lockDemoWidth(demoWidth);
+    const held = demoTable();
+    if (held) holdTable(held.table.offsetWidth);
     setBackdrop(false);
     setCollapsing(true);
     // The content keeps its expanded form while the box shrinks, scrolled
@@ -431,7 +446,7 @@ export function PlaygroundLayout({
         setExpanded(false);
         setPlaceholderHeight(null);
       });
-      releaseDemoWidth();
+      releaseTable();
       el.removeAttribute("style");
       // Motion commits a finished tween's last values to the inline style
       // after its promise resolves; clear once more after that lands.
@@ -466,8 +481,7 @@ export function PlaygroundLayout({
     fromRect.current = null;
     animating.current = true;
     const to = target();
-    const demoWidth = demo()?.offsetWidth;
-    if (demoWidth) lockDemoWidth(demoWidth + (to.width - from.width));
+    if (tableToWidth.current) holdTable(tableToWidth.current);
     Object.assign(el.style, {
       top: `${from.top}px`,
       left: `${from.left}px`,
@@ -476,7 +490,7 @@ export function PlaygroundLayout({
     });
     const land = () => {
       animating.current = false;
-      releaseDemoWidth();
+      releaseTable();
     };
     animate(el, to, spring.slow).then(land);
     // Same guard as the collapse: don't stay locked if frames stall.

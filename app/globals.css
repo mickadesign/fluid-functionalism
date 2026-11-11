@@ -1701,3 +1701,10 @@ html.transitioning *::after {
   content: "-";
   color: var(--destructive);
 }
+
+/* An expandable playground's layer while it moves (lib/docs/playground.tsx):
+   a table in its demo holds its expanded width, so only its scroll box
+   follows the box. !important over the table's own inline min-width. */
+[data-preview-moving] [data-slot="scroll-area-viewport"] table {
+  min-width: var(--preview-table-w) !important;
+}
