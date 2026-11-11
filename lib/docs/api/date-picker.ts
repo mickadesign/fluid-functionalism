@@ -110,6 +110,13 @@ export const datePickerTriggerProps: PropDef[] = [
     description: "Outline: a clear button once there's a value.",
   },
   {
+    name: "fitLabel",
+    type: "boolean",
+    default: "false",
+    description:
+      "Sizes the date to the label it shows, not the widest one it could show. Off, picking a date never moves what follows; on for a trigger inside something that already springs to its content, like a filter chip.",
+  },
+  {
     name: "open",
     type: "boolean",
     description: "Controls the date popover, with `onOpenChange`. `defaultOpen` sets it once.",

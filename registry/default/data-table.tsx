@@ -4573,6 +4573,8 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           aria-label={`${label} between`}
           value={range}
           placeholder="any day"
+          // The chip springs to its content: no room held for a longer date.
+          fitLabel
           onValueChange={(next) =>
             onChange({
               kind: "date",
@@ -4590,6 +4592,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           aria-label={`${label} ${dateOp}`}
           value={single ? toDate(single) : undefined}
           placeholder="any day"
+          fitLabel
           onValueChange={(next) => {
             const day = next instanceof Date ? toIsoDay(next) : undefined;
             onChange(dateOp === "before" ? { kind: "date", op: "before", to: day } : { kind: "date", op: "after", from: day });
@@ -5330,17 +5333,23 @@ function DataTableSelectionBar<TData>({
         <motion.div
           key="bar"
           ref={barRef}
-          // Grows up from its bottom center, the edge it's anchored by.
+          // The toast's entrance: it slides up by its own height and fades,
+          // no scale. The slide springs (spring.moderate); the fade is a
+          // short ease-out tween, so the bar doesn't creep the last few
+          // percent of its opacity the way a spring would. It leaves the way
+          // it came, quicker, slide and fade together.
           className="pointer-events-auto fixed z-[var(--z-sticky,30)] -translate-x-1/2 -translate-y-full"
-          style={{ transformOrigin: "50% 100%" }}
-          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "100%" }}
+          animate={{ opacity: 1, y: 0 }}
           exit={
             reduceMotion
-              ? { opacity: 0, transition: spring.moderate.exit }
-              : { opacity: 0, y: 8, scale: 0.96, transition: spring.moderate.exit }
+              ? { opacity: 0, transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
+              : { opacity: 0, y: "100%", transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
           }
-          transition={spring.moderate}
+          transition={{
+            y: spring.moderate,
+            opacity: { type: "tween", ease: "easeOut", ...spring.moderate.exit },
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape" && !menuOpen) {
               e.preventDefault();

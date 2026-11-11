@@ -3,7 +3,7 @@
 import { useShape } from "@/lib/shape-context";
 import { useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, PresenceContext, animate, usePresence, useReducedMotion } from "motion/react";
+import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
   useDataTable,
@@ -855,24 +855,46 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
     setViewIndex(i);
   };
-  // Naming a view happens in place: a field laid over its tab, the text
-  // selected. Saving opens it on the new tab; clicking the open tab again
-  // opens it to rename. Enter or a click away keeps the name, Esc keeps the
-  // old one, and the field's × deletes the view.
+  // Naming a view happens inline, in its tab: the tab's own label becomes
+  // the draft, so the tab grows as you type and pushes the ones after it,
+  // and a bare field sits on that label (the tab's fill shows through, no
+  // box or shadow of its own), with a × fading in at the tab's end. Saving
+  // opens it on the new tab; clicking the open tab again opens it to
+  // rename. Enter or a click away keeps the name, Esc keeps the old one, and
+  // the × deletes the view.
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [naming, setNaming] = useState<{
-    at: number;
-    draft: string;
-    rect: { left: number; top: number; minWidth: number; height: number };
+  const [naming, setNaming] = useState<{ at: number; draft: string } | null>(null);
+  const nameView = (i: number, name: string) => setNaming({ at: i - 1, draft: name });
+  // Where the field and its × sit, read from the tab after each keystroke
+  // has resized it: the label's left edge and type, the tab's right end.
+  const [nameBox, setNameBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    weight: string;
   } | null>(null);
-  const nameView = (i: number, name: string) => {
+  useLayoutEffect(() => {
+    if (!naming) {
+      setNameBox(null);
+      return;
+    }
     const box = tabsRef.current;
-    const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[i];
-    if (!box || !tab) return;
+    const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[naming.at + 1];
+    const label = tab?.querySelector<HTMLElement>("span > span:not([aria-hidden])");
+    if (!box || !tab || !label) return;
     const b = box.getBoundingClientRect();
-    const r = tab.getBoundingClientRect();
-    setNaming({ at: i - 1, draft: name, rect: { left: r.left - b.left, top: r.top - b.top, minWidth: r.width, height: r.height } });
-  };
+    const t = tab.getBoundingClientRect();
+    const l = label.getBoundingClientRect();
+    const next = {
+      left: l.left - b.left,
+      top: t.top - b.top,
+      width: t.right - l.left,
+      height: t.height,
+      weight: getComputedStyle(label).fontVariationSettings,
+    };
+    setNameBox((old) => (old && JSON.stringify(old) === JSON.stringify(next) ? old : next));
+  }, [naming]);
   // A view saved this render gets its field once its tab is there.
   const [nameNext, setNameNext] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -883,12 +905,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   }, [nameNext]);
   // The field takes focus with its name selected, once per opening.
   const nameRef = useRef<HTMLInputElement>(null);
+  // (The field mounts once its place is read, a render after naming starts.)
   const namingAt = naming?.at ?? null;
+  const fieldPlaced = nameBox !== null;
   useLayoutEffect(() => {
-    if (namingAt === null) return;
+    if (namingAt === null || !fieldPlaced) return;
     nameRef.current?.focus();
     nameRef.current?.select();
-  }, [namingAt]);
+  }, [namingAt, fieldPlaced]);
   const commitName = () => {
     if (!naming) return;
     const name = naming.draft.trim();
@@ -1100,17 +1124,27 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             onKeyDownCapture={onTabsKeyDown}
             aria-label="Views"
           >
-            {[{ id: 0, name: "All" }, ...views].map(({ id, name }, i) => (
-              <TabsItem
-                key={id}
-                index={i}
-                label={name}
-                data-view-id={id}
-                // The dragged tab's slot shows empty; its copy rides the pointer.
-                className={cn(i > 0 && "touch-none select-none", tabDrag?.from === i && "invisible")}
-                onClick={() => renameView(i)}
-              />
-            ))}
+            {[{ id: 0, name: "All" }, ...views].map(({ id, name }, i) => {
+              const editing = naming !== null && naming.at === i - 1;
+              return (
+                <TabsItem
+                  key={id}
+                  index={i}
+                  // Being named, the tab sizes to the draft (spaces kept, so a
+                  // trailing one widens it too), its own text hidden under the
+                  // field, with room at its end for the ×.
+                  label={editing ? naming.draft.replace(/ /g, "\u00a0") || "\u00a0" : name}
+                  data-view-id={id}
+                  // The dragged tab's slot shows empty; its copy rides the pointer.
+                  className={cn(
+                    i > 0 && "touch-none select-none",
+                    tabDrag?.from === i && "invisible",
+                    editing && "pr-8 [&_span]:!text-transparent"
+                  )}
+                  onClick={() => renameView(i)}
+                />
+              );
+            })}
           </Tabs>
           {tabDrag?.bar != null && (
             // Where the tab lands: the column drag's 2px accent bar.
@@ -1139,17 +1173,13 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
               </div>,
               document.body
             )}
-          {naming && (
-            // The name field, laid over its tab and growing with the name.
+          {naming && nameBox && (
+            // The bare field on the tab's label, in the label's own type and
+            // weight, so the name doesn't move or change size as it turns
+            // editable; the tab's fill behind it is the only surface.
             <span
-              // Its tab's corners (pill, rounded or sharp with the Shape
-              // setting) and its tab's type, so the name doesn't change size.
-              className={cn(
-                "absolute z-10 flex items-center border border-border bg-background pr-0.5 shadow-sm",
-                typeClass("body", "compact"),
-                shape.item
-              )}
-              style={{ left: naming.rect.left, top: naming.rect.top, minWidth: naming.rect.minWidth, height: naming.rect.height }}
+              className={cn("absolute z-10 flex items-center", typeClass("body", "compact"))}
+              style={{ left: nameBox.left, top: nameBox.top, width: nameBox.width, height: nameBox.height }}
             >
               <input
                 ref={nameRef}
@@ -1165,20 +1195,24 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                   if (e.key === "Enter") commitName();
                   if (e.key === "Escape") setNaming(null);
                 }}
+                style={{ fontVariationSettings: nameBox.weight }}
                 // 16px on touch screens, so iOS doesn't zoom into the field.
-                // 9px + the 1px border: the name starts where the tab's label did.
-                className={cn("h-full min-w-0 bg-transparent pl-[9px] text-foreground outline-none [field-sizing:content]", fieldTouchClass)}
+                className={cn("h-full min-w-0 flex-1 bg-transparent p-0 text-foreground outline-none", fieldTouchClass)}
               />
               <Tooltip content="Delete view">
-                <button
+                <motion.button
                   type="button"
                   data-view-delete=""
                   aria-label="Delete view"
                   onClick={deleteView}
-                  className={cn("grid size-6 shrink-0 cursor-pointer place-items-center text-muted-foreground outline-none hover:bg-hover hover:text-destructive", shape.item)}
+                  // Fades in as the tab turns editable.
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={spring.fast}
+                  className={cn("mr-0.5 grid size-6 shrink-0 cursor-pointer place-items-center text-muted-foreground outline-none hover:bg-hover hover:text-destructive", shape.item)}
                 >
                   <icons.x size={14} strokeWidth={1.5} />
-                </button>
+                </motion.button>
               </Tooltip>
             </span>
           )}

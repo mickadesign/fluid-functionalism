@@ -918,6 +918,11 @@ interface DatePickerBaseProps {
   disabled?: boolean;
   /** Shows a clear button once a value is set (field only). Default true. */
   clearable?: boolean;
+  /** Sizes the date to the label it shows rather than the widest one it
+   *  could show. Off by default, so picking a date never moves what follows;
+   *  on for a trigger inside something that already springs to its content
+   *  (a filter chip), where the reserved room reads as a gap. */
+  fitLabel?: boolean;
   /** Months in the date popover. Default 1 for single, 2 for range. */
   numberOfMonths?: 1 | 2;
   orientation?: CalendarOrientation;
@@ -1003,6 +1008,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     placeholder,
     disabled,
     clearable = true,
+    fitLabel = false,
     numberOfMonths: numberOfMonthsProp,
     orientation = "auto",
     calendarProps,
@@ -1236,6 +1242,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         <span className="col-start-1 row-start-1 [text-box:trim-both_cap_alphabetic]">
           {dateLabel}
         </span>
+        {!fitLabel && (
         <span
           aria-hidden
           className="invisible col-start-1 row-start-1 inline-flex whitespace-pre"
@@ -1254,12 +1261,15 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
             </span>
           ))}
         </span>
+        )}
+        {!fitLabel && (
         <span
           aria-hidden
           className="invisible col-start-1 row-start-1 whitespace-pre [text-box:trim-both_cap_alphabetic]"
         >
           {labelPlaceholder}
         </span>
+        )}
       </span>
     </button>
   );
