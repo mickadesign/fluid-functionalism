@@ -4296,16 +4296,27 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
               className={cn(segment, "max-w-72 cursor-pointer")}
             >
               <Phrase label={label} op={op} />
-              <span className={cn("flex min-w-0 items-center gap-1.5 truncate", picked.length ? "text-foreground" : "text-muted-foreground")}>
-                {picked.length
-                  ? picked.map((o, i) => (
-                      <span key={o.value} className="inline-flex shrink-0 items-center gap-1.5">
-                        {o.color && <BadgeDot color={o.color} />}
-                        {o.label}
-                        {i < picked.length - 1 && ","}
+              {/* One value reads in full, cut short when it's long; more
+                  read as their dots and a count, so the chip keeps its
+                  width. */}
+              <span className={cn("flex min-w-0 items-center gap-1.5", picked.length ? "text-foreground" : "text-muted-foreground")}>
+                {picked.length === 0 && "any"}
+                {picked.length === 1 && (
+                  <>
+                    {picked[0].color && <BadgeDot color={picked[0].color} />}
+                    <span className="min-w-0 truncate">{picked[0].label}</span>
+                  </>
+                )}
+                {picked.length > 1 && (
+                  <>
+                    {picked.some((o) => o.color) && (
+                      <span className="flex shrink-0 items-center -space-x-0.5">
+                        {picked.slice(0, 4).map((o) => (o.color ? <BadgeDot key={o.value} color={o.color} /> : null))}
                       </span>
-                    ))
-                  : "any"}
+                    )}
+                    <span className="shrink-0 whitespace-nowrap">{picked.length} items</span>
+                  </>
+                )}
               </span>
             </button>
           }
