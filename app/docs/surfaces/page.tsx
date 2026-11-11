@@ -796,17 +796,17 @@ function ElevatedDemo() {
 
 // Nested stack from surface-{low} (base) up to surface-{high}, each layer
 // lifting +1 off the one it sits in via the real Elevated primitive.
-function buildStack(low: number, high: number, panel: string): ReactNode {
-  // Each surface's label is hidden until you hover *that* surface. Because the
-  // boxes nest (hovering an inner one also :hovers its ancestors), the second
-  // variant hides a label whenever a descendant surface is the one being
-  // hovered — so only the surface directly under the cursor shows its name.
-  const boxClass = cn(
-    panel,
-    "relative p-6 flex items-center justify-center [&:hover>span]:opacity-100 [&:has([data-surface]:hover)>span]:opacity-0"
-  );
-  const labelClass =
-    "absolute top-2 left-2.5 text-site-caption text-muted-foreground opacity-0 transition-opacity duration-150";
+function buildStack(low: number, high: number, panel: string, hovered: number | null = null): ReactNode {
+  // Each surface's label is hidden until you hover *that* surface: the
+  // innermost surface under the pointer, tracked by the demo. Not a CSS
+  // `:has(:hover)` rule, which made Chrome restyle every page of the site on
+  // each DOM insertion (each menu opening).
+  const boxClass = cn(panel, "relative p-6 flex items-center justify-center");
+  const labelClass = (lvl: number) =>
+    cn(
+      "absolute top-2 left-2.5 text-site-caption text-muted-foreground transition-opacity duration-150",
+      hovered === lvl ? "opacity-100" : "opacity-0"
+    );
 
   let node: ReactNode = null;
   for (let lvl = high; lvl >= low + 1; lvl--) {
@@ -815,12 +815,12 @@ function buildStack(low: number, high: number, panel: string): ReactNode {
     node = (
       <Elevated
         offset={1}
-        data-surface
+        data-surface={lvl}
         // Innermost surface is a square; each enclosing surface wraps it with
         // uniform padding, so the whole stack stays concentric squares.
         className={cn(boxClass, isInner && "size-24")}
       >
-        <span className={labelClass}>surface-{lvl}</span>
+        <span className={labelClass(lvl)}>surface-{lvl}</span>
         {inner}
       </Elevated>
     );
@@ -828,10 +828,10 @@ function buildStack(low: number, high: number, panel: string): ReactNode {
   return (
     <SurfaceProvider value={low}>
       <div
-        data-surface
+        data-surface={low}
         className={cn(boxClass, surfaceClasses(low), node === null && "size-24")}
       >
-        <span className={labelClass}>surface-{low}</span>
+        <span className={labelClass(low)}>surface-{low}</span>
         {node}
       </div>
     </SurfaceProvider>
@@ -842,6 +842,7 @@ function ElevationStackDemo() {
   const { panel } = demoRadius(useShape().variant);
   const [range, setRange] = useState<[number, number]>([1, 4]);
   const [low, high] = range;
+  const [hovered, setHovered] = useState<number | null>(null);
 
   return (
     <DarkPreview code={ELEVATION_STACK_CODE} padding="compact">
@@ -852,8 +853,15 @@ function ElevationStackDemo() {
           <div className="invisible pointer-events-none" aria-hidden>
             {buildStack(1, 8, panel)}
           </div>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            {buildStack(low, high, panel)}
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center"
+            onPointerOver={(e) => {
+              const surface = (e.target as HTMLElement).closest<HTMLElement>("[data-surface]");
+              setHovered(surface ? Number(surface.dataset.surface) : null);
+            }}
+            onPointerLeave={() => setHovered(null)}
+          >
+            {buildStack(low, high, panel, hovered)}
           </div>
         </div>
         <div className="w-full max-w-[520px] mx-auto px-1 pb-2">
