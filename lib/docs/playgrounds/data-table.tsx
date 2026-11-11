@@ -20,6 +20,7 @@ import {
 import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { fieldTouchClass } from "@/lib/size-context";
 import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
@@ -887,7 +888,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                   if (e.key === "Enter") commitName();
                   if (e.key === "Escape") setNaming(null);
                 }}
-                className="h-full min-w-0 bg-transparent pl-3 text-foreground outline-none [field-sizing:content]"
+                // 16px on touch screens, so iOS doesn't zoom into the field.
+                className={cn("h-full min-w-0 bg-transparent pl-3 text-foreground outline-none [field-sizing:content]", fieldTouchClass)}
               />
               <Tooltip content="Delete view">
                 <button
