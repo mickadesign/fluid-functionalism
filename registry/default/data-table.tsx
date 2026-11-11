@@ -4449,8 +4449,8 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const innerRadius = { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[shape.variant];
   const segment = cn(
     "relative z-[1] inline-flex h-full min-w-0 items-center gap-1 outline-none",
-    // Tight around the word and the value (the × keeps its square).
-    compact ? "px-1" : "px-1.5",
+    // 4px around the word and the value (the × keeps its square).
+    "px-1",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
     innerRadius
   );
@@ -4684,7 +4684,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
         <span className={cn("relative z-[1] shrink-0 whitespace-nowrap text-foreground", compact ? "pl-1.5" : "pl-2")}>
           {label}
         </span>
-        {opControl ?? <span className={cn("relative z-[1] shrink-0 whitespace-nowrap", compact ? "pl-1" : "pl-1.5")}>{op}</span>}
+        {opControl ?? <span className={cn("relative z-[1] shrink-0 whitespace-nowrap", "pl-1")}>{op}</span>}
         {value.kind === "options" ? (
           control
         ) : value.kind === "date" ? (
