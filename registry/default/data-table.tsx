@@ -1096,12 +1096,12 @@ function DataTable<TData>({
     const rights = pinsKey.split("|").filter((p) => p.startsWith("r:")).map((p) => p.split(":"));
     let at = 0;
     lefts.forEach(([, id, w], i) => {
-      map[id] = { side: "left", offset: at, edge: i === lefts.length - 1, outer: i === 0 && visible[0]?.id === id };
+      map[id] = { side: "left", offset: at, edge: i === lefts.length - 1, outer: i === 0 && visible[0]?.id === id, ruleless: id === "select" };
       at += Number(w);
     });
     at = 0;
     [...rights].reverse().forEach(([, id, w], i) => {
-      map[id] = { side: "right", offset: at, edge: i === rights.length - 1, outer: i === 0 && visible[visible.length - 1]?.id === id };
+      map[id] = { side: "right", offset: at, edge: i === rights.length - 1, outer: i === 0 && visible[visible.length - 1]?.id === id, ruleless: id === "select" };
       at += Number(w);
     });
     return map;
@@ -2254,6 +2254,9 @@ interface PinInfo {
   edge: boolean;
   /** The table's first (or last) column: its fills round like the row's. */
   outer: boolean;
+  /** Draws no row divider (the selection boxes'): its surface covers the
+   *  dividers passing under it. */
+  ruleless: boolean;
 }
 
 // Corner radii for a pinned cell's fills on the table's outer edge, per
@@ -2306,7 +2309,10 @@ const PIN_CSS = `
 function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
-      <span className="absolute inset-0 bg-background" />
+      {/* A column with no divider of its own (the boxes) reaches over the
+          row's divider line, so the dividers of cells scrolling under it
+          don't show through: they keep starting after it. */}
+      <span className={cn("absolute inset-x-0 top-0 bg-background", pin.ruleless ? "-bottom-px" : "bottom-0")} />
       {children}
       {pin.edge && (
         // A collapsed-border table paints no shadow on its cells: the rule
