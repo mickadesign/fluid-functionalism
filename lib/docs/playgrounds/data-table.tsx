@@ -669,7 +669,11 @@ function RowRevealPart({ children }: { children: ReactNode }) {
       if (!isPresent) fade.then(() => safeToRemove?.());
       return () => fade.stop();
     }
-    el.style.overflow = "hidden";
+    // clip, not hidden: hidden makes the row a scroll container, and a
+    // field focused inside it as it grows (a new chip's input, a view's
+    // name) scrolled the row to show it, shifting its content, which then
+    // jumped back when the clip came off.
+    el.style.overflow = "clip";
     // The start, set before this frame paints: animate() only applies its
     // first keyframe on the next one, which showed the row whole for a frame.
     if (isPresent) {
@@ -910,7 +914,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const fieldPlaced = nameBox !== null;
   useLayoutEffect(() => {
     if (namingAt === null || !fieldPlaced) return;
-    nameRef.current?.focus();
+    nameRef.current?.focus({ preventScroll: true });
     nameRef.current?.select();
   }, [namingAt, fieldPlaced]);
   const commitName = () => {

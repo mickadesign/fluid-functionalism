@@ -4287,7 +4287,11 @@ function RowRevealPart({ children }: { children: ReactNode }) {
       return () => fade.stop();
     }
     // Clipped only while it moves: at rest a chip's focus ring shows.
-    el.style.overflow = "hidden";
+    // clip, not hidden: hidden makes the row a scroll container, and a
+    // field focused inside it as it grows (a new chip's input, a view's
+    // name) scrolled the row to show it, shifting its content, which then
+    // jumped back when the clip came off.
+    el.style.overflow = "clip";
     // The start, set before this frame paints: animate() only applies its
     // first keyframe on the next one, which showed the row whole for a frame.
     if (isPresent) {
