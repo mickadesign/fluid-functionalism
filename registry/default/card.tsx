@@ -352,7 +352,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
           aria-label={label}
-          className="absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[inherit]"
+          className="absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[inherit]"
         />
       ) : (
         <button
@@ -360,7 +360,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           onClick={onClick}
           aria-label={label}
           aria-pressed={selected || undefined}
-          className="absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[inherit]"
+          className="absolute inset-0 z-20 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--focus-ring,#6B97FF)] rounded-[inherit]"
         />
       )
     ) : null;

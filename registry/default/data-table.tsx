@@ -3026,8 +3026,11 @@ function toIsoDay(date: Date) {
 // is each control's own inset less the cell's (12px, 10px compact).
 // A control fills the row's height, so a focus ring drawn outside it would
 // be cut by the cell's clip: rings inside the cell draw inset.
+// Every ring inside an editor draws inset ([--tw-ring-inset:inset] on all of
+// it, not only the focused element): a field whose wrapper rings for its
+// focused input (the Combobox editors) reached past the cell, which clips.
 const CELL_CONTROL =
-  "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1 [&_:focus-visible]:ring-inset";
+  "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1 [&_:focus-visible]:ring-inset [&_*]:[--tw-ring-inset:inset]";
 // The Combobox editors drop their field's ring and fills, like the text
 // field: the cell's own text, with the text cursor.
 const BARE_FIELD =
@@ -5177,7 +5180,9 @@ function DataTableRowActions({ children, label = "Row actions" }: DataTableRowAc
       <DropdownMenu onOpenChange={setOpen}>
         <DropdownTrigger
           render={
-            <Button variant="ghost" size="icon-compact" aria-label={label}>
+            // Its ring drawn inside: flush with the cell's edge in compact,
+            // an outer ring was cut off by the cell and the scroll box.
+            <Button variant="ghost" size="icon-compact" aria-label={label} className="focus-visible:ring-inset">
               <More />
             </Button>
           }

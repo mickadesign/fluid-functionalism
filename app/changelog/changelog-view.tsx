@@ -424,7 +424,7 @@ function Entry({ entry, month, first }: { entry: EntryView; month: string; first
       {entry.diffHtml && (
         <div className="mt-3 flex flex-col items-start gap-3">
           <div
-            className="changelog-diff w-full overflow-x-auto rounded-lg border border-border text-site-caption"
+            className="changelog-diff w-full overflow-x-auto rounded-lg border border-border text-site-caption [&_pre:focus-visible]:outline-offset-[-1px]"
             dangerouslySetInnerHTML={{ __html: entry.diffHtml }}
           />
           <CopyPromptButton

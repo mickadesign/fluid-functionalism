@@ -142,6 +142,7 @@ Systems first — their craft applies across every component below.
 - The thumb is nudged 2px off the container edge with a `-translate`, but the track (and its 10px hit target) stays flush with the edge so edge-throws still land.
 - The baseline edge treatment is a vendored shadcn `scroll-fade`: a 48px mask dissolves content toward edges that have more to scroll, and CSS scroll-driven animations keep the true start/end edge crisp until you scroll past it — no JavaScript; browsers without scroll-driven animations (Firefox) get no fade, since a static one would sit on edges with nothing past them.
 - `scroll-divider` draws the hairline the fade can't: the line lives on the parent's pseudo-elements (inside the scroller the fade's own mask would erase it at exactly the edge it marks) and borrows the scroller's timeline by name; a region flush with the panel's top suppresses its start line, which would otherwise read as a stray border.
+- The viewport takes keyboard focus (to scroll) and its focus outline sits 1px inside its edge (`outline-offset: -1px`): the area's root clips, so the default outline 2px outside was cut on every side.
 
 <a id="reveal"></a>
 ## Reveal (reveal)
@@ -276,6 +277,7 @@ Systems first — their craft applies across every component below.
 - The on-hover dismiss ✕ gates pointer-events alongside opacity (an invisible control must not swallow touch taps meant for the card), gets a bg-card/70 backdrop-blur ground over images so the icon never reads against arbitrary pixels, and in inline rows the header yields pr-10 only while the control is revealed.
 - An inline card with a CardImage reflows its text + actions into a centred column beside the image (footer drops below the text in natural order); CardImage keeps a fixed 2px corner radius in every state rather than inheriting a frame's larger clip — a 16:9 banner stacked, a 160px square inline.
 - CardImage and CardMedia logos paint a 1px inset image outline over their outermost pixels (pure black at 10% in light mode, pure white at 10% in dark), so pale image edges keep their shape without a border changing the box size.
+- The whole-card link or button draws its focus ring inset: it covers the card, which clips, so a ring outside it never showed.
 
 <a id="carousel-dots"></a>
 ## CarouselDots
@@ -392,6 +394,7 @@ Systems first — their craft applies across every component below.
 - Edges line up: the selection checkbox and the row count sit 8px in, the box 4px from its column's end and 12px from the text; the search sits at the right end beside the Columns icon, the ⋯ row icons (rowActionsColumn hugs its 28px button with 4px each side: 36px, and 32px compact with the button flush right, so a sticky right column is no wider than its button) and the next-page arrow share one center line 18px from the right (14px compact).
 - Nothing in a cell is ever cut at its edge: text ends in an ellipsis (or clamps to its lines), a header's title truncates beside its icon and sort arrow, a Badge shrinks and ellipsizes its label (overflow-x: clip, so its trimmed descenders survive), and a tags field wraps its chips when its column wraps text (`lines: "wrap"`) or, on one line, scrolls sideways with its last 16px faded.
 - DataTablePagination wraps by group, never by word: on a narrow bar the row count, the Rows per page select and the "Page n of m" with its arrows each stay whole (`whitespace-nowrap`) and drop to the next line together, so no label ever breaks over two lines. Its two arrows share one TooltipGroup.
+- A focus ring never gets cut: inside a cell (which clips) every ring draws inset, the row's ⋯ button's and every ring in an editor (the whole editor, not only the focused input: a Combobox field rings its wrapper), since in compact the ⋯ sits flush with the cell's edge.
 
 <a id="data-table-top-bar"></a>
 ### Top bar

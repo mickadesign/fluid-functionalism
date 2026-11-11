@@ -43,6 +43,9 @@ const ScrollbarVisibleContext = createContext<boolean>(true);
 // immediate — the fade classes add their own 160ms grace.
 const SCROLL_LINGER_MS = 600;
 
+// The viewport takes keyboard focus (to scroll): its focus outline sits 1px
+// inside its edge, since the area's root clips whatever reaches outside.
+
 // Radix's Viewport renders a <style> (it hides the native scrollbar) with a
 // new `dangerouslySetInnerHTML` object each render, and React rewrites its
 // innerHTML every time: each re-render of the area (a hover, a scroll, new
@@ -130,7 +133,7 @@ const ScrollArea = forwardRef<
             <div
               data-slot="scroll-area-viewport"
               className={cn(
-                "size-full rounded-[inherit]",
+                "size-full rounded-[inherit] focus-visible:outline-offset-[-1px]",
                 orientation === "vertical" && "overflow-y-auto",
                 orientation === "horizontal" && "overflow-x-auto",
                 orientation === "both" && "overflow-auto",
@@ -159,7 +162,7 @@ const ScrollArea = forwardRef<
               <ViewportChildrenContext.Provider value={children}>
                 <StableViewport
                   onScroll={handleScroll}
-                  className={cn("size-full rounded-[inherit]", viewportClassName)}
+                  className={cn("size-full rounded-[inherit] focus-visible:outline-offset-[-1px]", viewportClassName)}
                 />
               </ViewportChildrenContext.Provider>
               {orientation !== "horizontal" && <ScrollBar orientation="vertical" />}
