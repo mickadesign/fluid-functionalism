@@ -1064,6 +1064,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     </div>
   );
 
+  const filterCount = table.getState().columnFilters.length;
+
   const body = (
     <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
@@ -1182,7 +1184,21 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         cellAlign={state.align}
         fill={expanded}
         loading={loading}
-        empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
+        // With filters set, the way back is taking one off; with only a
+        // search, a different word.
+        empty={
+          filterCount > 0
+            ? {
+                title: "No components match",
+                description: filterCount === 1 ? "Remove the filter to see more." : "Remove a filter to see more.",
+                action: (
+                  <Button variant="ghost" size="compact" onClick={() => table.resetColumnFilters()}>
+                    {filterCount === 1 ? "Clear filter" : "Clear filters"}
+                  </Button>
+                ),
+              }
+            : { title: "No components match", description: "Try a name like Dialog or Tabs." }
+        }
         onCellEdit={
           state.editable
             ? ({ row, columnId, value }) =>
