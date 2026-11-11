@@ -3673,7 +3673,12 @@ function DataTableSearch<TData>({
   const sizeClasses = useSize(size);
   const compact = sizeClasses.variant === "compact";
   const target = column ? table.getColumn(column) : undefined;
-  const value = String((target ? target.getFilterValue() : table.getState().globalFilter) ?? "");
+  // A column's search shares its filter with a DataTableFilters chip on the
+  // same column: a text chip's query is the search's text, both ways, so
+  // the two stay one filter (another kind of chip leaves the field empty).
+  const raw = target ? target.getFilterValue() : table.getState().globalFilter;
+  const chip = raw && typeof raw === "object" && "kind" in raw ? (raw as Exclude<DataTableFilterValue, string>) : null;
+  const value = chip ? (chip.kind === "text" ? chip.query : "") : String(raw ?? "");
   const label = placeholder.replace(/…$/, "");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -3691,7 +3696,7 @@ function DataTableSearch<TData>({
   const box = compact ? 28 : 36;
 
   const setValue = (next: string) => {
-    if (target) target.setFilterValue(next);
+    if (target) target.setFilterValue(chip?.kind === "text" ? { ...chip, query: next } : next);
     else table.setGlobalFilter(next);
     // A search that shrinks the rows starts over on the first page.
     table.setPageIndex(0);
