@@ -1304,8 +1304,6 @@ function DataTable<TData>({
       // The visible width, for what stays put while the table scrolls (the
       // empty state's message).
       root.style.setProperty("--table-view-w", `${viewport.clientWidth}px`);
-      // The scroll range, for the table's edge fade (PIN_CSS).
-      root.style.setProperty("--ff-max", `${Math.max(0, max)}px`);
     };
     mark();
     viewport.addEventListener("scroll", mark, { passive: true });
@@ -1663,9 +1661,6 @@ function DataTable<TData>({
       // crushing the column that takes the rest.
       className={cn(
         sized && "table-fixed",
-        // With pinned columns the edge fade is the table's own (PIN_CSS),
-        // so the fills drawn behind it never fade.
-        (pinnedLeft || pinnedRight) && "ff-pin-fade",
         // Most of the gap between box and text (8px of its 12) belongs to
         // the column after the boxes, not the boxes: its header fill then
         // starts 8px before the label instead of on it.
@@ -1956,10 +1951,11 @@ function DataTable<TData>({
         className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
         // Content fades while there's more to a side: at the box's edges
         // (scroll-fade-x), or, with pinned columns, at the line where it
-        // meets them. That fade masks the table alone (ff-pin-fade): on the
-        // box it faded the selection and hover drawn behind the table too,
-        // so a selected row's fill dissolved short of the pinned cells and
-        // seemed to slide as the table scrolled. --pin-l / --pin-r place it.
+        // meets them. That one is no mask: a mask on the box faded the
+        // selection and hover drawn behind the table too, and one on the
+        // table, placed from the scroll offset, trailed a fast scroll by a
+        // frame. The pinned edge cells draw it (PinLayers' veil), sticky
+        // like them, so it holds still on the compositor.
         style={{ "--pin-l": `${pinWidths.l}px`, "--pin-r": `${pinWidths.r}px` } as CSSProperties}
         viewportClassName={cn(
           "scroll-fade-x",
@@ -2551,38 +2547,40 @@ function pinProps(pin: PinInfo | undefined) {
 // once the table has scrolled 1px past its side, read from the scroll box's
 // own timeline, so the cell turns opaque in the frame the content moves
 // (a scroll event lands a frame later, and the content shows through).
-// The table's edge fade rides the same timeline: --ff-sl is the scroll
-// offset (0 to --ff-max), which keeps the mask's stops on the visible box.
+// The edge fade rides the same timeline: --ff-veil eases 0 → 1 over the
+// first 48px of scroll (the scroll fade's size), so it grows in as
+// content starts passing under, like the box's own fade.
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
 @keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
 @keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
 @supports (animation-timeline: scroll()) {
-  .ff-pin-l { animation: ff-pin-on linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
-  .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
-  .ff-pin-fade {
-    animation: ff-sl linear both, ff-fade-l linear both, ff-fade-r linear both;
-    animation-timeline: scroll(nearest inline), scroll(nearest inline), scroll(nearest inline);
-    animation-range: normal, 0px var(--ff-fade), calc(100% - var(--ff-fade)) 100%;
-    --ff-fade: var(--scroll-fade-size, 48px);
-    --ff-in: calc(var(--ff-sl) + var(--pin-l, 0px));
-    --ff-out: calc(var(--ff-sl) + var(--table-view-w, 100%) - var(--pin-r, 0px));
-    mask-image: linear-gradient(to right, #000 var(--ff-in), rgba(0,0,0,var(--ff-fade-l)) var(--ff-in), #000 calc(var(--ff-in) + var(--ff-fade)), #000 calc(var(--ff-out) - var(--ff-fade)), rgba(0,0,0,var(--ff-fade-r)) var(--ff-out), #000 var(--ff-out));
-  }
+  .ff-pin-l { animation: ff-pin-on linear both, ff-veil-on linear both; animation-timeline: scroll(nearest inline), scroll(nearest inline); animation-range: 0px 2px, 0px 48px; }
+  .ff-pin-r { animation: ff-pin-off linear both, ff-veil-off linear both; animation-timeline: scroll(nearest inline), scroll(nearest inline); animation-range: calc(100% - 2px) 100%, calc(100% - 48px) 100%; }
 }
-@property --ff-sl { syntax: "<length>"; inherits: false; initial-value: 0px; }
-@property --ff-fade-l { syntax: "<number>"; inherits: false; initial-value: 1; }
-@property --ff-fade-r { syntax: "<number>"; inherits: false; initial-value: 1; }
-@keyframes ff-sl { from { --ff-sl: 0px } to { --ff-sl: var(--ff-max, 0px) } }
-@keyframes ff-fade-l { from { --ff-fade-l: 1 } to { --ff-fade-l: 0 } }
-@keyframes ff-fade-r { from { --ff-fade-r: 0 } to { --ff-fade-r: 1 } }`;
+@property --ff-veil { syntax: "<number>"; inherits: true; initial-value: 0; }
+@keyframes ff-veil-on { from { --ff-veil: 0 } to { --ff-veil: 1 } }
+@keyframes ff-veil-off { from { --ff-veil: 1 } to { --ff-veil: 0 } }`;
 
 /** A pinned cell's own surface while content passes under it: the page
  *  background, what the row's fills (drawn behind the table) would show
  *  through it, and the hairline at the pinned columns' edge. All of it
  *  fades with `--ff-pin`; none of it glides (the row's own fill does that
  *  under them, at rest). */
-function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
+function PinLayers({
+  pin,
+  selected = false,
+  hover = false,
+  children,
+}: {
+  pin: PinInfo;
+  /** The veil carries the row's selection, and its hover. */
+  selected?: boolean;
+  hover?: boolean;
+  children?: ReactNode;
+}) {
+  const left = pin.side === "left";
+  const veil = left ? "absolute inset-0 bg-linear-to-r" : "absolute inset-0 bg-linear-to-l";
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
       {/* 1px past its far side (and the table's clipped left edge): at a
@@ -2601,7 +2599,25 @@ function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
       {children}
       {pin.edge && (
         // The rule is a span inside the edge cell, in the rows' rule color.
-        <span className={cn("absolute inset-y-0 w-px bg-accent/40", pin.side === "left" ? "right-0" : "left-0")} />
+        <span className={cn("absolute inset-y-0 w-px bg-accent/40", left ? "right-0" : "left-0")} />
+      )}
+      {pin.edge && (
+        // The scroll fade at the edge: 48px hanging off the cell over the
+        // content passing under, from the row's own surface (the page,
+        // then its selection and hover, which glide behind the table) to
+        // clear. Over its bottom border too, where the rules pass under.
+        <span className={cn("absolute top-0 -bottom-px w-12 opacity-(--ff-veil)", left ? "left-full" : "right-full")}>
+          <span className={cn(veil, "from-background to-transparent")} />
+          {selected && <span className={cn(veil, "from-active to-transparent")} />}
+          {hover && (
+            <span
+              className={cn(
+                veil,
+                "from-hover to-transparent opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100"
+              )}
+            />
+          )}
+        </span>
       )}
     </span>
   );
@@ -2630,7 +2646,7 @@ function PinFills({
   // opaque layer covers the overlap: no seam at a fractional position.
   const reach = cn(left && !pin.edge && "-right-px", tall && "-bottom-px");
   return (
-    <PinLayers pin={pin}>
+    <PinLayers pin={pin} selected={selected} hover>
       {selected && (
         <span
           className={cn(
@@ -2975,7 +2991,10 @@ const DataTableBodyRow = memo(
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
-              (lines === 1 || (sized && lines === undefined)) && "truncate",
+              // The pinned edge cell clips in its content block instead (below),
+              // so its edge fade can hang off it.
+              (lines === 1 || (sized && lines === undefined)) &&
+                (pins[cell.column.id]?.edge ? "whitespace-nowrap" : "truncate"),
               // Pinned, the boxes' cell lets its fills reach over its
               // bottom border (it has no text to cut).
               pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
@@ -3039,6 +3058,10 @@ const DataTableBodyRow = memo(
                   swapping && "animate-[reveal-preset_160ms_ease-out_both]"
                 )}
               >
+                {content}
+              </span>
+            ) : pins[cell.column.id]?.edge && (lines === 1 || (sized && lines === undefined)) ? (
+              <span key="content" className="block overflow-x-clip text-ellipsis">
                 {content}
               </span>
             ) : (
