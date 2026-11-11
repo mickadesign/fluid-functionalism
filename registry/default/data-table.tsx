@@ -2453,17 +2453,33 @@ function PinFills({
  *  text lines up with the parent's, past the chevron's slot, which the
  *  line runs through at every depth. Placed from the cell's left padding,
  *  `--expander-pl`, which the table sets. */
-function SubRowGuides({ row, expanded, alignTop }: { row: Row<unknown>; expanded: boolean; alignTop: boolean }) {
+function SubRowGuides({
+  row,
+  expanded,
+  grouped,
+  alignTop,
+}: {
+  row: Row<unknown>;
+  expanded: boolean;
+  /** The next row is a sub-row too: the line runs on into it. */
+  grouped: boolean;
+  alignTop: boolean;
+}) {
   const x = "calc(var(--expander-pl) + 7.5px)";
   const rule = "pointer-events-none absolute w-px bg-border";
   return (
     <>
-      {row.depth > 0 && <span aria-hidden className={cn(rule, "-top-px bottom-0")} style={{ left: x }} />}
+      {row.depth > 0 && (
+        // Each row's piece covers its own bottom rule (a pinned cell's fill
+        // would paint over a piece reaching up from the row below); the
+        // group's last row stops 8px short of its rule.
+        <span aria-hidden className={cn(rule, "top-0", grouped ? "-bottom-px" : "bottom-2")} style={{ left: x }} />
+      )}
       {expanded && row.subRows.length > 0 && (
         // From 6px under the open chevron to the row's bottom.
         <span
           aria-hidden
-          className={cn(rule, "bottom-0", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+14px)]" : "top-[calc(50%+14px)]")}
+          className={cn(rule, "-bottom-px", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+14px)]" : "top-[calc(50%+14px)]")}
           style={{ left: x }}
         />
       )}
@@ -2741,7 +2757,7 @@ const DataTableBodyRow = memo(
                 shapeVariant={shapeVariant}
               />
             )}
-            {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} alignTop={alignTop} />}
+            {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
             {swapping && (
               // The hand-over: a skeleton over the cell's content box,
               // shown at once (its delayed reveal and pulse turned
