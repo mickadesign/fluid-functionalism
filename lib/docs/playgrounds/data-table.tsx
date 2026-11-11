@@ -1107,7 +1107,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
               <div
                 ref={tabGhostRef}
                 aria-hidden
-                className="pointer-events-none fixed z-[var(--z-popover,60)] flex items-center justify-center whitespace-nowrap rounded-full bg-background bg-[linear-gradient(var(--active),var(--active))] px-3 text-site-caption text-foreground opacity-80"
+                // The dragged tab's own corners and type.
+                className={cn(
+                  "pointer-events-none fixed z-[var(--z-popover,60)] flex items-center justify-center whitespace-nowrap bg-background bg-[linear-gradient(var(--active),var(--active))] px-3 text-foreground opacity-80",
+                  typeClass("body", "compact"),
+                  shape.item
+                )}
                 style={{ top: tabGhost.top, left: tabGhost.left, width: tabGhost.width, height: tabGhost.height }}
               >
                 {tabGhost.label}
