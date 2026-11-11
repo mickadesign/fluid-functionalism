@@ -12,6 +12,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 
 const COPIES = [
   "registry/base/dialog.tsx",
+  "registry/base/date-picker.tsx",
   "registry/base/dropdown.tsx",
   "registry/base/mobile-drawer.tsx",
   "registry/base/tooltip.tsx",

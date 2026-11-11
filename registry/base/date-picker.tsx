@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
@@ -15,9 +15,43 @@ import {
 // DatePicker on Base UI Popover. Base UI owns positioning, the portal,
 // outside press and focus-out dismissal, Escape, and focus return to the
 // trigger; the calendar moves focus to the selected day itself. Every close
-// calls preventUnmountOnClose, and the frame releases the unmount through
-// actionsRef once the exit spring ends.
+// holds the unmount, and the frame releases it through actionsRef once the
+// exit spring ends. A close made by the picker itself, such as after a pick,
+// is replayed through the root so it gets the same held unmount.
 // ---------------------------------------------------------------------------
+
+type PopupActions = { unmount: () => void; close: () => void };
+
+// Base UI unmounts a closing popup once the animations it can detect on the
+// popup element end. It misses the Motion exit spring, which it cuts.
+// A close that calls preventUnmountOnClose() in onOpenChange stays mounted
+// until the content calls actionsRef.unmount(). A close made by setting
+// `open` never reaches onOpenChange, so the root stays open until that close
+// is replayed through actionsRef.close(), which does.
+function usePopupExit(open: boolean, setOpen: (open: boolean) => void) {
+  const actionsRef = useRef<PopupActions | null>(null);
+  const [rootOpen, setRootOpen] = useState(open);
+  if (open && !rootOpen) setRootOpen(true);
+  useLayoutEffect(() => {
+    if (open || !rootOpen) return;
+    // The root fills actionsRef before this effect runs; without it, close
+    // straight away rather than stay open.
+    if (actionsRef.current) actionsRef.current.close();
+    else setRootOpen(false);
+  }, [open, rootOpen]);
+  const onOpenChange = (
+    next: boolean,
+    details: { preventUnmountOnClose: () => void }
+  ) => {
+    if (!next) {
+      details.preventUnmountOnClose();
+      setRootOpen(false);
+    }
+    // A replayed close finds `open` already false: nothing to report.
+    if (next !== open) setOpen(next);
+  };
+  return { actionsRef, rootOpen: open || rootOpen, onOpenChange };
+}
 
 function DatePickerPopover({
   open,
@@ -30,7 +64,10 @@ function DatePickerPopover({
   className,
   children,
 }: DatePickerPopoverProps) {
-  const actionsRef = useRef<{ unmount: () => void; close: () => void } | null>(null);
+  const { actionsRef, rootOpen, onOpenChange: handleOpenChange } = usePopupExit(
+    open,
+    onOpenChange
+  );
 
   // Fallback release for the deferred unmount, for throttled tabs where the
   // exit's animation callback stalls.
@@ -38,11 +75,11 @@ function DatePickerPopover({
     if (open) return;
     const id = setTimeout(() => actionsRef.current?.unmount(), exitFallbackMs(spring.fast));
     return () => clearTimeout(id);
-  }, [open]);
+  }, [open, actionsRef]);
 
   return (
     <PopoverPrimitive.Root
-      open={open}
+      open={rootOpen}
       actionsRef={actionsRef}
       modal={false}
       onOpenChange={(next, details) => {
@@ -56,9 +93,8 @@ function DatePickerPopover({
             return;
           }
           if (details.reason === "escape-key" && escapeBlocked?.()) return;
-          details.preventUnmountOnClose();
         }
-        onOpenChange(next);
+        handleOpenChange(next, details);
       }}
     >
       {kind === "trigger" ? <PopoverPrimitive.Trigger render={anchor} /> : anchor}
