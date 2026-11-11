@@ -521,13 +521,13 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       : []),
     ...(views
       ? [
-          `  <div className="flex items-center gap-1">`,
+          `  {views.length > 0 && (`,
           `    <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
           `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
           `        <TabsItem key={name} index={i} label={name} />`,
           `      ))}`,
           `    </Tabs>`,
-          `  </div>`,
+          `  )}`,
         ]
       : []),
     ...(o.filters
@@ -1002,9 +1002,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const body = (
     <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
-      {showViews && (
+      {showViews && views.length > 0 && (
         // The views as subtle tabs, stepped in with the title past a
-        // selection column.
+        // selection column. A lone "All" tab says nothing, so the row
+        // waits for the first saved view.
         <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-9")}>
           <Tabs
             size="compact"

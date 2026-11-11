@@ -564,8 +564,9 @@ export function ViewsTable() {
         <span className="ml-auto" />
         <DataTableFilters table={table} />
       </div>
-      <div className="flex flex-wrap items-center gap-1">
-        {/* The views as subtle tabs: one gliding hover, the open view's pill. */}
+      {/* The views as subtle tabs: one gliding hover, the open view's pill.
+          A single view needs no tabs. */}
+      {views.length > 1 && (
         <Tabs
           size="compact"
           selectedIndex={Math.max(0, views.findIndex((v) => v.name === current))}
@@ -576,7 +577,7 @@ export function ViewsTable() {
             <TabsItem key={view.name} index={i} label={view.name} />
           ))}
         </Tabs>
-      </div>
+      )}
       {/* Save view at the far right of the filters' row, with the first filter. */}
       <DataTableFilterChips table={table}>
         <Button variant="ghost" size="compact" onClick={save}>
@@ -605,11 +606,13 @@ const saveView = (name: string) => {
 const openView = (view: View) =>
   table.setState((old) => ({ ...old, ...view.state, pagination: { ...old.pagination, pageIndex: 0 } }));
 
-<Tabs size="compact" selectedIndex={views.indexOf(current)} onSelect={(i) => openView(views[i])}>
-  {views.map((view, i) => (
-    <TabsItem key={view.name} index={i} label={view.name} />
-  ))}
-</Tabs>
+{views.length > 1 && (
+  <Tabs size="compact" selectedIndex={views.indexOf(current)} onSelect={(i) => openView(views[i])}>
+    {views.map((view, i) => (
+      <TabsItem key={view.name} index={i} label={view.name} />
+    ))}
+  </Tabs>
+)}
 <DataTableFilters table={table} />
 <DataTableFilterChips table={table} />
 <DataTable table={table} />`;

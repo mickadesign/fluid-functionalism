@@ -252,13 +252,14 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`      </div>`);
   }
   if (views) {
-    l.push(`      <div className="flex items-center gap-1">`);
+    // No tabs until a view is saved: a lone "All" tab says nothing.
+    l.push(`      {views.length > 0 && (`);
     l.push(`        <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
     l.push(`          {["All", ...views.map((v) => v.name)].map((name, i) => (`);
     l.push(`            <TabsItem key={name} index={i} label={name} />`);
     l.push(`          ))}`);
     l.push(`        </Tabs>`);
-    l.push(`      </div>`);
+    l.push(`      )}`);
   }
   if (p.filters && views) {
     // Save view at the far right of the filters' row, with the first filter.
