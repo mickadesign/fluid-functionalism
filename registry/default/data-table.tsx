@@ -263,8 +263,21 @@ type UseDataTableOptions<TData> = Omit<TableOptions<TData>, "getCoreRowModel"> &
   pageSize?: number;
 };
 
+/** A column definition's id, as TanStack derives it: its `id`, else its
+ *  accessorKey (dots become underscores), else a string `header`. */
+function defId<TData>(def: ColumnDef<TData, unknown>): string | undefined {
+  if (def.id !== undefined) return def.id;
+  if ("accessorKey" in def && def.accessorKey != null) return String(def.accessorKey).replace(/\./g, "_");
+  return typeof def.header === "string" ? def.header : undefined;
+}
+
+/** The definitions that become columns, through any column groups. */
+function leafDefs<TData>(defs: ColumnDef<TData, unknown>[]): ColumnDef<TData, unknown>[] {
+  return defs.flatMap((def) => ("columns" in def && def.columns ? leafDefs(def.columns) : [def]));
+}
+
 function defaultPinning<TData>(columns: ColumnDef<TData, unknown>[]) {
-  const ids = columns.map((def) => def.id ?? ("accessorKey" in def ? String(def.accessorKey) : undefined));
+  const ids = leafDefs(columns).map(defId);
   const first = ids.find((id) => id !== undefined && id !== "select" && id !== "actions");
   return {
     left: [...(ids.includes("select") ? ["select"] : []), ...(first ? [first] : [])],
@@ -293,6 +306,10 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     sortDescFirst: false,
     // Widths follow the pointer while a resize handle is dragged.
     columnResizeMode: "onChange",
+    // The search reads every column with an accessor. TanStack's own rule
+    // goes by the first row's value (a string or a number), which leaves
+    // out tags, dates, and any column whose first row is empty.
+    getColumnCanGlobalFilter: () => true,
     ...options,
     // Every column filters the way DataTableFilters sets it, unless it
     // brings its own filterFn; DataTableSearch has the global filter.
@@ -329,7 +346,12 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // a chip that's already there again.
   const [filterRequest, setFilterRequest] = useState<{ id: string; n: number } | null>(null);
   // How many DataTableFilterChips are mounted to show added filters.
-  const chipsMounted = useRef(0);
+  // State, not a ref: the headers' menus read it while rendering (their
+  // Filter item), so mounting or unmounting the chips must redraw them.
+  const [chipsMounted, setChipsMounted] = useState(0);
+  // One function for the table's life: the chips register in an effect
+  // keyed on it, which a new one per view would re-run on every change.
+  const registerChips = useCallback((mounted: boolean) => setChipsMounted((n) => n + (mounted ? 1 : -1)), []);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -347,9 +369,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
         },
         getRootElement: () => rootRef.current(),
         filterRequest,
-        _registerChips: (mounted: boolean) => {
-          chipsMounted.current += mounted ? 1 : -1;
-        },
+        _registerChips: registerChips,
         openFilter: (id: string) => {
           const column = table.getColumn(id);
           const kind = column ? filterOf(table, column) : null;
@@ -362,7 +382,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           setFilterRequest((old) => ({ id, n: (old?.n ?? 0) + 1 }));
           return true;
         },
-        canOpenFilter: () => chipsMounted.current > 0,
+        canOpenFilter: () => chipsMounted > 0,
         setColumnLines: (id: string, lines: ColumnLines | undefined) => {
           captureRef.current();
           setLines((old) => {
@@ -374,7 +394,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
         },
       }) as DataTableInstance<TData>,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state is the trigger
-    [table, state, columnLines, filterRequest]
+    [table, state, columnLines, filterRequest, chipsMounted]
   );
 }
 
@@ -598,8 +618,7 @@ function headerWidth(th: HTMLElement) {
  *  the rest), looked up by id through any column groups. */
 function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number | undefined {
   for (const def of defs) {
-    const own = def.id ?? ("accessorKey" in def ? String(def.accessorKey) : undefined);
-    if (own === id) return def.size;
+    if (defId(def) === id) return def.size;
     if ("columns" in def && def.columns) {
       const found = ownSize(def.columns, id);
       if (found !== undefined) return found;
@@ -1130,7 +1149,15 @@ function DataTable<TData>({
   const pageKey = `${table.options.data.length}:${table.getState().pagination.pageSize}`;
   // Rows gaining sub-rows (or losing them) widen the chevron's column: read again.
   const hasSubRows = table.getCanSomeRowsExpand();
+  // Read through a ref: useDataTable hands out a new view of the table on
+  // every state change, and as a dependency it measured the columns again
+  // on every sort, selection and keystroke.
+  const tableRef = useRef(table);
   useLayoutEffect(() => {
+    tableRef.current = table;
+  });
+  useLayoutEffect(() => {
+    const table = tableRef.current;
     if (resizeColumns && seeded) return;
     const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
     const ths = headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]");
@@ -1208,7 +1235,8 @@ function DataTable<TData>({
     });
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl, hasSubRows]);
+    // `loading` too: skeleton rows give way to real ones of other widths.
+  }, [resizeColumns, seeded, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl, hasSubRows, loading]);
   const sized = resizeColumns ? seeded : fitted !== null;
   // The row-menu column hugs its button: 4px narrower in compact, where the
   // button sits flush right on the compact controls' center line.
@@ -1312,8 +1340,13 @@ function DataTable<TData>({
   // The far end of a Shift + arrow range, so the next step can shrink it.
   const rangeHead = useRef<string | null>(null);
   const extendTo = (fromId: string, toId: string) => {
-    const anchor = selectionAnchors.get(table.getState) ?? fromId;
     const ids = rows.map((r) => r.id);
+    // A range needs its anchor among these rows (as a shift-click does):
+    // one left on another page starts over from the focused row.
+    const stored = selectionAnchors.get(table.getState);
+    const onPage = stored !== undefined && ids.includes(stored);
+    if (!onPage) rangeHead.current = null;
+    const anchor = onPage ? stored : fromId;
     const span = (a: string, b: string) => {
       const i = ids.indexOf(a);
       const j = ids.indexOf(b);
@@ -1363,6 +1396,10 @@ function DataTable<TData>({
       onUndo();
       return;
     }
+    // Keys from a menu or a calendar opened in the table (portalled, but
+    // bubbling here through React) are the popup's: its Escape closes it
+    // and leaves the selection alone.
+    if (!e.currentTarget.contains(target)) return;
     if (hasSelection && mod && !e.altKey && e.key.toLowerCase() === "a") {
       e.preventDefault();
       selectAllRows(table, true);
@@ -1371,6 +1408,7 @@ function DataTable<TData>({
     if (hasSelection && e.key === "Escape" && Object.keys(table.getState().rowSelection).length) {
       e.preventDefault();
       table.resetRowSelection();
+      selectionAnchors.delete(table.getState);
       rangeHead.current = null;
       return;
     }
@@ -1540,6 +1578,23 @@ function DataTable<TData>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- table is one object for its life
   }, [rowsFocusable, hasSelection]);
+  // The body keeps exactly one tab stop. The stop roves in the DOM (see the
+  // rows' onFocus) while each row still renders its own, so a sort could
+  // leave two rows with one, and a filter none.
+  useLayoutEffect(() => {
+    if (!rowsFocusable) return;
+    const body = wrapRef.current?.querySelector("tbody");
+    if (!body) return;
+    const stops = Array.from(body.querySelectorAll<HTMLElement>("tr[data-row-id][tabindex='0']"));
+    if (stops.length === 0) {
+      const first = body.querySelector<HTMLElement>("tr[data-row-id]");
+      if (first) first.tabIndex = 0;
+      return;
+    }
+    if (stops.length === 1) return;
+    const keep = stops.find((tr) => tr.contains(document.activeElement)) ?? stops[0];
+    for (const tr of stops) if (tr !== keep) tr.tabIndex = -1;
+  });
   // The table scrolling sideways while an editor's popup is open (a menu,
   // a list, a calendar) closes the popup, as Esc would, rather than let it
   // ride its trigger out of the table's box. The reveal's own scroll (an
@@ -1779,12 +1834,19 @@ function DataTable<TData>({
                         header.getResizeHandler()(e);
                       }}
                       onReset={() => column.resetSize()}
-                      onStep={(delta) =>
+                      onStep={(delta, handle) => {
+                        // As a drag does: the flex column steps from the
+                        // width it shows, not the smaller size it holds.
+                        const rendered =
+                          column.id === flexId
+                            ? Math.round(handle.closest("th")?.getBoundingClientRect().width ?? 0)
+                            : 0;
+                        const from = Math.max(header.getSize(), rendered);
                         table.setColumnSizing((old) => ({
                           ...old,
-                          [column.id]: Math.max(MIN_COLUMN_WIDTH, header.getSize() + delta),
-                        }))
-                      }
+                          [column.id]: Math.max(MIN_COLUMN_WIDTH, from + delta),
+                        }));
+                      }}
                     />
                   )}
                 </TableHead>
@@ -1915,6 +1977,9 @@ function DataTable<TData>({
                 setMenuRowId(tr?.dataset.rowId ?? null);
               }}
               onKeyDown={(e) => {
+                // Only the keys that open the menu: naming the row on every
+                // key re-rendered the table with each arrow press.
+                if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
                 const tr = (e.target as Element).closest<HTMLElement>("tbody tr[data-row-id]");
                 if (tr) setMenuRowId(tr.dataset.rowId ?? null);
               }}
@@ -1966,7 +2031,7 @@ interface ResizeHandleProps {
   resizing: boolean;
   onStart: (event: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => void;
   onReset: () => void;
-  onStep: (delta: number) => void;
+  onStep: (delta: number, handle: HTMLElement) => void;
 }
 
 /** An 8px grab strip over the header's right edge, showing a 1px rule on
@@ -1994,7 +2059,7 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
         e.preventDefault();
         // Handled here, so the header's own keys don't see it too.
         e.stopPropagation();
-        onStep(e.key === "ArrowLeft" ? -RESIZE_STEP : RESIZE_STEP);
+        onStep(e.key === "ArrowLeft" ? -RESIZE_STEP : RESIZE_STEP, e.currentTarget);
       }}
       className="group/resize absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none select-none outline-none"
     >
@@ -2314,6 +2379,13 @@ const SELECT_REVEAL =
 /** The selectable rows the search leaves, sub-rows included, on every page. */
 function selectableRows<TData>(table: TanStackTable<TData>) {
   return table.getFilteredRowModel().flatRows.filter((r) => r.getCanSelect());
+}
+
+/** The selected rows, each counted once at its highest selected level: a
+ *  selected parent stands for its sub-rows, and a sub-row picked on its own
+ *  counts for itself (a row model's `rows` holds top-level rows only). */
+function selectedRows<TData>(model: { flatRows: Row<TData>[] }) {
+  return model.flatRows.filter((row) => !row.getParentRows().some((parent) => parent.getIsSelected()));
 }
 
 /** One state update for the whole result, whatever its size. */
@@ -3043,12 +3115,15 @@ const editorOptions = (e: DataTableEditor): EditorOptions =>
   typeof e === "string" ? {} : (e as EditorOptions);
 const itemText = (item: string | { value: string }) => (typeof item === "string" ? item : item.value);
 
-/** "YYYY-MM-DD" read as that day where the viewer is (not UTC midnight,
- *  which lands on the day before west of Greenwich), or a Date as is. */
+/** "YYYY-MM-DD" (or a string that starts with one, as dayOf reads them)
+ *  read as that day where the viewer is (not UTC midnight, which lands on
+ *  the day before west of Greenwich), or a Date as is. */
 function toDate(value: unknown): Date | undefined {
   if (value instanceof Date) return value;
-  if (typeof value !== "string" || !value) return undefined;
-  const [y, m, d] = value.split("-").map(Number);
+  if (typeof value !== "string") return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return undefined;
+  const [y, m, d] = match.slice(1).map(Number);
   return y && m && d ? new Date(y, m - 1, d) : undefined;
 }
 
@@ -3328,7 +3403,10 @@ function EditorBody<TData>({
           onOpenChange={hold.onOpenChange}
           onValueChange={(next) => {
             const day = next instanceof Date ? next : undefined;
-            commit(day ? (typeof value === "string" ? toIsoDay(day) : day) : null);
+            // A string keeps whatever follows its day (a timestamp's time).
+            commit(
+              day ? (typeof value === "string" ? toIsoDay(day) + (dayOf(value) ? value.slice(10) : "") : day) : null
+            );
           }}
           className="min-w-0"
         />
@@ -3924,6 +4002,14 @@ function DataTableSearch<TData>({
     focusOnOpen.current = false;
     inputRef.current?.focus();
   }, [expanded]);
+  // Closed with Esc: the button takes focus once it's mounted again.
+  const focusButton = useRef(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (expanded || !focusButton.current) return;
+    focusButton.current = false;
+    buttonRef.current?.focus();
+  }, [expanded]);
   // The button's square: the icon sits at its center, open or closed.
   const box = compact ? 28 : 36;
 
@@ -3957,6 +4043,7 @@ function DataTableSearch<TData>({
           <Button
             variant="ghost"
             size={compact ? "icon-compact" : "icon"}
+            ref={buttonRef}
             aria-label={label}
             aria-expanded={false}
             className="absolute inset-0"
@@ -3984,8 +4071,14 @@ function DataTableSearch<TData>({
           // Esc clears the search and closes it.
           if (e.key === "Escape" && collapsible) {
             e.preventDefault();
+            // One press does one thing: with text to clear (or a field to
+            // close) it stops here, and a Dialog around it stays open.
+            e.stopPropagation();
             setValue("");
             setOpen(false);
+            // Focus goes to the search button once it's back, not to
+            // <body> (the field is out of the tab order when closed).
+            focusButton.current = true;
             e.currentTarget.blur();
             return;
           }
@@ -4039,6 +4132,9 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
     rows: typeof initial === "function" ? initial() : initial,
     past: [] as UndoStep<T>[],
     future: [] as UndoStep<T>[],
+    // Steps trimmed off the front at `limit`: stepCount keeps counting
+    // past it, so a count read before a trim still names its step.
+    dropped: 0,
   }));
 
   const apply = useCallback(
@@ -4049,9 +4145,11 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
         const now = Date.now();
         const last = s.past[s.past.length - 1];
         if (mergeKey && last?.mergeKey === mergeKey && now - last.at < MERGE_MS)
-          return { rows: after, past: [...s.past.slice(0, -1), { ...last, after, at: now }], future: [] };
+          return { ...s, rows: after, past: [...s.past.slice(0, -1), { ...last, after, at: now }], future: [] };
         const step = { label, before: s.rows, after, mergeKey, at: now };
-        return { rows: after, past: [...s.past, step].slice(-limit), future: [] };
+        const past = [...s.past, step];
+        const over = Math.max(0, past.length - limit);
+        return { rows: after, past: past.slice(over), future: [], dropped: s.dropped + over };
       }),
     [limit]
   );
@@ -4090,7 +4188,7 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
       setState((s) => {
         const step = s.past[s.past.length - 1];
         if (!step) return s;
-        return { rows: step.before, past: s.past.slice(0, -1), future: [step, ...s.future] };
+        return { ...s, rows: step.before, past: s.past.slice(0, -1), future: [step, ...s.future] };
       }),
     []
   );
@@ -4101,9 +4199,12 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
   const undoTo = useCallback(
     (count: number) =>
       setState((s) => {
-        if (count >= s.past.length) return s;
-        const undone = s.past.slice(count);
-        return { rows: undone[0].before, past: s.past.slice(0, count), future: [...undone, ...s.future] };
+        // `count` is a stepCount: steps ever taken, trimmed ones included.
+        // A step trimmed away can't be undone: back as far as there is.
+        const at = Math.max(0, count - s.dropped);
+        if (at >= s.past.length) return s;
+        const undone = s.past.slice(at);
+        return { ...s, rows: undone[0].before, past: s.past.slice(0, at), future: [...undone, ...s.future] };
       }),
     []
   );
@@ -4113,7 +4214,7 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
       setState((s) => {
         const step = s.future[0];
         if (!step) return s;
-        return { rows: step.after, past: [...s.past, step], future: s.future.slice(1) };
+        return { ...s, rows: step.after, past: [...s.past, step], future: s.future.slice(1) };
       }),
     []
   );
@@ -4129,7 +4230,7 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
     undoTo,
     redo,
     /** Steps taken so far: read it before a change, pass it to undoTo. */
-    stepCount: state.past.length,
+    stepCount: state.dropped + state.past.length,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
     /** The step undo would take back, for a toast's text. */
@@ -5282,7 +5383,7 @@ function DataTablePagination<TData>({
   const Next = icons["arrow-right"];
   const iconSize = sizeClasses.variant === "compact" ? "icon-compact" : "icon";
   const total = table.getFilteredRowModel().rows.length;
-  const selected = table.getFilteredSelectedRowModel().rows.length;
+  const selected = selectedRows(table.getFilteredSelectedRowModel()).length;
   const pageCount = Math.max(1, table.getPageCount());
   const page = Math.min(table.getState().pagination.pageIndex + 1, pageCount);
   const pageSize = table.getState().pagination.pageSize;
@@ -5405,7 +5506,7 @@ function DataTableSelectionBar<TData>({
   const icons = useIcons();
   const XIcon = icons.x;
   const reduceMotion = useReducedMotion();
-  const selected = table.getSelectedRowModel().rows;
+  const selected = selectedRows(table.getSelectedRowModel());
   const count = selected.length;
   // The last count shown, so the bar keeps its number while it leaves.
   const [shown, setShown] = useState(count);
@@ -5468,6 +5569,7 @@ function DataTableSelectionBar<TData>({
   const clear = () => {
     setMenuOpen(false);
     table.resetRowSelection();
+    selectionAnchors.delete(table.getState);
   };
   const noun = shown === 1 ? "row" : "rows";
 
