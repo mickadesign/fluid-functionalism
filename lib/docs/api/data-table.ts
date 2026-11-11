@@ -13,7 +13,7 @@ export const useDataTableProps: PropDef[] = [
 export const dataTableProps: PropDef[] = [
   { name: "table", type: "Table<TData>", description: "What `useDataTable` returns." },
   { name: "size", type: '"default" | "compact"', description: "Pins every row to 36px or 28px. Omitted, rows follow the SizeProvider." },
-  { name: "empty", type: "{ title?, description?, action? }", default: '{ title: "No results" }', description: "What an empty body says. It keeps a page of height, so nothing below moves." },
+  { name: "empty", type: "{ title?, description?, action? }", default: '{ title: "No results" }', description: "What an empty body says. It keeps a page of height, so nothing below moves. With column filters set, a description or action you leave out says \"Remove a filter to see more.\" and offers Clear filter(s)." },
   { name: "onRowClick", type: "(row: Row<TData>) => void", description: "Opens a row on click or Space. Clicks on its controls stay with them." },
   { name: "resizeColumns", type: "boolean", default: "false", description: "Drag a header's right edge, or press `←` / `→` on it, to set a width. Double-click resets." },
   { name: "cellAlign", type: '"auto" | "center" | "top"', default: '"auto"', description: "Where content sits in a row. `auto` goes to the top once a column wraps." },

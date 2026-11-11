@@ -1189,19 +1189,11 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         cellAlign={state.align}
         fill={expanded}
         loading={loading}
-        // With filters set, the way back is taking one off; with only a
-        // search, a different word.
+        // With filters set, the table's own default says to remove one and
+        // offers Clear filter(s); a search alone gets a different word.
         empty={
           filterCount > 0
-            ? {
-                title: "No components match",
-                description: filterCount === 1 ? "Remove the filter to see more." : "Remove a filter to see more.",
-                action: (
-                  <Button variant="ghost" size="compact" onClick={() => table.resetColumnFilters()}>
-                    {filterCount === 1 ? "Clear filter" : "Clear filters"}
-                  </Button>
-                ),
-              }
+            ? { title: "No components match" }
             : { title: "No components match", description: "Try a name like Dialog or Tabs." }
         }
         onCellEdit={

@@ -432,7 +432,9 @@ interface DataTableProps<TData> {
   /** Pins every row to one step of the size ladder (36px or 28px). Omitted,
    *  rows follow the surrounding SizeProvider. */
   size?: SizeVariant;
-  /** What the body says with no rows. Defaults to "No results". */
+  /** What the body says with no rows. Defaults to "No results"; with
+   *  column filters set, the description and action you leave out say
+   *  "Remove a filter to see more." and offer Clear filter(s). */
   empty?: DataTableEmpty;
   /** Makes body rows clickable. Clicks on a control inside the row (the
    *  selection box, a row menu) don't count. The rows also become one tab
@@ -681,6 +683,7 @@ function DataTable<TData>({
     : liveRows;
   const visible = table.getVisibleLeafColumns();
   const columnCount = visible.length;
+  const filterCount = table.getState().columnFilters.length;
   // The last resizable column takes whatever width is left, so fixed
   // columns after it (a row menu) keep theirs.
   // Taller rows read best from the top line down.
@@ -1790,8 +1793,17 @@ function DataTable<TData>({
             columns={columnCount}
             rows={heldRows}
             title={empty?.title ?? "No results"}
-            description={empty?.description}
-            action={empty?.action}
+            // With filters set, the way back is taking one off: unless you
+            // say otherwise, the body says so and offers to clear them.
+            description={empty?.description ?? (filterCount > 0 ? "Remove a filter to see more." : undefined)}
+            action={
+              empty?.action ??
+              (filterCount > 0 ? (
+                <Button variant="ghost" size="compact" onClick={() => table.resetColumnFilters()}>
+                  {filterCount === 1 ? "Clear filter" : "Clear filters"}
+                </Button>
+              ) : undefined)
+            }
           />
         )}
       </TableBody>
@@ -2403,7 +2415,11 @@ const PIN_CSS = `
 function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
-      <span className="absolute inset-0 bg-background" />
+      {/* 1px past both sides: at a fractional position each cell's fill
+          snaps to the pixel grid on its own, which left a hairline between
+          two pinned cells (and at the table's clipped edge) where text
+          scrolling under showed through. Neighbours overlap instead. */}
+      <span className="absolute inset-y-0 -inset-x-px bg-background" />
       {children}
       {pin.edge && (
         // The rule is a span inside the edge cell, in the rows' rule color.
