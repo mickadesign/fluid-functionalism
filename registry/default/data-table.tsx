@@ -2529,14 +2529,6 @@ function pinProps(pin: PinInfo | undefined) {
       // the pinned cells in DOM order as it scrolled under them; a raised
       // editor (z-30) still covers them, as it covers its neighbors.
       "sticky z-[2] [--ff-pin:0]",
-      // The cell's own bottom rule sits in its border, outside the layers
-      // below (and out of reach where the cell clips), so the rules of the
-      // cells scrolling under showed through it. While pinned, a 1px strip
-      // of the cell's own background covers that border: the page color,
-      // under the row's fill where there is one (--pin-strip), and the
-      // cell's own rule still draws over it.
-      "bg-no-repeat [background-origin:border-box] [background-position:bottom] [background-size:100%_calc(var(--ff-pin)*1px)]",
-      "[background-image:linear-gradient(var(--pin-strip,transparent),var(--pin-strip,transparent)),linear-gradient(var(--background),var(--background))]",
       left ? "ff-pin-l group-data-x-start/pin:[--ff-pin:1]" : "ff-pin-r group-data-x-end/pin:[--ff-pin:1]"
     ),
     style: left ? { left: pin.offset } : { right: pin.offset },
@@ -2547,20 +2539,28 @@ function pinProps(pin: PinInfo | undefined) {
 // once the table has scrolled 1px past its side, read from the scroll box's
 // own timeline, so the cell turns opaque in the frame the content moves
 // (a scroll event lands a frame later, and the content shows through).
-// The edge fade rides the same timeline: --ff-veil eases 0 → 1 over the
-// first 48px of scroll (the scroll fade's size), so it grows in as
-// content starts passing under, like the box's own fade.
+// The layers themselves show by animating `opacity` on that timeline, not
+// through --ff-pin: a custom property animates on the main thread, a frame
+// behind a fast compositor scroll, which let the row's rounded selection
+// show under the pinned cells for that frame; opacity runs on the
+// compositor, in the scroll's own frame. --ff-pin still drives the strip
+// over the bottom border, and the layers where there's no scroll timeline.
+// The edge fade (ff-veil-*) eases in over the first 48px of scroll, the
+// scroll fade's size, as content starts passing under.
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
 @keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
 @keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
 @supports (animation-timeline: scroll()) {
-  .ff-pin-l { animation: ff-pin-on linear both, ff-veil-on linear both; animation-timeline: scroll(nearest inline), scroll(nearest inline); animation-range: 0px 2px, 0px 48px; }
-  .ff-pin-r { animation: ff-pin-off linear both, ff-veil-off linear both; animation-timeline: scroll(nearest inline), scroll(nearest inline); animation-range: calc(100% - 2px) 100%, calc(100% - 48px) 100%; }
+  .ff-pin-l { animation: ff-pin-on linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
+  .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
+  .ff-layer-l { animation: ff-show linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
+  .ff-layer-r { animation: ff-hide linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
+  .ff-veil-l { animation: ff-show linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 48px; }
+  .ff-veil-r { animation: ff-hide linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 48px) 100%; }
 }
-@property --ff-veil { syntax: "<number>"; inherits: true; initial-value: 0; }
-@keyframes ff-veil-on { from { --ff-veil: 0 } to { --ff-veil: 1 } }
-@keyframes ff-veil-off { from { --ff-veil: 1 } to { --ff-veil: 0 } }`;
+@keyframes ff-show { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ff-hide { from { opacity: 1 } to { opacity: 0 } }`;
 
 /** A pinned cell's own surface while content passes under it: the page
  *  background, what the row's fills (drawn behind the table) would show
@@ -2582,20 +2582,32 @@ function PinLayers({
   const left = pin.side === "left";
   const veil = left ? "absolute inset-0 bg-linear-to-r" : "absolute inset-0 bg-linear-to-l";
   return (
-    <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
+    <span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin) [border-bottom-color:inherit]",
+        left ? "ff-layer-l" : "ff-layer-r"
+      )}
+    >
       {/* 1px past its far side (and the table's clipped left edge): at a
           fractional position each cell's fill snaps to the pixel grid on
           its own, which left a hairline between two pinned cells where
           text scrolling under showed through. Only ever under the NEXT
           cell, which paints later: reaching back over the previous one
           cut a 1px line of page color through its hover and selection. */}
+      {/* Over the cell's bottom border too, where the rules of the cells
+          scrolling under showed through: these layers cover it, and redraw
+          the cell's own rule in the color it inherits (clear under a fill,
+          fading as the row's does). One layer, so it shows in the frame the
+          rest does. */}
       <span
         className={cn(
-          "absolute inset-y-0 left-0 right-0 bg-background",
-          !(pin.side === "left" && pin.edge) && "-right-px",
-          pin.side === "left" && pin.outer && "-left-px"
+          "absolute top-0 -bottom-px left-0 right-0 bg-background",
+          !(left && pin.edge) && "-right-px",
+          left && pin.outer && "-left-px"
         )}
       />
+      <span className="absolute inset-x-0 -bottom-px h-px border-b border-solid [border-bottom-color:inherit]" />
       {children}
       {pin.edge && (
         // The rule is a span inside the edge cell, in the rows' rule color.
@@ -2606,7 +2618,9 @@ function PinLayers({
         // content passing under, from the row's own surface (the page,
         // then its selection and hover, which glide behind the table) to
         // clear. Over its bottom border too, where the rules pass under.
-        <span className={cn("absolute top-0 -bottom-px w-12 opacity-(--ff-veil)", left ? "left-full" : "right-full")}>
+        <span
+          className={cn("absolute top-0 -bottom-px w-12 opacity-0", left ? "left-full ff-veil-l" : "right-full ff-veil-r")}
+        >
           <span className={cn(veil, "from-background to-transparent")} />
           {selected && <span className={cn(veil, "from-active to-transparent")} />}
           {hover && (
@@ -2630,12 +2644,8 @@ function PinFills({
   runStart,
   runEnd,
   shapeVariant,
-  tall = false,
 }: {
   pin: PinInfo;
-  /** The fills also cover the cell's bottom border (the selection
-   *  column, which doesn't clip): its rounded fills can't be a strip. */
-  tall?: boolean;
   selected: boolean;
   runStart: boolean;
   runEnd: boolean;
@@ -2643,8 +2653,10 @@ function PinFills({
 }) {
   const left = pin.side === "left";
   // A left cell with a pinned cell after it runs 1px under that one, whose
-  // opaque layer covers the overlap: no seam at a fractional position.
-  const reach = cn(left && !pin.edge && "-right-px", tall && "-bottom-px");
+  // opaque layer covers the overlap: no seam at a fractional position. The
+  // fills cover the cell's bottom border too, over its rule (a selected or
+  // lit row's rule is clear anyway), like the row's own fill.
+  const reach = cn(left && !pin.edge && "-right-px", "-bottom-px");
   return (
     <PinLayers pin={pin} selected={selected} hover>
       {selected && (
@@ -2979,25 +2991,14 @@ const DataTableBodyRow = memo(
               // the sub-row guides.
               (swapping || cell.column.id === expanderId) && "relative",
               pinProps(pins[cell.column.id]).className,
-              // The strip over its bottom border takes the row's fill,
-              // except under a fill that rounds there (an outer cell's
-              // hover, or its selection at the run's end). The boxes'
-              // cell needs none: its fills reach over that border.
-              pins[cell.column.id] &&
-                cell.column.id !== "select" &&
-                (selected
-                  ? (!pins[cell.column.id].outer || !runEnd) && "[--pin-strip:var(--active)]"
-                  : !pins[cell.column.id].outer && "group-[.is-active]/row:[--pin-strip:var(--hover)]"),
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
-              // The pinned edge cell clips in its content block instead (below),
-              // so its edge fade can hang off it.
+              // A pinned cell clips in its content block instead (below), so
+              // its layers can cover its bottom border and its edge fade can
+              // hang off it.
               (lines === 1 || (sized && lines === undefined)) &&
-                (pins[cell.column.id]?.edge ? "whitespace-nowrap" : "truncate"),
-              // Pinned, the boxes' cell lets its fills reach over its
-              // bottom border (it has no text to cut).
-              pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
+                (pins[cell.column.id] ? "whitespace-nowrap" : "truncate"),
               // Long unbroken text (a URL) breaks anywhere rather
               // than running out of its column.
               lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
@@ -3022,7 +3023,6 @@ const DataTableBodyRow = memo(
                 runStart={runStart}
                 runEnd={runEnd}
                 shapeVariant={shapeVariant}
-                tall={cell.column.id === "select"}
               />
             )}
             {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
@@ -3060,7 +3060,7 @@ const DataTableBodyRow = memo(
               >
                 {content}
               </span>
-            ) : pins[cell.column.id]?.edge && (lines === 1 || (sized && lines === undefined)) ? (
+            ) : pins[cell.column.id] && (lines === 1 || (sized && lines === undefined)) ? (
               <span key="content" className="block overflow-x-clip text-ellipsis">
                 {content}
               </span>
