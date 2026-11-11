@@ -48,7 +48,7 @@ behavior they extend.
 | [Textarea](https://www.fluidfunctionalism.com/docs/textarea) | `textarea` | Multi-line text field with the Input's hairline that grows with its content | [Textarea](craft.md#textarea) |
 | [ThinkingIndicator](https://www.fluidfunctionalism.com/docs/thinking-indicator) | `thinking-indicator` | Animated status indicator with morphing SVG and cycling text | [ThinkingIndicator](craft.md#thinking-indicator) |
 | [ThinkingSteps](https://www.fluidfunctionalism.com/docs/thinking-steps) | `thinking-steps` · `base/thinking-steps` | Chain-of-thought display with sequential animation and collapsible steps | [ThinkingSteps](craft.md#thinking-steps) |
-| [Tooltip](https://www.fluidfunctionalism.com/docs/tooltip) | `tooltip` · `base/tooltip` | Spring-based floating tooltip with configurable placement | [Tooltip](craft.md#tooltip) |
+| [Tooltip](https://www.fluidfunctionalism.com/docs/tooltip) | `tooltip` · `base/tooltip` | Spring-based floating tooltip with configurable placement; `TooltipGroup` glides one bubble along a row of triggers | [Tooltip](craft.md#tooltip) |
 | [MobileDrawer](https://www.fluidfunctionalism.com/docs/sidebar) | `mobile-drawer` · `base/mobile-drawer` | Slide-in navigation drawer with scrim, focus trap, and scroll lock | [Sidebar](craft.md#sidebar) |
 
 ## Systems

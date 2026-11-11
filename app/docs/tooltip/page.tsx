@@ -1,12 +1,21 @@
 "use client";
 
-import { Tooltip } from "@/registry/radix/tooltip";
+import {
+  ListFilter,
+  MousePointer2,
+  Pencil,
+  Search,
+  SlidersHorizontal,
+  Square,
+  Type,
+} from "lucide-react";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/components/ui/button";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
-import { tooltipProps } from "@/lib/docs/api/tooltip";
+import { apiReference } from "@/lib/docs/api/tooltip";
 
 // ---------------------------------------------------------------------------
 // Code snippets
@@ -38,6 +47,41 @@ import { fontWeights } from "@/lib/font-weight";
 >
   <button>Save</button>
 </Tooltip>`;
+
+const groupCode = `// One bubble for the whole row: after the first tooltip opens, it glides
+// from trigger to trigger and changes label instead of closing and reopening.
+
+<TooltipGroup>
+  <Tooltip content="Filter">
+    <Button variant="ghost" size="icon" aria-label="Filter"><ListFilter /></Button>
+  </Tooltip>
+  <Tooltip content="Columns">
+    <Button variant="ghost" size="icon" aria-label="Columns"><SlidersHorizontal /></Button>
+  </Tooltip>
+  <Tooltip content="Search components">
+    <Button variant="ghost" size="icon" aria-label="Search components"><Search /></Button>
+  </Tooltip>
+</TooltipGroup>`;
+
+const groupVerticalCode = `// A vertical toolbar: the same group, with the tooltips on the side.
+// The bubble glides down the column and changes width with each label.
+
+<div className="flex flex-col gap-1">
+  <TooltipGroup>
+    <Tooltip content="Select" side="right">
+      <Button variant="ghost" size="icon" aria-label="Select"><MousePointer2 /></Button>
+    </Tooltip>
+    <Tooltip content="Draw" side="right">
+      <Button variant="ghost" size="icon" aria-label="Draw"><Pencil /></Button>
+    </Tooltip>
+    <Tooltip content="Rectangle" side="right">
+      <Button variant="ghost" size="icon" aria-label="Rectangle"><Square /></Button>
+    </Tooltip>
+    <Tooltip content="Text" side="right">
+      <Button variant="ghost" size="icon" aria-label="Text"><Type /></Button>
+    </Tooltip>
+  </TooltipGroup>
+</div>`;
 
 const delayCode = `import { Tooltip } from "./components";
 
@@ -111,6 +155,59 @@ export default function TooltipDoc() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Group">
+        <ComponentPreview code={groupCode}>
+          <div className="flex gap-1">
+            <TooltipGroup>
+              <Tooltip content="Filter">
+                <Button variant="ghost" size="icon" aria-label="Filter">
+                  <ListFilter />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Columns">
+                <Button variant="ghost" size="icon" aria-label="Columns">
+                  <SlidersHorizontal />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Search components">
+                <Button variant="ghost" size="icon" aria-label="Search components">
+                  <Search />
+                </Button>
+              </Tooltip>
+            </TooltipGroup>
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Vertical group">
+        <ComponentPreview code={groupVerticalCode} minHeightClass="min-h-[240px]">
+          <div className="flex flex-col gap-1">
+            <TooltipGroup>
+              <Tooltip content="Select" side="right">
+                <Button variant="ghost" size="icon" aria-label="Select">
+                  <MousePointer2 />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Draw" side="right">
+                <Button variant="ghost" size="icon" aria-label="Draw">
+                  <Pencil />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Rectangle" side="right">
+                <Button variant="ghost" size="icon" aria-label="Rectangle">
+                  <Square />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Text" side="right">
+                <Button variant="ghost" size="icon" aria-label="Text">
+                  <Type />
+                </Button>
+              </Tooltip>
+            </TooltipGroup>
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
       <DocSection title="Follow cursor">
         <ComponentPreview code={followCursorCode} minHeightClass="min-h-[220px]">
           <div className="flex flex-wrap items-center justify-center gap-6">
@@ -142,7 +239,7 @@ export default function TooltipDoc() {
       </DocSection>
 
       <DocSection title="API Reference">
-        <PropsTable props={tooltipProps} />
+        <PropsTable groups={apiReference} />
       </DocSection>
     </DocPage>
   );
