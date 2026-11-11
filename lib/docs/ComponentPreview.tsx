@@ -198,6 +198,18 @@ export function ComponentPreview({
             </span>
           )}
           {expand?.expanded && expand.menu}
+          {showButton && (
+            <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
+              <button
+                onClick={playbackButton?.onClick ?? onReplay}
+                className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+                aria-label={playbackButton?.tooltip ?? "Replay animation"}
+              >
+                {playbackButton?.icon ?? <ReplayIcon size={16} strokeWidth={1.5} />}
+              </button>
+            </Tooltip>
+          )}
+          {/* Expand last, at the far right, after the replay. */}
           {expand && (
             <Tooltip content={expand.expanded ? "Collapse (Esc)" : "Expand"} side="top">
               <button
@@ -208,17 +220,6 @@ export function ComponentPreview({
                 className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
               >
                 {expand.expanded ? <CollapseIcon size={16} strokeWidth={1.5} /> : <ExpandIcon size={16} strokeWidth={1.5} />}
-              </button>
-            </Tooltip>
-          )}
-          {showButton && (
-            <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
-              <button
-                onClick={playbackButton?.onClick ?? onReplay}
-                className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
-                aria-label={playbackButton?.tooltip ?? "Replay animation"}
-              >
-                {playbackButton?.icon ?? <ReplayIcon size={16} strokeWidth={1.5} />}
               </button>
             </Tooltip>
           )}
