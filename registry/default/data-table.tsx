@@ -1181,6 +1181,9 @@ function DataTable<TData>({
       const max = viewport.scrollWidth - viewport.clientWidth;
       root.toggleAttribute("data-x-start", viewport.scrollLeft > 0.5);
       root.toggleAttribute("data-x-end", max - viewport.scrollLeft > 0.5);
+      // The visible width, for what stays put while the table scrolls (the
+      // empty state's message).
+      root.style.setProperty("--table-view-w", `${viewport.clientWidth}px`);
     };
     mark();
     viewport.addEventListener("scroll", mark, { passive: true });

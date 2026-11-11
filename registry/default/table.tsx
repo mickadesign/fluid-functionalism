@@ -460,7 +460,10 @@ const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
               bottom border, so `rows` of them stay in step with TableCell
               whatever the ladder step. */}
           <div
-            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            // Pinned to the visible box: sticky at its left edge and as wide
+            // as the scroll box (--table-view-w, which DataTable sets), so the
+            // message centers on what's in view, not on a table wider than it.
+            className="sticky left-0 flex w-(--table-view-w,100%) min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
             style={{ "--table-empty-rows": rows } as CSSProperties}
           >
             {title && (
