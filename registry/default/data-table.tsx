@@ -4435,6 +4435,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const shape = useShape();
   const sizeClasses = useSize(size);
   const [open, setOpen] = useState(autoOpen);
+  const [typing, setTyping] = useState(false);
   // The DatePicker field's recipe: a hairline box, its parts 2px inside
   // with corners nested in its radius (8 - 3 = 5px, 20 - 3 = 17px), and one
   // fluid hover gliding between the filter and its ×.
@@ -4685,8 +4686,11 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
       ref={boxRef}
       data-slot="data-table-filter"
       className={cn(
+        // Field's border: `border-border` at rest, darker only while a text
+        // field in it has focus. A menu trigger keeps focus after its menu
+        // closes, so focus anywhere in the chip left it dark.
         "relative inline-flex max-w-full items-center overflow-hidden border border-border p-0.5 text-muted-foreground transition-colors duration-80",
-        "focus-within:border-foreground/25",
+        "data-typing:border-foreground/40",
         sizeClasses.control,
         sizeClasses.text,
         shape.input
@@ -4694,6 +4698,9 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
       initial={false}
       animate={contentWidth === null ? undefined : { width: contentWidth + 6 }}
       transition={reduceMotion ? { duration: 0 } : spring.moderate}
+      data-typing={typing || undefined}
+      onFocus={(e) => setTyping(e.target instanceof HTMLInputElement)}
+      onBlur={() => setTyping(false)}
       {...hover.handlers}
     >
       <FluidHoverHighlight hover={hover} className={cn("z-0", innerRadius)} />
