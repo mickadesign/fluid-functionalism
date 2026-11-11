@@ -2449,7 +2449,11 @@ function pinProps(pin: PinInfo | undefined) {
   const left = pin.side === "left";
   return {
     className: cn(
-      "sticky z-[1] [--ff-pin:0]",
+      // z-[2]: above whatever a scrolling cell lifts to z-[1] (a date
+      // editor's trigger, a chip's parts), which at an equal z painted over
+      // the pinned cells in DOM order as it scrolled under them; a raised
+      // editor (z-30) still covers them, as it covers its neighbors.
+      "sticky z-[2] [--ff-pin:0]",
       left ? "ff-pin-l group-data-x-start/pin:[--ff-pin:1]" : "ff-pin-r group-data-x-end/pin:[--ff-pin:1]"
     ),
     style: left ? { left: pin.offset } : { right: pin.offset },

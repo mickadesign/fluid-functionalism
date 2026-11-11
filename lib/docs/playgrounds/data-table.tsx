@@ -1253,10 +1253,22 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         loading={loading}
         // With filters set, the table's own default says to remove one and
         // offers Clear filter(s); a search alone gets a different word.
+        // Every row deleted reads as that, with its way back; a search or
+        // filters that find nothing say so instead.
         empty={
-          filterCount > 0
-            ? { title: "No components match" }
-            : { title: "No components match", description: "Try a name like Dialog or Tabs." }
+          data.length === 0
+            ? {
+                title: "No components left",
+                description: "Undo brings back what you deleted.",
+                action: history.canUndo ? (
+                  <Button variant="ghost" size="compact" onClick={history.undo}>
+                    Undo
+                  </Button>
+                ) : undefined,
+              }
+            : filterCount > 0
+              ? { title: "No components match" }
+              : { title: "No components match", description: "Try a name like Dialog or Tabs." }
         }
         onCellEdit={
           state.editable
