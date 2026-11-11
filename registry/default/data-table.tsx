@@ -41,9 +41,11 @@ import {
 import { createPortal, flushSync } from "react-dom";
 import {
   AnimatePresence,
+  PresenceContext,
   animate,
   motion,
   Reorder,
+  usePresence,
   useDragControls,
   useMotionValue,
   useReducedMotion,
@@ -4237,6 +4239,59 @@ function DataTableFilters<TData>({
   );
 }
 
+/** A row above the table that comes and goes (the filter chips): its
+ *  height springs open from 0 and back, measured rather than "auto", with
+ *  the parent's gap folded in so the table below glides instead of
+ *  jumping. On the page's first render it is simply there. */
+function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
+  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
+}
+
+function RowRevealPart({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isPresent, safeToRemove] = usePresence();
+  const initial = useContext(PresenceContext)?.initial;
+  const reduceMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (isPresent && initial === false) return;
+    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
+    const height = el.offsetHeight;
+    const clear = () => {
+      el.style.height = "";
+      el.style.marginTop = "";
+      el.style.overflow = "";
+      el.style.opacity = "";
+    };
+    if (reduceMotion) {
+      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
+      if (!isPresent) fade.then(() => safeToRemove?.());
+      return () => fade.stop();
+    }
+    // Clipped only while it moves: at rest a chip's focus ring shows.
+    el.style.overflow = "hidden";
+    // The start, set before this frame paints: animate() only applies its
+    // first keyframe on the next one, which showed the row whole for a frame.
+    if (isPresent) {
+      el.style.height = "0px";
+      el.style.marginTop = `${-gap}px`;
+      el.style.opacity = "0";
+    }
+    const run = isPresent
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
+      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+    run.then(() => (isPresent ? clear() : safeToRemove?.()));
+    // Stopped early (a re-run, Strict Mode's double effect): back to its
+    // natural size, so the next run measures the real height.
+    return () => {
+      run.stop();
+      if (isPresent) clear();
+    };
+  }, [isPresent]); // eslint-disable-line react-hooks/exhaustive-deps -- runs as it enters and as it leaves
+  return <div ref={ref}>{children}</div>;
+}
+
 /** The filters set on the table, one chip each (the column, what it
  *  matches, the value, and × to remove it), on a row of their own between
  *  the toolbar and the table, ended by a + that adds one more. Renders
@@ -4269,43 +4324,44 @@ function DataTableFilterChips<TData>({
     column.setFilterValue(value);
     table.setPageIndex(0);
   };
-  if (active.length === 0) return null;
   // Past a selection column, the row steps in with the title, to the first
   // data column's text.
   const boxes = !!table.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
 
   return (
-    <div
-      data-slot="data-table-filter-chips"
-      // The chips' labels line up with the title and the first column's
-      // text, 36px in past a selection column: the row starts the label's
-      // own inset earlier (1px border, 2px inset, 8px padding; 6px
-      // compact).
-      className={cn("flex flex-wrap items-center gap-1", boxes && (compact ? "pl-[27px]" : "pl-[25px]"), className)}
-    >
-      {active.map((f) => {
-        const entry = filterable.find(({ column }) => column.id === f.id);
-        if (!entry) return null;
-        // The chip asked for opens its editor; the count remounts it if it
-        // was already there.
-        const asked = request?.id === f.id;
-        return (
-          <FilterChip
-            key={asked ? `${f.id}:${request.n}` : f.id}
-            label={columnLabel(entry.column)}
-            filter={entry.filter}
-            value={f.value as Exclude<DataTableFilterValue, string>}
-            autoOpen={asked}
-            compact={compact}
-            size={size}
-            onChange={(value) => set(entry.column, value)}
-            onRemove={() => set(entry.column, undefined)}
-          />
-        );
-      })}
-      <DataTableFilters table={table} size={size} add />
-      {children}
-    </div>
+    <RowReveal show={active.length > 0}>
+      <div
+        data-slot="data-table-filter-chips"
+        // The chips' labels line up with the title and the first column's
+        // text, 36px in past a selection column: the row starts the label's
+        // own inset earlier (1px border, 2px inset, 8px padding; 6px
+        // compact).
+        className={cn("flex flex-wrap items-center gap-1", boxes && (compact ? "pl-[27px]" : "pl-[25px]"), className)}
+      >
+        {active.map((f) => {
+          const entry = filterable.find(({ column }) => column.id === f.id);
+          if (!entry) return null;
+          // The chip asked for opens its editor; the count remounts it if it
+          // was already there.
+          const asked = request?.id === f.id;
+          return (
+            <FilterChip
+              key={asked ? `${f.id}:${request.n}` : f.id}
+              label={columnLabel(entry.column)}
+              filter={entry.filter}
+              value={f.value as Exclude<DataTableFilterValue, string>}
+              autoOpen={asked}
+              compact={compact}
+              size={size}
+              onChange={(value) => set(entry.column, value)}
+              onRemove={() => set(entry.column, undefined)}
+            />
+          );
+        })}
+        <DataTableFilters table={table} size={size} add />
+        {children}
+      </div>
+    </RowReveal>
   );
 }
 

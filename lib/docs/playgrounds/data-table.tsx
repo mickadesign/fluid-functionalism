@@ -1,9 +1,9 @@
 "use client";
 
 import { useShape } from "@/lib/shape-context";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { animate } from "motion/react";
+import { AnimatePresence, PresenceContext, animate, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
   useDataTable,
@@ -633,6 +633,58 @@ const ALL_VIEW: SavedView["state"] = {
 
 // ── Playground ───────────────────────────────────────────
 
+/** The views' tab row as it comes and goes (the first saved view, the
+ *  last deleted): its height springs from 0 and back, measured, never
+ *  "auto", with the column's gap folded in, so the table glides. The same
+ *  reveal DataTableFilterChips gives its row. */
+function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
+  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
+}
+
+function RowRevealPart({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isPresent, safeToRemove] = usePresence();
+  const initial = useContext(PresenceContext)?.initial;
+  const reduceMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (isPresent && initial === false) return;
+    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
+    const height = el.offsetHeight;
+    if (reduceMotion) {
+      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
+      if (!isPresent) fade.then(() => safeToRemove?.());
+      return () => fade.stop();
+    }
+    el.style.overflow = "hidden";
+    // The start, set before this frame paints: animate() only applies its
+    // first keyframe on the next one, which showed the row whole for a frame.
+    if (isPresent) {
+      el.style.height = "0px";
+      el.style.marginTop = `${-gap}px`;
+      el.style.opacity = "0";
+    }
+    const run = isPresent
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
+      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+    const clear = () => {
+      el.style.height = "";
+      el.style.marginTop = "";
+      el.style.overflow = "";
+      el.style.opacity = "";
+    };
+    run.then(() => (isPresent ? clear() : safeToRemove?.()));
+    // Stopped early (a re-run, Strict Mode's double effect): back to its
+    // natural size, so the next run measures the real height.
+    return () => {
+      run.stop();
+      if (isPresent) clear();
+    };
+  }, [isPresent]); // runs as it enters and as it leaves
+  return <div ref={ref}>{children}</div>;
+}
+
 export function DataTablePlayground({ children }: PlaygroundProps) {
   const shape = useShape();
   const [state, setState] = useState<PlayState>(DEFAULT_STATE);
@@ -1015,10 +1067,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const body = (
     <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
-      {showViews && views.length > 0 && (
-        // The views as subtle tabs, stepped in with the title past a
-        // selection column. A lone "All" tab says nothing, so the row
-        // waits for the first saved view.
+      {/* The views as subtle tabs, stepped in with the title past a
+          selection column. A lone "All" tab says nothing, so the row
+          waits for the first saved view. */}
+      <RowReveal show={showViews && views.length > 0}>
         <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-9")}>
           <Tabs
             size="compact"
@@ -1106,7 +1158,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             </span>
           )}
         </div>
-      )}
+      </RowReveal>
       {state.filters && (
         // Save view after the chips' + Add filter: it shows with the first
         // filter, since there's nothing to save before.
