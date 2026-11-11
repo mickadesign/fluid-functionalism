@@ -117,6 +117,13 @@ export const datePickerTriggerProps: PropDef[] = [
       "Sizes the date to the label it shows, not the widest one it could show. Off, picking a date never moves what follows; on for a trigger inside something that already springs to its content, like a filter chip.",
   },
   {
+    name: "typeable",
+    type: "boolean",
+    default: "false",
+    description:
+      'The date can be typed as well as picked: "Nov 4", "11/4", "2026-11-04", "today", or a range as "Nov 4 → Nov 11" (or "to", or a spaced dash). The calendar previews it as it parses; Enter or leaving the field sets it, and anything that doesn\'t parse goes back.',
+  },
+  {
     name: "open",
     type: "boolean",
     description: "Controls the date popover, with `onOpenChange`. `defaultOpen` sets it once.",

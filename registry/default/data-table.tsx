@@ -4574,7 +4574,9 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           value={range}
           placeholder="any day"
           // The chip springs to its content: no room held for a longer date.
+          // Typed like the text chips' values, or picked.
           fitLabel
+          typeable
           onValueChange={(next) =>
             onChange({
               kind: "date",
@@ -4583,7 +4585,9 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
               to: next?.to ? toIsoDay(next.to) : undefined,
             })
           }
-          className="-my-1 min-w-0"
+          // The chip's inner row, like its other parts: 2px inside its
+          // border, so the date's fill sits where the word's does.
+          className="h-full min-w-0"
         />
       ) : (
         <DatePicker
@@ -4593,11 +4597,14 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           value={single ? toDate(single) : undefined}
           placeholder="any day"
           fitLabel
+          typeable
           onValueChange={(next) => {
             const day = next instanceof Date ? toIsoDay(next) : undefined;
             onChange(dateOp === "before" ? { kind: "date", op: "before", to: day } : { kind: "date", op: "after", from: day });
           }}
-          className="-my-1 min-w-0"
+          // The chip's inner row, like its other parts: 2px inside its
+          // border, so the date's fill sits where the word's does.
+          className="h-full min-w-0"
         />
       );
   } else {
@@ -4717,7 +4724,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           control
         ) : value.kind === "date" ? (
           // The DatePicker brings its own hover over its dates.
-          <span className="relative z-[1] flex min-w-0 items-center">{control}</span>
+          <span className="relative z-[1] flex h-full min-w-0 items-center">{control}</span>
         ) : (
           // The fields' label: a click anywhere in it types. Kept mounted
           // (hidden while "is empty" needs no text), so its hover stop stays

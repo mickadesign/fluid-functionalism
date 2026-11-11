@@ -229,6 +229,97 @@ export function formatRangeLabel(range: DateRange, locale?: string, now = new Da
   return `${fmt.format(range.from)} → ${fmt.format(range.to)}`;
 }
 
+/** Month names to month index, long and short, in the locale and in
+ *  English (a typed "nov" works whatever the locale). */
+function monthNames(locale?: string): Map<string, number> {
+  const names = new Map<string, number>();
+  for (const loc of [locale, "en"]) {
+    for (const month of ["long", "short"] as const) {
+      const fmt = new Intl.DateTimeFormat(loc, { month });
+      for (let m = 0; m < 12; m++) {
+        const name = fmt.format(new Date(2000, m, 1)).toLowerCase().replace(/\.$/, "");
+        if (!names.has(name)) names.set(name, m);
+      }
+    }
+  }
+  return names;
+}
+
+/** Whether the locale writes the month before the day in numeric dates. */
+function monthFirst(locale?: string) {
+  const parts = new Intl.DateTimeFormat(locale).formatToParts(new Date(2000, 10, 22));
+  return parts.findIndex((p) => p.type === "month") < parts.findIndex((p) => p.type === "day");
+}
+
+function validDate(year: number, month: number, day: number): Date | null {
+  const date = new Date(year, month, day);
+  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
+/** One typed day: "today", "yesterday", "tomorrow", "2026-11-04", "11/4",
+ *  "4/11/26" (the locale's order), "Nov 4", "4 November 2026", the label's
+ *  own "Wed Nov 4". No year means this year. Null when it isn't a day. */
+function parseDay(text: string, locale: string | undefined, now: Date): Date | null {
+  const t = text.trim().toLowerCase().replace(/,/g, " ").replace(/\s+/g, " ");
+  if (!t) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (t === "today") return today;
+  if (t === "yesterday") return new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (t === "tomorrow") return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return validDate(+m[1], +m[2] - 1, +m[3]);
+  m = t.match(/^(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2}|\d{4}))?$/);
+  if (m) {
+    const [a, b] = [+m[1], +m[2]];
+    const year = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : now.getFullYear();
+    return monthFirst(locale) ? validDate(year, a - 1, b) : validDate(year, b - 1, a);
+  }
+  // Words: a month name (or its first 3+ letters), a day, maybe a year; a
+  // weekday name is skipped.
+  const names = monthNames(locale);
+  let month = -1;
+  let day = -1;
+  let year = now.getFullYear();
+  for (const raw of t.split(" ")) {
+    const word = raw.replace(/\.$/, "").replace(/^(\d+)(st|nd|rd|th)$/, "$1");
+    if (/^\d{4}$/.test(word)) year = +word;
+    else if (/^\d{1,2}$/.test(word)) day = +word;
+    else if (month < 0 && word.length >= 3) {
+      for (const [name, index] of names) {
+        if (name.startsWith(word)) {
+          month = index;
+          break;
+        }
+      }
+    }
+  }
+  return month >= 0 && day > 0 ? validDate(year, month, day) : null;
+}
+
+/**
+ * A typed date or range, for a DatePicker with `typeable`. Range mode reads
+ * two days joined by "→", "to", or a spaced dash ("Nov 4 - Nov 11"), in
+ * either order, and one day as a one-day range. Null when it doesn't parse.
+ */
+export function parseDateInput(
+  text: string,
+  mode: "single" | "range",
+  locale?: string,
+  now = new Date()
+): Date | DateRange | null {
+  if (mode === "single") return parseDay(text, locale, now);
+  const sides = text.split(/\s*(?:→|->|–|—|\bto\b|\s-\s)\s*/i).filter((side) => side.trim() !== "");
+  if (sides.length === 1) {
+    const day = parseDay(sides[0], locale, now);
+    return day ? { from: day, to: day } : null;
+  }
+  if (sides.length !== 2) return null;
+  const a = parseDay(sides[0], locale, now);
+  const b = parseDay(sides[1], locale, now);
+  if (!a || !b) return null;
+  return a <= b ? { from: a, to: b } : { from: b, to: a };
+}
+
 /** `2026-10-21`, from the date's local parts (not UTC). */
 function isoDate(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -923,6 +1014,11 @@ interface DatePickerBaseProps {
    *  on for a trigger inside something that already springs to its content
    *  (a filter chip), where the reserved room reads as a gap. */
   fitLabel?: boolean;
+  /** Lets the date be typed as well as picked: the date becomes a field
+   *  ("Nov 4", "11/4", "2026-11-04", "today", a range as "Nov 4 → Nov 11"),
+   *  previewed in the calendar as it parses and set on Enter or when focus
+   *  leaves; anything that doesn't parse goes back to the date it had. */
+  typeable?: boolean;
   /** Months in the date popover. Default 1 for single, 2 for range. */
   numberOfMonths?: 1 | 2;
   orientation?: CalendarOrientation;
@@ -1009,6 +1105,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     disabled,
     clearable = true,
     fitLabel = false,
+    typeable = false,
     numberOfMonths: numberOfMonthsProp,
     orientation = "auto",
     calendarProps,
@@ -1108,6 +1205,22 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   const range = mode === "range" ? (value as DateRange | undefined) : undefined;
   const single = mode === "single" ? (value as Date | undefined) : undefined;
   const hasValue = mode === "range" ? !!range?.from : !!single;
+
+  // Typing a date (typeable): the field's text while it's edited, and what
+  // it parses to, previewed in the calendar until it's set.
+  const [typed, setTyped] = useState<string | null>(null);
+  const typedValue = typed !== null && typed.trim() !== "" ? parseDateInput(typed, mode, locale, now) : null;
+  const typedInputRef = useRef<HTMLInputElement>(null);
+  const typedFieldRef = useRef<HTMLElement | null>(null);
+  const popupContentRef = useRef<HTMLDivElement>(null);
+  const [typing, setTyping] = useState(false);
+  const pointerFocusRef = useRef(false);
+  const commitTyped = () => {
+    if (typed === null) return;
+    if (typed.trim() === "") setValue(undefined);
+    else if (typedValue) setValue(typedValue as never);
+    setTyped(null);
+  };
   const dateLabel =
     mode === "range"
       ? range?.from
@@ -1274,8 +1387,119 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     </button>
   );
 
-  const calendarSelected = mode === "range" ? (draft ?? range) : single;
+  // The date as a field (typeable): the same segment, its text editable.
+  // It sizes to what's shown (or, without fitLabel, also to the widest
+  // label), and keeps focus while the calendar is open.
+  const typedText = typed ?? (hasValue ? dateLabel : "");
+  const dateField = (
+    <span
+      ref={(el: HTMLSpanElement | null) => {
+        typedFieldRef.current = el;
+        (dateRef as { current: HTMLElement | null }).current = el;
+      }}
+      data-slot="date-picker-trigger"
+      data-placeholder={hasValue || typed ? undefined : ""}
+      data-typing={typing || undefined}
+      onClick={() => typedInputRef.current?.focus()}
+      onPointerDown={() => {
+        pointerFocusRef.current = true;
+      }}
+      className={cn(
+        segmentClass,
+        compact ? "gap-1" : "gap-1.5",
+        "cursor-text whitespace-nowrap",
+        "data-[typing]:ring-1 data-[typing]:ring-[color:var(--focus-ring,#6B97FF)]",
+        field && !hasTime && !hasTimeRange && "flex-1",
+        hasValue || typed ? "text-foreground" : "text-muted-foreground",
+        open && "text-foreground"
+      )}
+    >
+      {field && (
+        <CalendarIcon size={sizeClasses.icon} strokeWidth={1.5} className="shrink-0 text-muted-foreground" />
+      )}
+      <span className="inline-grid text-left tabular-nums">
+        <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
+          {typedText || labelPlaceholder}
+        </span>
+        {!fitLabel && (
+          <span aria-hidden className="invisible col-start-1 row-start-1 inline-flex whitespace-pre">
+            {labelSizer.map((options, i) => (
+              <span key={i} className="inline-grid">
+                {options.map((option) => (
+                  <span key={option} className="col-start-1 row-start-1">
+                    {option}
+                  </span>
+                ))}
+              </span>
+            ))}
+          </span>
+        )}
+        <input
+          ref={typedInputRef}
+          id={id}
+          type="text"
+          // A text input's intrinsic width would size the cell; size 1 lets
+          // the invisible copy decide it.
+          size={1}
+          role="combobox"
+          aria-label={ariaLabel ?? labelPlaceholder}
+          aria-expanded={!!open}
+          aria-haspopup="dialog"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={disabled}
+          placeholder={labelPlaceholder}
+          value={typedText}
+          className={cn(
+            "col-start-1 row-start-1 w-full min-w-0 rounded-none bg-transparent p-0 text-left tabular-nums text-inherit outline-none placeholder:text-muted-foreground",
+            sizeClasses.field
+          )}
+          onFocus={(e) => {
+            // The ring for a keyboard arrival only: a text field matches
+            // :focus-visible on a click too, and a click needs no ring.
+            setTyping(!pointerFocusRef.current);
+            pointerFocusRef.current = false;
+            e.currentTarget.select();
+            if (!open) setOpen(true);
+          }}
+          onClick={() => {
+            if (!open) setOpen(true);
+          }}
+          onChange={(e) => {
+            const next = e.target.value;
+            setTyped(next);
+            if (!open) setOpen(true);
+            const parsed = next.trim() ? parseDateInput(next, mode, locale, now) : null;
+            const at = parsed instanceof Date ? parsed : parsed?.from;
+            if (at) setMonth(at);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitTyped();
+              setOpen(false);
+            } else if (e.key === "Escape" && (open || typed !== null)) {
+              e.preventDefault();
+              e.stopPropagation();
+              setTyped(null);
+              setOpen(false);
+            }
+          }}
+          onBlur={(e) => {
+            setTyping(false);
+            // Into the calendar or its presets: still editing.
+            if (popupContentRef.current?.contains(e.relatedTarget as Node)) return;
+            commitTyped();
+            setOpen(false);
+          }}
+        />
+      </span>
+    </span>
+  );
+
+  const calendarSelected = typedValue ?? (mode === "range" ? (draft ?? range) : single);
   const onCalendarSelect = (next: Date | DateRange | undefined) => {
+    setTyped(null);
     if (mode === "single") {
       setValue(next as Date | undefined);
       if (next) {
@@ -1325,7 +1549,8 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       orientation={numberOfMonths > 1 ? resolvedOrientation : undefined}
       month={month}
       onMonthChange={setMonth}
-      autoFocus
+      // A typed date keeps focus in its field; a trigger hands it to the day.
+      autoFocus={!typeable}
     />
   );
 
@@ -1351,13 +1576,18 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
   const datePopover = (
     <Popover
       open={!!open}
-      onOpenChange={setOpen}
-      kind="trigger"
-      anchor={dateTrigger}
+      onOpenChange={(next) => {
+        if (!next) commitTyped();
+        setOpen(next);
+      }}
+      kind={typeable ? "anchor" : "trigger"}
+      anchor={typeable ? dateField : dateTrigger}
+      anchorRef={typeable ? typedFieldRef : undefined}
       escapeBlocked={() => !!draft}
       align="start"
     >
       <div
+        ref={popupContentRef}
         className={cn(
           // Same box as the popup: its corners follow the popup's 12px.
           "flex rounded-[inherit] bg-inherit p-1",
