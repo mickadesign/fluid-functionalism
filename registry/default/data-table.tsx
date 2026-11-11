@@ -4117,10 +4117,19 @@ function useFilters<TData>(table: TanStackTable<TData>) {
 /** An icon button that adds a filter: its menu lists the columns that can
  *  filter, with a search on top, and a pick adds that column's chip to
  *  DataTableFilterChips with its editor open. */
-function DataTableFilters<TData>({ table, size, className }: DataTableFiltersProps<TData>) {
+function DataTableFilters<TData>({
+  table,
+  size,
+  className,
+  add = false,
+}: DataTableFiltersProps<TData> & {
+  /** The chips row's own button: a + that adds one more filter, gone once
+   *  every column that can filter has one. */
+  add?: boolean;
+}) {
   "use no memo";
   const icons = useIcons();
-  const FilterIcon = icons.filter;
+  const FilterIcon = add ? icons.plus : icons.filter;
   const compact = useSize(size).variant === "compact";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -4128,7 +4137,8 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
   const available = filterable.filter(({ column }) => !active.some((f) => f.id === column.id));
   const q = query.trim().toLowerCase();
   const matches = available.filter(({ column }) => columnLabel(column).toLowerCase().includes(q));
-  const label = "Filter";
+  const label = add ? "Add filter" : "Filter";
+  if (add && available.length === 0) return null;
 
   return (
     // The tooltip's trigger is a wrapper, so the button stays the menu's.
@@ -4155,7 +4165,7 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
               </Button>
             }
           />
-          <DropdownContent align="end" className="w-56">
+          <DropdownContent align={add ? "start" : "end"} className="w-56">
             <DropdownSearch value={query} onValueChange={setQuery} placeholder="Filter by…" />
             {matches.map(({ column }, i) => (
               <MenuItem
@@ -4176,7 +4186,8 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
 
 /** The filters set on the table, one chip each (the column, what it
  *  matches, the value, and × to remove it), on a row of their own between
- *  the toolbar and the table. Renders nothing while no filter is set. Each
+ *  the toolbar and the table, ended by a + that adds one more. Renders
+ *  nothing while no filter is set. Each
  *  column filters by its kind (see `meta.filter`): text it contains,
  *  options to pick, a number range, or a range of days. */
 function DataTableFilterChips<TData>({
@@ -4185,8 +4196,9 @@ function DataTableFilterChips<TData>({
   className,
   children,
 }: DataTableFiltersProps<TData> & {
-  /** Actions about the filters (a Save view button), at the row's right
-   *  end. Shown only with the chips, so only while a filter is set. */
+  /** Actions about the filters (a Save view button), right after the +
+   *  that adds one more. Shown only with the chips, so only while a filter
+   *  is set. */
   children?: ReactNode;
 }) {
   "use no memo";
@@ -4238,7 +4250,8 @@ function DataTableFilterChips<TData>({
           />
         );
       })}
-      {children && <span className="ml-auto flex shrink-0 items-center gap-1">{children}</span>}
+      <DataTableFilters table={table} size={size} add />
+      {children}
     </div>
   );
 }

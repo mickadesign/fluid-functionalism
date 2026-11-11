@@ -578,7 +578,7 @@ export function ViewsTable() {
           ))}
         </Tabs>
       )}
-      {/* Save view at the far right of the filters' row, with the first filter. */}
+      {/* Save view after the chips' + Add filter, with the first filter. */}
       <DataTableFilterChips table={table}>
         <Button variant="ghost" size="compact" onClick={save}>
           Save view

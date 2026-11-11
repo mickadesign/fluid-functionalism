@@ -533,7 +533,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.filters
       ? views
         ? [
-            `  {/* Save view at the far right of the filters' row, with the first filter. */}`,
+            `  {/* Save view after the chips' + Add filter, with the first filter. */}`,
             `  <DataTableFilterChips table={table}>`,
             `    <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`,
             `  </DataTableFilterChips>`,
@@ -1088,8 +1088,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         </div>
       )}
       {state.filters && (
-        // Save view at the far right of the filters' row: it shows with the
-        // first filter, since there's nothing to save before.
+        // Save view after the chips' + Add filter: it shows with the first
+        // filter, since there's nothing to save before.
         <DataTableFilterChips table={table}>
           {showViews && viewChanged && (
             <Button variant="ghost" size="compact" onClick={saveView}>

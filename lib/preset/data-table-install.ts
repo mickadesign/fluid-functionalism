@@ -262,7 +262,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`      )}`);
   }
   if (p.filters && views) {
-    // Save view at the far right of the filters' row, with the first filter.
+    // Save view after the chips' + Add filter, with the first filter.
     l.push(`      <DataTableFilterChips table={table}>`);
     l.push(`        <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`);
     l.push(`      </DataTableFilterChips>`);
