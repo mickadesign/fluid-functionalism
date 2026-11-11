@@ -77,6 +77,7 @@ export const filterChipsProps: PropDef[] = [
   { name: "table", type: "Table<TData>", description: "The filters set on the table, one chip each, on a row of their own: put it between the toolbar and the table. Renders nothing while no filter is set." },
   { name: "size", type: '"default" | "compact"', description: "Pins the chips to one size step." },
   { name: "className", type: "string", description: "Classes for the row." },
+  { name: "children", type: "ReactNode", description: "Actions about the filters (a Save view button), at the row's far right: they show only once a filter is set." },
 ];
 
 export const viewOptionsProps: PropDef[] = [

@@ -258,10 +258,14 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`            <TabsItem key={name} index={i} label={name} />`);
     l.push(`          ))}`);
     l.push(`        </Tabs>`);
-    l.push(`        <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`);
     l.push(`      </div>`);
   }
-  if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
+  if (p.filters && views) {
+    // Save view at the far right of the filters' row, with the first filter.
+    l.push(`      <DataTableFilterChips table={table}>`);
+    l.push(`        <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`);
+    l.push(`      </DataTableFilterChips>`);
+  } else if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
     "table={table}",
     ...(p.resize ? ["resizeColumns"] : []),

@@ -576,12 +576,13 @@ export function ViewsTable() {
             <TabsItem key={view.name} index={i} label={view.name} />
           ))}
         </Tabs>
-        {/* Saving sits with the views it adds to. */}
+      </div>
+      {/* Save view at the far right of the filters' row, with the first filter. */}
+      <DataTableFilterChips table={table}>
         <Button variant="ghost" size="compact" onClick={save}>
           Save view
         </Button>
-      </div>
-      <DataTableFilterChips table={table} />
+      </DataTableFilterChips>
       <DataTable table={table} />
     </div>
   );

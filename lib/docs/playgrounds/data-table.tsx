@@ -523,11 +523,19 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `        <TabsItem key={name} index={i} label={name} />`,
           `      ))}`,
           `    </Tabs>`,
-          `    <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`,
           `  </div>`,
         ]
       : []),
-    ...(o.filters ? [`  <DataTableFilterChips table={table} />`] : []),
+    ...(o.filters
+      ? views
+        ? [
+            `  {/* Save view at the far right of the filters' row, with the first filter. */}`,
+            `  <DataTableFilterChips table={table}>`,
+            `    <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`,
+            `  </DataTableFilterChips>`,
+          ]
+        : [`  <DataTableFilterChips table={table} />`]
+      : []),
     ...(o.editable
       ? [
           `  <DataTable`,
@@ -825,10 +833,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
               <TabsItem key={name} index={i} label={name} onClick={() => openViewMenu(i)} />
             ))}
           </Tabs>
-          {/* Saving sits with the views it adds to. */}
-          <Button variant="ghost" size="compact" onClick={saveView}>
-            Save view
-          </Button>
           {/* The open view's menu, from a hidden trigger laid over its tab. */}
           <DropdownMenu open={!!viewMenu} onOpenChange={(open) => !open && setViewMenu(null)}>
             <DropdownTrigger
@@ -848,7 +852,17 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           </DropdownMenu>
         </div>
       )}
-      {state.filters && <DataTableFilterChips table={table} />}
+      {state.filters && (
+        // Save view at the far right of the filters' row: it shows with the
+        // first filter, since there's nothing to save before.
+        <DataTableFilterChips table={table}>
+          {showViews && (
+            <Button variant="ghost" size="compact" onClick={saveView}>
+              Save view
+            </Button>
+          )}
+        </DataTableFilterChips>
+      )}
       <DataTable
         table={table}
         resizeColumns={state.resize}

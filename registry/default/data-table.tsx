@@ -1539,7 +1539,7 @@ function DataTable<TData>({
                   // Headers that act join the header row's gliding fill (a
                   // filled table's sticky headers paint over it, so they
                   // keep a fill of their own).
-                  hoverIndex={!fill && (movable || column.getCanSort()) ? headerIndex : undefined}
+                  hoverIndex={!fill && (movable || column.getCanSort() || !!column.accessorFn) ? headerIndex : undefined}
                   aria-sort={
                     sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
                   }
@@ -1584,14 +1584,14 @@ function DataTable<TData>({
                     // Button: its label lifts from muted to foreground on
                     // hover. Its fill is the header row's gliding one,
                     // which Table turns --active while pressed: one surface.
-                    (movable || column.getCanSort()) &&
+                    (movable || column.getCanSort() || !!column.accessorFn) &&
                       "hover:text-foreground transition-colors duration-80",
                     // Filled, the sticky header paints over that fill, so
                     // the cell draws its own, the same way: --hover, then
                     // --active, clear of the header's bottom line. Once it
                     // drags, the ghost takes over and the slot stays empty.
                     fill &&
-                      (movable || column.getCanSort()) && [
+                      (movable || column.getCanSort() || !!column.accessorFn) && [
                         "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
                         "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
                         PRESS_RADIUS[shape.variant],
@@ -1603,7 +1603,7 @@ function DataTable<TData>({
                     <PinLayers pin={pins[column.id]}>
                       {/* Opaque, a pinned header covers the row's gliding
                           fill: it draws its own, the same way. */}
-                      {!fill && (movable || column.getCanSort()) && (
+                      {!fill && (movable || column.getCanSort() || !!column.accessorFn) && (
                         <span
                           className={cn(
                             "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
@@ -1615,7 +1615,12 @@ function DataTable<TData>({
                     </PinLayers>
                   )}
                   {header.isPlaceholder ? null : typeof column.columnDef.header === "string" &&
-                    meta?.icon ? (
+                    column.accessorFn ? (
+                    // A plain-text header on a data column gets the same
+                    // header as DataTableColumnHeader: its menu (sort,
+                    // filter, move, freeze) and, if it sorts, the arrow.
+                    <DataTableColumnHeader column={column} title={column.columnDef.header} />
+                  ) : typeof column.columnDef.header === "string" && meta?.icon ? (
                     <HeaderLabel icon={meta.icon} title={column.columnDef.header} />
                   ) : (
                     flexRender(column.columnDef.header, header.getContext())
@@ -1961,7 +1966,7 @@ function DataTableColumnHeader<TData, TValue>({
     );
     if (sorted) items.push({ label: "Clear sort", icon: icons.x, onSelect: () => column.clearSorting() });
   }
-  if (canFilter) items.push({ label: "Filter", icon: icons.search, onSelect: () => (table as Partial<DataTableExtras>).openFilter?.(column.id) });
+  if (canFilter) items.push({ label: "Filter", icon: icons.filter, onSelect: () => (table as Partial<DataTableExtras>).openFilter?.(column.id) });
   if (movable) {
     items.push(
       { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0 },
@@ -4109,7 +4114,16 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
  *  the toolbar and the table. Renders nothing while no filter is set. Each
  *  column filters by its kind (see `meta.filter`): text it contains,
  *  options to pick, a number range, or a range of days. */
-function DataTableFilterChips<TData>({ table, size, className }: DataTableFiltersProps<TData>) {
+function DataTableFilterChips<TData>({
+  table,
+  size,
+  className,
+  children,
+}: DataTableFiltersProps<TData> & {
+  /** Actions about the filters (a Save view button), at the row's right
+   *  end. Shown only with the chips, so only while a filter is set. */
+  children?: ReactNode;
+}) {
   "use no memo";
   const compact = useSize(size).variant === "compact";
   const { active, filterable } = useFilters(table);
@@ -4159,6 +4173,7 @@ function DataTableFilterChips<TData>({ table, size, className }: DataTableFilter
           />
         );
       })}
+      {children && <span className="ml-auto flex shrink-0 items-center gap-1">{children}</span>}
     </div>
   );
 }
@@ -4232,6 +4247,18 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   useRegisterFluidHoverItem(registerItem, 0, verbRef);
   useRegisterFluidHoverItem(registerItem, 1, valueRef);
   useRegisterFluidHoverItem(registerItem, 2, clearRef);
+  // The parts' own width, read as it changes: the box springs to it (plus
+  // its 1px border and 2px inset on each side).
+  const contentRef = useRef<HTMLSpanElement>(null);
+  const [contentWidth, setContentWidth] = useState<number | null>(null);
+  const reduceMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setContentWidth(el.offsetWidth));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const innerRadius = { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[shape.variant];
   const segment = cn(
     "relative z-[1] inline-flex h-full min-w-0 items-center gap-1 outline-none",
@@ -4428,52 +4455,60 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   }
 
   return (
-    <span
+    // The box springs to its content's measured width as the value
+    // changes (a pixel width, never "auto"): its parts sit in a max-content
+    // row the box clips while it catches up.
+    <motion.span
       ref={boxRef}
       data-slot="data-table-filter"
       className={cn(
-        "relative inline-flex max-w-full items-center border border-border p-0.5 text-muted-foreground transition-colors duration-80",
+        "relative inline-flex max-w-full items-center overflow-hidden border border-border p-0.5 text-muted-foreground transition-colors duration-80",
         "focus-within:border-foreground/25",
         sizeClasses.control,
         sizeClasses.text,
         shape.input
       )}
+      initial={false}
+      animate={contentWidth === null ? undefined : { width: contentWidth + 6 }}
+      transition={reduceMotion ? { duration: 0 } : spring.moderate}
       {...hover.handlers}
     >
       <FluidHoverHighlight hover={hover} className={cn("z-0", innerRadius)} />
-      {/* The column, then the word, the value and the ×, each a stop. */}
-      <span className={cn("relative z-[1] shrink-0 whitespace-nowrap text-foreground", compact ? "pl-1.5" : "pl-2")}>
-        {label}
-      </span>
-      {opControl ?? <span className={cn("relative z-[1] shrink-0 whitespace-nowrap", compact ? "pl-1.5" : "pl-2")}>{op}</span>}
-      {value.kind === "options" ? (
-        control
-      ) : value.kind === "date" ? (
-        // The DatePicker brings its own hover over its dates.
-        <span className="relative z-[1] flex min-w-0 items-center">{control}</span>
-      ) : (
-        // The fields' label: a click anywhere in it types.
-        <label ref={valueRef as RefObject<HTMLLabelElement>} className={cn(segment, "cursor-text")}>
-          {control}
-        </label>
-      )}
-      <Tooltip content="Remove filter">
-      <button
-        ref={clearRef}
-        type="button"
-        aria-label={`Remove the ${label} filter`}
-        onClick={onRemove}
-        className={cn(
-          "relative z-[1] inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
-          "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
-          compact ? "w-6" : "w-7",
-          innerRadius
+      <span ref={contentRef} className="inline-flex h-full w-max shrink-0 items-center">
+        {/* The column, then the word, the value and the ×, each a stop. */}
+        <span className={cn("relative z-[1] shrink-0 whitespace-nowrap text-foreground", compact ? "pl-1.5" : "pl-2")}>
+          {label}
+        </span>
+        {opControl ?? <span className={cn("relative z-[1] shrink-0 whitespace-nowrap", compact ? "pl-1.5" : "pl-2")}>{op}</span>}
+        {value.kind === "options" ? (
+          control
+        ) : value.kind === "date" ? (
+          // The DatePicker brings its own hover over its dates.
+          <span className="relative z-[1] flex min-w-0 items-center">{control}</span>
+        ) : (
+          // The fields' label: a click anywhere in it types.
+          <label ref={valueRef as RefObject<HTMLLabelElement>} className={cn(segment, "cursor-text")}>
+            {control}
+          </label>
         )}
-      >
-        <X size={sizeClasses.icon} strokeWidth={1.5} />
-      </button>
-      </Tooltip>
-    </span>
+        <Tooltip content="Remove filter">
+        <button
+          ref={clearRef}
+          type="button"
+          aria-label={`Remove the ${label} filter`}
+          onClick={onRemove}
+          className={cn(
+            "relative z-[1] inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
+            "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+            compact ? "w-6" : "w-7",
+            innerRadius
+          )}
+        >
+          <X size={sizeClasses.icon} strokeWidth={1.5} />
+        </button>
+        </Tooltip>
+      </span>
+    </motion.span>
   );
 }
 
