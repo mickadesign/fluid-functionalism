@@ -4133,7 +4133,11 @@ function DataTableFilterChips<TData>({ table, size, className }: DataTableFilter
   return (
     <div
       data-slot="data-table-filter-chips"
-      className={cn("flex flex-wrap items-center gap-1", boxes && "pl-9", className)}
+      // The chips' labels line up with the title and the first column's
+      // text, 36px in past a selection column: the row starts the label's
+      // own inset earlier (1px border, 2px inset, 8px padding; 6px
+      // compact).
+      className={cn("flex flex-wrap items-center gap-1", boxes && (compact ? "pl-[27px]" : "pl-[25px]"), className)}
     >
       {active.map((f) => {
         const entry = filterable.find(({ column }) => column.id === f.id);
