@@ -267,7 +267,10 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             // --table-cell-py is the one source for row height: cells pad by
             // it and TableEmpty holds its rows with it.
             className={cn(
-              "w-full border-collapse",
+              // Separate borders, each cell drawing its own divider, so a
+              // sticky cell paints over the dividers scrolling under it
+              // (collapsed borders paint over every cell).
+              "w-full border-separate border-spacing-0",
               sizeClasses.variant === "compact" ? "[--table-cell-py:5px]" : "[--table-cell-py:--spacing(2)]",
               sizeClasses.text,
               className
@@ -347,8 +350,10 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         // Borders fade over 80ms instead of popping as the highlight moves.
         // `is-active` lets every cell read the lit state through the row.
         className={cn(
-          "group/row relative z-10 border-b transition-[border-color] duration-80",
-          hideBorder ? "border-transparent" : "border-accent/40 data-[under-highlight]:border-transparent data-[under-highlight]:duration-0",
+          "group/row relative z-10 *:border-b *:transition-[border-color] *:duration-80",
+          hideBorder
+            ? "*:border-transparent"
+            : "*:border-accent/40 data-[under-highlight]:*:border-transparent data-[under-highlight]:*:duration-0",
           lit && "is-active",
           className
         )}
