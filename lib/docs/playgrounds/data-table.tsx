@@ -218,6 +218,8 @@ function buildColumns(o: {
         label: "Primitives",
         icon: icon("folder"),
         editor: o.editable ? { type: "select", options: PRIMITIVE_OPTIONS } : undefined,
+        // The filter lists them with their badge's dot.
+        filter: { type: "options", options: PRIMITIVE_OPTIONS },
       },
     },
     {

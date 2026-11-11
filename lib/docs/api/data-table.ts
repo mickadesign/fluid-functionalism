@@ -32,7 +32,7 @@ export const columnMetaProps: PropDef[] = [
   { name: "icon", type: "IconComponent", description: "A 14px icon before the header's title." },
   { name: "editor", type: '"text" | "number" | "date" | "tags" | { type, options?, creatable?, placeholder? } | { type: "select", options }', description: "Edits the column in place: text, a link, a number, a date, tags or a select." },
   { name: "lines", type: '1 | 2 | "wrap"', description: '`1` cuts text to a line, `2` stops after two, `"wrap"` lets it run.' },
-  { name: "filter", type: '"text" | "number" | "date" | { type: "options", options } | false', description: "How DataTableFilters filters the column. Omitted, it follows the editor, then the values: numbers, ISO days, a few repeated strings, or text. `false` leaves it out." },
+  { name: "filter", type: '"text" | "number" | "date" | { type: "options", options } | false', description: "How DataTableFilters filters the column. Options take a Badge `color` each, and the filter shows its dot, as the cells do. Omitted, it follows the editor (a select's colors included), then the values: numbers, ISO days, a few repeated strings, or text. `false` leaves it out." },
 ];
 
 export const columnHeaderProps: PropDef[] = [

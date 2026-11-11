@@ -3420,20 +3420,8 @@ function SelectEditor({
               key={option.value}
               index={i}
               label={option.label}
-              // A badge's dot, in the Badge's own colors (gray reads as the
-              // muted foreground there too), so the menu matches the cell.
-              leading={
-                "color" in option && option.color ? (
-                  <span
-                    aria-hidden
-                    className="size-[7px] shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        option.color === "gray" ? "var(--muted-foreground)" : badgeColors[option.color],
-                    }}
-                  />
-                ) : undefined
-              }
+              // A badge's dot, so the menu matches the cell.
+              leading={"color" in option && option.color ? <BadgeDot color={option.color} /> : undefined}
               checked={option.value === value}
               onSelect={() => onChange(option.value)}
             />
@@ -4166,6 +4154,18 @@ interface FilterChipProps {
 const CHIP_FIELD =
   "min-w-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
 
+/** A Badge's dot in the Badge's own colors (gray reads as the muted
+ *  foreground there too), for menus listing badge values. */
+function BadgeDot({ color }: { color: BadgeColor }) {
+  return (
+    <span
+      aria-hidden
+      className="size-[7px] shrink-0 rounded-full"
+      style={{ backgroundColor: color === "gray" ? "var(--muted-foreground)" : badgeColors[color] }}
+    />
+  );
+}
+
 /** Ranges a date filter offers beside its calendar, ending today. Made
  *  when the chip renders (a chip only exists after a click, so never on
  *  the server). */
@@ -4292,8 +4292,16 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
               className={cn(segment, "max-w-72 cursor-pointer")}
             >
               <Phrase label={label} op={op} />
-              <span className={cn("truncate", picked.length ? "text-foreground" : "text-muted-foreground")}>
-                {picked.length ? picked.map((o) => o.label).join(", ") : "any"}
+              <span className={cn("flex min-w-0 items-center gap-1.5 truncate", picked.length ? "text-foreground" : "text-muted-foreground")}>
+                {picked.length
+                  ? picked.map((o, i) => (
+                      <span key={o.value} className="inline-flex shrink-0 items-center gap-1.5">
+                        {o.color && <BadgeDot color={o.color} />}
+                        {o.label}
+                        {i < picked.length - 1 && ","}
+                      </span>
+                    ))
+                  : "any"}
               </span>
             </button>
           }
@@ -4307,6 +4315,8 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
               key={o.value}
               index={i}
               label={o.label}
+              // Options with a Badge color show its dot, as the cells do.
+              leading={o.color ? <BadgeDot color={o.color} /> : undefined}
               checked={value.values.includes(o.value)}
               onSelect={() => toggle(o.value)}
             />

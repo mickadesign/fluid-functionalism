@@ -25,7 +25,7 @@ import { MenuItem } from "@/components/ui/menu-item";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { showUndoToast } from "@/lib/docs/settings-toast";
-import { Badge } from "@/registry/default/badge";
+import { Badge, type BadgeColor } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
 
 // ── Selection and actions: a team ────────────────────────
@@ -47,6 +47,10 @@ const MEMBERS: Member[] = [
   { id: "11", name: "Ines Costa", email: "ines@acme.co", role: "Viewer", status: "Active", lastActive: "2026-10-25" },
   { id: "12", name: "Leo Varga", email: "leo@acme.co", role: "Editor", status: "Active", lastActive: "2026-11-04" },
 ];
+
+/** A column's badge colors as filter options, so the filter shows the dots. */
+const badgeOptions = (colors: Record<string, BadgeColor>) =>
+  Object.entries(colors).map(([value, color]) => ({ value, color }));
 
 const ROLE_COLOR = { Owner: "purple", Admin: "blue", Editor: "green", Viewer: "gray" } as const;
 const STATUS_COLOR = { Active: "green", Invited: "amber", Suspended: "red" } as const;
@@ -93,6 +97,8 @@ export function TeamTable() {
           </Badge>
         </span>
       ),
+      // The filter lists the roles with their badge's dot.
+      meta: { filter: { type: "options", options: badgeOptions(ROLE_COLOR) } },
     },
     {
       accessorKey: "status",
@@ -104,6 +110,7 @@ export function TeamTable() {
           </Badge>
         </span>
       ),
+      meta: { filter: { type: "options", options: badgeOptions(STATUS_COLOR) } },
     },
     {
       accessorKey: "lastActive",
@@ -189,6 +196,8 @@ const columns: ColumnDef<Member>[] = [
     accessorKey: "role",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
     cell: ({ row }) => <Badge variant="ghost" color={ROLE_COLOR[row.original.role]}>{row.original.role}</Badge>,
+    // The filter lists the roles with their badge's dot.
+    meta: { filter: { type: "options", options: Object.entries(ROLE_COLOR).map(([value, color]) => ({ value, color })) } },
   },
   // Status, Last active…
   rowActionsColumn<Member>((row) => (
