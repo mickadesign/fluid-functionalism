@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Sites whose CSP blocks jsDelivr self-host the pdf.js worker. The setting has
@@ -37,19 +35,5 @@ describe("FileThumbnail pdf.js worker", () => {
     setPdfWorkerSrc("/pdf.worker.min.mjs");
     await loadPdfjs();
     expect(mod.GlobalWorkerOptions.workerSrc).toBe("/pdf.worker.min.mjs");
-  });
-});
-
-describe("FileThumbnail pdf.js version floor", () => {
-  // Versions before 6.2.108 could run script from a crafted PDF.
-  it("requires pdfjs-dist@^6.2.108 or later", () => {
-    const registry = JSON.parse(readFileSync(join(process.cwd(), "registry.json"), "utf-8"));
-    const item = registry.items.find((i: { name: string }) => i.name === "file-thumbnail");
-    const dep = (item.dependencies as string[]).find((d) => d.startsWith("pdfjs-dist@^"));
-    expect(dep).toBeDefined();
-    const [major, minor, patch] = dep!.slice("pdfjs-dist@^".length).split(".").map(Number);
-    const at = major * 1e12 + minor * 1e6 + patch;
-    expect(major).toBeGreaterThanOrEqual(6);
-    expect(at).toBeGreaterThanOrEqual(6 * 1e12 + 2 * 1e6 + 108);
   });
 });

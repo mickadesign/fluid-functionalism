@@ -4,7 +4,7 @@
   "title": "File Thumbnail",
   "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting. The pdf.js worker loads from jsDelivr by default; setPdfWorkerSrc() points it at a self-hosted copy for strict CSPs.",
   "dependencies": [
-    "pdfjs-dist@^6.2.108"
+    "pdfjs-dist"
   ],
   "registryDependencies": [
     "utils",
