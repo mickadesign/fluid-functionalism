@@ -178,6 +178,19 @@ type DataTableEditor =
  *  the menu shows as the option's dot (match the cell's badge). */
 type DataTableSelectOption = string | { value: string; label?: string; color?: BadgeColor };
 
+/** A text filter's condition, in the order its menu lists them. */
+const TEXT_OPS = [
+  "is",
+  "is not",
+  "contains",
+  "does not contain",
+  "starts with",
+  "ends with",
+  "is empty",
+  "is not empty",
+] as const;
+type DataTableTextOp = (typeof TEXT_OPS)[number];
+
 /** The search's text, on every column (a string) or on one. */
 type DataTableSearchValue = string | { column: string; query: string };
 
@@ -203,7 +216,12 @@ type DataTableFilterKind =
  *  (DataTableSearch on one column) means "contains". */
 type DataTableFilterValue =
   | string
-  | { kind: "text"; query: string }
+  | {
+      kind: "text";
+      query: string;
+      /** How the text matches. @default "contains" */
+      op?: DataTableTextOp;
+    }
   | {
       kind: "options";
       values: string[];
@@ -3970,10 +3988,19 @@ function dataTableFilterFn<TData>(row: Row<TData>, columnId: string, filter: Dat
   const value = row.getValue(columnId);
   if (filter == null) return true;
   if (typeof filter === "string" || filter.kind === "text") {
+    const op = typeof filter === "string" ? "contains" : (filter.op ?? "contains");
+    const text = (Array.isArray(value) ? value.join(" ") : String(value ?? "")).trim().toLowerCase();
+    if (op === "is empty") return text === "";
+    if (op === "is not empty") return text !== "";
     const query = (typeof filter === "string" ? filter : filter.query).trim().toLowerCase();
+    // A condition with nothing typed yet hides nothing.
     if (!query) return true;
-    const text = Array.isArray(value) ? value.join(" ") : String(value ?? "");
-    return text.toLowerCase().includes(query);
+    if (op === "is") return text === query;
+    if (op === "is not") return text !== query;
+    if (op === "does not contain") return !text.includes(query);
+    if (op === "starts with") return text.startsWith(query);
+    if (op === "ends with") return text.endsWith(query);
+    return text.includes(query);
   }
   if (filter.kind === "options") {
     if (filter.values.length === 0) return true;
@@ -4310,14 +4337,28 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   // The date filter's word is a menu of its own (between, before, after).
   let opControl: ReactNode = null;
   if (value.kind === "text") {
-    op = "contains";
-    control = (
+    const textOp = value.op ?? "contains";
+    op = textOp;
+    opControl = (
+      <OpMenu
+        triggerRef={verbRef}
+        className={segment}
+        label={label}
+        word={textOp}
+        size={size}
+        ops={TEXT_OPS}
+        current={textOp}
+        onPick={(next) => onChange({ ...value, op: next as DataTableTextOp })}
+      />
+    );
+    // "Is empty" and "is not empty" need no text.
+    control = textOp === "is empty" || textOp === "is not empty" ? null : (
       <input
-        aria-label={`${label} contains`}
+        aria-label={`${label} ${textOp}`}
         autoFocus={autoOpen}
         value={value.query}
         placeholder="text"
-        onChange={(e) => onChange({ kind: "text", query: e.target.value })}
+        onChange={(e) => onChange({ ...value, query: e.target.value })}
         // Hugs what's typed (the placeholder when empty).
         className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-48 min-w-6")}
       />
@@ -4527,8 +4568,13 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           // The DatePicker brings its own hover over its dates.
           <span className="relative z-[1] flex min-w-0 items-center">{control}</span>
         ) : (
-          // The fields' label: a click anywhere in it types.
-          <label ref={valueRef as RefObject<HTMLLabelElement>} className={cn(segment, "cursor-text")}>
+          // The fields' label: a click anywhere in it types. Kept mounted
+          // (hidden while "is empty" needs no text), so its hover stop stays
+          // registered.
+          <label
+            ref={valueRef as RefObject<HTMLLabelElement>}
+            className={cn(segment, "cursor-text", !control && "hidden")}
+          >
             {control}
           </label>
         )}

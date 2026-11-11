@@ -95,6 +95,18 @@ describe("the default filterFn", () => {
     expect(ids([{ id: "due", value: { kind: "date", op: "after" } }])).toHaveLength(3);
   });
 
+  it("reads every text condition", () => {
+    const by = (op: string, query = "") => ids([{ id: "name", value: { kind: "text", op, query } }]);
+    expect(by("is", "ada")).toEqual(["a"]);
+    expect(by("is not", "ada")).toEqual(["b", "c"]);
+    expect(by("contains", "en")).toEqual(["b", "c"]);
+    expect(by("does not contain", "en")).toEqual(["a"]);
+    expect(by("starts with", "le")).toEqual(["c"]);
+    expect(by("ends with", "ji")).toEqual(["b"]);
+    expect(by("is empty")).toEqual([]);
+    expect(by("is not empty")).toHaveLength(3);
+  });
+
   it("keeps the search apart from a filter on the same column", () => {
     const { result } = renderHook(() =>
       useDataTable({
