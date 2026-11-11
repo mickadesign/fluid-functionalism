@@ -76,7 +76,7 @@ import {
   DropdownTrigger,
 } from "@/components/ui/dropdown";
 import { MenuItem } from "@/components/ui/menu-item";
-import { useFluidHover } from "@/hooks/use-fluid-hover";
+import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -4222,10 +4222,16 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const hover = useFluidHover(boxRef, { axis: "x", gapClick: false });
   const { registerItem } = hover;
   // Three stops for the gliding fill: the word (when it's a menu), the
-  // value, and the ×.
-  const verbRef = useCallback((el: HTMLElement | null) => registerItem(0, el), [registerItem]);
-  const valueRef = useCallback((el: HTMLElement | null) => registerItem(1, el), [registerItem]);
-  const clearRef = useCallback((el: HTMLElement | null) => registerItem(2, el), [registerItem]);
+  // value, and the ×. Registered from ref objects after mount: a callback
+  // ref passed through a menu trigger or a tooltip is a new function each
+  // render, which unregistered and registered the stop on every render and
+  // dropped the fill.
+  const verbRef = useRef<HTMLButtonElement>(null);
+  const valueRef = useRef<HTMLElement>(null);
+  const clearRef = useRef<HTMLButtonElement>(null);
+  useRegisterFluidHoverItem(registerItem, 0, verbRef);
+  useRegisterFluidHoverItem(registerItem, 1, valueRef);
+  useRegisterFluidHoverItem(registerItem, 2, clearRef);
   const innerRadius = { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[shape.variant];
   const segment = cn(
     "relative z-[1] inline-flex h-full min-w-0 items-center gap-1 outline-none",
@@ -4371,7 +4377,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
         <DropdownTrigger
           render={
             <button
-              ref={valueRef}
+              ref={valueRef as RefObject<HTMLButtonElement>}
               type="button"
               aria-label={`${label} ${op} ${picked.length ? picked.map((o) => o.label).join(", ") : "any"}`}
               className={cn(segment, "max-w-56 cursor-pointer")}
@@ -4447,7 +4453,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
         <span className="relative z-[1] flex min-w-0 items-center">{control}</span>
       ) : (
         // The fields' label: a click anywhere in it types.
-        <label ref={valueRef} className={cn(segment, "cursor-text")}>
+        <label ref={valueRef as RefObject<HTMLLabelElement>} className={cn(segment, "cursor-text")}>
           {control}
         </label>
       )}
@@ -4483,7 +4489,7 @@ function OpMenu({
   size,
   onPick,
 }: {
-  triggerRef?: (el: HTMLElement | null) => void;
+  triggerRef?: RefObject<HTMLButtonElement | null>;
   className?: string;
   label: string;
   word: string;

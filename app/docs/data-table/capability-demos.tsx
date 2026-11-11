@@ -563,9 +563,6 @@ export function ViewsTable() {
         <DataTableTitle as="h3" table={table}>People</DataTableTitle>
         <span className="ml-auto" />
         <DataTableFilters table={table} />
-        <Button variant="ghost" size="compact" onClick={save}>
-          Save view
-        </Button>
       </div>
       <div className="flex flex-wrap items-center gap-1">
         {/* The views as subtle tabs: one gliding hover, the open view's pill. */}
@@ -579,6 +576,10 @@ export function ViewsTable() {
             <TabsItem key={view.name} index={i} label={view.name} />
           ))}
         </Tabs>
+        {/* Saving sits with the views it adds to. */}
+        <Button variant="ghost" size="compact" onClick={save}>
+          Save view
+        </Button>
       </div>
       <DataTableFilterChips table={table} />
       <DataTable table={table} />

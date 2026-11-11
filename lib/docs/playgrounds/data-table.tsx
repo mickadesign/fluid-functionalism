@@ -21,7 +21,6 @@ import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { DropdownContent, DropdownMenu, DropdownTrigger } from "@/components/ui/dropdown";
 import { Button } from "@/components/ui/button";
-import { useSize } from "@/lib/size-context";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
 import { Badge } from "@/registry/default/badge";
@@ -513,17 +512,19 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
           ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
           ...(o.filter !== "none" ? [filter] : []),
-          ...(views ? [`    <Button variant="ghost" onClick={saveView}>Save view</Button>`] : []),
           `  </div>`,
         ]
       : []),
     ...(views
       ? [
-          `  <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
-          `    {["All", ...views.map((v) => v.name)].map((name, i) => (`,
-          `      <TabsItem key={name} index={i} label={name} />`,
-          `    ))}`,
-          `  </Tabs>`,
+          `  <div className="flex items-center gap-1">`,
+          `    <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
+          `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
+          `        <TabsItem key={name} index={i} label={name} />`,
+          `      ))}`,
+          `    </Tabs>`,
+          `    <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`,
+          `  </div>`,
         ]
       : []),
     ...(o.filters ? [`  <DataTableFilterChips table={table} />`] : []),
@@ -784,7 +785,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     setViews((old) => [...old, { name, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);
     setViewIndex(views.length + 1);
   };
-  const compact = useSize().variant === "compact";
 
   // Saved views come with filters: they save what the filters set.
   const showViews = state.views && state.filters;
@@ -807,11 +807,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
         />
       )}
-      {showViews && (
-        <Button variant="ghost" size={compact ? "compact" : "default"} onClick={saveView}>
-          Save view
-        </Button>
-      )}
     </div>
   );
 
@@ -821,12 +816,16 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       {showViews && (
         // The views as subtle tabs, stepped in with the title past a
         // selection column.
-        <div ref={tabsRef} className={cn("relative flex", state.selection && "pl-9")}>
+        <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-9")}>
           <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">
             {["All", ...views.map((v) => v.name)].map((name, i) => (
               <TabsItem key={name} index={i} label={name} onClick={() => openViewMenu(i)} />
             ))}
           </Tabs>
+          {/* Saving sits with the views it adds to. */}
+          <Button variant="ghost" size="compact" onClick={saveView}>
+            Save view
+          </Button>
           {/* The open view's menu, from a hidden trigger laid over its tab. */}
           <DropdownMenu open={!!viewMenu} onOpenChange={(open) => !open && setViewMenu(null)}>
             <DropdownTrigger

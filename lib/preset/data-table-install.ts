@@ -249,15 +249,17 @@ function dataTableDemoFile(p: DataTablePreset): string {
     } else if (p.filter === "all") {
       l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
     }
-    if (views) l.push(`        <Button variant="ghost" onClick={saveView}>Save view</Button>`);
     l.push(`      </div>`);
   }
   if (views) {
-    l.push(`      <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
-    l.push(`        {["All", ...views.map((v) => v.name)].map((name, i) => (`);
-    l.push(`          <TabsItem key={name} index={i} label={name} />`);
-    l.push(`        ))}`);
-    l.push(`      </Tabs>`);
+    l.push(`      <div className="flex items-center gap-1">`);
+    l.push(`        <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
+    l.push(`          {["All", ...views.map((v) => v.name)].map((name, i) => (`);
+    l.push(`            <TabsItem key={name} index={i} label={name} />`);
+    l.push(`          ))}`);
+    l.push(`        </Tabs>`);
+    l.push(`        <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`);
+    l.push(`      </div>`);
   }
   if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
