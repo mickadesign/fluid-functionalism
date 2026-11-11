@@ -304,7 +304,9 @@ system:
   24px, with asymmetric gaps, or when the inner surface does not reach the
   corner, treat the layers independently and tune by eye.
 - **Icon-only controls name themselves.** Every icon-only button gets an
-  `aria-label` and a tooltip with the same words. A tooltip on a menu's
+  `aria-label` and a tooltip with the same words. Two or more of them side
+  by side go in one `TooltipGroup`, so a single bubble glides along the row
+  instead of closing and reopening at every button. A tooltip on a menu's
   trigger is forced closed while the menu is open: React carries the
   portalled menu's pointer events up to the trigger's ancestors, so it would
   reopen over the menu. A tooltip whose trigger is a component must reach a

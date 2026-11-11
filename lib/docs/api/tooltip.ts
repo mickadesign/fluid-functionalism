@@ -52,7 +52,28 @@ export const tooltipProps: PropDef[] = [
   },
 ];
 
+export const tooltipGroupProps: PropDef[] = [
+  {
+    name: "children",
+    type: "ReactNode",
+    description: "The row of triggers, each in its own Tooltip. They share one bubble.",
+  },
+  {
+    name: "delayDuration",
+    type: "number",
+    default: "200",
+    description: "Milliseconds to wait before the first tooltip of the group opens.",
+  },
+  {
+    name: "skipDelayDuration",
+    type: "number",
+    default: "300",
+    description: "After a tooltip closes, the others in the group open without the delay for this many milliseconds.",
+  },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "Tooltip", props: tooltipProps },
+  { title: "TooltipGroup", props: tooltipGroupProps },
 ];
