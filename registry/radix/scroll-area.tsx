@@ -203,6 +203,11 @@ const ScrollBar = forwardRef<
           orientation === "horizontal" &&
             "my-auto mx-1 h-1 -translate-y-0.5 group-hover/scrollbar:h-1.5"
         )}
+        // Radix sets both width and height inline from its CSS variables, but
+        // only defines the one for the scroll axis. The other resolves to
+        // `auto` and beats the w-1 / h-1 classes, collapsing the thumb to 0px.
+        // Radix spreads `style` after its own, so this drops that inline size.
+        style={orientation === "vertical" ? { width: undefined } : { height: undefined }}
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );
