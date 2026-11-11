@@ -988,7 +988,13 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // under it, above the table.
   const toolbar = (state.title || tools) && (
     <div className="flex flex-wrap items-center gap-1">
-      {state.title && <DataTableTitle table={table}>Components</DataTableTitle>}
+      {/* font-heading-display: the site's Heading font setting reaches the
+          title (a site class, so the generated code leaves it out). */}
+      {state.title && (
+        <DataTableTitle table={table} className="font-heading-display">
+          Components
+        </DataTableTitle>
+      )}
       <span className="ml-auto" />
       {state.filters && <DataTableFilters table={table} />}
       {state.viewMenu && <DataTableViewOptions table={table} />}
