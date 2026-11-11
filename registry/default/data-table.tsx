@@ -1959,12 +1959,14 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
 
 /** A header's icon and title. The 14px icon sits 4px before the title in
  *  the header's own muted color, so it labels without competing. */
+/** A header's icon and title; a column squeezed narrower than its title
+ *  ends the title in an ellipsis instead of cutting it at the edge. */
 function HeaderLabel({ icon, title }: { icon?: IconComponent; title: ReactNode }) {
-  if (!icon) return <>{title}</>;
+  if (!icon) return <span className="inline-block max-w-full truncate align-top">{title}</span>;
   return (
-    <span className="inline-flex items-center gap-1 align-top">
+    <span className="inline-flex max-w-full items-center gap-1 align-top">
       <Icon14 icon={icon} />
-      {title}
+      <span className="min-w-0 truncate">{title}</span>
     </span>
   );
 }
@@ -2023,7 +2025,8 @@ function DataTableColumnHeader<TData, TValue>({
   const label = (
     <>
       {icon && <Icon14 icon={icon} />}
-      {title}
+      {/* Ends in an ellipsis when the column is squeezed narrower. */}
+      <span className="min-w-0 truncate">{title}</span>
     </>
   );
   if (!hasMenu && !canSort)
@@ -2083,7 +2086,7 @@ function DataTableColumnHeader<TData, TValue>({
         else column.toggleSorting();
       }}
       className={cn(
-        "group/sort inline-flex cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
+        "group/sort inline-flex max-w-full cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
         // The sorted column reads at full contrast, its icon and label with
         // the arrow, so the sort shows from across the table.
         (sorted || menuOpen) && "text-foreground",
@@ -3228,6 +3231,7 @@ function EditorBody<TData>({
   return (
     <TagsEditor
       boundary={boundary}
+      wrap={lines === "wrap"}
       reach={CELL_REACH.tags[step]}
       boxRef={boxRef}
       onFocus={onFocus}
@@ -3674,6 +3678,7 @@ function NumberEditor({
 
 function TagsEditor({
   boundary,
+  wrap,
   reach,
   boxRef,
   onFocus,
@@ -3686,6 +3691,8 @@ function TagsEditor({
   onChange,
 }: {
   boundary: Element | null;
+  /** The column wraps its text: the chips wrap onto more lines too. */
+  wrap: boolean;
   reach: string;
   boxRef: RefObject<HTMLDivElement | null>;
   onFocus: () => void;
@@ -3710,8 +3717,13 @@ function TagsEditor({
         CELL_CONTROL,
         reach,
         // One line of chips, as tall as the row: the chip row scrolls
-        // sideways instead of wrapping (the field follows its caret).
-        "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+        // sideways instead of wrapping (the field follows its caret). In a
+        // column that wraps its text (`lines: "wrap"`), the chips wrap too
+        // and the row grows with them, like its text.
+        !wrap && "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+        // On one line, a chip cut at the cell's edge fades out over its last
+        // 16px, as truncated text ends in an ellipsis.
+        !wrap && "[&_.flex-wrap]:[mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]",
         "[&_[aria-label=Open]]:hidden"
       )}
     >

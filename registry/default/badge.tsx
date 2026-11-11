@@ -45,7 +45,9 @@ const badgeColors = {
 type BadgeColor = keyof typeof badgeColors;
 
 const badgeVariants = cva(
-  "inline-flex items-center whitespace-nowrap",
+  // Shrinks to its box (a narrow table cell) and ends its label in an
+  // ellipsis rather than being cut at the edge.
+  "inline-flex min-w-0 max-w-full items-center whitespace-nowrap",
   {
     variants: {
       variant: {
@@ -157,7 +159,10 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
         {/* text-box needs a block container. The badge root is a flex
             container, so the label gets its own span. Height is fixed (h-*),
             so trimming only recenters the letterforms. */}
-        <span className="[text-box:trim-both_cap_alphabetic]">{children}</span>
+        {/* Clipped sideways only (overflow-x: clip keeps the trimmed
+            label's descenders, which hidden would cut), so a squeezed badge
+            ends in an ellipsis. */}
+        <span className="min-w-0 overflow-x-clip text-ellipsis [text-box:trim-both_cap_alphabetic]">{children}</span>
       </span>
     );
   }

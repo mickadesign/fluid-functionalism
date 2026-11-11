@@ -217,7 +217,7 @@ function buildColumns(o: {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Primitives" />,
       cell: ({ row }) => (
         // The 24px badge overhangs the line box instead of growing the row.
-        <span className="flex h-[1lh] items-center">
+        <span className="flex h-[1lh] min-w-0 items-center">
           <Badge variant="ghost" color={PRIMITIVE_COLOR[row.original.primitives]}>
             {row.original.primitives}
           </Badge>
@@ -268,6 +268,8 @@ function buildColumns(o: {
               label: "Tags",
               className: "min-w-56",
               icon: icon("tag"),
+              // Text wrap wraps the chips too, so none is cut at the edge.
+              lines: wrap ? "wrap" : undefined,
               editor: { type: "tags", options: DATA_TABLE_TAG_OPTIONS, creatable: true },
             },
           } satisfies ColumnDef<ComponentRow>,
@@ -450,7 +452,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `    accessorKey: "tags",`,
           `    header: "Tags",`,
           `    enableSorting: false,`,
-          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
+          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}${o.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
           `  },`,
         ]
       : []),

@@ -149,7 +149,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`    header: "Tags",`);
     l.push(`    enableSorting: false,`);
     l.push(
-      `    meta: { label: "Tags", className: "min-w-56", editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true } },`
+      `    meta: { label: "Tags", className: "min-w-56"${p.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true } },`
     );
     l.push(`  },`);
   }
