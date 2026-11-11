@@ -13,6 +13,7 @@ import { useSizeContext } from "@/lib/size-context";
 import { useThemeContext } from "@/registry/default/lib/theme-context";
 import { useIconLibrary, iconLibraryLabels } from "@/lib/docs/icon-playground";
 import { useIcon } from "@/lib/icon-context";
+import { useIsMac } from "@/registry/default/command-menu";
 
 /** Which right-panel setting each global shortcut key drives. */
 const shortcutSettings = {
@@ -91,6 +92,7 @@ export function showUndoToast(message: string, onUndo: () => void) {
 
 function UndoToast({ message, onUndo }: { message: string; onUndo: () => void }) {
   const shapeClasses = useShape();
+  const mac = useIsMac();
   return (
     <div
       role="status"
@@ -111,16 +113,22 @@ function UndoToast({ message, onUndo }: { message: string; onUndo: () => void })
         style={{ fontVariationSettings: fontWeights.semibold }}
       >
         Undo
-        {/* The shortcut toast's key chip; the ⌘ in the sans font, which
-            the mono font draws undersized. */}
-        <kbd
-          className={cn(
-            "inline-flex h-[18px] min-w-[18px] items-center justify-center gap-px bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
-            shapeClasses.bg
-          )}
-        >
-          <span className="font-sans">⌘</span>Z
-        </kbd>
+        {/* One chip per key, as the sidebar's ⌘K: ⌘ in the sans font,
+            which the mono font draws undersized. */}
+        <span className="flex gap-0.5">
+          {(mac ? ["⌘", "Z"] : ["Ctrl", "Z"]).map((key) => (
+            <kbd
+              key={key}
+              className={cn(
+                "inline-flex h-[18px] min-w-[18px] items-center justify-center bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
+                key === "⌘" && "font-sans",
+                shapeClasses.bg
+              )}
+            >
+              {key}
+            </kbd>
+          ))}
+        </span>
       </button>
     </div>
   );
