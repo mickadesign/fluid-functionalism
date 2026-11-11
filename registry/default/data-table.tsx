@@ -988,6 +988,9 @@ function DataTable<TData>({
     label: string,
     icon: IconComponent | undefined
   ) => {
+    // A press in the header's menu (portalled, but bubbling here through
+    // React) isn't one on the cell.
+    if (!e.currentTarget.contains(e.target as Node)) return;
     if (e.button !== 0 || (e.target as Element).closest("[data-resize-handle]")) return;
     const startX = e.clientX;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1071,6 +1074,7 @@ function DataTable<TData>({
   };
 
   const moveByKey = (e: KeyboardEvent<HTMLTableCellElement>, id: string) => {
+    if (!e.currentTarget.contains(e.target as Node)) return;
     if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     const ids = visible.filter(canReorder).map((c) => c.id);
     const i = ids.indexOf(id);
@@ -1613,6 +1617,10 @@ function DataTable<TData>({
                   // multi-column sort).
                   onClick={(e) => {
                     const target = e.target as Element;
+                    // Only the cell's own clicks: React bubbles the header
+                    // menu's (portalled) item clicks up through here, and
+                    // reopening it made a pick look like it never closed.
+                    if (!e.currentTarget.contains(target)) return;
                     if (target.closest("button, a, input, [role=checkbox], [data-resize-handle]")) return;
                     const trigger = e.currentTarget.querySelector<HTMLButtonElement>("button[aria-haspopup=menu]:not([aria-hidden])");
                     if (!trigger) return;
