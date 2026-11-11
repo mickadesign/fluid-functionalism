@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Children,
   Fragment,
   createContext,
   forwardRef,
@@ -4304,9 +4305,10 @@ function DataTableFilterChips<TData>({
   className,
   children,
 }: DataTableFiltersProps<TData> & {
-  /** Actions about the filters (a Save view button), right after the +
-   *  that adds one more. Shown only with the chips, so only while a filter
-   *  is set. */
+  /** Actions about the table's state (a Save view button), right after
+   *  the + that adds a filter. They show the row on their own too, so a
+   *  change with no filter (a hidden or moved column) can still be saved;
+   *  pass nothing (or false) and the row waits for a filter. */
   children?: ReactNode;
 }) {
   "use no memo";
@@ -4329,7 +4331,7 @@ function DataTableFilterChips<TData>({
   const boxes = !!table.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
 
   return (
-    <RowReveal show={active.length > 0}>
+    <RowReveal show={active.length > 0 || Children.toArray(children).length > 0}>
       <div
         data-slot="data-table-filter-chips"
         // The chips' labels line up with the title and the first column's

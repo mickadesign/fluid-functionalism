@@ -505,6 +505,10 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  setViews((old) => [...old, { name: \`View \${old.length + 1}\`, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);`,
           `  setViewIndex(views.length + 1);`,
           `};`,
+          `// Save view shows once the table differs from the open view.`,
+          `const viewKeys = ["columnFilters", "globalFilter", "sorting", "columnOrder", "columnVisibility"] as const;`,
+          `const snapshot = (state: Partial<TableState>) => JSON.stringify(viewKeys.map((key) => state[key] ?? null));`,
+          `const changed = snapshot(table.getState()) !== snapshot(viewIndex === 0 ? allView : views[viewIndex - 1].state);`,
           ``,
         ]
       : []),
@@ -536,7 +540,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
         ? [
             `  {/* Save view after the chips' + Add filter, with the first filter. */}`,
             `  <DataTableFilterChips table={table}>`,
-            `    <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`,
+            `    {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`,
             `  </DataTableFilterChips>`,
           ]
         : [`  <DataTableFilterChips table={table} />`]
@@ -1167,8 +1171,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         </div>
       </RowReveal>
       {state.filters && (
-        // Save view after the chips' + Add filter: it shows with the first
-        // filter, since there's nothing to save before.
+        // Save view after the chips' + Add filter, once the table differs
+        // from the open view: a filter, a sort, a hidden or moved column.
+        // It brings the row along when no filter is set.
         <DataTableFilterChips table={table}>
           {showViews && viewChanged && (
             <Button variant="ghost" size="compact" onClick={saveView}>

@@ -233,6 +233,10 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`    setViews((old) => [...old, { name: \`View \${old.length + 1}\`, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);`);
     l.push(`    setViewIndex(views.length + 1);`);
     l.push(`  };`);
+    l.push(`  // Save view shows once the table differs from the open view.`);
+    l.push(`  const viewKeys = ["columnFilters", "globalFilter", "sorting", "columnOrder", "columnVisibility"] as const;`);
+    l.push(`  const snapshot = (state: Partial<View>) => JSON.stringify(viewKeys.map((key) => state[key] ?? null));`);
+    l.push(`  const changed = snapshot(table.getState()) !== snapshot(viewIndex === 0 ? allView : views[viewIndex - 1].state);`);
     l.push(``);
   }
   l.push(`  return (`);
@@ -264,7 +268,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   if (p.filters && views) {
     // Save view after the chips' + Add filter, with the first filter.
     l.push(`      <DataTableFilterChips table={table}>`);
-    l.push(`        <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>`);
+    l.push(`        {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`);
     l.push(`      </DataTableFilterChips>`);
   } else if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
