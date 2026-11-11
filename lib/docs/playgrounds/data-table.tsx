@@ -33,6 +33,7 @@ import { Switch } from "@/registry/radix/switch";
 import {
   PLAY_SWITCH,
   PlayDivider,
+  PlaySection,
   PlayField,
   PlaySelect,
   PlaygroundPanel,
@@ -1236,6 +1237,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const controls = useMemo(
     () => (
       <PlaygroundPanel onShuffle={randomize}>
+        <PlaySection label="Toolbar" />
         <Switch
           label="Title"
           checked={state.title}
@@ -1254,12 +1256,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           />
         </PlayField>
         <Switch
-          label="Columns menu"
-          checked={state.viewMenu}
-          onToggle={() => set("viewMenu", !state.viewMenu)}
-          className={PLAY_SWITCH}
-        />
-        <Switch
           label="Filters"
           checked={state.filters}
           onToggle={() => set("filters", !state.filters)}
@@ -1273,6 +1269,46 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           onToggle={() => set("views", !state.views)}
           className={PLAY_SWITCH}
         />
+        <Switch
+          label="Columns menu"
+          checked={state.viewMenu}
+          onToggle={() => set("viewMenu", !state.viewMenu)}
+          className={PLAY_SWITCH}
+        />
+        <PlayDivider />
+        <PlaySection label="Columns" />
+        <Switch
+          label="Header icons"
+          checked={state.headerIcons}
+          onToggle={() => set("headerIcons", !state.headerIcons)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Resize columns"
+          checked={state.resize}
+          onToggle={() => set("resize", !state.resize)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Reorder columns"
+          checked={state.reorder}
+          onToggle={() => set("reorder", !state.reorder)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sticky left columns"
+          checked={state.pinning}
+          onToggle={() => set("pinning", !state.pinning)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sticky right column"
+          checked={state.pinRight}
+          onToggle={() => set("pinRight", !state.pinRight)}
+          className={PLAY_SWITCH}
+        />
+        <PlayDivider />
+        <PlaySection label="Rows" />
         <Switch
           label="Row selection"
           checked={state.selection}
@@ -1315,47 +1351,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           />
         </PlayField>
         <Switch
-          label="Loading"
-          checked={loading}
-          onToggle={() => {
-            if (reloadTimer.current) clearTimeout(reloadTimer.current);
-            setLoading(!loading);
-          }}
-          className={PLAY_SWITCH}
-        />
-        <Switch
-          label="Header icons"
-          checked={state.headerIcons}
-          onToggle={() => set("headerIcons", !state.headerIcons)}
-          className={PLAY_SWITCH}
-        />
-        <PlayDivider />
-        <Switch
-          label="Resize columns"
-          checked={state.resize}
-          onToggle={() => set("resize", !state.resize)}
-          className={PLAY_SWITCH}
-        />
-        <Switch
-          label="Reorder columns"
-          checked={state.reorder}
-          onToggle={() => set("reorder", !state.reorder)}
-          className={PLAY_SWITCH}
-        />
-        <Switch
-          label="Sticky left columns"
-          checked={state.pinning}
-          onToggle={() => set("pinning", !state.pinning)}
-          className={PLAY_SWITCH}
-        />
-        <Switch
-          label="Sticky right column"
-          checked={state.pinRight}
-          onToggle={() => set("pinRight", !state.pinRight)}
-          className={PLAY_SWITCH}
-        />
-        <PlayDivider />
-        <Switch
           label="Pagination"
           checked={state.pagination}
           onToggle={() => set("pagination", !state.pagination)}
@@ -1372,6 +1367,15 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             ]}
           />
         </PlayField>
+        <Switch
+          label="Loading"
+          checked={loading}
+          onToggle={() => {
+            if (reloadTimer.current) clearTimeout(reloadTimer.current);
+            setLoading(!loading);
+          }}
+          className={PLAY_SWITCH}
+        />
         <PlayDivider />
         {/* shadcn's preset principle: the exact configuration above, as a
             stateless code the registry can turn into an installable block. */}
