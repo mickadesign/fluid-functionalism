@@ -278,12 +278,21 @@ function Combobox<
           nextValues = [...nextValues, itemValue(made)];
         }
       }
+      if (isMultiple) {
+        // The primitive only knows the values that have an item. A value
+        // whose item isn't loaded stays selected, in its place; new picks
+        // go last.
+        const pickedSet = new Set(nextValues);
+        const kept = values.filter((v) => !itemsByValue.has(v) || pickedSet.has(v));
+        const keptSet = new Set(kept);
+        nextValues = [...kept, ...nextValues.filter((v) => !keptSet.has(v))];
+      }
       if (value === undefined) setInternalValues(nextValues);
       onValueChange?.(
         (isMultiple ? nextValues : (nextValues[0] ?? "")) as ComboboxValue<Multiple>
       );
     },
-    [value, onValueChange, isMultiple]
+    [value, onValueChange, isMultiple, values, itemsByValue]
   );
 
   // The create row must survive the filter that hides every other miss.
