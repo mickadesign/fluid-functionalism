@@ -2855,10 +2855,17 @@ const DataTableBodyRow = memo(
       })}
     </TableRow>);
   }),
+  // Every prop that changes what a row draws, or a row keeps drawing its
+  // last state: the pins (missing, a sticky switch moved only the header),
+  // a selection run's ends (the pinned fills' corners), the open row menu.
   (a, b) =>
     a.row === b.row &&
     a.i === b.i &&
     a.selected === b.selected &&
+    a.runStart === b.runStart &&
+    a.runEnd === b.runEnd &&
+    a.pins === b.pins &&
+    a.menuOpen === b.menuOpen &&
     a.someSelected === b.someSelected &&
     a.expanded === b.expanded &&
     a.grouped === b.grouped &&
