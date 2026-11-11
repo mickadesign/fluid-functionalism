@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { animate } from "motion/react";
+import { spring } from "@/lib/springs";
 import {
   useDataTable,
   DataTable,
@@ -868,49 +871,111 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     );
   })();
 
-  // Saved tabs reorder by dragging ("All" stays first): past 4px a press
-  // turns into a drag, and the tab swaps places as the pointer crosses a
-  // neighbor's middle. A drag doesn't count as the click that renames.
+  // Saved tabs reorder the way the table's column headers do ("All" stays
+  // first): past 4px a press lifts a copy of the tab that follows the
+  // pointer (80%, the pressed fill, held inside the row), its slot empties,
+  // a 2px accent bar marks where it lands, and it moves on release, the
+  // other tabs sliding to their new places. The click the drag ends with is
+  // swallowed, so it doesn't rename. Alt + ← / → moves a focused tab.
   const dragged = useRef(false);
+  const tabGhostRef = useRef<HTMLDivElement>(null);
+  const [tabGhost, setTabGhost] = useState<{ label: string; top: number; left: number; width: number; height: number } | null>(null);
+  const [tabDrag, setTabDrag] = useState<{ from: number; bar: number | null } | null>(null);
+  // Tab lefts before a move, by view id, so the next commit slides them.
+  const tabLefts = useRef<Map<number, number> | null>(null);
+  const tabEls = () => [...(tabsRef.current?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])];
+  const moveViewTab = (from: number, to: number) => {
+    if (to === from || to < 1 || from < 1) return;
+    tabLefts.current = new Map(tabEls().map((t) => [Number(t.dataset.viewId), t.getBoundingClientRect().left]));
+    setViews((old) => {
+      const next = [...old];
+      const [moved] = next.splice(from - 1, 1);
+      next.splice(to - 1, 0, moved);
+      return next;
+    });
+    // The open view stays open wherever it lands.
+    setViewIndex((cur) =>
+      cur === from ? to : cur > Math.min(from, to) && cur <= Math.max(from, to) ? cur + (from < to ? -1 : 1) : cur
+    );
+  };
+  useLayoutEffect(() => {
+    const before = tabLefts.current;
+    if (!before) return;
+    tabLefts.current = null;
+    for (const t of tabEls()) {
+      const was = before.get(Number(t.dataset.viewId));
+      const dx = was === undefined ? 0 : was - t.getBoundingClientRect().left;
+      if (dx) animate(t, { x: [dx, 0] }, spring.moderate);
+    }
+  }, [views]);
   const onTabsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || naming) return;
     const box = tabsRef.current;
-    const tabEls = () => [...(box?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])];
-    let from = tabEls().findIndex((t) => t.contains(e.target as Node));
-    if (from < 1) return;
+    const from = tabEls().findIndex((t) => t.contains(e.target as Node));
+    if (!box || from < 1) return;
+    const tab = tabEls()[from];
+    const rect = tab.getBoundingClientRect();
     const startX = e.clientX;
-    dragged.current = false;
-    const move = (ev: PointerEvent) => {
-      if (!dragged.current && Math.abs(ev.clientX - startX) < 4) return;
-      dragged.current = true;
+    let moved = false;
+    let to = from;
+    // Where the dragged tab would land for a pointer x: before the first
+    // saved tab whose middle is past it, or last.
+    const land = (x: number) => {
       const els = tabEls();
-      const to = els.findIndex((t, i) => {
-        if (i < 1 || i === from) return false;
-        const r = t.getBoundingClientRect();
-        return i > from ? ev.clientX > r.left + r.width / 2 : ev.clientX < r.left + r.width / 2;
-      });
-      if (to < 1) return;
-      const a = from - 1;
-      const b = to - 1;
-      setViews((old) => {
-        const next = [...old];
-        const [moved] = next.splice(a, 1);
-        next.splice(b, 0, moved);
-        return next;
-      });
-      // The open view stays open wherever it lands.
-      setViewIndex((cur) => (cur === from ? to : cur > Math.min(from, to) && cur <= Math.max(from, to) ? cur + (from < to ? -1 : 1) : cur));
-      from = to;
+      const i = els.findIndex((t, k) => k >= 1 && x < t.getBoundingClientRect().left + t.getBoundingClientRect().width / 2);
+      const slot = i === -1 ? els.length : i;
+      // A slot right before or after itself is no move.
+      const target = slot > from ? slot - 1 : slot;
+      const b = box.getBoundingClientRect();
+      const barX = i === -1 ? els[els.length - 1].getBoundingClientRect().right - b.left + 1 : els[i].getBoundingClientRect().left - b.left - 3;
+      return { target: Math.max(1, target), bar: target === from ? null : barX };
+    };
+    const move = (ev: PointerEvent) => {
+      if (!moved && Math.abs(ev.clientX - startX) < 4) return;
+      if (!moved) {
+        moved = true;
+        dragged.current = true;
+        setTabGhost({ label: tab.textContent?.slice(0, (tab.textContent?.length ?? 0) / 2) ?? "", top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+      }
+      // The ghost stays within the row of tabs.
+      const b = box.getBoundingClientRect();
+      const dx = Math.min(Math.max(ev.clientX - startX, b.left - rect.left), b.right - rect.right);
+      if (tabGhostRef.current) tabGhostRef.current.style.transform = `translateX(${dx}px)`;
+      const next = land(startX + dx);
+      to = next.target;
+      setTabDrag({ from, bar: next.bar });
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      // After the click this release may fire, so a drag that ends off its
-      // tab doesn't swallow the next click.
-      setTimeout(() => (dragged.current = false), 0);
+      window.removeEventListener("pointercancel", up);
+      setTabGhost(null);
+      setTabDrag(null);
+      if (!moved) return;
+      // The release's click would rename the tab: swallowed for this one
+      // gesture (a drop off the tab fires none, so the guard comes off on
+      // the next tick).
+      const swallow = (ev: Event) => ev.stopPropagation();
+      window.addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => {
+        window.removeEventListener("click", swallow, { capture: true });
+        dragged.current = false;
+      }, 0);
+      moveViewTab(from, to);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const onTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+    const from = tabEls().findIndex((t) => t === document.activeElement);
+    if (from < 1) return;
+    const to = from + (e.key === "ArrowLeft" ? -1 : 1);
+    if (to < 1 || to > views.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    moveViewTab(from, to);
   };
   const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
   // One row: the title on the left; the Filter button, the Columns button
@@ -946,6 +1011,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             selectedIndex={viewIndex}
             onSelect={(i) => !dragged.current && openView(i)}
             onPointerDownCapture={onTabsPointerDown}
+            onKeyDownCapture={onTabsKeyDown}
             aria-label="Views"
           >
             {[{ id: 0, name: "All" }, ...views].map(({ id, name }, i) => (
@@ -953,18 +1019,35 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                 key={id}
                 index={i}
                 label={name}
-                className={i > 0 ? "touch-none" : undefined}
-                onClick={() => {
-                  // The click a drag ends with doesn't rename.
-                  if (dragged.current) {
-                    dragged.current = false;
-                    return;
-                  }
-                  renameView(i);
-                }}
+                data-view-id={id}
+                // The dragged tab's slot shows empty; its copy rides the pointer.
+                className={cn(i > 0 && "touch-none select-none", tabDrag?.from === i && "invisible")}
+                onClick={() => renameView(i)}
               />
             ))}
           </Tabs>
+          {tabDrag?.bar != null && (
+            // Where the tab lands: the column drag's 2px accent bar.
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-1 w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+              style={{ left: tabDrag.bar }}
+            />
+          )}
+          {tabGhost &&
+            createPortal(
+              // The lifted tab: the pressed fill over the page background,
+              // at 80%, following the pointer.
+              <div
+                ref={tabGhostRef}
+                aria-hidden
+                className="pointer-events-none fixed z-[var(--z-popover,60)] flex items-center justify-center whitespace-nowrap rounded-full bg-background bg-[linear-gradient(var(--active),var(--active))] px-3 text-site-caption text-foreground opacity-80"
+                style={{ top: tabGhost.top, left: tabGhost.left, width: tabGhost.width, height: tabGhost.height }}
+              >
+                {tabGhost.label}
+              </div>,
+              document.body
+            )}
           {naming && (
             // The name field, laid over its tab and growing with the name.
             <span
