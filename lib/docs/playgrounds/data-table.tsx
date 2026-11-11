@@ -24,7 +24,7 @@ import {
 import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { fieldTouchClass } from "@/lib/size-context";
+import { fieldTouchClass, typeClass } from "@/lib/size-context";
 import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
@@ -1065,8 +1065,13 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           {naming && (
             // The name field, laid over its tab and growing with the name.
             <span
-              // Its tab's corners: pill, rounded or sharp with the Shape setting.
-              className={cn("absolute z-10 flex items-center border border-border bg-background pr-0.5 text-site-caption shadow-sm", shape.item)}
+              // Its tab's corners (pill, rounded or sharp with the Shape
+              // setting) and its tab's type, so the name doesn't change size.
+              className={cn(
+                "absolute z-10 flex items-center border border-border bg-background pr-0.5 shadow-sm",
+                typeClass("body", "compact"),
+                shape.item
+              )}
               style={{ left: naming.rect.left, top: naming.rect.top, minWidth: naming.rect.minWidth, height: naming.rect.height }}
             >
               <input
@@ -1084,7 +1089,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                   if (e.key === "Escape") setNaming(null);
                 }}
                 // 16px on touch screens, so iOS doesn't zoom into the field.
-                className={cn("h-full min-w-0 bg-transparent pl-3 text-foreground outline-none [field-sizing:content]", fieldTouchClass)}
+                // 9px + the 1px border: the name starts where the tab's label did.
+                className={cn("h-full min-w-0 bg-transparent pl-[9px] text-foreground outline-none [field-sizing:content]", fieldTouchClass)}
               />
               <Tooltip content="Delete view">
                 <button
