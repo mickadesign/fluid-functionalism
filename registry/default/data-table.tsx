@@ -2608,11 +2608,17 @@ function ExpandToggle({
         sharp ? "rounded-[1px]" : "rounded-[4px]"
       )}
     >
+      {/* A quarter turn over the moderate tier's 160ms, ease-out, as a
+          transform string so it runs as a browser animation off the main
+          thread: opening a row inserts its sub-rows in the same frame, and
+          a JS-driven rotate stalled through it and jumped (0, 17, 67°). A
+          tween, not the spring, so it lands on time instead of creeping
+          the last degrees. */}
       <motion.span
         className="flex"
         initial={false}
-        animate={{ rotate: expanded ? 90 : 0 }}
-        transition={spring.fast}
+        animate={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}
+        transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: spring.moderate.duration }}
       >
         <Chevron size={14} strokeWidth={1.75} />
       </motion.span>
