@@ -117,7 +117,21 @@ for (const [group, list] of [
     // Emit a real HTML anchor so the generated contents links work anywhere
     // the skill reference is rendered, including GitHub.
     lines.push("", `<a id="${slug}"></a>`, `## ${name}`, "");
-    for (const bullet of craftOf(slug)) lines.push(`- ${bullet}`);
+    // An entry starting "### " is a subheading: long sections (DataTable)
+    // group their bullets by topic so a reader finds the part they need,
+    // each with its own anchor and an index line under the section title.
+    const craft = craftOf(slug);
+    const anchor = (title) =>
+      `${slug}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+    const subheads = craft.filter((b) => b.startsWith("### ")).map((b) => b.slice(4));
+    if (subheads.length) {
+      lines.push(subheads.map((t) => `[${t}](#${anchor(t)})`).join(" · "));
+    }
+    for (const bullet of craft) {
+      if (bullet.startsWith("### ")) {
+        lines.push("", `<a id="${anchor(bullet.slice(4))}"></a>`, bullet, "");
+      } else lines.push(`- ${bullet}`);
+    }
   }
 }
 lines.push("");
