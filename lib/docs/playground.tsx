@@ -10,7 +10,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { PreviewExpandContext } from "@/lib/docs/preview-expand";
 import { InPlaygroundMenuContext, PlaygroundMenu } from "@/app/components/playground-menu";
 import { Shuffle } from "lucide-react";
@@ -341,6 +341,28 @@ export function PlaygroundLayout({
   const fromRect = useRef<DOMRect | null>(null);
   const animating = useRef(false);
 
+  // While the layer moves, the demo keeps one width: its expanded one, so
+  // the box clips it instead of laying it out again every frame (a table's
+  // columns, its sticky edges and their fills re-placed at each width read
+  // as a flicker). Height still follows the box: a filled table just shows
+  // more or fewer rows. Anchored left; released once the layer lands.
+  const demo = () =>
+    frameRef.current?.querySelector<HTMLElement>("[data-preview-stage]")?.firstElementChild as HTMLElement | null;
+  const lockDemoWidth = (width: number) => {
+    const el = demo();
+    if (!el) return;
+    Object.assign(el.style, { width: `${width}px`, minWidth: `${width}px`, flex: "none" });
+    // The stage centers its demo: wider than the stage, it would spill to
+    // both sides and lose its left edge.
+    if (el.parentElement) el.parentElement.style.justifyContent = "flex-start";
+  };
+  const releaseDemoWidth = () => {
+    const el = demo();
+    if (!el) return;
+    Object.assign(el.style, { width: "", minWidth: "", flex: "" });
+    if (el.parentElement) el.parentElement.style.justifyContent = "";
+  };
+
   const target = () => {
     const m = 24;
     return { top: m, left: m, width: window.innerWidth - 2 * m, height: window.innerHeight - 2 * m };
@@ -371,6 +393,8 @@ export function PlaygroundLayout({
     const home = placeholderRef.current?.getBoundingClientRect();
     if (!el || !home || animating.current) return;
     animating.current = true;
+    const demoWidth = demo()?.offsetWidth;
+    if (demoWidth) lockDemoWidth(demoWidth);
     setBackdrop(false);
     setCollapsing(true);
     // The content keeps its expanded form while the box shrinks, scrolled
@@ -398,16 +422,22 @@ export function PlaygroundLayout({
       // Stops a stalled spring too, so it can't write over the cleared box.
       motionCtrl.stop();
       animating.current = false;
-      onExpandedChangeRef.current?.(false);
-      setCollapsing(false);
+      // Back in the page first, then the box's inline size goes: cleared
+      // while the box was still fixed, it shrink-wrapped the demo at full
+      // width for a frame.
+      flushSync(() => {
+        onExpandedChangeRef.current?.(false);
+        setCollapsing(false);
+        setExpanded(false);
+        setPlaceholderHeight(null);
+      });
+      releaseDemoWidth();
       el.removeAttribute("style");
       // Motion commits a finished tween's last values to the inline style
       // after its promise resolves; clear once more after that lands.
       requestAnimationFrame(() => {
         if (!settleCollapseRef.current && !animating.current) el.removeAttribute("style");
       });
-      setExpanded(false);
-      setPlaceholderHeight(null);
     };
     // A dismissal is the tier's exit: a tween with no bounce, so the box
     // can't overshoot its slot on the page and settle back.
@@ -436,19 +466,21 @@ export function PlaygroundLayout({
     fromRect.current = null;
     animating.current = true;
     const to = target();
+    const demoWidth = demo()?.offsetWidth;
+    if (demoWidth) lockDemoWidth(demoWidth + (to.width - from.width));
     Object.assign(el.style, {
       top: `${from.top}px`,
       left: `${from.left}px`,
       width: `${from.width}px`,
       height: `${from.height}px`,
     });
-    animate(el, to, spring.slow).then(() => {
+    const land = () => {
       animating.current = false;
-    });
+      releaseDemoWidth();
+    };
+    animate(el, to, spring.slow).then(land);
     // Same guard as the collapse: don't stay locked if frames stall.
-    setTimeout(() => {
-      animating.current = false;
-    }, Math.round(spring.slow.duration * 1000) + 150);
+    setTimeout(land, Math.round(spring.slow.duration * 1000) + 150);
   }, [expanded]);
 
   // While expanded: the window's size drives the layer's, the page stops
@@ -494,7 +526,7 @@ export function PlaygroundLayout({
         toggle: expanded ? close : open,
         // Gone once a collapse starts: the rail's controls are back then, and
         // the same switches shouldn't exist twice.
-        menu: collapsing ? null : <PlaygroundMenu label={label}>{controls}</PlaygroundMenu>,
+        menu: collapsing ? null : <PlaygroundMenu label={label} large>{controls}</PlaygroundMenu>,
       }
     : null;
 

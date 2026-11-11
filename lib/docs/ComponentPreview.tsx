@@ -249,6 +249,9 @@ export function ComponentPreview({
         {tab === 0 ? (
           <div
             ref={previewRef}
+            // The expandable playground's layer finds the demo through this
+            // while it moves (see PlaygroundLayout).
+            data-preview-stage=""
             // Focus target for empty-space clicks (see routeKeyboardOnMouseDown)
             // — holds keyboard scope for the demo without ringing any control.
             tabIndex={-1}
