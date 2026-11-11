@@ -675,7 +675,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     // Columns, wrapping and alignment changes below animate from here; the
     // expand / collapse swap doesn't, since the layer's own motion carries
     // it (a row-height spring there let the table overflow the shrinking box).
-    if (animate) table.captureLayout();
+    // Header icons don't either: they change every width at once, and cells
+    // sliding in from their old places while the widths snap read as a
+    // glitch.
+    if (animate && next.headerIcons === prev.headerIcons) table.captureLayout();
     if (next.filter !== prev.filter) {
       table.resetColumnFilters();
       table.setGlobalFilter("");
