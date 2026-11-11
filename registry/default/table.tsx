@@ -174,19 +174,22 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
         ? headHover.itemRects[headHover.activeIndex]
         : undefined;
     const headRect = headCell ? { ...headCell, height: headCell.height - 1 } : null;
-    // A header cell in the gliding scope held down (the pointer still on
-    // it): its fill shows pressed.
-    const [headPressed, setHeadPressed] = useState(false);
+    // A header cell in the gliding scope held down, while the pointer is
+    // still on it: its fill shows pressed. Slid onto a neighbor before
+    // release, the fill follows the hover there unpressed.
+    const [pressedHead, setPressedHead] = useState<number | null>(null);
+    const headPressed = pressedHead !== null && pressedHead === headHover.activeIndex;
+    const setHeadPressed = (on: boolean) => setPressedHead(on ? headHover.activeIndex : null);
     useEffect(() => {
-      if (!headPressed) return;
-      const release = () => setHeadPressed(false);
+      if (pressedHead === null) return;
+      const release = () => setPressedHead(null);
       window.addEventListener("pointerup", release);
       window.addEventListener("pointercancel", release);
       return () => {
         window.removeEventListener("pointerup", release);
         window.removeEventListener("pointercancel", release);
       };
-    }, [headPressed]);
+    }, [pressedHead]);
 
     const contextValue = useMemo(
       () => ({ registerItem, activeStore, selected, registerHead }),

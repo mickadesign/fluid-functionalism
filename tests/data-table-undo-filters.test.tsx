@@ -141,4 +141,20 @@ describe("useUndoableRows undoTo", () => {
     act(() => result.current.redo());
     expect(result.current.rows.map((r) => r.id)).toEqual(["b", "c"]);
   });
+
+  it("still takes back its own step once the history is at its limit", () => {
+    const { result } = renderHook(() => useUndoableRows(ROWS, { getId: (r) => r.id, limit: 3 }));
+    // Fill the history past its limit: older steps are trimmed away.
+    for (const name of ["one", "two", "three", "four"]) act(() => result.current.apply(name, (rows) => [...rows]));
+    expect(result.current.stepCount).toBe(4);
+    const before = result.current.stepCount;
+    act(() => result.current.remove(["a"]));
+    expect(result.current.stepCount).toBe(5);
+    act(() => result.current.undoTo(before));
+    expect(result.current.rows.map((r) => r.id)).toEqual(["a", "b", "c"]);
+    // A count from before the trim goes back as far as the history does.
+    act(() => result.current.redo());
+    act(() => result.current.undoTo(0));
+    expect(result.current.rows.map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
 });
