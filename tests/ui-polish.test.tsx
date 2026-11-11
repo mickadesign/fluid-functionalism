@@ -12,7 +12,7 @@
  *   a searchable Dropdown;
  * - the file-remove badge never takes taps while hidden, and shows on touch.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -46,6 +46,16 @@ import {
 } from "@/registry/default/command-menu";
 import { InputMessage } from "@/registry/default/input-message";
 import { readMacPlatform } from "@/lib/docs/site-settings";
+
+// The composer tests attach a one-byte "PDF" only to get a remove button.
+// Real pdf.js 6 needs Promise.try, which Node 22 (CI) lacks, and its failure
+// lands outside the render promise as an unhandled rejection. The thumbnail's
+// own error path is what these tests need, so pdf.js is stubbed to reject.
+vi.mock("pdfjs-dist", () => ({
+  version: "0.0.0",
+  GlobalWorkerOptions: { workerSrc: "" },
+  getDocument: () => ({ promise: Promise.reject(new Error("pdf.js is stubbed in this suite")) }),
+}));
 
 afterEach(cleanup);
 
