@@ -377,8 +377,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   const toolbar = o.filter !== "none" || o.filters || o.viewMenu;
   const filter =
     o.filter === "column"
-      ? `      <DataTableSearch table={table} column="name" placeholder="Search components…" />`
-      : `      <DataTableSearch table={table} placeholder="Search all columns…" />`;
+      ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
+      : `    <DataTableSearch table={table} placeholder="Search all columns…" />`;
   return [
     `import {`,
     `  ${parts.join(", ")},`,
@@ -475,16 +475,14 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  },`,
     `});`,
     ``,
-    `<div className="flex flex-col gap-3">`,
+    `<div className="flex flex-col gap-1">`,
     ...(o.title ? [`  <DataTableTitle>Components</DataTableTitle>`] : []),
     ...(toolbar
       ? [
-          `  <div className="flex flex-wrap items-center gap-2">`,
+          `  <div className="flex flex-wrap items-center justify-end gap-1">`,
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
-          `    <div className="ml-auto flex items-center gap-1">`,
-          ...(o.viewMenu ? [`      <DataTableViewOptions table={table} />`] : []),
+          ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
           ...(o.filter !== "none" ? [filter] : []),
-          `    </div>`,
           `  </div>`,
         ]
       : []),
@@ -681,26 +679,24 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     });
 
   const toolbar = (state.filter !== "none" || state.filters || state.viewMenu) && (
-    <div className="flex flex-wrap items-center gap-2">
+    // All at the right end: the filters, the Columns button, the search.
+    <div className="flex flex-wrap items-center justify-end gap-1">
       {state.filters && <DataTableFilters table={table} />}
-      {/* The Columns button, then the search, at the right end. */}
-      <div className="ml-auto flex items-center gap-1">
-        {state.viewMenu && <DataTableViewOptions table={table} />}
-        {state.filter !== "none" && (
-          <DataTableSearch
-            // Remounts the field when the mode flips, so it starts empty.
-            key={state.filter}
-            table={table}
-            column={state.filter === "column" ? "name" : undefined}
-            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
-          />
-        )}
-      </div>
+      {state.viewMenu && <DataTableViewOptions table={table} />}
+      {state.filter !== "none" && (
+        <DataTableSearch
+          // Remounts the field when the mode flips, so it starts empty.
+          key={state.filter}
+          table={table}
+          column={state.filter === "column" ? "name" : undefined}
+          placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+        />
+      )}
     </div>
   );
 
   const body = (
-    <div className={cn("flex w-full flex-col gap-3", expanded && "h-full")}>
+    <div className={cn("flex w-full flex-col gap-1", expanded && "h-full")}>
       {state.title && <DataTableTitle>Components</DataTableTitle>}
       {toolbar}
       <DataTable

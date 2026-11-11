@@ -210,19 +210,17 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  });`);
   l.push(``);
   l.push(`  return (`);
-  l.push(`    <div className="flex w-full flex-col gap-3">`);
+  l.push(`    <div className="flex w-full flex-col gap-1">`);
   if (p.title) l.push(`      <DataTableTitle>Components</DataTableTitle>`);
   if (p.filter !== "none" || p.filters || p.viewMenu) {
-    l.push(`      <div className="flex flex-wrap items-center gap-2">`);
+    l.push(`      <div className="flex flex-wrap items-center justify-end gap-1">`);
     if (p.filters) l.push(`        <DataTableFilters table={table} />`);
-    l.push(`        <div className="ml-auto flex items-center gap-1">`);
-    if (p.viewMenu) l.push(`          <DataTableViewOptions table={table} />`);
+    if (p.viewMenu) l.push(`        <DataTableViewOptions table={table} />`);
     if (p.filter === "column") {
-      l.push(`          <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
+      l.push(`        <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
     } else if (p.filter === "all") {
-      l.push(`          <DataTableSearch table={table} placeholder="Search all columns…" />`);
+      l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
     }
-    l.push(`        </div>`);
     l.push(`      </div>`);
   }
   const tableProps = [

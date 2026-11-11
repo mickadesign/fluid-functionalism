@@ -121,15 +121,13 @@ export function TeamTable() {
   const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-1">
       {/* h3 here: the docs section above is the h2. */}
       <DataTableTitle as="h3">Team</DataTableTitle>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1">
         <DataTableFilters table={table} />
-        <div className="ml-auto flex items-center gap-1">
-          <DataTableViewOptions table={table} />
-          <DataTableSearch table={table} column="name" placeholder="Search people…" />
-        </div>
+        <DataTableViewOptions table={table} />
+        <DataTableSearch table={table} column="name" placeholder="Search people…" />
       </div>
       <DataTable
         table={table}
@@ -200,16 +198,16 @@ const columns: ColumnDef<Member>[] = [
 
 const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
-<DataTableTitle>Team</DataTableTitle>
-<div className="flex flex-wrap items-center gap-2">
-  <DataTableFilters table={table} />
-  <div className="ml-auto flex items-center gap-1">
+<div className="flex flex-col gap-1">
+  <DataTableTitle>Team</DataTableTitle>
+  <div className="flex flex-wrap items-center justify-end gap-1">
+    <DataTableFilters table={table} />
     <DataTableViewOptions table={table} />
     <DataTableSearch table={table} column="name" placeholder="Search people…" />
   </div>
+  <DataTable table={table} onUndo={history.undo} onRedo={history.redo} />
+  <DataTablePagination table={table} pageSizes={[]} />
 </div>
-<DataTable table={table} onUndo={history.undo} onRedo={history.redo} />
-<DataTablePagination table={table} pageSizes={[]} />
 <DataTableSelectionBar
   table={table}
   actions={(rows) => [
@@ -291,9 +289,9 @@ export function TasksTable() {
     initialState: { sorting: [{ id: "due", desc: false }] },
   });
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-1">
       <DataTableTitle as="h3">Tasks</DataTableTitle>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1">
         <DataTableFilters table={table} />
       </div>
       <DataTable
@@ -405,7 +403,7 @@ export function FilesTable() {
     initialState: { expanded: { brand: true } },
   });
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-1">
       <div className="flex justify-end">
         <DataTableSearch table={table} column="name" placeholder="Search files…" />
       </div>
@@ -543,7 +541,7 @@ export function ViewsTable() {
     setCurrent(name);
   };
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-1">
       <DataTableTitle as="h3">People</DataTableTitle>
       <div className="flex flex-wrap items-center gap-1">
         {/* The views as subtle tabs: one gliding hover, the open view's pill. */}
@@ -557,12 +555,12 @@ export function ViewsTable() {
             <TabsItem key={view.name} index={i} label={view.name} />
           ))}
         </Tabs>
-        <Button variant="ghost" size="compact" onClick={save} className="ml-auto">
+        {/* The filters, then saving them as a view, at the right end. */}
+        <span className="ml-auto" />
+        <DataTableFilters table={table} />
+        <Button variant="ghost" size="compact" onClick={save}>
           Save view
         </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <DataTableFilters table={table} />
       </div>
       <DataTable table={table} />
     </div>
