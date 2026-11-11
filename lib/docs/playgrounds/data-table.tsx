@@ -23,7 +23,7 @@ import {
 } from "@/registry/default/data-table";
 import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
 import { fieldTouchClass, typeClass } from "@/lib/size-context";
 import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
@@ -389,6 +389,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   // Saved views come with filters: they save what the filters set.
   const views = o.views && o.filters;
   const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views;
+  // Two icons or more on the row share one gliding tooltip bubble.
+  const grouped = [o.filters, o.viewMenu, o.filter !== "none"].filter(Boolean).length > 1;
   const filter =
     o.filter === "column"
       ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
@@ -399,6 +401,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
     ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
+    ...(grouped ? [`import { TooltipGroup } from "./components";`] : []),
     ...(o.headerIcons
       ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
       : []),
@@ -519,9 +522,13 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  <div className="${o.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`,
           ...(o.title ? [`    <DataTableTitle table={table}>Components</DataTableTitle>`] : []),
           `    <span className="ml-auto" />`,
-          ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
-          ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
-          ...(o.filter !== "none" ? [filter] : []),
+          ...(grouped ? [`    <TooltipGroup>`] : []),
+          ...[
+            ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
+            ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
+            ...(o.filter !== "none" ? [filter] : []),
+          ].map((line) => (grouped ? `  ${line}` : line)),
+          ...(grouped ? [`    </TooltipGroup>`] : []),
           `  </div>`,
         ]
       : []),
@@ -1058,17 +1065,20 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         </DataTableTitle>
       )}
       <span className="ml-auto" />
-      {state.filters && <DataTableFilters table={table} />}
-      {state.viewMenu && <DataTableViewOptions table={table} />}
-      {state.filter !== "none" && (
-        <DataTableSearch
-          // Remounts the field when the mode flips, so it starts empty.
-          key={state.filter}
-          table={table}
-          column={state.filter === "column" ? "name" : undefined}
-          placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
-        />
-      )}
+      {/* The icons share one tooltip bubble that glides between them. */}
+      <TooltipGroup>
+        {state.filters && <DataTableFilters table={table} />}
+        {state.viewMenu && <DataTableViewOptions table={table} />}
+        {state.filter !== "none" && (
+          <DataTableSearch
+            // Remounts the field when the mode flips, so it starts empty.
+            key={state.filter}
+            table={table}
+            column={state.filter === "column" ? "name" : undefined}
+            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+          />
+        )}
+      </TooltipGroup>
     </div>
   );
 

@@ -69,6 +69,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`} from "@/components/ui/data-table";`);
   if (p.rowActions) l.push(`import { MenuItem } from "@/components/ui/menu-item";`);
   l.push(`import { Badge } from "@/components/ui/badge";`);
+  if ([p.filters, p.viewMenu, p.filter !== "none"].filter(Boolean).length > 1)
+    l.push(`import { TooltipGroup } from "@/components/ui/tooltip";`);
   if (views) {
     l.push(`import { Button } from "@/components/ui/button";`);
     l.push(`import { Tabs, TabsItem } from "@/components/ui/tabs";`);
@@ -247,13 +249,17 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`      <div className="${p.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`);
     if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
     l.push(`        <span className="ml-auto" />`);
-    if (p.filters) l.push(`        <DataTableFilters table={table} />`);
-    if (p.viewMenu) l.push(`        <DataTableViewOptions table={table} />`);
-    if (p.filter === "column") {
-      l.push(`        <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
-    } else if (p.filter === "all") {
-      l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
-    }
+    // Two icons or more share one tooltip bubble that glides between them.
+    const tools: string[] = [];
+    if (p.filters) tools.push(`<DataTableFilters table={table} />`);
+    if (p.viewMenu) tools.push(`<DataTableViewOptions table={table} />`);
+    if (p.filter === "column") tools.push(`<DataTableSearch table={table} column="name" placeholder="Search components…" />`);
+    else if (p.filter === "all") tools.push(`<DataTableSearch table={table} placeholder="Search all columns…" />`);
+    if (tools.length > 1) {
+      l.push(`        <TooltipGroup>`);
+      tools.forEach((t) => l.push(`          ${t}`));
+      l.push(`        </TooltipGroup>`);
+    } else tools.forEach((t) => l.push(`        ${t}`));
     l.push(`      </div>`);
   }
   if (views) {

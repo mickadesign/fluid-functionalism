@@ -22,6 +22,7 @@ import {
   type ColumnDef,
 } from "@/components/ui/data-table";
 import { MenuItem } from "@/components/ui/menu-item";
+import { TooltipGroup } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { showUndoToast } from "@/lib/docs/settings-toast";
@@ -134,9 +135,12 @@ export function TeamTable() {
         {/* h3 here: the docs section above is the h2. */}
         <DataTableTitle as="h3" table={table} className="font-heading-display">Team</DataTableTitle>
         <span className="ml-auto" />
-        <DataTableFilters table={table} />
-        <DataTableViewOptions table={table} />
-        <DataTableSearch table={table} column="name" placeholder="Search people…" />
+        {/* The icons share one tooltip bubble that glides between them. */}
+        <TooltipGroup>
+          <DataTableFilters table={table} />
+          <DataTableViewOptions table={table} />
+          <DataTableSearch table={table} column="name" placeholder="Search people…" />
+        </TooltipGroup>
       </div>
       <DataTableFilterChips table={table} />
       <DataTable
@@ -174,6 +178,7 @@ export const teamCode = `import {
   DataTablePagination, DataTableSelectionBar, selectColumn, rowActionsColumn, useUndoableRows,
   type ColumnDef,
 } from "./components";
+import { TooltipGroup } from "./components";
 
 // Every change is a step: ⌘Z / ⇧⌘Z in the table, or the toast's Undo.
 const history = useUndoableRows(team, { getId: (m) => m.id });
@@ -215,9 +220,11 @@ const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) 
   <div className="mb-1 flex flex-wrap items-center gap-1">
     <DataTableTitle table={table}>Team</DataTableTitle>
     <span className="ml-auto" />
-    <DataTableFilters table={table} />
-    <DataTableViewOptions table={table} />
-    <DataTableSearch table={table} column="name" placeholder="Search people…" />
+    <TooltipGroup>
+      <DataTableFilters table={table} />
+      <DataTableViewOptions table={table} />
+      <DataTableSearch table={table} column="name" placeholder="Search people…" />
+    </TooltipGroup>
   </div>
   {/* Added filters, on their own row above the table. */}
   <DataTableFilterChips table={table} />
