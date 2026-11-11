@@ -150,7 +150,7 @@ function Line({
 }) {
   return (
     <span className={cn("flex items-center", height)}>
-      <Skeleton className={cn("h-2.5", className)} />
+      <Skeleton className={cn("h-2.5 bg-hover", className)} />
     </span>
   );
 }
@@ -192,7 +192,7 @@ function SidebarItems() {
 function SidebarSkeleton() {
   const row = (key: string, width: string) => (
     <span key={key} className="flex items-center gap-2 px-2 py-1.5">
-      <Skeleton className="size-4 rounded-sm" />
+      <Skeleton className="size-4 rounded-sm bg-hover" />
       <Line className={width} />
     </span>
   );
@@ -315,13 +315,13 @@ function ThreadsSkeleton() {
       {THREADS.map((t, i) => (
         <div key={t.subject} className="flex items-center gap-3 py-2.5">
           <span className="size-1.5 shrink-0" />
-          <Skeleton className="size-7 shrink-0 rounded-full" />
+          <Skeleton className="size-7 shrink-0 rounded-full bg-hover" />
           <Line className="w-20" />
           <span className="min-w-0 flex-1">
             <Line className="w-full" />
           </span>
           <Skeleton
-            className="hidden h-[20px] w-14 shrink-0 rounded-full @xl:block"
+            className="hidden h-[20px] w-14 shrink-0 rounded-full bg-hover @xl:block"
             style={{ opacity: 1 - i * 0.05 }}
           />
           <Line className="ml-auto w-8" />

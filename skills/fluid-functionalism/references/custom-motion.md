@@ -348,7 +348,10 @@ feel like it was already there.
 
 ### Loading data in the app
 
-Slow data waits on shadcn's Skeleton (installed with `@fluid/reveal`).
+Slow data waits on shadcn's Skeleton (installed with `@fluid/reveal`), in
+the library's loading fill: pass `bg-hover`, the hover tint (4% of the
+foreground) that every loading state uses (Sidebar's menu skeleton,
+DataTable's rows), lighter than the Skeleton's own `bg-accent`.
 
 ```tsx
 import { Skeleton } from "@/components/ui/skeleton";

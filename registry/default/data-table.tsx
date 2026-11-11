@@ -492,6 +492,10 @@ const SWAP_MS = 400;
 // server and client renders identical.
 const SKELETON_WIDTHS = [72, 56, 88, 64, 48, 80, 60];
 
+// The library's loading fill, the sidebar's skeleton color: the hover tint
+// (4% of the foreground), lighter than shadcn Skeleton's own bg-accent.
+const SKELETON_FILL = "bg-hover";
+
 // Skeleton corners follow the shape setting, as the controls they stand in
 // for do: the checkbox's own radius for its square, and for text bars the
 // shape's character (rounded, a full pill, or sharp's 1px).
@@ -521,13 +525,14 @@ function skeletonFor(
         // 14px / 4px compact, square when sharp).
         <Skeleton
           className={cn(
+            SKELETON_FILL,
             compact ? "size-[14px]" : "size-4",
             (compact ? SKELETON_BOX_RADIUS_COMPACT : SKELETON_BOX_RADIUS)[shape]
           )}
         />
       ) : (
         <Skeleton
-          className={cn("h-2.5", SKELETON_BAR_RADIUS[shape])}
+          className={cn(SKELETON_FILL, "h-2.5", SKELETON_BAR_RADIUS[shape])}
           style={{ width: `${SKELETON_WIDTHS[(row * 3 + col) % SKELETON_WIDTHS.length]}%` }}
         />
       )}

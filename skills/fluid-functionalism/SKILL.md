@@ -267,7 +267,8 @@ system:
 - **Page reveals are 1 class.** Install `@fluid/reveal`, then put 1 class
   on the page's container: `reveal-landing` for a page read once,
   `reveal-product` for the app, `-subtle` for less. Slow data in the app
-  shows shadcn's Skeleton in a `reveal-swap`, which crossfades it into the
+  shows shadcn's Skeleton (in the loading fill, `bg-hover`) in a
+  `reveal-swap`, which crossfades it into the
   real block; `reveal-items` on both hands rows over one by one. Never
   hand-roll a `whileInView` fade on every element, and keep the hero image
   and headline out of any reveal. Rules and recipe:
