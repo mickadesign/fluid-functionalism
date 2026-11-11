@@ -19,6 +19,7 @@ import {
 } from "@/registry/default/data-table";
 import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
+import { DropdownContent, DropdownMenu, DropdownTrigger } from "@/components/ui/dropdown";
 import { Button } from "@/components/ui/button";
 import { useSize } from "@/lib/size-context";
 import { MenuItem } from "@/registry/default/menu-item";
@@ -380,7 +381,9 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.selection ? ["selectColumn"] : []),
     "type ColumnDef",
   ];
-  const toolbar = o.filter !== "none" || o.filters || o.viewMenu || o.views;
+  // Saved views come with filters: they save what the filters set.
+  const views = o.views && o.filters;
+  const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views;
   const filter =
     o.filter === "column"
       ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
@@ -390,7 +393,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  ${parts.join(", ")},`,
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
-    ...(o.views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
+    ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
     ...(o.headerIcons
       ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
       : []),
@@ -482,7 +485,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  },`,
     `});`,
     ``,
-    ...(o.views
+    ...(views
       ? [
           `// Saved views: the table's state, named (filters, search, sort, columns).`,
           `const [views, setViews] = useState<{ name: string; state: Partial<TableState> }[]>([]);`,
@@ -510,11 +513,11 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
           ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
           ...(o.filter !== "none" ? [filter] : []),
-          ...(o.views ? [`    <Button variant="ghost" onClick={saveView}>Save view</Button>`] : []),
+          ...(views ? [`    <Button variant="ghost" onClick={saveView}>Save view</Button>`] : []),
           `  </div>`,
         ]
       : []),
-    ...(o.views
+    ...(views
       ? [
           `  <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
           `    {["All", ...views.map((v) => v.name)].map((name, i) => (`,
@@ -680,7 +683,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     if (!next.viewMenu) table.resetColumnVisibility();
     // The Tags column comes and goes with editing: the widths are read
     // again, so it starts at its own width rather than none.
-    if (!next.resize || next.editable !== prev.editable) table.resetColumnSizing();
+    // Header icons widen the headers: the widths are read again too.
+    if (!next.resize || next.editable !== prev.editable || next.headerIcons !== prev.headerIcons)
+      table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
     if (!next.filters) table.resetColumnFilters();
@@ -746,6 +751,33 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
     setViewIndex(i);
   };
+  // Clicking the open view's tab again opens its menu (Delete), anchored
+  // under that tab.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [viewMenu, setViewMenu] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  // (The tabs fire no change for the tab already open: its own click does.)
+  const openViewMenu = (i: number) => {
+    if (i !== viewIndex || i === 0) return;
+    const box = tabsRef.current;
+    const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[i];
+    if (!box || !tab) return;
+    const b = box.getBoundingClientRect();
+    const r = tab.getBoundingClientRect();
+    setViewMenu({ left: r.left - b.left, top: r.top - b.top, width: r.width, height: r.height });
+  };
+  const deleteView = () => {
+    const at = viewIndex - 1;
+    const view = views[at];
+    if (!view) return;
+    setViews((old) => old.filter((_, i) => i !== at));
+    openView(0);
+    // Its way back: the view returns to its place, open.
+    showUndoToast(`Deleted ${view.name}`, () => {
+      setViews((old) => [...old.slice(0, at), view, ...old.slice(at)]);
+      table.setState((old) => ({ ...old, ...view.state, pagination: { ...old.pagination, pageIndex: 0 } }));
+      setViewIndex(at + 1);
+    });
+  };
   const saveView = () => {
     const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();
     const name = `View ${views.length + 1}`;
@@ -754,7 +786,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   };
   const compact = useSize().variant === "compact";
 
-  const tools = state.filter !== "none" || state.filters || state.viewMenu || state.views;
+  // Saved views come with filters: they save what the filters set.
+  const showViews = state.views && state.filters;
+  const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
   // One row: the title on the left; the Filter button, the Columns button
   // and the search at the right end. Added filters sit on their own row
   // under it, above the table.
@@ -773,7 +807,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
         />
       )}
-      {state.views && (
+      {showViews && (
         <Button variant="ghost" size={compact ? "compact" : "default"} onClick={saveView}>
           Save view
         </Button>
@@ -784,15 +818,32 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const body = (
     <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
-      {state.views && (
+      {showViews && (
         // The views as subtle tabs, stepped in with the title past a
         // selection column.
-        <div className={cn("flex", state.selection && "pl-9")}>
+        <div ref={tabsRef} className={cn("relative flex", state.selection && "pl-9")}>
           <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">
             {["All", ...views.map((v) => v.name)].map((name, i) => (
-              <TabsItem key={name} index={i} label={name} />
+              <TabsItem key={name} index={i} label={name} onClick={() => openViewMenu(i)} />
             ))}
           </Tabs>
+          {/* The open view's menu, from a hidden trigger laid over its tab. */}
+          <DropdownMenu open={!!viewMenu} onOpenChange={(open) => !open && setViewMenu(null)}>
+            <DropdownTrigger
+              render={
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-hidden
+                  className="pointer-events-none absolute opacity-0"
+                  style={viewMenu ?? undefined}
+                />
+              }
+            />
+            <DropdownContent align="start" sideOffset={4} className="w-44">
+              <MenuItem index={0} icon={icons.x} label="Delete view" destructive onSelect={deleteView} />
+            </DropdownContent>
+          </DropdownMenu>
         </div>
       )}
       {state.filters && <DataTableFilterChips table={table} />}
@@ -847,12 +898,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           onToggle={() => set("title", !state.title)}
           className={PLAY_SWITCH}
         />
-        <Switch
-          label="Saved views"
-          checked={state.views}
-          onToggle={() => set("views", !state.views)}
-          className={PLAY_SWITCH}
-        />
         <PlayField label="Search">
           <PlaySelect
             value={state.filter}
@@ -874,6 +919,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           label="Filters"
           checked={state.filters}
           onToggle={() => set("filters", !state.filters)}
+          className={PLAY_SWITCH}
+        />
+        {/* Saved views save what the filters set: off without them. */}
+        <Switch
+          label="Saved views"
+          checked={state.views && state.filters}
+          disabled={!state.filters}
+          onToggle={() => set("views", !state.views)}
           className={PLAY_SWITCH}
         />
         <Switch

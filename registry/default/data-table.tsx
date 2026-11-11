@@ -633,7 +633,11 @@ function DataTable<TData>({
   // their record, their selection or the columns change, and not on every
   // state change of the table (a Shift + arrow step re-rendered every cell,
   // editors and all).
-  const layoutKey = visible.map((c) => `${c.id}:${linesOf(table, c) ?? ""}`).join("|");
+  // (A header icon counts too: it widens the header, so the widths are
+  // measured again.)
+  const layoutKey = visible
+    .map((c) => `${c.id}:${linesOf(table, c) ?? ""}:${c.columnDef.meta?.icon ? "i" : ""}`)
+    .join("|");
   // An empty body holds a page's worth of rows (as many as were showing
   // before the filter emptied it), so the pagination under the table stays
   // put while a filter runs dry.

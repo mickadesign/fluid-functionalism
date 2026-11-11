@@ -37,6 +37,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
     return `, subRows: [${sub.join(", ")}]`;
   };
   const icons = p.headerIcons;
+  // Saved views come with filters: they save what the filters set.
+  const views = p.views && p.filters;
   const wrap = p.lines === "wrap";
   const lines = wrap ? `"wrap"` : "1";
   const summaryLines = wrap ? `"wrap"` : "2";
@@ -53,7 +55,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.selection ? ["selectColumn"] : []),
     ...(p.rowActions ? ["rowActionsColumn"] : []),
     "type ColumnDef",
-    ...(p.views ? ["type TableState"] : []),
+    ...(views ? ["type TableState"] : []),
   ];
   const icon = (name: string) => (icons ? `, icon: ${name}` : "");
   const l: string[] = [];
@@ -62,13 +64,13 @@ function dataTableDemoFile(p: DataTablePreset): string {
   const tree = p.expandable;
   l.push(`"use client";`);
   l.push(``);
-  if (edit || p.views) l.push(`import { useState } from "react";`);
+  if (edit || views) l.push(`import { useState } from "react";`);
   l.push(`import {`);
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`} from "@/components/ui/data-table";`);
   if (p.rowActions) l.push(`import { MenuItem } from "@/components/ui/menu-item";`);
   l.push(`import { Badge } from "@/components/ui/badge";`);
-  if (p.views) {
+  if (views) {
     l.push(`import { Button } from "@/components/ui/button";`);
     l.push(`import { Tabs, TabsItem } from "@/components/ui/tabs";`);
   }
@@ -214,7 +216,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   }
   l.push(`  });`);
   l.push(``);
-  if (p.views) {
+  if (views) {
     // Saved views: the table's state, named. Keep them wherever the app
     // keeps settings; here, in memory.
     l.push(`  type View = Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;`);
@@ -235,7 +237,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   }
   l.push(`  return (`);
   l.push(`    <div className="flex w-full flex-col gap-2">`);
-  if (p.title || p.filter !== "none" || p.filters || p.viewMenu || p.views) {
+  if (p.title || p.filter !== "none" || p.filters || p.viewMenu || views) {
     // The title, then the tools at the right end, on one row.
     l.push(`      <div className="flex flex-wrap items-center gap-1">`);
     if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
@@ -247,10 +249,10 @@ function dataTableDemoFile(p: DataTablePreset): string {
     } else if (p.filter === "all") {
       l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
     }
-    if (p.views) l.push(`        <Button variant="ghost" onClick={saveView}>Save view</Button>`);
+    if (views) l.push(`        <Button variant="ghost" onClick={saveView}>Save view</Button>`);
     l.push(`      </div>`);
   }
-  if (p.views) {
+  if (views) {
     l.push(`      <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
     l.push(`        {["All", ...views.map((v) => v.name)].map((name, i) => (`);
     l.push(`          <TabsItem key={name} index={i} label={name} />`);
@@ -316,7 +318,7 @@ export function generateDataTablePresetFiles(p: DataTablePreset): PresetFile[] {
  *  route flavors them: data-table pulls dual-flavor parts, so it resolves to
  *  the chosen flavor's payload. */
 export function dataTablePresetRegistryDeps(p: DataTablePreset): string[] {
-  return ["utils", "data-table", "badge", ...(p.views ? ["button", "tabs"] : [])];
+  return ["utils", "data-table", "badge", ...(p.views && p.filters ? ["button", "tabs"] : [])];
 }
 
 /** npm dependencies beyond what registryDependencies pull transitively. */
