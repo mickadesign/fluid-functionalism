@@ -351,6 +351,14 @@ function pick<T>(options: readonly T[]): T {
   return options[Math.floor(Math.random() * options.length)];
 }
 
+/** The pins a one-sided setting keeps, as code: the boxes and the first
+ *  column on the left, the row menus on the right. */
+export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selection" | "rowActions">) {
+  const left = o.pinning ? [...(o.selection ? [`"select"`] : []), `"name"`] : [];
+  const right = o.pinRight && o.rowActions ? [`"actions"`] : [];
+  return `{ left: [${left.join(", ")}], right: [${right.join(", ")}] }`;
+}
+
 export function buildDataTablePlaygroundCode(o: PlayState): string {
   const parts = [
     "useDataTable",
@@ -457,10 +465,13 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
-    ...(o.pinning ? [] : [`  // No sticky edge columns when the table scrolls sideways.`, `  enableColumnPinning: false,`]),
+    ...(!o.pinning && !o.pinRight
+      ? [`  // No sticky edge columns when the table scrolls sideways.`, `  enableColumnPinning: false,`]
+      : []),
     `  initialState: {`,
     `    sorting: [{ id: "added", desc: true }],`,
     `    columnVisibility: { fluidHover: false },`,
+    ...(o.pinning !== o.pinRight ? [`    // Sticky on one side only.`, `    columnPinning: ${pinningCode(o)},`] : []),
     `  },`,
     `});`,
     ``,
@@ -621,8 +632,13 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
     if (!next.filters) table.resetColumnFilters();
-    if (next.pinning !== prev.pinning)
-      table.setColumnPinning(next.pinning ? table.initialState.columnPinning : { left: [], right: [] });
+    // Each side sticks on its own: the left the boxes and the first
+    // column, the right the row menus (useDataTable's own pins).
+    if (next.pinning !== prev.pinning || next.pinRight !== prev.pinRight)
+      table.setColumnPinning({
+        left: next.pinning ? (table.initialState.columnPinning.left ?? []) : [],
+        right: next.pinRight ? (table.initialState.columnPinning.right ?? []) : [],
+      });
     // The Text wrap switch sets the columns' own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
     if (next.lines !== prev.lines)
@@ -660,6 +676,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       expandable: Math.random() > 0.5,
       filters: Math.random() > 0.5,
       pinning: Math.random() > 0.3,
+      pinRight: Math.random() > 0.3,
       title: Math.random() > 0.3,
     });
 
@@ -830,9 +847,15 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           className={PLAY_SWITCH}
         />
         <Switch
-          label="Sticky columns"
+          label="Sticky left columns"
           checked={state.pinning}
           onToggle={() => set("pinning", !state.pinning)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sticky right column"
+          checked={state.pinRight}
+          onToggle={() => set("pinRight", !state.pinRight)}
           className={PLAY_SWITCH}
         />
         <PlayDivider />

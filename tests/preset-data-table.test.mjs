@@ -114,7 +114,22 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tf2Dl3"`);
+    expect(code).toMatchInlineSnapshot(`"tg4Q9J"`);
+  });
+
+  // Version "f" codes were published while one switch held both sides.
+  it("a version-f code still decodes, both sides sticky", () => {
+    const back = decodeDataTablePreset("tf2Dl3");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("f");
+    expect(back.preset.pinning).toBe(true);
+    expect(back.preset.pinRight).toBe(true);
+  });
+
+  it("each side encodes on its own", () => {
+    const back = decodeDataTablePreset(encodeDataTablePreset({ pinning: false, pinRight: true }));
+    expect(back.preset.pinning).toBe(false);
+    expect(back.preset.pinRight).toBe(true);
   });
 
   // Version "e" codes were published before the title heading.

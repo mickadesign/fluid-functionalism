@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type HTMLAttributes,
   type FocusEvent,
   type KeyboardEvent,
@@ -1109,6 +1110,18 @@ function DataTable<TData>({
   }, [pinsKey]);
   const pinnedLeft = pinsKey.includes("l:");
   const pinnedRight = pinsKey.includes("r:");
+  // How far the pinned columns reach in from each side: the scroll fade
+  // sits there, at the divider, rather than on the box's outer edges.
+  const pinWidths = pinsKey
+    .split("|")
+    .filter(Boolean)
+    .reduce(
+      (sum, p) => {
+        const [side, , w] = p.split(":");
+        return side === "l" ? { ...sum, l: sum.l + Number(w) } : { ...sum, r: sum.r + Number(w) };
+      },
+      { l: 0, r: 0 }
+    );
   // Where the table sits in its sideways scroll, on the root, for the
   // pinned cells: opaque (with copies of the row fills) and edged with a
   // hairline only while content passes under them.
@@ -1694,17 +1707,16 @@ function DataTable<TData>({
         ref={setWrap}
         orientation={fill ? "both" : "horizontal"}
         className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
-        // The edges fade while there's more to that side, except a pinned
-        // side: its columns stay put, and a hairline marks the edge.
+        // Content fades while there's more to a side, at the line where it
+        // meets the pinned columns (the box's own edge when none are):
+        // scroll-fade-x's animated --sf-start / --sf-end, with the stops
+        // moved in by the pinned widths. The pinned cells themselves never
+        // fade.
+        style={{ "--pin-l": `${pinWidths.l}px`, "--pin-r": `${pinWidths.r}px` } as CSSProperties}
         viewportClassName={cn(
           "scroll-fade-x",
-          pinnedLeft && pinnedRight && "[mask-image:none]! [-webkit-mask-image:none]!",
-          pinnedLeft &&
-            !pinnedRight &&
-            "[mask-image:linear-gradient(to_right,#000_calc(100%-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_100%)]! [-webkit-mask-image:linear-gradient(to_right,#000_calc(100%-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_100%)]!",
-          !pinnedLeft &&
-            pinnedRight &&
-            "[mask-image:linear-gradient(to_right,rgba(0,0,0,var(--sf-start))_0,#000_var(--scroll-fade-size))]! [-webkit-mask-image:linear-gradient(to_right,rgba(0,0,0,var(--sf-start))_0,#000_var(--scroll-fade-size))]!"
+          (pinnedLeft || pinnedRight) &&
+            "[mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]! [-webkit-mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]!"
         )}
       >
         {rowMenu ? (

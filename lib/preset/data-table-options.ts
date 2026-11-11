@@ -46,8 +46,12 @@ export interface DataTablePlayState {
   expandable: boolean;
   /** A + Filter button in the toolbar (DataTableFilters). */
   filters: boolean;
-  /** Sticky edge columns while the table scrolls sideways. */
+  /** Sticky left columns (the boxes and the first column) while the table
+   *  scrolls sideways. Named `pinning` from version e, when one switch
+   *  held both sides. */
   pinning: boolean;
+  /** Sticky right column (the row menus). */
+  pinRight: boolean;
   /** A DataTableTitle heading above the toolbar. */
   title: boolean;
 }
@@ -70,6 +74,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   expandable: false,
   filters: false,
   pinning: true,
+  pinRight: true,
   title: true,
 };
 
@@ -168,11 +173,20 @@ export const DATA_TABLE_PRESET_FIELDS_E: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_D.slice(-3),
 ];
 
-// Version f adds the title heading, on by default.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version f adds the title heading, on by default. Kept so its codes
+// still decode.
+export const DATA_TABLE_PRESET_FIELDS_F: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_E.slice(0, -3),
   { key: "title", values: [true, false], bits: 1 },
   ...DATA_TABLE_PRESET_FIELDS_E.slice(-3),
+];
+
+// Version g splits sticky columns by side: `pinning` keeps the left, and
+// `pinRight` takes the right.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_F.slice(0, -3),
+  { key: "pinRight", values: [true, false], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_F.slice(-3),
 ];
 
 // ── Registration (tag "t") ──────────────────────────────────────────────────
@@ -181,8 +195,8 @@ export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "f",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "g",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
