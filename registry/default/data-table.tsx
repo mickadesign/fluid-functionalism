@@ -1152,7 +1152,7 @@ function DataTable<TData>({
       const css = getComputedStyle(th);
       const pad = parseFloat(css.paddingLeft) + parseFloat(css.paddingRight);
       const head = headerWidth(th) + pad;
-      const floor = Math.ceil(Math.max(head, parseFloat(css.minWidth) || 0));
+      let floor = Math.ceil(Math.max(head, parseFloat(css.minWidth) || 0));
       let content = th.getBoundingClientRect().width;
       // The chevron's column also fits its sub-rows' text, which a
       // collapsed row doesn't render: read from the data in the cell's own
@@ -1164,16 +1164,21 @@ function DataTable<TData>({
         const cellCss = sample?.closest("td") ? getComputedStyle(sample.closest("td")!) : null;
         if (sample && cellCss) {
           let widest = 0;
+          let widestWord = 0;
           for (const r of table.getCoreRowModel().flatRows) {
-            if (r.depth === 0) continue;
             const value = r.getValue(id);
             if (value == null || value === "") continue;
-            widest = Math.max(widest, textWidth(sample, String(value)));
+            const text = String(value);
+            if (r.depth > 0) widest = Math.max(widest, textWidth(sample, text));
+            for (const word of text.split(/\s+/)) if (word) widestWord = Math.max(widestWord, textWidth(sample, word));
           }
-          if (widest > 0) {
-            const chrome = parseFloat(cellCss.paddingLeft) + parseFloat(cellCss.paddingRight) + 16 + 4;
-            content = Math.max(content, widest + chrome);
-          }
+          const chrome = parseFloat(cellCss.paddingLeft) + parseFloat(cellCss.paddingRight) + 16 + 4;
+          if (widest > 0) content = Math.max(content, widest + chrome);
+          // Short of room, a column gives up width down to its floor, and a
+          // wrapping name would then break inside a word ("FieldDescripti /
+          // on"). This one never goes narrower than its widest word, parents
+          // and sub-rows alike, so names wrap between words only.
+          if (widestWord > 0) floor = Math.max(floor, Math.ceil(Math.min(widestWord + chrome, NATURAL_CAP)));
         }
       }
       const size = ownSize(table.options.columns, id);
