@@ -1304,6 +1304,8 @@ function DataTable<TData>({
       // The visible width, for what stays put while the table scrolls (the
       // empty state's message).
       root.style.setProperty("--table-view-w", `${viewport.clientWidth}px`);
+      // The scroll range, for the table's edge fade (PIN_CSS).
+      root.style.setProperty("--ff-max", `${Math.max(0, max)}px`);
     };
     mark();
     viewport.addEventListener("scroll", mark, { passive: true });
@@ -1661,6 +1663,9 @@ function DataTable<TData>({
       // crushing the column that takes the rest.
       className={cn(
         sized && "table-fixed",
+        // With pinned columns the edge fade is the table's own (PIN_CSS),
+        // so the fills drawn behind it never fade.
+        (pinnedLeft || pinnedRight) && "ff-pin-fade",
         // Most of the gap between box and text (8px of its 12) belongs to
         // the column after the boxes, not the boxes: its header fill then
         // starts 8px before the label instead of on it.
@@ -1949,16 +1954,17 @@ function DataTable<TData>({
         ref={setWrap}
         orientation={fill ? "both" : "horizontal"}
         className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
-        // Content fades while there's more to a side, at the line where it
-        // meets the pinned columns (the box's own edge when none are):
-        // scroll-fade-x's animated --sf-start / --sf-end, with the stops
-        // moved in by the pinned widths. The pinned cells themselves never
-        // fade.
+        // Content fades while there's more to a side: at the box's edges
+        // (scroll-fade-x), or, with pinned columns, at the line where it
+        // meets them. That fade masks the table alone (ff-pin-fade): on the
+        // box it faded the selection and hover drawn behind the table too,
+        // so a selected row's fill dissolved short of the pinned cells and
+        // seemed to slide as the table scrolled. --pin-l / --pin-r place it.
         style={{ "--pin-l": `${pinWidths.l}px`, "--pin-r": `${pinWidths.r}px` } as CSSProperties}
         viewportClassName={cn(
           "scroll-fade-x",
           (pinnedLeft || pinnedRight) &&
-            "[mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]! [-webkit-mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]!"
+            "[mask-image:none]! [-webkit-mask-image:none]!"
         )}
       >
         {rowMenu ? (
@@ -2500,15 +2506,16 @@ interface PinInfo {
 }
 
 // Corner radii for a pinned cell's fills on the table's outer edge, per
-// shape, matching the row highlight and selection (literal classes, so
-// Tailwind sees them).
+// shape (literal classes, so Tailwind sees them): left / right match the
+// hover (shape.bg), the corners the merged selection (shape.mergedBg,
+// 16px in pill, not 20).
 const PIN_RADIUS = {
   left: { rounded: "rounded-l-lg", pill: "rounded-l-[20px]", sharp: "rounded-l-[1px]" },
   right: { rounded: "rounded-r-lg", pill: "rounded-r-[20px]", sharp: "rounded-r-[1px]" },
-  tl: { rounded: "rounded-tl-lg", pill: "rounded-tl-[20px]", sharp: "rounded-tl-[1px]" },
-  bl: { rounded: "rounded-bl-lg", pill: "rounded-bl-[20px]", sharp: "rounded-bl-[1px]" },
-  tr: { rounded: "rounded-tr-lg", pill: "rounded-tr-[20px]", sharp: "rounded-tr-[1px]" },
-  br: { rounded: "rounded-br-lg", pill: "rounded-br-[20px]", sharp: "rounded-br-[1px]" },
+  tl: { rounded: "rounded-tl-lg", pill: "rounded-tl-2xl", sharp: "rounded-tl-[1px]" },
+  bl: { rounded: "rounded-bl-lg", pill: "rounded-bl-2xl", sharp: "rounded-bl-[1px]" },
+  tr: { rounded: "rounded-tr-lg", pill: "rounded-tr-2xl", sharp: "rounded-tr-[1px]" },
+  br: { rounded: "rounded-br-lg", pill: "rounded-br-2xl", sharp: "rounded-br-[1px]" },
 } as const;
 
 /** A pinned cell's classes and offset. It sticks always (a no-op until
@@ -2544,6 +2551,8 @@ function pinProps(pin: PinInfo | undefined) {
 // once the table has scrolled 1px past its side, read from the scroll box's
 // own timeline, so the cell turns opaque in the frame the content moves
 // (a scroll event lands a frame later, and the content shows through).
+// The table's edge fade rides the same timeline: --ff-sl is the scroll
+// offset (0 to --ff-max), which keeps the mask's stops on the visible box.
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
 @keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
@@ -2551,7 +2560,22 @@ const PIN_CSS = `
 @supports (animation-timeline: scroll()) {
   .ff-pin-l { animation: ff-pin-on linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
   .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
-}`;
+  .ff-pin-fade {
+    animation: ff-sl linear both, ff-fade-l linear both, ff-fade-r linear both;
+    animation-timeline: scroll(nearest inline), scroll(nearest inline), scroll(nearest inline);
+    animation-range: normal, 0px var(--ff-fade), calc(100% - var(--ff-fade)) 100%;
+    --ff-fade: var(--scroll-fade-size, 48px);
+    --ff-in: calc(var(--ff-sl) + var(--pin-l, 0px));
+    --ff-out: calc(var(--ff-sl) + var(--table-view-w, 100%) - var(--pin-r, 0px));
+    mask-image: linear-gradient(to right, #000 var(--ff-in), rgba(0,0,0,var(--ff-fade-l)) var(--ff-in), #000 calc(var(--ff-in) + var(--ff-fade)), #000 calc(var(--ff-out) - var(--ff-fade)), rgba(0,0,0,var(--ff-fade-r)) var(--ff-out), #000 var(--ff-out));
+  }
+}
+@property --ff-sl { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --ff-fade-l { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --ff-fade-r { syntax: "<number>"; inherits: false; initial-value: 1; }
+@keyframes ff-sl { from { --ff-sl: 0px } to { --ff-sl: var(--ff-max, 0px) } }
+@keyframes ff-fade-l { from { --ff-fade-l: 1 } to { --ff-fade-l: 0 } }
+@keyframes ff-fade-r { from { --ff-fade-r: 0 } to { --ff-fade-r: 1 } }`;
 
 /** A pinned cell's own surface while content passes under it: the page
  *  background, what the row's fills (drawn behind the table) would show
@@ -2939,10 +2963,15 @@ const DataTableBodyRow = memo(
               // the sub-row guides.
               (swapping || cell.column.id === expanderId) && "relative",
               pinProps(pins[cell.column.id]).className,
-              // The strip over its bottom border takes the row's fill
-              // (outer cells' fills round, so theirs stays the page color).
-              pins[cell.column.id] && !pins[cell.column.id].outer &&
-                (selected ? "[--pin-strip:var(--active)]" : "group-[.is-active]/row:[--pin-strip:var(--hover)]"),
+              // The strip over its bottom border takes the row's fill,
+              // except under a fill that rounds there (an outer cell's
+              // hover, or its selection at the run's end). The boxes'
+              // cell needs none: its fills reach over that border.
+              pins[cell.column.id] &&
+                cell.column.id !== "select" &&
+                (selected
+                  ? (!pins[cell.column.id].outer || !runEnd) && "[--pin-strip:var(--active)]"
+                  : !pins[cell.column.id].outer && "group-[.is-active]/row:[--pin-strip:var(--hover)]"),
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.

@@ -286,10 +286,13 @@ describe("shipped CSS variables reach installers", () => {
       for (const file of payload.files ?? []) sources.push(file.content ?? "");
     }
     // 2. Assignments anywhere in the chain's shipped source: `--x:` (arbitrary
-    //    property syntax) or `"--x":` / `'--x':` (React style objects).
+    //    property syntax), `"--x":` / `'--x':` (React style objects), or
+    //    `style.setProperty("--x", …)` (set from an effect).
     const localAssign = /(--[\w-]+)["']?\s*:/g;
+    const setProperty = /setProperty\(\s*["'`](--[\w-]+)/g;
     for (const content of sources) {
       for (const m of content.matchAll(localAssign)) defined.add(m[1]);
+      for (const m of content.matchAll(setProperty)) defined.add(m[1]);
     }
 
     const payload = payloads.get(rel);
