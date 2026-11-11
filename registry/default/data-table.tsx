@@ -2607,9 +2607,28 @@ const DataTableBodyRow = memo(
     ref
   ) {
     "use no memo";
+    // The rule under a row that opens or closes its group switches in the
+    // frame the sub-rows come and go: its usual 80ms fade (there for the
+    // gliding highlight) left a line fading across the opening group.
+    const rowRef = useRef<HTMLTableRowElement | null>(null);
+    const attachRow = useCallback(
+      (node: HTMLTableRowElement | null) => {
+        rowRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      },
+      [ref]
+    );
+    useLayoutEffect(() => {
+      const tr = rowRef.current;
+      if (!tr) return;
+      tr.setAttribute("data-snap-rule", "");
+      const frame = requestAnimationFrame(() => tr.removeAttribute("data-snap-rule"));
+      return () => cancelAnimationFrame(frame);
+    }, [grouped]);
     return (
     <TableRow
-      ref={ref}
+      ref={attachRow}
       data-row-id={row.id}
       index={i}
       data-state={selected ? "selected" : undefined}
@@ -2648,6 +2667,7 @@ const DataTableBodyRow = memo(
         rowsFocusable && "outline-none",
         menuOpen && MENU_ROW[shapeVariant],
         grouped && "*:border-transparent",
+        "data-snap-rule:*:duration-0",
         // Rows each stack on their own (z-10); the one holding a raised
         // editor lifts above the rows after it, so the field covers them.
         "has-[[data-cell-expanded]]:z-30",
