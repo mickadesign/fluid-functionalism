@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useDataTable,
   DataTable,
@@ -19,7 +19,7 @@ import {
 } from "@/registry/default/data-table";
 import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
-import { DropdownContent, DropdownMenu, DropdownTrigger } from "@/components/ui/dropdown";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
@@ -763,21 +763,53 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
     setViewIndex(i);
   };
-  // Clicking the open view's tab again opens its menu (Delete), anchored
-  // under that tab.
+  // Naming a view happens in place: a field laid over its tab, the text
+  // selected. Saving opens it on the new tab; clicking the open tab again
+  // opens it to rename. Enter or a click away keeps the name, Esc keeps the
+  // old one, and the field's × deletes the view.
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [viewMenu, setViewMenu] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  // (The tabs fire no change for the tab already open: its own click does.)
-  const openViewMenu = (i: number) => {
-    if (i !== viewIndex || i === 0) return;
+  const [naming, setNaming] = useState<{
+    at: number;
+    draft: string;
+    rect: { left: number; top: number; minWidth: number; height: number };
+  } | null>(null);
+  const nameView = (i: number, name: string) => {
     const box = tabsRef.current;
     const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[i];
     if (!box || !tab) return;
     const b = box.getBoundingClientRect();
     const r = tab.getBoundingClientRect();
-    setViewMenu({ left: r.left - b.left, top: r.top - b.top, width: r.width, height: r.height });
+    setNaming({ at: i - 1, draft: name, rect: { left: r.left - b.left, top: r.top - b.top, minWidth: r.width, height: r.height } });
+  };
+  // A view saved this render gets its field once its tab is there.
+  const [nameNext, setNameNext] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (nameNext === null) return;
+    nameView(nameNext, views[nameNext - 1]?.name ?? "");
+    setNameNext(null);
+    // nameView reads the tabs just rendered; it runs once per request.
+  }, [nameNext]);
+  // The field takes focus with its name selected, once per opening.
+  const nameRef = useRef<HTMLInputElement>(null);
+  const namingAt = naming?.at ?? null;
+  useLayoutEffect(() => {
+    if (namingAt === null) return;
+    nameRef.current?.focus();
+    nameRef.current?.select();
+  }, [namingAt]);
+  const commitName = () => {
+    if (!naming) return;
+    const name = naming.draft.trim();
+    if (name) setViews((old) => old.map((v, i) => (i === naming.at ? { ...v, name } : v)));
+    setNaming(null);
+  };
+  // (The tabs fire no change for the tab already open: its own click does.)
+  const renameView = (i: number) => {
+    if (i !== viewIndex || i === 0) return;
+    nameView(i, views[i - 1]?.name ?? "");
   };
   const deleteView = () => {
+    setNaming(null);
     const at = viewIndex - 1;
     const view = views[at];
     if (!view) return;
@@ -795,6 +827,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     const name = `View ${views.length + 1}`;
     setViews((old) => [...old, { name, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);
     setViewIndex(views.length + 1);
+    // Ask for its name in place, on the new tab.
+    setNameNext(views.length + 1);
   };
 
   // Saved views come with filters: they save what the filters set.
@@ -830,26 +864,44 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-9")}>
           <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">
             {["All", ...views.map((v) => v.name)].map((name, i) => (
-              <TabsItem key={name} index={i} label={name} onClick={() => openViewMenu(i)} />
+              <TabsItem key={i} index={i} label={name} onClick={() => renameView(i)} />
             ))}
           </Tabs>
-          {/* The open view's menu, from a hidden trigger laid over its tab. */}
-          <DropdownMenu open={!!viewMenu} onOpenChange={(open) => !open && setViewMenu(null)}>
-            <DropdownTrigger
-              render={
+          {naming && (
+            // The name field, laid over its tab and growing with the name.
+            <span
+              className="absolute z-10 flex items-center rounded-full border border-border bg-background pr-0.5 text-site-caption shadow-sm"
+              style={{ left: naming.rect.left, top: naming.rect.top, minWidth: naming.rect.minWidth, height: naming.rect.height }}
+            >
+              <input
+                ref={nameRef}
+                aria-label="View name"
+                value={naming.draft}
+                onChange={(e) => setNaming({ ...naming, draft: e.target.value })}
+                onBlur={(e) => {
+                  // Leaving for the field's own ×: that click decides.
+                  if (e.relatedTarget?.closest("[data-view-delete]")) return;
+                  commitName();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitName();
+                  if (e.key === "Escape") setNaming(null);
+                }}
+                className="h-full min-w-0 bg-transparent pl-3 text-foreground outline-none [field-sizing:content]"
+              />
+              <Tooltip content="Delete view">
                 <button
                   type="button"
-                  tabIndex={-1}
-                  aria-hidden
-                  className="pointer-events-none absolute opacity-0"
-                  style={viewMenu ?? undefined}
-                />
-              }
-            />
-            <DropdownContent align="start" sideOffset={4} className="w-44">
-              <MenuItem index={0} icon={icons.x} label="Delete view" destructive onSelect={deleteView} />
-            </DropdownContent>
-          </DropdownMenu>
+                  data-view-delete=""
+                  aria-label="Delete view"
+                  onClick={deleteView}
+                  className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground outline-none hover:bg-hover hover:text-destructive"
+                >
+                  <icons.x size={14} strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+            </span>
+          )}
         </div>
       )}
       {state.filters && (
