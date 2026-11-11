@@ -515,7 +515,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `<div className="flex flex-col gap-2">`,
     ...(toolbar || o.title
       ? [
-          `  <div className="flex flex-wrap items-center gap-1">`,
+          `  <div className="${o.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`,
           ...(o.title ? [`    <DataTableTitle table={table}>Components</DataTableTitle>`] : []),
           `    <span className="ml-auto" />`,
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
@@ -1045,7 +1045,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // and the search at the right end. Added filters sit on their own row
   // under it, above the table.
   const toolbar = (state.title || tools) && (
-    <div className="flex flex-wrap items-center gap-1">
+    // 12px under the title (the stack's 8px plus 4): the heading stands a
+    // step off the table, while the tabs, chips and table keep 8px between
+    // them as one unit.
+    <div className={cn("flex flex-wrap items-center gap-1", state.title && "mb-1")}>
       {/* font-heading-display: the site's Heading font setting reaches the
           title (a site class, so the generated code leaves it out). */}
       {state.title && (

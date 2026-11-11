@@ -130,7 +130,7 @@ export function TeamTable() {
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
         {/* h3 here: the docs section above is the h2. */}
         <DataTableTitle as="h3" table={table} className="font-heading-display">Team</DataTableTitle>
         <span className="ml-auto" />
@@ -212,7 +212,7 @@ const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) 
 
 <div className="flex flex-col gap-2">
   {/* The title, then the tools at the right end, on one row. */}
-  <div className="flex flex-wrap items-center gap-1">
+  <div className="mb-1 flex flex-wrap items-center gap-1">
     <DataTableTitle table={table}>Team</DataTableTitle>
     <span className="ml-auto" />
     <DataTableFilters table={table} />
@@ -306,7 +306,7 @@ export function TasksTable() {
   });
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
         <DataTableTitle as="h3" table={table} className="font-heading-display">Tasks</DataTableTitle>
         <DataTableFilters table={table} className="ml-auto" />
       </div>
@@ -559,7 +559,7 @@ export function ViewsTable() {
   };
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
         <DataTableTitle as="h3" table={table} className="font-heading-display">People</DataTableTitle>
         <span className="ml-auto" />
         <DataTableFilters table={table} />

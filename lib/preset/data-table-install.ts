@@ -243,7 +243,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    <div className="flex w-full flex-col gap-2">`);
   if (p.title || p.filter !== "none" || p.filters || p.viewMenu || views) {
     // The title, then the tools at the right end, on one row.
-    l.push(`      <div className="flex flex-wrap items-center gap-1">`);
+    // 12px under a title (the stack's 8px plus 4), a step off the table.
+    l.push(`      <div className="${p.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`);
     if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
     l.push(`        <span className="ml-auto" />`);
     if (p.filters) l.push(`        <DataTableFilters table={table} />`);

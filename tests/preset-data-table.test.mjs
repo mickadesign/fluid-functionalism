@@ -114,7 +114,7 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"th8ovp"`);
+    expect(code).toMatchInlineSnapshot(`"ti8ovp"`);
   });
 
   // Version "g" codes were published before saved views (on by default).
@@ -164,8 +164,20 @@ describe("data table preset codec", () => {
       headerIcons: false,
       flavor: "base",
     });
-    expect(back.preset.filters).toBe(false);
+    // Filters came after version d: its codes take today's default (on).
+    expect(back.preset.filters).toBe(true);
     expect(back.preset.pinning).toBe(true);
+  });
+
+  // Version "h" codes were published while filters defaulted off.
+  it("a version-h code keeps its filters setting", () => {
+    const off = decodeDataTablePreset("th0");
+    expect(off.ok).toBe(true);
+    expect(off.version).toBe("h");
+    expect(off.preset).toEqual({ ...DEFAULT_DATA_TABLE_PRESET, filters: false });
+    const on = decodeDataTablePreset("th6xRlg");
+    expect(on.ok).toBe(true);
+    expect(on.preset.filters).toBe(true);
   });
 
   // Version "c" codes were published while header icons defaulted on.

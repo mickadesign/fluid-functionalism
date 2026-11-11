@@ -74,7 +74,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   headerIcons: false,
   editable: false,
   expandable: false,
-  filters: false,
+  filters: true,
   pinning: true,
   pinRight: true,
   title: true,
@@ -192,12 +192,18 @@ export const DATA_TABLE_PRESET_FIELDS_G: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_F.slice(-3),
 ];
 
-// Version h adds saved views, on by default.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version h adds saved views, on by default. Kept so its codes still
+// decode.
+export const DATA_TABLE_PRESET_FIELDS_H: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_G.slice(0, -3),
   { key: "views", values: [true, false], bits: 1 },
   ...DATA_TABLE_PRESET_FIELDS_G.slice(-3),
 ];
+
+// Version i turns column filters on by default.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = DATA_TABLE_PRESET_FIELDS_H.map((field) =>
+  field.key === "filters" ? { ...field, values: [true, false] } : field
+);
 
 // ── Registration (tag "t") ──────────────────────────────────────────────────
 
@@ -205,8 +211,8 @@ export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "h",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "i",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
