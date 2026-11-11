@@ -46,7 +46,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     "DataTableColumnHeader",
     ...(p.title ? ["DataTableTitle"] : []),
     ...(p.filter !== "none" ? ["DataTableSearch"] : []),
-    ...(p.filters ? ["DataTableFilters"] : []),
+    ...(p.filters ? ["DataTableFilters", "DataTableFilterChips"] : []),
     ...(p.viewMenu ? ["DataTableViewOptions"] : []),
     ...(p.pagination ? ["DataTablePagination"] : []),
     ...(p.selection ? ["DataTableSelectionBar"] : []),
@@ -210,10 +210,12 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  });`);
   l.push(``);
   l.push(`  return (`);
-  l.push(`    <div className="flex w-full flex-col gap-1">`);
-  if (p.title) l.push(`      <DataTableTitle>Components</DataTableTitle>`);
-  if (p.filter !== "none" || p.filters || p.viewMenu) {
-    l.push(`      <div className="flex flex-wrap items-center justify-end gap-1">`);
+  l.push(`    <div className="flex w-full flex-col gap-2">`);
+  if (p.title || p.filter !== "none" || p.filters || p.viewMenu) {
+    // The title, then the tools at the right end, on one row.
+    l.push(`      <div className="flex flex-wrap items-center gap-1">`);
+    if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
+    l.push(`        <span className="ml-auto" />`);
     if (p.filters) l.push(`        <DataTableFilters table={table} />`);
     if (p.viewMenu) l.push(`        <DataTableViewOptions table={table} />`);
     if (p.filter === "column") {
@@ -223,6 +225,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     }
     l.push(`      </div>`);
   }
+  if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
     "table={table}",
     ...(p.resize ? ["resizeColumns"] : []),

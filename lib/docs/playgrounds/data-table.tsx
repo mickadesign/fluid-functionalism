@@ -8,6 +8,7 @@ import {
   DataTableTitle,
   DataTableSearch,
   DataTableFilters,
+  DataTableFilterChips,
   DataTableViewOptions,
   DataTablePagination,
   DataTableSelectionBar,
@@ -366,7 +367,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     "DataTableColumnHeader",
     ...(o.title ? ["DataTableTitle"] : []),
     ...(o.filter !== "none" ? ["DataTableSearch"] : []),
-    ...(o.filters ? ["DataTableFilters"] : []),
+    ...(o.filters ? ["DataTableFilters", "DataTableFilterChips"] : []),
     ...(o.viewMenu ? ["DataTableViewOptions"] : []),
     ...(o.rowActions ? ["rowActionsColumn"] : []),
     ...(o.pagination ? ["DataTablePagination"] : []),
@@ -475,17 +476,19 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  },`,
     `});`,
     ``,
-    `<div className="flex flex-col gap-1">`,
-    ...(o.title ? [`  <DataTableTitle>Components</DataTableTitle>`] : []),
-    ...(toolbar
+    `<div className="flex flex-col gap-2">`,
+    ...(toolbar || o.title
       ? [
-          `  <div className="flex flex-wrap items-center justify-end gap-1">`,
+          `  <div className="flex flex-wrap items-center gap-1">`,
+          ...(o.title ? [`    <DataTableTitle table={table}>Components</DataTableTitle>`] : []),
+          `    <span className="ml-auto" />`,
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
           ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
           ...(o.filter !== "none" ? [filter] : []),
           `  </div>`,
         ]
       : []),
+    ...(o.filters ? [`  <DataTableFilterChips table={table} />`] : []),
     ...(o.editable
       ? [
           `  <DataTable`,
@@ -678,9 +681,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       title: Math.random() > 0.3,
     });
 
-  const toolbar = (state.filter !== "none" || state.filters || state.viewMenu) && (
-    // All at the right end: the filters, the Columns button, the search.
-    <div className="flex flex-wrap items-center justify-end gap-1">
+  const tools = state.filter !== "none" || state.filters || state.viewMenu;
+  // One row: the title on the left; the Filter button, the Columns button
+  // and the search at the right end. Added filters sit on their own row
+  // under it, above the table.
+  const toolbar = (state.title || tools) && (
+    <div className="flex flex-wrap items-center gap-1">
+      {state.title && <DataTableTitle table={table}>Components</DataTableTitle>}
+      <span className="ml-auto" />
       {state.filters && <DataTableFilters table={table} />}
       {state.viewMenu && <DataTableViewOptions table={table} />}
       {state.filter !== "none" && (
@@ -696,9 +704,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   );
 
   const body = (
-    <div className={cn("flex w-full flex-col gap-1", expanded && "h-full")}>
-      {state.title && <DataTableTitle>Components</DataTableTitle>}
+    <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
+      {state.filters && <DataTableFilterChips table={table} />}
       <DataTable
         table={table}
         resizeColumns={state.resize}

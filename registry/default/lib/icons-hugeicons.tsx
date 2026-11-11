@@ -76,6 +76,7 @@ import HiMaximize from "@hugeicons/core-free-icons/ArrowExpand01Icon";
 import HiMinimize from "@hugeicons/core-free-icons/ArrowShrink02Icon";
 import HiGripVertical from "@hugeicons/core-free-icons/DragDropVerticalIcon";
 import HiTag from "@hugeicons/core-free-icons/Tag01Icon";
+import HiFilter from "@hugeicons/core-free-icons/FilterHorizontalIcon";
 import { Play, Pause } from "lucide-react";
 import type { IconComponent, IconComponentProps, IconName } from "@/lib/icon-context";
 
@@ -162,4 +163,5 @@ export const hugeiconsIcons: Record<IconName, IconComponent> = {
   "minimize": hugeicons(HiMinimize),
   "grip-vertical": hugeicons(HiGripVertical),
   tag: hugeicons(HiTag),
+  filter: hugeicons(HiFilter),
 };

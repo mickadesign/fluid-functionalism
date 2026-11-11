@@ -10,6 +10,7 @@ import {
   DataTableColumnHeader,
   DataTableSearch,
   DataTableFilters,
+  DataTableFilterChips,
   DataTableTitle,
   DataTableViewOptions,
   useUndoableRows,
@@ -121,14 +122,16 @@ export function TeamTable() {
   const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
   return (
-    <div className="flex w-full flex-col gap-1">
-      {/* h3 here: the docs section above is the h2. */}
-      <DataTableTitle as="h3">Team</DataTableTitle>
-      <div className="flex flex-wrap items-center justify-end gap-1">
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-1">
+        {/* h3 here: the docs section above is the h2. */}
+        <DataTableTitle as="h3" table={table}>Team</DataTableTitle>
+        <span className="ml-auto" />
         <DataTableFilters table={table} />
         <DataTableViewOptions table={table} />
         <DataTableSearch table={table} column="name" placeholder="Search people…" />
       </div>
+      <DataTableFilterChips table={table} />
       <DataTable
         table={table}
         onUndo={history.undo}
@@ -160,7 +163,7 @@ export function TeamTable() {
 }
 
 export const teamCode = `import {
-  useDataTable, DataTable, DataTableColumnHeader, DataTableTitle, DataTableSearch, DataTableFilters, DataTableViewOptions,
+  useDataTable, DataTable, DataTableColumnHeader, DataTableTitle, DataTableSearch, DataTableFilters, DataTableFilterChips, DataTableViewOptions,
   DataTablePagination, DataTableSelectionBar, selectColumn, rowActionsColumn, useUndoableRows,
   type ColumnDef,
 } from "./components";
@@ -198,13 +201,17 @@ const columns: ColumnDef<Member>[] = [
 
 const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
 
-<div className="flex flex-col gap-1">
-  <DataTableTitle>Team</DataTableTitle>
-  <div className="flex flex-wrap items-center justify-end gap-1">
+<div className="flex flex-col gap-2">
+  {/* The title, then the tools at the right end, on one row. */}
+  <div className="flex flex-wrap items-center gap-1">
+    <DataTableTitle table={table}>Team</DataTableTitle>
+    <span className="ml-auto" />
     <DataTableFilters table={table} />
     <DataTableViewOptions table={table} />
     <DataTableSearch table={table} column="name" placeholder="Search people…" />
   </div>
+  {/* Added filters, on their own row above the table. */}
+  <DataTableFilterChips table={table} />
   <DataTable table={table} onUndo={history.undo} onRedo={history.redo} />
   <DataTablePagination table={table} pageSizes={[]} />
 </div>
@@ -289,11 +296,12 @@ export function TasksTable() {
     initialState: { sorting: [{ id: "due", desc: false }] },
   });
   return (
-    <div className="flex w-full flex-col gap-1">
-      <DataTableTitle as="h3">Tasks</DataTableTitle>
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        <DataTableFilters table={table} />
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table}>Tasks</DataTableTitle>
+        <DataTableFilters table={table} className="ml-auto" />
       </div>
+      <DataTableFilterChips table={table} />
       <DataTable
         table={table}
         resizeColumns
@@ -403,7 +411,7 @@ export function FilesTable() {
     initialState: { expanded: { brand: true } },
   });
   return (
-    <div className="flex w-full flex-col gap-1">
+    <div className="flex w-full flex-col gap-2">
       <div className="flex justify-end">
         <DataTableSearch table={table} column="name" placeholder="Search files…" />
       </div>
@@ -541,8 +549,15 @@ export function ViewsTable() {
     setCurrent(name);
   };
   return (
-    <div className="flex w-full flex-col gap-1">
-      <DataTableTitle as="h3">People</DataTableTitle>
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table}>People</DataTableTitle>
+        <span className="ml-auto" />
+        <DataTableFilters table={table} />
+        <Button variant="ghost" size="compact" onClick={save}>
+          Save view
+        </Button>
+      </div>
       <div className="flex flex-wrap items-center gap-1">
         {/* The views as subtle tabs: one gliding hover, the open view's pill. */}
         <Tabs
@@ -555,19 +570,14 @@ export function ViewsTable() {
             <TabsItem key={view.name} index={i} label={view.name} />
           ))}
         </Tabs>
-        {/* The filters, then saving them as a view, at the right end. */}
-        <span className="ml-auto" />
-        <DataTableFilters table={table} />
-        <Button variant="ghost" size="compact" onClick={save}>
-          Save view
-        </Button>
       </div>
+      <DataTableFilterChips table={table} />
       <DataTable table={table} />
     </div>
   );
 }
 
-export const viewsCode = `import { useDataTable, DataTable, DataTableFilters, Tabs, TabsItem, type TableState } from "./components";
+export const viewsCode = `import { useDataTable, DataTable, DataTableFilters, DataTableFilterChips, Tabs, TabsItem, type TableState } from "./components";
 
 // A view is the table's state, named: filters, sort, visible columns.
 // Keep views wherever your app keeps settings (the URL, localStorage, your
@@ -590,4 +600,5 @@ const openView = (view: View) =>
   ))}
 </Tabs>
 <DataTableFilters table={table} />
+<DataTableFilterChips table={table} />
 <DataTable table={table} />`;

@@ -61,15 +61,22 @@ export const undoableRowsProps: PropDef[] = [
 ];
 
 export const titleProps: PropDef[] = [
-  { name: "children", type: "ReactNode", description: "The table's name, above its toolbar: the type scale's title role, semibold. Optional." },
-  { name: "as", type: '"h1" | "h2" | "h3"', default: '"h2"', description: "The heading level. Use h3 under a section that already has an h2." },
+  { name: "children", type: "ReactNode", description: "The table's name, on the toolbar's row: the page-title role (28px, 24 compact), semibold. Optional." },
+  { name: "table", type: "Table<TData>", description: "With a selection column, the title steps in 36px so it starts where the first data column's text does." },
+  { name: "as", type: '"h1" | "h2" | "h3"', default: '"h1"', description: "The heading level. Use a lower one under a page that already has an h1." },
   { name: "size", type: '"default" | "compact"', description: "Pins the heading to one size step." },
 ];
 
 export const filtersProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. A Filter button lists the columns to filter; each filter is a chip with its value and a × to remove it." },
-  { name: "size", type: '"default" | "compact"', description: "Pins the button and chips to one size step." },
-  { name: "className", type: "string", description: "Classes for its box, which is `display: contents`: the chips and the button join your toolbar's row, so give the toolbar `flex-wrap`." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. An icon-only filter button whose menu lists the columns that can filter, with a search on top; a pick adds that column's chip, its editor open." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the button and its menu to one size step." },
+  { name: "className", type: "string", description: "Classes for the button's box." },
+];
+
+export const filterChipsProps: PropDef[] = [
+  { name: "table", type: "Table<TData>", description: "The filters set on the table, one chip each, on a row of their own: put it between the toolbar and the table. Renders nothing while no filter is set." },
+  { name: "size", type: '"default" | "compact"', description: "Pins the chips to one size step." },
+  { name: "className", type: "string", description: "Classes for the row." },
 ];
 
 export const viewOptionsProps: PropDef[] = [
@@ -114,6 +121,7 @@ export const apiReference: ApiTable[] = [
   { title: "DataTableTitle", props: titleProps },
   { title: "DataTableSearch", props: searchProps },
   { title: "DataTableFilters", props: filtersProps },
+  { title: "DataTableFilterChips", props: filterChipsProps },
   { title: "useUndoableRows", props: undoableRowsProps },
   { title: "DataTableViewOptions", props: viewOptionsProps },
   { title: "DataTableRowActions", props: rowActionsProps },

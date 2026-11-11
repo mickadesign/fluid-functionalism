@@ -68,6 +68,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   DropdownContent,
+  DropdownEmpty,
+  DropdownSearch,
   DropdownLabel,
   DropdownSeparator,
   DropdownMenu,
@@ -274,8 +276,12 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // can hand focus to the rows.
   const focusRef = useRef<() => boolean>(() => false);
   const rootRef = useRef<() => HTMLElement | null>(() => null);
-  // DataTableFilters installs this, so a header's menu can add a filter.
-  const filterRef = useRef<((id: string) => void) | null>(null);
+  // The filter a part asked to open (a column's header menu, the Filter
+  // menu): DataTableFilterChips opens that chip's editor. The count opens
+  // a chip that's already there again.
+  const [filterRequest, setFilterRequest] = useState<{ id: string; n: number } | null>(null);
+  // How many DataTableFilterChips are mounted to show added filters.
+  const chipsMounted = useRef(0);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -292,15 +298,23 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           rootRef.current = get;
         },
         getRootElement: () => rootRef.current(),
-        _registerFilters: (open: ((id: string) => void) | null) => {
-          filterRef.current = open;
+        filterRequest,
+        _registerChips: (mounted: boolean) => {
+          chipsMounted.current += mounted ? 1 : -1;
         },
         openFilter: (id: string) => {
-          if (!filterRef.current) return false;
-          filterRef.current(id);
+          const column = table.getColumn(id);
+          const kind = column ? filterOf(table, column) : null;
+          if (!column || !kind) return false;
+          // A filter that's already set just opens again.
+          if (!table.getState().columnFilters.some((f) => f.id === id)) {
+            column.setFilterValue(emptyFilter(kind.type));
+            table.setPageIndex(0);
+          }
+          setFilterRequest((old) => ({ id, n: (old?.n ?? 0) + 1 }));
           return true;
         },
-        canOpenFilter: () => !!filterRef.current,
+        canOpenFilter: () => chipsMounted.current > 0,
         setColumnLines: (id: string, lines: ColumnLines | undefined) => {
           captureRef.current();
           setLines((old) => {
@@ -312,7 +326,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
         },
       }) as DataTableInstance<TData>,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state is the trigger
-    [table, state, columnLines]
+    [table, state, columnLines, filterRequest]
   );
 }
 
@@ -338,13 +352,15 @@ interface DataTableExtras {
   _registerRoot: (get: () => HTMLElement | null) => void;
   /** Overrides a column's `meta.lines`; `undefined` hands it back. */
   setColumnLines: (id: string, lines: ColumnLines | undefined) => void;
-  /** Adds a filter on the column through DataTableFilters, its chip open.
-   *  False when no DataTableFilters is mounted. */
+  /** Adds a filter on the column (or opens the one it has), its chip's
+   *  editor open. False when the column can't filter. */
   openFilter: (id: string) => boolean;
-  /** Whether a DataTableFilters is mounted to add filters. */
+  /** Whether a DataTableFilterChips is mounted to show added filters. */
   canOpenFilter: () => boolean;
-  /** @internal DataTableFilters installs openFilter here. */
-  _registerFilters: (open: ((id: string) => void) | null) => void;
+  /** The filter last asked to open, counted. */
+  filterRequest: { id: string; n: number } | null;
+  /** @internal DataTableFilterChips counts itself here. */
+  _registerChips: (mounted: boolean) => void;
 }
 
 type DataTableInstance<TData> = TanStackTable<TData> & DataTableExtras;
@@ -3860,20 +3876,31 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
 // ── DataTableTitle ───────────────────────────────────────
 
 interface DataTableTitleProps extends HTMLAttributes<HTMLHeadingElement> {
-  /** The heading level. @default "h2" */
+  /** The heading level. @default "h1" */
   as?: "h1" | "h2" | "h3";
+  /** The table it names: with a selection column, the title steps in to
+   *  start where the first data column's text does (the 28px column of
+   *  boxes, then that column's 8px). */
+  table?: TanStackTable<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   size?: SizeVariant;
 }
 
-/** The table's heading, above its toolbar: the title role of the type
- *  scale, semibold, as Dialog's title. Optional; give the table a name
- *  when the page doesn't already. */
-function DataTableTitle({ as: Tag = "h2", size, className, style, ...props }: DataTableTitleProps) {
+/** The table's heading, on the toolbar's row: the page-title role of the
+ *  type scale (28px, 24 compact), semibold. Optional. */
+function DataTableTitle({ as: Tag = "h1", table, size, className, style, ...props }: DataTableTitleProps) {
+  "use no memo";
   const compact = useSize(size).variant === "compact";
+  // Looked up among the columns (getColumn warns about a missing id).
+  const boxes = !!table?.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
   return (
     <Tag
       data-slot="data-table-title"
-      className={cn(typeClass("title", compact ? "compact" : "default"), "text-foreground", className)}
+      className={cn(
+        typeClass("display", compact ? "compact" : "default"),
+        "text-foreground",
+        boxes && "pl-9",
+        className
+      )}
       style={{ fontVariationSettings: fontWeights.semibold, ...style }}
       {...props}
     />
@@ -3985,24 +4012,11 @@ interface DataTableFiltersProps<TData> {
   className?: string;
 }
 
-/** A Filter button that adds a filter on a column, and one chip per
- *  filter: the column, what it matches, the value, and × to remove it. Each
- *  column filters by its kind (see `meta.filter`): text it contains,
- *  options to pick, a number range, or a range of days. */
-function DataTableFilters<TData>({ table, size, className }: DataTableFiltersProps<TData>) {
+/** The table's filters, read from its state: the ones set (DataTableFilters
+ *  chips) and every column that can filter, with its kind. The kinds are
+ *  read again only when the data or the columns change. */
+function useFilters<TData>(table: TanStackTable<TData>) {
   "use no memo";
-  const icons = useIcons();
-  const Plus = icons.plus;
-  const sizeClasses = useSize(size);
-  const compact = sizeClasses.variant === "compact";
-  // The chip just added (or asked for again from a header) opens its
-  // editor; the count remounts a chip that's already there.
-  const [added, setAdded] = useState<{ id: string; n: number } | null>(null);
-
-  const active = table
-    .getState()
-    .columnFilters.filter((f) => typeof f.value === "object" && f.value !== null && "kind" in f.value);
-  // Each column's kind, read again only when the data or the columns do.
   const data = table.options.data;
   const defs = table.options.columns;
   const kinds = useMemo(
@@ -4011,49 +4025,120 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, defs]
   );
+  const active = table
+    .getState()
+    .columnFilters.filter((f) => typeof f.value === "object" && f.value !== null && "kind" in f.value);
   const filterable = table
     .getAllLeafColumns()
     .filter((c) => c.accessorFn !== undefined && c.getCanFilter())
     .map((column) => ({ column, filter: kinds.get(column.id) ?? filterOf(table, column) }))
     .filter((c): c is { column: Column<TData, unknown>; filter: ResolvedFilter } => c.filter !== null);
+  return { active, filterable };
+}
+
+/** An icon button that adds a filter: its menu lists the columns that can
+ *  filter, with a search on top, and a pick adds that column's chip to
+ *  DataTableFilterChips with its editor open. */
+function DataTableFilters<TData>({ table, size, className }: DataTableFiltersProps<TData>) {
+  "use no memo";
+  const icons = useIcons();
+  const FilterIcon = icons.filter;
+  const compact = useSize(size).variant === "compact";
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const { active, filterable } = useFilters(table);
   const available = filterable.filter(({ column }) => !active.some((f) => f.id === column.id));
+  const q = query.trim().toLowerCase();
+  const matches = available.filter(({ column }) => columnLabel(column).toLowerCase().includes(q));
+  const label = "Filter";
+
+  return (
+    // The tooltip's trigger is a wrapper, so the button stays the menu's.
+    <Tooltip content={label} forceOpen={open ? false : undefined}>
+      <span data-slot="data-table-filters" className={cn("inline-flex", className)}>
+        <DropdownMenu
+          size={size}
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setQuery("");
+          }}
+        >
+          <DropdownTrigger
+            render={
+              <Button
+                variant="ghost"
+                size={compact ? "icon-compact" : "icon"}
+                aria-label={label}
+                disabled={available.length === 0}
+              >
+                <FilterIcon />
+              </Button>
+            }
+          />
+          <DropdownContent align="end" className="w-56">
+            <DropdownSearch value={query} onValueChange={setQuery} placeholder="Filter by…" />
+            {matches.map(({ column }, i) => (
+              <MenuItem
+                key={column.id}
+                index={i}
+                icon={column.columnDef.meta?.icon}
+                label={columnLabel(column)}
+                onSelect={() => (table as Partial<DataTableExtras>).openFilter?.(column.id)}
+              />
+            ))}
+            {matches.length === 0 && <DropdownEmpty>No columns match</DropdownEmpty>}
+          </DropdownContent>
+        </DropdownMenu>
+      </span>
+    </Tooltip>
+  );
+}
+
+/** The filters set on the table, one chip each (the column, what it
+ *  matches, the value, and × to remove it), on a row of their own between
+ *  the toolbar and the table. Renders nothing while no filter is set. Each
+ *  column filters by its kind (see `meta.filter`): text it contains,
+ *  options to pick, a number range, or a range of days. */
+function DataTableFilterChips<TData>({ table, size, className }: DataTableFiltersProps<TData>) {
+  "use no memo";
+  const compact = useSize(size).variant === "compact";
+  const { active, filterable } = useFilters(table);
+  const extras = table as Partial<DataTableExtras>;
+  const request = extras.filterRequest ?? null;
+  const register = extras._registerChips;
+  useEffect(() => {
+    register?.(true);
+    return () => register?.(false);
+  }, [register]);
 
   const set = (column: Column<TData, unknown>, value: DataTableFilterValue | undefined) => {
     column.setFilterValue(value);
     table.setPageIndex(0);
   };
-
-  // A header's menu adds a filter here: its chip opens (one already set
-  // just opens again).
-  const openRef = useRef<(id: string) => void>(() => {});
-  useLayoutEffect(() => {
-    openRef.current = (id) => {
-      const entry = filterable.find(({ column }) => column.id === id);
-      if (!entry) return;
-      setAdded((old) => ({ id, n: (old?.n ?? 0) + 1 }));
-      if (!active.some((f) => f.id === id)) set(entry.column, emptyFilter(entry.filter.type));
-    };
-  });
-  const register = (table as Partial<DataTableExtras>)._registerFilters;
-  useEffect(() => {
-    register?.((id) => openRef.current(id));
-    return () => register?.(null);
-  }, [register]);
+  if (active.length === 0) return null;
+  // Past a selection column, the row steps in with the title, to the first
+  // data column's text.
+  const boxes = !!table.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
 
   return (
-    // display: contents, so the chips and the button join the toolbar's
-    // own row and wrap with it (give the toolbar flex-wrap).
-    <div data-slot="data-table-filters" className={cn("contents", className)}>
+    <div
+      data-slot="data-table-filter-chips"
+      className={cn("flex flex-wrap items-center gap-1", boxes && "pl-9", className)}
+    >
       {active.map((f) => {
         const entry = filterable.find(({ column }) => column.id === f.id);
         if (!entry) return null;
+        // The chip asked for opens its editor; the count remounts it if it
+        // was already there.
+        const asked = request?.id === f.id;
         return (
           <FilterChip
-            key={added?.id === f.id ? `${f.id}:${added.n}` : f.id}
+            key={asked ? `${f.id}:${request.n}` : f.id}
             label={columnLabel(entry.column)}
             filter={entry.filter}
             value={f.value as Exclude<DataTableFilterValue, string>}
-            autoOpen={added?.id === f.id}
+            autoOpen={asked}
             compact={compact}
             size={size}
             onChange={(value) => set(entry.column, value)}
@@ -4061,31 +4146,6 @@ function DataTableFilters<TData>({ table, size, className }: DataTableFiltersPro
           />
         );
       })}
-      {available.length > 0 && (
-        <DropdownMenu size={size}>
-          <DropdownTrigger
-            render={
-              <Button variant="ghost" size={compact ? "compact" : "default"} leadingIcon={Plus}>
-                Filter
-              </Button>
-            }
-          />
-          <DropdownContent className="w-48">
-            {available.map(({ column, filter }, i) => (
-              <MenuItem
-                key={column.id}
-                index={i}
-                icon={column.columnDef.meta?.icon}
-                label={columnLabel(column)}
-                onSelect={() => {
-                  setAdded((old) => ({ id: column.id, n: (old?.n ?? 0) + 1 }));
-                  set(column, emptyFilter(filter.type));
-                }}
-              />
-            ))}
-          </DropdownContent>
-        </DropdownMenu>
-      )}
     </div>
   );
 }
@@ -4105,6 +4165,23 @@ interface FilterChipProps {
 // phrase ("Name contains ada").
 const CHIP_FIELD =
   "min-w-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+
+/** Ranges a date filter offers beside its calendar, ending today. Made
+ *  when the chip renders (a chip only exists after a click, so never on
+ *  the server). */
+function datePresets() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const back = (days: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() - days);
+  return [
+    { label: "Today", range: { from: today, to: today } },
+    { label: "Last 7 days", range: { from: back(6), to: today } },
+    { label: "Last 30 days", range: { from: back(29), to: today } },
+    { label: "This month", range: { from: new Date(today.getFullYear(), today.getMonth(), 1), to: today } },
+    { label: "Last 3 months", range: { from: new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()), to: today } },
+    { label: "This year", range: { from: new Date(today.getFullYear(), 0, 1), to: today } },
+  ];
+}
 
 /** One filter: "Status is Active, Invited ×". */
 function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, onRemove }: FilterChipProps) {
@@ -4181,6 +4258,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
         mode="range"
         variant="ghost"
         size={size}
+        presets={datePresets()}
         aria-label={`${label} between`}
         value={range}
         placeholder="any day"
@@ -4915,6 +4993,7 @@ export {
   DataTableTitle,
   DataTableSearch,
   DataTableFilters,
+  DataTableFilterChips,
   DataTableViewOptions,
   DataTableRowActions,
   DataTablePagination,
