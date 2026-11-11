@@ -111,8 +111,16 @@ function UndoToast({ message, onUndo }: { message: string; onUndo: () => void })
         style={{ fontVariationSettings: fontWeights.semibold }}
       >
         Undo
-        {/* Sans, not mono: the mono font draws ⌘ undersized. */}
-        <kbd className="font-sans text-site-caption">⌘Z</kbd>
+        {/* The shortcut toast's key chip; the ⌘ in the sans font, which
+            the mono font draws undersized. */}
+        <kbd
+          className={cn(
+            "inline-flex h-[18px] min-w-[18px] items-center justify-center gap-px bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
+            shapeClasses.bg
+          )}
+        >
+          <span className="font-sans">⌘</span>Z
+        </kbd>
       </button>
     </div>
   );
