@@ -89,6 +89,11 @@ function useIsTouch() {
 
 const DEFAULT_ACCEPT = "image/png,image/jpeg,application/pdf";
 
+// Queue item keys. A counter with a time prefix is unique within a page and,
+// unlike the Web Crypto UUID helper, also works on plain-HTTP origins.
+let queuedMessageCount = 0;
+const nextQueuedId = () => `q-${Date.now().toString(36)}-${(queuedMessageCount++).toString(36)}`;
+
 interface InputMessageSlotContext {
   /** Opens the native file picker via the hidden `<input type="file">`.
    *  Pass `acceptOverride` (e.g. `"image/*"`) to scope the picker to a
@@ -680,7 +685,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       // then clear the composer and keep focus.
       if (streaming && supportsQueue) {
         const item: QueuedMessage = {
-          id: crypto.randomUUID(),
+          id: nextQueuedId(),
           text: trimmed,
           files: filesArr,
         };
@@ -949,7 +954,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 
     const matchesAccept = useCallback(
       (file: File) =>
+        // An empty accept, like the native attribute, takes any file.
+        acceptTokens.length === 0 ||
         acceptTokens.some((token) => {
+          if (token === "*/*") return true;
           if (token.endsWith("/*")) return file.type.startsWith(token.slice(0, -1));
           if (token.startsWith(".")) return file.name.toLowerCase().endsWith(token.toLowerCase());
           return file.type === token;
