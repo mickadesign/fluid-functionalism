@@ -1601,6 +1601,22 @@ function DataTable<TData>({
                   data-dragging={drag?.id === column.id || undefined}
                   onPointerDown={movable ? (e) => startDrag(e, column.id, label, meta?.icon) : undefined}
                   onKeyDown={movable ? (e) => moveByKey(e, column.id) : undefined}
+                  // The whole cell opens the header's menu, padding and the
+                  // space past the label included: a click anywhere else in
+                  // it goes to the header's button (shift kept, for a
+                  // multi-column sort).
+                  onClick={(e) => {
+                    const target = e.target as Element;
+                    if (target.closest("button, a, input, [role=checkbox], [data-resize-handle]")) return;
+                    const trigger = e.currentTarget.querySelector<HTMLButtonElement>("button[aria-haspopup=menu]:not([aria-hidden])");
+                    if (!trigger) return;
+                    const shiftKey = e.shiftKey;
+                    trigger.focus({ preventScroll: true });
+                    // After this click has finished: opened during it, the
+                    // menu would read the same click as one outside it and
+                    // close at once.
+                    setTimeout(() => trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey })));
+                  }}
                   // A column with no width of its own (one shown after the
                   // widths were read) shares what's left with the flex one.
                   style={{
@@ -1637,7 +1653,7 @@ function DataTable<TData>({
                     // hover. Its fill is the header row's gliding one,
                     // which Table turns --active while pressed: one surface.
                     (movable || column.getCanSort() || !!column.accessorFn) &&
-                      "hover:text-foreground transition-colors duration-80",
+                      "cursor-pointer hover:text-foreground transition-colors duration-80",
                     // Filled, the sticky header paints over that fill, so
                     // the cell draws its own, the same way: --hover, then
                     // --active, clear of the header's bottom line. Once it
