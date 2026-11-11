@@ -1237,7 +1237,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const controls = useMemo(
     () => (
       <PlaygroundPanel onShuffle={randomize}>
-        <PlaySection label="Toolbar" />
+        <PlaySection label="Top bar" />
         <Switch
           label="Title"
           checked={state.title}
