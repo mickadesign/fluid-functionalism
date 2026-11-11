@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
   useEffect,
   useRef,
@@ -33,12 +34,20 @@ const PANEL_GAP = 8;
 // Breathing room between the panel and the viewport edge it grows toward.
 const VIEWPORT_MARGIN = 16;
 
+/** True inside the pen menu: PlaygroundPanel then drops the rail's top
+ *  break, and the menu pads it evenly. */
+export const InPlaygroundMenuContext = createContext(false);
+
 export function PlaygroundMenu({
   label,
+  large = false,
   children,
 }: {
   /** Accessible name for the button + panel, e.g. "Customize Card". */
   label: string;
+  /** The 40px button with a 16px icon, matching the preview header's
+   *  Reload and Collapse; the default is the small card-corner button. */
+  large?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -159,7 +168,8 @@ export function PlaygroundMenu({
         <Tooltip content="Playground" side="top">
           <Button
             variant="ghost"
-            size="icon-compact"
+            size={large ? "icon" : "icon-compact"}
+            className={large ? "size-10 [&_svg]:size-4" : undefined}
             aria-label={label}
             aria-haspopup="dialog"
             aria-expanded={open}
@@ -220,7 +230,9 @@ export function PlaygroundMenu({
                     {/* Measured for the height above — must not be the
                         scrolling box itself, so its height stays
                         content-driven. */}
-                    <div ref={contentRef}>{children}</div>
+                    <div ref={contentRef} className="p-2">
+                      <InPlaygroundMenuContext.Provider value>{children}</InPlaygroundMenuContext.Provider>
+                    </div>
                   </ScrollArea>
                 </Elevated>
               </motion.div>

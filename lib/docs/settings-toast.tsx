@@ -13,6 +13,7 @@ import { useSizeContext } from "@/lib/size-context";
 import { useThemeContext } from "@/registry/default/lib/theme-context";
 import { useIconLibrary, iconLibraryLabels } from "@/lib/docs/icon-playground";
 import { useIcon } from "@/lib/icon-context";
+import { useIsMac } from "@/registry/default/command-menu";
 
 /** Which right-panel setting each global shortcut key drives. */
 const shortcutSettings = {
@@ -73,6 +74,64 @@ export function showSuccessToast(message: string) {
     duration: TOAST_MS,
     style: { width: "100%" },
   });
+}
+
+/** Surface an action that can be taken back (a delete): the same inverted
+ *  shell, the message, and an Undo button. Its own slot, held longer than
+ *  the others so there's time to reach the button. */
+export function showUndoToast(message: string, onUndo: () => void) {
+  toast.custom((id) => <UndoToast message={message} onUndo={() => {
+    onUndo();
+    toast.dismiss(id);
+  }} />, {
+    id: "site-undo",
+    duration: 6000,
+    style: { width: "100%" },
+  });
+}
+
+function UndoToast({ message, onUndo }: { message: string; onUndo: () => void }) {
+  const shapeClasses = useShape();
+  const mac = useIsMac();
+  return (
+    <div
+      role="status"
+      className={cn(
+        "mx-auto flex h-9 w-max items-center gap-3 bg-foreground pl-3 pr-1 text-site-body text-background",
+        shapeClasses.bg
+      )}
+      style={{ fontVariationSettings: fontWeights.normal }}
+    >
+      <span className="[text-box:trim-both_cap_alphabetic]">{message}</span>
+      <button
+        type="button"
+        onClick={onUndo}
+        className={cn(
+          "inline-flex h-7 cursor-pointer items-center gap-1.5 px-2 text-background outline-none transition-colors duration-80 hover:bg-background/15 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+          shapeClasses.input
+        )}
+        style={{ fontVariationSettings: fontWeights.semibold }}
+      >
+        Undo
+        {/* One chip per key, as the sidebar's ⌘K: ⌘ in the sans font,
+            which the mono font draws undersized. */}
+        <span className="flex gap-0.5">
+          {(mac ? ["⌘", "Z"] : ["Ctrl", "Z"]).map((key) => (
+            <kbd
+              key={key}
+              className={cn(
+                "inline-flex h-[18px] min-w-[18px] items-center justify-center bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
+                key === "⌘" && "font-sans",
+                shapeClasses.bg
+              )}
+            >
+              {key}
+            </kbd>
+          ))}
+        </span>
+      </button>
+    </div>
+  );
 }
 
 function SuccessToast({ message }: { message: string }) {

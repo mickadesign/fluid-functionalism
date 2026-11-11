@@ -28,7 +28,7 @@ Product reveals play once and have no exit; landing sections follow the
 scroll in at the bottom and out at the top. They ship as 4 CSS
 classes on a page's container (`.reveal-landing`, `.reveal-product`, and a
 `-subtle` step for each), plus `.reveal-swap` and `.reveal-items` for slow
-data over shadcn's Skeleton, documented on the **Reveal** page (`app/docs/reveal/page.tsx`, served at
+data over shadcn's Skeleton (given the library's loading fill, `bg-hover`, the hover tint every loading state shares), documented on the **Reveal** page (`app/docs/reveal/page.tsx`, served at
 `/docs/reveal`). Their values live in `lib/reveal/presets.ts`;
 `npm run reveal-css` (`scripts/generate-reveal.mjs`) writes the CSS into
 `app/globals.css` and the `reveal` registry item, with each tier as

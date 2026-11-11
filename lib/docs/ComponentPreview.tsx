@@ -6,7 +6,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
 import { Tabs, TabsItem } from "@/components/flavored/tabs";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
 import { InspectOverlay } from "./InspectOverlay";
@@ -171,6 +171,9 @@ export function ComponentPreview({
           <TabsItem index={1} label="Code" />
         </Tabs>
         <div className="ml-auto flex items-center gap-1">
+          {/* The header's icons (the playground pen, replay, expand) share
+              one tooltip bubble that glides between them. */}
+          <TooltipGroup>
           {inspectable && tab === 0 && (
             // Toggling Inspect must not dismiss whatever the preview has open
             // (a dropdown, a popover) — inspecting THAT state is the point.
@@ -198,6 +201,18 @@ export function ComponentPreview({
             </span>
           )}
           {expand?.expanded && expand.menu}
+          {showButton && (
+            <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
+              <button
+                onClick={playbackButton?.onClick ?? onReplay}
+                className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+                aria-label={playbackButton?.tooltip ?? "Replay animation"}
+              >
+                {playbackButton?.icon ?? <ReplayIcon size={16} strokeWidth={1.5} />}
+              </button>
+            </Tooltip>
+          )}
+          {/* Expand last, at the far right, after the replay. */}
           {expand && (
             <Tooltip content={expand.expanded ? "Collapse (Esc)" : "Expand"} side="top">
               <button
@@ -211,17 +226,7 @@ export function ComponentPreview({
               </button>
             </Tooltip>
           )}
-          {showButton && (
-            <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
-              <button
-                onClick={playbackButton?.onClick ?? onReplay}
-                className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
-                aria-label={playbackButton?.tooltip ?? "Replay animation"}
-              >
-                {playbackButton?.icon ?? <ReplayIcon size={16} strokeWidth={1.5} />}
-              </button>
-            </Tooltip>
-          )}
+          </TooltipGroup>
         </div>
       </div>
       )}
@@ -248,6 +253,9 @@ export function ComponentPreview({
         {tab === 0 ? (
           <div
             ref={previewRef}
+            // The expandable playground's layer finds the demo through this
+            // while it moves (see PlaygroundLayout).
+            data-preview-stage=""
             // Focus target for empty-space clicks (see routeKeyboardOnMouseDown)
             // — holds keyboard scope for the demo without ringing any control.
             tabIndex={-1}

@@ -10,9 +10,9 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { PreviewExpandContext } from "@/lib/docs/preview-expand";
-import { PlaygroundMenu } from "@/app/components/playground-menu";
+import { InPlaygroundMenuContext, PlaygroundMenu } from "@/app/components/playground-menu";
 import { Shuffle } from "lucide-react";
 import { animate } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
@@ -140,6 +140,7 @@ export function PlaygroundPanel({
   // small label with the shuffle on its right, a hairline under it.
   const shape = useShape();
   const inline = useContext(InlinePlaygroundContext);
+  const inMenu = useContext(InPlaygroundMenuContext);
 
   // X shuffles, like the settings' single-key shortcuts and with their
   // guards: not while typing, not from inside a menu or a dialog.
@@ -216,7 +217,8 @@ export function PlaygroundPanel({
     // double the sidebar's 16px between groups. Under the preview there is no
     // group above, and -mx-2 hangs the rows' 8px inset outside the column, so
     // the labels, chevrons and hairline line up with the preview's edges.
-    <div className={cn("w-full", inline ? "-mx-2 w-auto" : "pt-8")}>
+    // In the pen menu, the menu's own 8px padding is the whole frame.
+    <div className={cn("w-full", inline ? "-mx-2 w-auto" : !inMenu && "pt-8")}>
       <div className="flex h-8 items-center justify-between pl-2">
         <h2 className="text-site-caption text-foreground">{title}</h2>
         {/* The X key chip, then the icon: px-1.5 + mr-0.5 end the icon 8px
@@ -337,7 +339,36 @@ export function PlaygroundLayout({
   // instead of popping in once the box has landed.
   const [collapsing, setCollapsing] = useState(false);
   const fromRect = useRef<DOMRect | null>(null);
+  const tableToWidth = useRef<number | null>(null);
   const animating = useRef(false);
+
+  // While the layer moves, a table in the demo keeps its expanded width:
+  // the box's width springs through every value, and a table that fills
+  // its scroll box would hand each frame's width to its one free column,
+  // re-wrapping its text (rows jumping between one and two lines) and
+  // flipping its sticky columns' surfaces as the overflow came and went.
+  // Held at the expanded width, only the scroll box follows the box: the
+  // sticky columns ride its edges and nothing inside re-lays out. Released
+  // once the layer lands (see globals.css, [data-preview-moving]).
+  const demo = () =>
+    frameRef.current?.querySelector<HTMLElement>("[data-preview-stage]")?.firstElementChild as HTMLElement | null;
+  const demoTable = () => {
+    const table = demo()?.querySelector<HTMLTableElement>("[data-slot=scroll-area-viewport] table");
+    const viewport = table?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    return table && viewport ? { table, viewport } : null;
+  };
+  const holdTable = (width: number) => {
+    const el = demo();
+    if (!el) return;
+    el.style.setProperty("--preview-table-w", `${width}px`);
+    el.setAttribute("data-preview-moving", "");
+  };
+  const releaseTable = () => {
+    const el = demo();
+    if (!el) return;
+    el.style.removeProperty("--preview-table-w");
+    el.removeAttribute("data-preview-moving");
+  };
 
   const target = () => {
     const m = 24;
@@ -358,6 +389,14 @@ export function PlaygroundLayout({
     const el = frameRef.current;
     if (!el || animating.current) return;
     fromRect.current = el.getBoundingClientRect();
+    // The table's expanded width, read in the page (once the box turns
+    // fixed, and before it's sized, it shrink-wraps): its scroll box grows
+    // with the box, and the table fills it or keeps its columns' total.
+    const held = demoTable();
+    const to = target();
+    tableToWidth.current = held
+      ? Math.max(parseFloat(getComputedStyle(held.table).minWidth) || 0, held.viewport.clientWidth + (to.width - fromRect.current.width))
+      : null;
     setPlaceholderHeight(fromRect.current.height);
     setBackdrop(true);
     setExpanded(true);
@@ -369,6 +408,8 @@ export function PlaygroundLayout({
     const home = placeholderRef.current?.getBoundingClientRect();
     if (!el || !home || animating.current) return;
     animating.current = true;
+    const held = demoTable();
+    if (held) holdTable(held.table.offsetWidth);
     setBackdrop(false);
     setCollapsing(true);
     // The content keeps its expanded form while the box shrinks, scrolled
@@ -396,16 +437,22 @@ export function PlaygroundLayout({
       // Stops a stalled spring too, so it can't write over the cleared box.
       motionCtrl.stop();
       animating.current = false;
-      onExpandedChangeRef.current?.(false);
-      setCollapsing(false);
+      // Back in the page first, then the box's inline size goes: cleared
+      // while the box was still fixed, it shrink-wrapped the demo at full
+      // width for a frame.
+      flushSync(() => {
+        onExpandedChangeRef.current?.(false);
+        setCollapsing(false);
+        setExpanded(false);
+        setPlaceholderHeight(null);
+      });
+      releaseTable();
       el.removeAttribute("style");
       // Motion commits a finished tween's last values to the inline style
       // after its promise resolves; clear once more after that lands.
       requestAnimationFrame(() => {
         if (!settleCollapseRef.current && !animating.current) el.removeAttribute("style");
       });
-      setExpanded(false);
-      setPlaceholderHeight(null);
     };
     // A dismissal is the tier's exit: a tween with no bounce, so the box
     // can't overshoot its slot on the page and settle back.
@@ -434,19 +481,20 @@ export function PlaygroundLayout({
     fromRect.current = null;
     animating.current = true;
     const to = target();
+    if (tableToWidth.current) holdTable(tableToWidth.current);
     Object.assign(el.style, {
       top: `${from.top}px`,
       left: `${from.left}px`,
       width: `${from.width}px`,
       height: `${from.height}px`,
     });
-    animate(el, to, spring.slow).then(() => {
+    const land = () => {
       animating.current = false;
-    });
+      releaseTable();
+    };
+    animate(el, to, spring.slow).then(land);
     // Same guard as the collapse: don't stay locked if frames stall.
-    setTimeout(() => {
-      animating.current = false;
-    }, Math.round(spring.slow.duration * 1000) + 150);
+    setTimeout(land, Math.round(spring.slow.duration * 1000) + 150);
   }, [expanded]);
 
   // While expanded: the window's size drives the layer's, the page stops
@@ -492,7 +540,7 @@ export function PlaygroundLayout({
         toggle: expanded ? close : open,
         // Gone once a collapse starts: the rail's controls are back then, and
         // the same switches shouldn't exist twice.
-        menu: collapsing ? null : <PlaygroundMenu label={label}>{controls}</PlaygroundMenu>,
+        menu: collapsing ? null : <PlaygroundMenu label={label} large>{controls}</PlaygroundMenu>,
       }
     : null;
 

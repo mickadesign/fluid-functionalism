@@ -270,7 +270,7 @@
           ":where(.typeset * + :is(h3, h4, h5, h6)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "margin-top": "var(--typeset-space-subsection)"
           },
-          ":where(.typeset :is(h1, h2, h3, h4, h5, h6) + *):not(:where(.typeset .not-typeset *))": {
+          ":where(.typeset :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tableWrapper, img, video, .not-typeset, h1, h2, h3, h4, h5, h6, hr, div, section, aside, dl, details, nav, header, footer, form)):not(:where(.typeset .not-typeset *))": {
             "margin-top": "var(--typeset-space-heading)"
           },
           ":where(.typeset hr):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
@@ -278,7 +278,7 @@
             "border-top": "1px solid var(--border, color-mix(in oklab, currentColor 14%, transparent))",
             "margin-top": "var(--typeset-space-rule)"
           },
-          ":where(.typeset hr + *):not(:where(.typeset .not-typeset *))": {
+          ":where(.typeset hr + :is(p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tableWrapper, img, video, .not-typeset, h1, h2, h3, h4, h5, h6, hr, div, section, aside, dl, details, nav, header, footer, form)):not(:where(.typeset .not-typeset *))": {
             "margin-top": "var(--typeset-space-rule)"
           },
           ":where(.typeset h1, .typeset h2, .typeset h3, .typeset h4, .typeset h5, .typeset h6):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
@@ -2124,6 +2124,28 @@
       ]
     },
     {
+      "name": "context-menu",
+      "type": "registry:ui",
+      "title": "Context Menu",
+      "description": "The Dropdown opened where you right-click: a zero-size trigger placed at the pointer, so the items are the Dropdown's own (MenuItem, submenus, search, labels, separators) with its fluid hover, keys and motion. A filter picks which elements open it, text fields keep the browser's menu, Shift + F10 or the Menu key opens it from the keyboard, and focus returns where it was on close.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/dropdown.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/context-menu.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/context-menu.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
       "name": "data-table",
       "type": "registry:ui",
       "title": "Data Table",
@@ -2155,7 +2177,9 @@
         "https://www.fluidfunctionalism.com/r/date-picker.json",
         "https://www.fluidfunctionalism.com/r/command-menu.json",
         "https://www.fluidfunctionalism.com/r/elevated.json",
-        "https://www.fluidfunctionalism.com/r/badge.json"
+        "https://www.fluidfunctionalism.com/r/badge.json",
+        "https://www.fluidfunctionalism.com/r/context-menu.json",
+        "https://www.fluidfunctionalism.com/r/use-fluid-hover.json"
       ],
       "files": [
         {

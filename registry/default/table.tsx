@@ -169,6 +169,28 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       rows.forEach((tr, i) => tr.toggleAttribute("data-under-highlight", covered[i]));
     }, []);
 
+    const headCell =
+      !hideHeadHighlight && headHover.isMeasured && headHover.activeIndex !== null
+        ? headHover.itemRects[headHover.activeIndex]
+        : undefined;
+    const headRect = headCell ? { ...headCell, height: headCell.height - 1 } : null;
+    // A header cell in the gliding scope held down, while the pointer is
+    // still on it: its fill shows pressed. Slid onto a neighbor before
+    // release, the fill follows the hover there unpressed.
+    const [pressedHead, setPressedHead] = useState<number | null>(null);
+    const headPressed = pressedHead !== null && pressedHead === headHover.activeIndex;
+    const setHeadPressed = (on: boolean) => setPressedHead(on ? headHover.activeIndex : null);
+    useEffect(() => {
+      if (pressedHead === null) return;
+      const release = () => setPressedHead(null);
+      window.addEventListener("pointerup", release);
+      window.addEventListener("pointercancel", release);
+      return () => {
+        window.removeEventListener("pointerup", release);
+        window.removeEventListener("pointercancel", release);
+      };
+    }, [pressedHead]);
+
     const contextValue = useMemo(
       () => ({ registerItem, activeStore, selected, registerHead }),
       [registerItem, activeStore, selected, registerHead]
@@ -192,6 +214,11 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onMouseLeave={(e) => {
             headHover.handlers.onMouseLeave();
             if (fromPointer(e)) handlers.onMouseLeave();
+          }}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            const th = (e.target as HTMLElement).closest("th[data-head-hover]");
+            if (th && containerRef.current?.contains(th)) setHeadPressed(true);
           }}
           onClick={handlers.onClick}
           onKeyDown={(e) => {
@@ -229,14 +256,24 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             transition={repeating || snap.on ? false : undefined}
             onFrame={hideCoveredRules}
           />
-          <FluidHoverHighlight hover={headHover} hidden={hideHeadHighlight} className={shape.bg} />
+          {/* The header's fill stops 1px short of the header's bottom line,
+              and turns --active while its cell is pressed: one surface for
+              hover and press. */}
+          <FluidHoverHighlight
+            rect={headRect}
+            session={headHover.session}
+            className={cn(shape.bg, "transition-[background-color] duration-80", headPressed && "bg-active")}
+          />
 
           <table
             ref={ref}
             // --table-cell-py is the one source for row height: cells pad by
             // it and TableEmpty holds its rows with it.
             className={cn(
-              "w-full border-collapse",
+              // Separate borders, each cell drawing its own divider, so a
+              // sticky cell paints over the dividers scrolling under it
+              // (collapsed borders paint over every cell).
+              "w-full border-separate border-spacing-0",
               sizeClasses.variant === "compact" ? "[--table-cell-py:5px]" : "[--table-cell-py:--spacing(2)]",
               sizeClasses.text,
               className
@@ -316,8 +353,10 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         // Borders fade over 80ms instead of popping as the highlight moves.
         // `is-active` lets every cell read the lit state through the row.
         className={cn(
-          "group/row relative z-10 border-b transition-[border-color] duration-80",
-          hideBorder ? "border-transparent" : "border-accent/40 data-[under-highlight]:border-transparent data-[under-highlight]:duration-0",
+          "group/row relative z-10 *:border-b *:transition-[border-color] *:duration-80",
+          hideBorder
+            ? "*:border-transparent"
+            : "*:border-accent/40 data-[under-highlight]:*:border-transparent data-[under-highlight]:*:duration-0",
           lit && "is-active",
           className
         )}
@@ -357,6 +396,7 @@ const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(({ hoverIndex
         if (typeof ref === "function") ref(node);
         else if (ref) ref.current = node;
       }}
+      data-head-hover={hoverIndex !== undefined || undefined}
       className={cn(
         "text-left text-foreground",
         // py + line box lands the row on the ladder (36px / 28px).
@@ -423,7 +463,10 @@ const TableEmpty = forwardRef<HTMLTableRowElement, TableEmptyProps>(
               bottom border, so `rows` of them stay in step with TableCell
               whatever the ladder step. */}
           <div
-            className="flex min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
+            // Pinned to the visible box: sticky at its left edge and as wide
+            // as the scroll box (--table-view-w, which DataTable sets), so the
+            // message centers on what's in view, not on a table wider than it.
+            className="sticky left-0 flex w-(--table-view-w,100%) min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))] flex-col items-center justify-center gap-1 px-3 py-4 text-center"
             style={{ "--table-empty-rows": rows } as CSSProperties}
           >
             {title && (

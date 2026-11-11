@@ -37,20 +37,24 @@ function dataTableDemoFile(p: DataTablePreset): string {
     return `, subRows: [${sub.join(", ")}]`;
   };
   const icons = p.headerIcons;
+  // Saved views come with filters: they save what the filters set.
+  const views = p.views && p.filters;
   const wrap = p.lines === "wrap";
   const lines = wrap ? `"wrap"` : "1";
-  const summaryLines = wrap ? `"wrap"` : "2";
   const parts = [
     "useDataTable",
     "DataTable",
     "DataTableColumnHeader",
+    ...(p.title ? ["DataTableTitle"] : []),
     ...(p.filter !== "none" ? ["DataTableSearch"] : []),
+    ...(p.filters ? ["DataTableFilters", "DataTableFilterChips"] : []),
     ...(p.viewMenu ? ["DataTableViewOptions"] : []),
     ...(p.pagination ? ["DataTablePagination"] : []),
     ...(p.selection ? ["DataTableSelectionBar"] : []),
     ...(p.selection ? ["selectColumn"] : []),
     ...(p.rowActions ? ["rowActionsColumn"] : []),
     "type ColumnDef",
+    ...(views ? ["type TableState"] : []),
   ];
   const icon = (name: string) => (icons ? `, icon: ${name}` : "");
   const l: string[] = [];
@@ -59,12 +63,18 @@ function dataTableDemoFile(p: DataTablePreset): string {
   const tree = p.expandable;
   l.push(`"use client";`);
   l.push(``);
-  if (edit) l.push(`import { useState } from "react";`);
+  if (edit || views) l.push(`import { useState } from "react";`);
   l.push(`import {`);
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`} from "@/components/ui/data-table";`);
   if (p.rowActions) l.push(`import { MenuItem } from "@/components/ui/menu-item";`);
   l.push(`import { Badge } from "@/components/ui/badge";`);
+  if ([p.filters, p.viewMenu, p.filter !== "none"].filter(Boolean).length > 1)
+    l.push(`import { TooltipGroup } from "@/components/ui/tooltip";`);
+  if (views) {
+    l.push(`import { Button } from "@/components/ui/button";`);
+    l.push(`import { Tabs, TabsItem } from "@/components/ui/tabs";`);
+  }
   if (icons) {
     l.push(
       `import { Calendar, File, Folder, Link, SlidersHorizontal, SquareLibrary } from "lucide-react";`
@@ -139,7 +149,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`    header: "Tags",`);
     l.push(`    enableSorting: false,`);
     l.push(
-      `    meta: { label: "Tags", className: "min-w-56", editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true } },`
+      `    meta: { label: "Tags", className: "min-w-56"${p.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true } },`
     );
     l.push(`  },`);
   }
@@ -160,7 +170,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    accessorKey: "summary",`);
   l.push(`    header: "Summary",`);
   l.push(`    // Last of the data columns: it takes the width left, at least 256px.`);
-  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${summaryLines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
+  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${lines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
   l.push(`  },`);
   if (p.rowActions) {
     l.push(`  rowActionsColumn<Row>((row) => (`);
@@ -192,21 +202,87 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    pageSize: ${p.pagination ? p.pageSize : "ROWS.length"},`);
   l.push(`    getRowId: (row) => row.slug,`);
   if (tree) l.push(`    getSubRows: (row) => row.subRows,`);
-  l.push(`    initialState: { sorting: [{ id: "added", desc: true }] },`);
+  // No sticky left columns: no Freeze item in the header menus either.
+  if (!p.pinning) l.push(`    enableColumnPinning: false,`);
+  if (p.pinning !== p.pinRight) {
+    // Sticky on one side only: the left the boxes and the first column,
+    // the right the row menus.
+    const left = p.pinning ? [...(p.selection ? [`"select"`] : []), `"name"`] : [];
+    const right = p.pinRight && p.rowActions ? [`"actions"`] : [];
+    l.push(`    initialState: {`);
+    l.push(`      sorting: [{ id: "added", desc: true }],`);
+    l.push(`      columnPinning: { left: [${left.join(", ")}], right: [${right.join(", ")}] },`);
+    l.push(`    },`);
+  } else {
+    l.push(`    initialState: { sorting: [{ id: "added", desc: true }] },`);
+  }
   l.push(`  });`);
   l.push(``);
+  if (views) {
+    // Saved views: the table's state, named. Keep them wherever the app
+    // keeps settings; here, in memory.
+    l.push(`  type View = Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;`);
+    l.push(`  const [views, setViews] = useState<{ name: string; state: View }[]>([]);`);
+    l.push(`  const [viewIndex, setViewIndex] = useState(0);`);
+    l.push(`  const allView: View = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: {} };`);
+    l.push(`  const openView = (i: number) => {`);
+    l.push(`    const view = i === 0 ? allView : views[i - 1].state;`);
+    l.push(`    table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`);
+    l.push(`    setViewIndex(i);`);
+    l.push(`  };`);
+    l.push(`  const saveView = () => {`);
+    l.push(`    const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();`);
+    l.push(`    setViews((old) => [...old, { name: \`View \${old.length + 1}\`, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);`);
+    l.push(`    setViewIndex(views.length + 1);`);
+    l.push(`  };`);
+    l.push(`  // Save view shows once the table differs from the open view.`);
+    l.push(`  const viewKeys = ["columnFilters", "globalFilter", "sorting", "columnOrder", "columnVisibility"] as const;`);
+    l.push(`  const snapshot = (state: Partial<View>) => JSON.stringify(viewKeys.map((key) => state[key] ?? null));`);
+    l.push(`  const changed = snapshot(table.getState()) !== snapshot(viewIndex === 0 ? allView : views[viewIndex - 1].state);`);
+    l.push(``);
+  }
   l.push(`  return (`);
-  l.push(`    <div className="flex w-full flex-col gap-3">`);
-  if (p.filter !== "none" || p.viewMenu) {
-    l.push(`      <div className="flex items-center gap-2">`);
-    if (p.filter === "column") {
-      l.push(`        <DataTableSearch table={table} column="name" placeholder="Search components…" />`);
-    } else if (p.filter === "all") {
-      l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
-    }
-    if (p.viewMenu) l.push(`        <DataTableViewOptions table={table} className="ml-auto" />`);
+  l.push(`    <div className="flex w-full flex-col gap-2">`);
+  if (p.title || p.filter !== "none" || p.filters || p.viewMenu || views) {
+    // The title, then the tools at the right end, on one row.
+    // 12px under a title (the stack's 8px plus 4), a step off the table.
+    l.push(`      <div className="${p.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`);
+    if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
+    l.push(`        <span className="ml-auto" />`);
+    // Two icons or more share one tooltip bubble that glides between them.
+    const tools: string[] = [];
+    if (p.filters) tools.push(`<DataTableFilters table={table} />`);
+    if (p.viewMenu) tools.push(`<DataTableViewOptions table={table} />`);
+    if (p.filter === "column") tools.push(`<DataTableSearch table={table} column="name" placeholder="Search components…" />`);
+    else if (p.filter === "all") tools.push(`<DataTableSearch table={table} placeholder="Search all columns…" />`);
+    if (tools.length > 1) {
+      l.push(`        <TooltipGroup>`);
+      tools.forEach((t) => l.push(`          ${t}`));
+      l.push(`        </TooltipGroup>`);
+    } else tools.forEach((t) => l.push(`        ${t}`));
     l.push(`      </div>`);
   }
+  if (views) {
+    // No tabs until a view is saved: a lone "All" tab says nothing.
+    l.push(`      {views.length > 0 && (`);
+    // Past a selection column the tabs start where the first data column
+    // does, 28px in, like the title and the chips.
+    const pad = p.selection ? "  " : "";
+    if (p.selection) l.push(`        <div className="pl-7">`);
+    l.push(`${pad}        <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
+    l.push(`${pad}          {["All", ...views.map((v) => v.name)].map((name, i) => (`);
+    l.push(`${pad}            <TabsItem key={name} index={i} label={name} />`);
+    l.push(`${pad}          ))}`);
+    l.push(`${pad}        </Tabs>`);
+    if (p.selection) l.push(`        </div>`);
+    l.push(`      )}`);
+  }
+  if (p.filters && views) {
+    // Save view after the chips' + Add filter, with the first filter.
+    l.push(`      <DataTableFilterChips table={table}>`);
+    l.push(`        {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`);
+    l.push(`      </DataTableFilterChips>`);
+  } else if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
     "table={table}",
     ...(p.resize ? ["resizeColumns"] : []),
@@ -264,8 +340,8 @@ export function generateDataTablePresetFiles(p: DataTablePreset): PresetFile[] {
 /** Registry dependencies the generated file needs, as plain names. The
  *  route flavors them: data-table pulls dual-flavor parts, so it resolves to
  *  the chosen flavor's payload. */
-export function dataTablePresetRegistryDeps(_p: DataTablePreset): string[] {
-  return ["utils", "data-table", "badge"];
+export function dataTablePresetRegistryDeps(p: DataTablePreset): string[] {
+  return ["utils", "data-table", "badge", ...(p.views && p.filters ? ["button", "tabs"] : [])];
 }
 
 /** npm dependencies beyond what registryDependencies pull transitively. */

@@ -19,7 +19,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
-import { Tooltip, TooltipPortalContainer } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup, TooltipPortalContainer } from "@/registry/radix/tooltip";
 import { ColorPickerPortalContainer } from "@/registry/default/color-picker";
 
 const SETTINGS_SLUG = "settings";
@@ -260,28 +260,31 @@ function DemoPageInner() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
-              <Button
-                variant="ghost"
-                size={iconSize}
-                onClick={() => goTo(currentIndex - 1)}
-                disabled={!prevSlide}
-                aria-label="Previous slide"
-              >
-                <ArrowRight className="rotate-180" />
-              </Button>
-            </Tooltip>
-            <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
-              <Button
-                variant="ghost"
-                size={iconSize}
-                onClick={() => goTo(currentIndex + 1)}
-                disabled={!nextSlide}
-                aria-label="Next slide"
-              >
-                <ArrowRight />
-              </Button>
-            </Tooltip>
+            {/* Prev and next share one gliding tooltip. */}
+            <TooltipGroup>
+              <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
+                <Button
+                  variant="ghost"
+                  size={iconSize}
+                  onClick={() => goTo(currentIndex - 1)}
+                  disabled={!prevSlide}
+                  aria-label="Previous slide"
+                >
+                  <ArrowRight className="rotate-180" />
+                </Button>
+              </Tooltip>
+              <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
+                <Button
+                  variant="ghost"
+                  size={iconSize}
+                  onClick={() => goTo(currentIndex + 1)}
+                  disabled={!nextSlide}
+                  aria-label="Next slide"
+                >
+                  <ArrowRight />
+                </Button>
+              </Tooltip>
+            </TooltipGroup>
           </div>
         </div>
       </div>

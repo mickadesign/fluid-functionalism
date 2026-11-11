@@ -32,7 +32,7 @@ import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hove
 import { Elevated } from "@/lib/elevated";
 import { popupMotionClass } from "@/lib/popup";
 import { Slider } from "@/registry/radix/slider";
-import { Tooltip, TooltipProvider } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // ---------------------------------------------------------------------------
@@ -1880,10 +1880,11 @@ function SwatchStrip({
 
   return (
     // -m-1: the cells' 4px of room sits outside the strip's edges, so the
-    // swatches line up with the fields above. One tooltip group: once a name
-    // shows, the next swatch's shows at once instead of waiting again. Not
-    // hoverable: crossing to a name would hold off the swatches in its path.
-    <TooltipProvider delayDuration={300} disableHoverableContent>
+    // swatches line up with the fields above. One TooltipGroup: once a name
+    // shows, one bubble glides from swatch to swatch with the next name
+    // instead of closing and reopening (and, a group, it's never hoverable,
+    // so crossing a name never holds off the swatches in its path).
+    <TooltipGroup delayDuration={300}>
       <div
         ref={containerRef}
         className="relative -m-1 flex flex-wrap"
@@ -1939,7 +1940,7 @@ function SwatchStrip({
           );
         })}
       </div>
-    </TooltipProvider>
+    </TooltipGroup>
   );
 }
 
@@ -2130,7 +2131,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 
         {/* A hue picked on the rail is a new stated hue, so the sticky
             OKLCH hue is dropped and OKLCH H follows the color again. */}
-        <div className="flex flex-col [&>*]:mb-0 [&>*+*]:-mt-px">
+        <div className="flex flex-col [&>*]:mb-0 [&>*:not(:first-child)]:-mt-px">
           <HueSlider h={hsv.h} onChange={(h) => { setOklchHue(null); updateHsv({ h }); }} />
           <AlphaSlider
             a={hsv.a}

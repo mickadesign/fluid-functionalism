@@ -73,6 +73,7 @@ import {
   Minimize01 as UuiMinimize01,
   DotsGrid as UuiDotsGrid,
   Tag01 as UuiTag,
+  FilterLines as UuiFilterLines,
   Calendar as UuiCalendar,
   Folder as UuiFolder,
 } from "@untitledui/icons";
@@ -161,4 +162,5 @@ export const untitleduiIcons: Record<IconName, IconComponent> = {
   // Untitled UI has no six-dot grip; the nine-dot grid is its drag handle.
   "grip-vertical": untitledui(UuiDotsGrid),
   tag: untitledui(UuiTag),
+  filter: untitledui(UuiFilterLines),
 };

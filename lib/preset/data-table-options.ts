@@ -44,6 +44,18 @@ export interface DataTablePlayState {
   editable: boolean;
   /** Rows with sub-rows: a component opens into its parts. */
   expandable: boolean;
+  /** A + Filter button in the toolbar (DataTableFilters). */
+  filters: boolean;
+  /** Sticky left columns (the boxes and the first column) while the table
+   *  scrolls sideways. Named `pinning` from version e, when one switch
+   *  held both sides. */
+  pinning: boolean;
+  /** Sticky right column (the row menus). */
+  pinRight: boolean;
+  /** A DataTableTitle heading above the toolbar. */
+  title: boolean;
+  /** Saved views: a Save view button and tabs to switch between them. */
+  views: boolean;
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -62,6 +74,11 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   headerIcons: false,
   editable: false,
   expandable: false,
+  filters: true,
+  pinning: true,
+  pinRight: true,
+  title: true,
+  views: true,
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -129,8 +146,9 @@ export const DATA_TABLE_PRESET_FIELDS_C: readonly PresetField[] = [
 ];
 
 // Version d turns header icons off by default, and text fitting into one
-// wrap switch: off, names and links keep 1 line and the Summary 2.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// wrap switch: off, names and links keep 1 line and the Summary 2. Kept so
+// its codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_D: readonly PresetField[] = [
   { key: "filter", values: ["column", "all", "none"], bits: 2 },
   { key: "viewMenu", values: [true, false], bits: 1 },
   { key: "selection", values: [true, false], bits: 1 },
@@ -149,14 +167,52 @@ export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
   { key: "size", values: ["default", "compact"], bits: 2 },
 ];
 
+// Version e adds column filters and sticky edge columns. Kept so its
+// codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_E: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_D.slice(0, -3),
+  { key: "filters", values: [false, true], bits: 1 },
+  { key: "pinning", values: [true, false], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_D.slice(-3),
+];
+
+// Version f adds the title heading, on by default. Kept so its codes
+// still decode.
+export const DATA_TABLE_PRESET_FIELDS_F: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_E.slice(0, -3),
+  { key: "title", values: [true, false], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_E.slice(-3),
+];
+
+// Version g splits sticky columns by side: `pinning` keeps the left, and
+// `pinRight` takes the right. Kept so its codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_G: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_F.slice(0, -3),
+  { key: "pinRight", values: [true, false], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_F.slice(-3),
+];
+
+// Version h adds saved views, on by default. Kept so its codes still
+// decode.
+export const DATA_TABLE_PRESET_FIELDS_H: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_G.slice(0, -3),
+  { key: "views", values: [true, false], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_G.slice(-3),
+];
+
+// Version i turns column filters on by default.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = DATA_TABLE_PRESET_FIELDS_H.map((field) =>
+  field.key === "filters" ? { ...field, values: [true, false] } : field
+);
+
 // ── Registration (tag "t") ──────────────────────────────────────────────────
 
 export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "d",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "i",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };

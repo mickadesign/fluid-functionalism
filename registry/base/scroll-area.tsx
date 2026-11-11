@@ -62,7 +62,7 @@ const ScrollArea = forwardRef<
             <div
               data-slot="scroll-area-viewport"
               className={cn(
-                "size-full rounded-[inherit]",
+                "size-full rounded-[inherit] focus-visible:outline-offset-[-1px]",
                 orientation === "vertical" && "overflow-y-auto",
                 orientation === "horizontal" && "overflow-x-auto",
                 orientation === "both" && "overflow-auto",
@@ -82,7 +82,7 @@ const ScrollArea = forwardRef<
           >
             <ScrollAreaPrimitive.Viewport
               data-slot="scroll-area-viewport"
-              className={cn("size-full rounded-[inherit]", viewportClassName)}
+              className={cn("size-full rounded-[inherit] focus-visible:outline-offset-[-1px]", viewportClassName)}
             >
               {/* Content gives Base UI an intrinsic size to measure
                   horizontal overflow against. */}

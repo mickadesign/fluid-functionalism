@@ -6,7 +6,7 @@ import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
 import { InputCopy } from "@/registry/default/input-copy";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 
 export default function DocsIndex() {
   const ArrowRight = useIcon("arrow-right");
@@ -29,20 +29,23 @@ export default function DocsIndex() {
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Tooltip content={<span>Showcase &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
-            <Link href="/" aria-label="Previous: Showcase" className="outline-none" tabIndex={-1}>
-              <Button variant="ghost" size={iconSize}>
-                <ArrowRight className="rotate-180" />
-              </Button>
-            </Link>
-          </Tooltip>
-          <Tooltip content={<span>Changelog &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
-            <Link href="/changelog" aria-label="Next: Changelog" className="outline-none" tabIndex={-1}>
-              <Button variant="ghost" size={iconSize}>
-                <ArrowRight />
-              </Button>
-            </Link>
-          </Tooltip>
+          {/* Prev and next share one gliding tooltip. */}
+          <TooltipGroup>
+            <Tooltip content={<span>Showcase &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
+              <Link href="/" aria-label="Previous: Showcase" className="outline-none" tabIndex={-1}>
+                <Button variant="ghost" size={iconSize}>
+                  <ArrowRight className="rotate-180" />
+                </Button>
+              </Link>
+            </Tooltip>
+            <Tooltip content={<span>Changelog &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+              <Link href="/changelog" aria-label="Next: Changelog" className="outline-none" tabIndex={-1}>
+                <Button variant="ghost" size={iconSize}>
+                  <ArrowRight />
+                </Button>
+              </Link>
+            </Tooltip>
+          </TooltipGroup>
         </div>
       </div>
 

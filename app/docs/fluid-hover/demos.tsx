@@ -792,7 +792,9 @@ function CostList({ onMeter }: { onMeter: (m: CostMeter) => void }) {
   return (
     <div
       ref={containerRef}
-      className="relative flex max-h-64 w-full flex-col overflow-y-auto p-2"
+      // scroll-py-1: a row focused at an edge stops 4px short of it, so its
+      // focus ring isn't cut by the scroll box.
+      className="relative flex max-h-64 w-full scroll-py-1 flex-col overflow-y-auto p-2"
       onMouseEnter={() => {
         insideRef.current = true;
         handlers.onMouseEnter();

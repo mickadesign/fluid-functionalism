@@ -76,6 +76,7 @@ import {
   ArrowsInSimple as PhArrowsInSimple,
   DotsSixVertical as PhDotsSixVertical,
   Tag as PhTag,
+  FunnelSimple as PhFunnelSimple,
   CalendarBlank as PhCalendarBlank,
   FolderSimple as PhFolderSimple,
 } from "@phosphor-icons/react";
@@ -168,4 +169,5 @@ export const phosphorIcons: Record<IconName, IconComponent> = {
   "minimize": phosphor(PhArrowsInSimple),
   "grip-vertical": phosphor(PhDotsSixVertical),
   tag: phosphor(PhTag),
+  filter: phosphor(PhFunnelSimple),
 };

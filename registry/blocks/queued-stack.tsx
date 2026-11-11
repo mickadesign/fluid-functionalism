@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fontWeights } from "@/lib/font-weight";
 import { AnimatePresence, motion, useAnimationControls } from "motion/react";
 import { FileThumbnail } from "@/components/ui/file-thumbnail";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
 import { type QueuedMessage } from "@/components/ui/input-message";
 import { useIcons } from "@/lib/icon-context";
 import { nestedRadius, useShape } from "@/lib/shape-context";
@@ -376,34 +376,37 @@ export function QueuedStack({
                         isTouch ? "flex" : "hidden group-hover/qm:flex"
                       }`}
                     >
-                      <Tooltip content="Edit" side="top">
-                        <button
-                          type="button"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(item);
-                          }}
-                          aria-label={`Edit queued message: ${item.text}`}
-                          className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center ${shape.button} text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
-                        >
-                          <PencilIcon size={14} strokeWidth={2} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="Remove" side="top">
-                        <button
-                          type="button"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRemove(item);
-                          }}
-                          aria-label={`Remove queued message: ${item.text}`}
-                          className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center ${shape.button} text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
-                        >
-                          <XIcon size={14} strokeWidth={2.5} />
-                        </button>
-                      </Tooltip>
+                      {/* Edit and Remove share one gliding tooltip. */}
+                      <TooltipGroup>
+                        <Tooltip content="Edit" side="top">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(item);
+                            }}
+                            aria-label={`Edit queued message: ${item.text}`}
+                            className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center ${shape.button} text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+                          >
+                            <PencilIcon size={14} strokeWidth={2} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Remove" side="top">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemove(item);
+                            }}
+                            aria-label={`Remove queued message: ${item.text}`}
+                            className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center ${shape.button} text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+                          >
+                            <XIcon size={14} strokeWidth={2.5} />
+                          </button>
+                        </Tooltip>
+                      </TooltipGroup>
                     </div>
                   </motion.div>
                 );

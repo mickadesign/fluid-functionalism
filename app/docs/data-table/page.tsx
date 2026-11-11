@@ -10,6 +10,8 @@ import { DataTablePlayground } from "@/lib/docs/playgrounds/data-table";
 import {
   TeamTable,
   teamCode,
+  ViewsTable,
+  viewsCode,
   TasksTable,
   tasksCode,
   FilesTable,
@@ -46,7 +48,9 @@ const table = useDataTable({ data: payments, columns });
 
 <div className="flex flex-col gap-3">
   {/* No column: the field searches every column. */}
-  <DataTableSearch table={table} placeholder="Search payments…" />
+  <div className="flex justify-end">
+    <DataTableSearch table={table} placeholder="Search payments…" />
+  </div>
   <DataTable
     table={table}
     empty={{ title: "No payments match", description: "Try an email, a status, or an amount." }}
@@ -105,16 +109,29 @@ export default function DataTableDoc() {
 
       <DocSection title="Selection and actions">
         <p className="text-site-body text-muted-foreground">
-          Select a few people, then press ⌘K to act on all of them at once.
+          Select a few people, then press ⌘K to act on all of them at once. Right-click a row for its
+          menu, or add a filter on a column. Remove someone, then press ⌘Z in the table to bring them
+          back.
         </p>
         <ComponentPreview code={teamCode}>
           <TeamTable />
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Saved views">
+        <p className="text-site-body text-muted-foreground">
+          A view is the table&apos;s state, named: filters, sort and visible columns. Save one, then
+          switch between them.
+        </p>
+        <ComponentPreview code={viewsCode}>
+          <ViewsTable />
+        </ComponentPreview>
+      </DocSection>
+
       <DocSection title="Editable cells">
         <p className="text-site-body text-muted-foreground">
           6 editors, each one the cell itself: click a cell to edit it, press Enter or Esc to leave.
+          Filters follow each editor: a number range on Points, a range of days on Due.
         </p>
         <ComponentPreview code={tasksCode}>
           <TasksTable />
@@ -141,8 +158,9 @@ export default function DataTableDoc() {
 
       <DocSection title="Sorting">
         <p className="text-site-body text-muted-foreground">
-          A column header sorts ascending, then descending, then clears. Shift-click a second header
-          to sort by both. The arrow turns over instead of swapping.
+          Click a column header for its menu: sort either way, add a filter, move the column, or
+          freeze the columns up to it. Shift-click a second header to sort by both. The arrow turns
+          over instead of swapping.
         </p>
         <ComponentPreview code={sortCode}>
           <div className="w-full">

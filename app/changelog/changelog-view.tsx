@@ -13,7 +13,7 @@ import {
 } from "@/registry/default/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { Button } from "@/registry/radix/button";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
 import { useBase } from "@/lib/base-context";
@@ -95,22 +95,25 @@ export function ChangelogView({ releases }: { releases: ReleaseView[] }) {
               Changelog
             </h1>
             <div className="flex items-center gap-1 shrink-0 -my-2">
-              <Tooltip content={<span>Introduction &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
-                <Button asChild variant="ghost" size={iconSize}>
-                  <Link href="/docs" aria-label="Previous: Introduction">
-                    <ArrowRight className="rotate-180" />
-                  </Link>
-                </Button>
-              </Tooltip>
-              {next && (
-                <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+              {/* Prev and next share one gliding tooltip. */}
+              <TooltipGroup>
+                <Tooltip content={<span>Introduction &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
                   <Button asChild variant="ghost" size={iconSize}>
-                    <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
-                      <ArrowRight />
+                    <Link href="/docs" aria-label="Previous: Introduction">
+                      <ArrowRight className="rotate-180" />
                     </Link>
                   </Button>
                 </Tooltip>
-              )}
+                {next && (
+                  <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+                    <Button asChild variant="ghost" size={iconSize}>
+                      <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
+                        <ArrowRight />
+                      </Link>
+                    </Button>
+                  </Tooltip>
+                )}
+              </TooltipGroup>
             </div>
           </div>
           {/* /changelog.md is the same page as one Markdown file, for an
@@ -421,7 +424,7 @@ function Entry({ entry, month, first }: { entry: EntryView; month: string; first
       {entry.diffHtml && (
         <div className="mt-3 flex flex-col items-start gap-3">
           <div
-            className="changelog-diff w-full overflow-x-auto rounded-lg border border-border text-site-caption"
+            className="changelog-diff w-full overflow-x-auto rounded-lg border border-border text-site-caption [&_pre:focus-visible]:outline-offset-[-1px]"
             dangerouslySetInnerHTML={{ __html: entry.diffHtml }}
           />
           <CopyPromptButton

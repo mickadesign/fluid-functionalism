@@ -19,7 +19,6 @@ import {
   type LiHTMLAttributes,
   type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
-  type Ref,
   type RefObject,
 } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -36,7 +35,7 @@ import {
   type ItemRect,
 } from "@/hooks/use-fluid-hover";
 import type { IconComponent } from "@/lib/icon-context";
-import { resolveSlotTemplate, SlotElement } from "@/components/ui/sidebar-core";
+import { resolveSlotTemplate, SlotElement, useTriggerOpen } from "@/components/ui/sidebar-core";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // SSR-safe layout effect (client components still server-render in Next).
@@ -93,6 +92,10 @@ interface MenuItemContextValue {
   hasBadge: boolean;
   setActions: (count: number, showOnHover: boolean) => void;
   setHasBadge: (hasBadge: boolean) => void;
+  /** True while one of the row's actions has its popup open: the row keeps
+   *  its hover gutter and the actions stay shown. */
+  actionOpen: boolean;
+  onActionToggle: (open: boolean) => void;
 }
 
 const MenuItemContext = createContext<MenuItemContextValue | null>(null);
@@ -709,6 +712,13 @@ function useMenuRow(rowRef: RefObject<HTMLLIElement | null>, isSubRow = false) {
     []
   );
 
+  const [openActions, setOpenActions] = useState(0);
+  const onActionToggle = useCallback(
+    (open: boolean) => setOpenActions((n) => Math.max(0, n + (open ? 1 : -1))),
+    []
+  );
+  const actionOpen = openActions > 0;
+
   return useMemo(
     () => ({
       rowRef,
@@ -721,6 +731,8 @@ function useMenuRow(rowRef: RefObject<HTMLLIElement | null>, isSubRow = false) {
       ...trailing,
       setActions,
       setHasBadge,
+      actionOpen,
+      onActionToggle,
     }),
     [
       rowRef,
@@ -733,6 +745,8 @@ function useMenuRow(rowRef: RefObject<HTMLLIElement | null>, isSubRow = false) {
       trailing,
       setActions,
       setHasBadge,
+      actionOpen,
+      onActionToggle,
     ]
   );
 }
@@ -939,7 +953,7 @@ export const sidebarMenuButtonVariants = cva(
   // Disabled stays in the layout, and pointer events pass through it to the
   // row, since a browser sends no mouse events to a disabled button: the
   // container keeps seeing the moves, and fluid hover simply never lights it.
-  "peer/menu-button relative z-10 flex w-full cursor-pointer select-none items-center gap-2 pl-2 text-left outline-none disabled:opacity-50 disabled:pointer-events-none transition-[padding] duration-80 pr-[var(--row-gutter)] group-hover/menu-item:pr-[var(--row-gutter-hover)] group-focus-within/menu-item:pr-[var(--row-gutter-hover)] group-hover/menu-sub-item:pr-[var(--row-gutter-hover)] group-focus-within/menu-sub-item:pr-[var(--row-gutter-hover)] group-has-[[data-sidebar=menu-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/menu-item:pr-[var(--row-gutter-hover)] group-has-[[data-sidebar=menu-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/menu-sub-item:pr-[var(--row-gutter-hover)]",
+  "peer/menu-button relative z-10 flex w-full cursor-pointer select-none items-center gap-2 pl-2 text-left outline-none disabled:opacity-50 disabled:pointer-events-none transition-[padding] duration-80 pr-[var(--row-gutter)] group-hover/menu-item:pr-[var(--row-gutter-hover)] group-focus-within/menu-item:pr-[var(--row-gutter-hover)] group-hover/menu-sub-item:pr-[var(--row-gutter-hover)] group-focus-within/menu-sub-item:pr-[var(--row-gutter-hover)] data-[action-open]:pr-[var(--row-gutter-hover)]",
   {
     variants: {
       variant: {
@@ -1095,6 +1109,7 @@ const SidebarMenuButton = forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
           type: template ? undefined : "button",
           "data-sidebar": "menu-button",
           "data-size": size,
+          "data-action-open": item?.actionOpen ? "" : undefined,
           "data-active": effectiveActive ? "true" : undefined,
           "data-status": status,
           "aria-current": effectiveActive ? "page" : undefined,
@@ -1131,6 +1146,7 @@ const SidebarMenuAction = forwardRef<HTMLButtonElement, SidebarMenuActionProps>(
     const item = useContext(MenuItemContext);
     const inCluster = useContext(MenuActionsClusterContext);
     const { template, content } = resolveSlotTemplate(render, asChild, children);
+    const watchOpen = useTriggerOpen(item?.onActionToggle);
 
     // A lone action registers its own slot; inside a cluster the wrapper
     // registers the whole count and each action flows in its row.
@@ -1144,7 +1160,11 @@ const SidebarMenuAction = forwardRef<HTMLButtonElement, SidebarMenuActionProps>(
       <SlotElement
         template={template}
         defaultTag="button"
-        elementRef={ref as Ref<HTMLElement>}
+        elementRef={(node: HTMLElement | null) => {
+          watchOpen(node);
+          if (typeof ref === "function") ref(node as HTMLButtonElement | null);
+          else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+        }}
         props={{
           type: template ? undefined : "button",
           "data-sidebar": "menu-action",
@@ -1158,10 +1178,9 @@ const SidebarMenuAction = forwardRef<HTMLButtonElement, SidebarMenuActionProps>(
             inCluster
               ? "relative flex size-6 shrink-0 items-center justify-center text-muted-foreground outline-none"
               : "absolute right-1.5 z-10 flex size-6 items-center justify-center text-muted-foreground outline-none",
-            !inCluster &&
-              (item?.isSubRow
-                ? "group-has-[>[data-sidebar=menu-badge]]/menu-sub-item:right-8.5"
-                : "group-has-[>[data-sidebar=menu-badge]]/menu-item:right-8.5"),
+            // Read from the row, not a `:has()` rule: those made Chrome
+            // restyle the whole page on every DOM insertion anywhere.
+            !inCluster && item?.hasBadge && "right-8.5",
             !inCluster && ACTION_TOP,
             "hover:bg-hover hover:text-foreground transition-[color,background-color,opacity] duration-80",
             "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -1226,19 +1245,18 @@ const SidebarMenuActions = forwardRef<HTMLDivElement, SidebarMenuActionsProps>(
       <div
         ref={ref}
         data-sidebar="menu-actions"
+        data-action-open={item?.actionOpen ? "" : undefined}
         className={cn(
           "absolute right-1.5 z-10 flex items-center gap-1",
           // The badge keeps the rightmost slot; the cluster sits left of it.
-          item?.isSubRow
-            ? "group-has-[>[data-sidebar=menu-badge]]/menu-sub-item:right-8.5"
-            : "group-has-[>[data-sidebar=menu-badge]]/menu-item:right-8.5",
+          item?.hasBadge && "right-8.5",
           ACTION_TOP,
           showOnHover &&
             (item?.isSubRow
-              ? "opacity-0 transition-opacity duration-80 group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:opacity-100 has-[[data-state=open]]:opacity-100 has-[[data-popup-open]]:opacity-100"
+              ? "opacity-0 transition-opacity duration-80 group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:opacity-100 data-[action-open]:opacity-100"
               // Peer-scoped for the same reason as a lone action: the row's
               // <li> also wraps its sub-menu.
-              : "opacity-0 transition-opacity duration-80 peer-hover/menu-button:opacity-100 peer-focus-visible/menu-button:opacity-100 hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 has-[[data-popup-open]]:opacity-100"),
+              : "opacity-0 transition-opacity duration-80 peer-hover/menu-button:opacity-100 peer-focus-visible/menu-button:opacity-100 hover:opacity-100 focus-within:opacity-100 data-[action-open]:opacity-100"),
           className
         )}
         {...props}
@@ -1492,12 +1510,13 @@ const SidebarMenuSubButton = forwardRef<HTMLAnchorElement, SidebarMenuSubButtonP
         props={{
           "data-sidebar": "menu-sub-button",
           "data-size": size,
+          "data-action-open": item?.actionOpen ? "" : undefined,
           "data-active": isActive ? "true" : undefined,
           "aria-current": isActive ? "page" : undefined,
           tabIndex: tabIdx,
           className: cn(
             "relative z-10 flex w-full cursor-pointer select-none items-center gap-2 pl-2 text-left outline-none",
-            "transition-[padding] duration-80 pr-[var(--row-gutter)] group-hover/menu-sub-item:pr-[var(--row-gutter-hover)] group-focus-within/menu-sub-item:pr-[var(--row-gutter-hover)] group-has-[[data-sidebar=menu-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/menu-sub-item:pr-[var(--row-gutter-hover)]",
+            "transition-[padding] duration-80 pr-[var(--row-gutter)] group-hover/menu-sub-item:pr-[var(--row-gutter-hover)] group-focus-within/menu-sub-item:pr-[var(--row-gutter-hover)] data-[action-open]:pr-[var(--row-gutter-hover)]",
             size === "sm" ? "h-6" : sizeClasses.variant === "compact" ? "h-6" : "h-7",
             shape.item,
             className

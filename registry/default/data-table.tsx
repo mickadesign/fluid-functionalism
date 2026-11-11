@@ -1,17 +1,20 @@
 "use client";
 
 import {
+  Children,
   Fragment,
   createContext,
   forwardRef,
   memo,
   useContext,
   useEffect,
+  useCallback,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type HTMLAttributes,
   type FocusEvent,
   type KeyboardEvent,
@@ -39,9 +42,11 @@ import {
 import { createPortal, flushSync } from "react-dom";
 import {
   AnimatePresence,
+  PresenceContext,
   animate,
   motion,
   Reorder,
+  usePresence,
   useDragControls,
   useMotionValue,
   useReducedMotion,
@@ -51,7 +56,7 @@ import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
-import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
+import { SizeProvider, typeClass, useSize, type SizeVariant } from "@/lib/size-context";
 import {
   Table,
   TableBody,
@@ -66,13 +71,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   DropdownContent,
+  DropdownEmpty,
+  DropdownSearch,
   DropdownLabel,
   DropdownSeparator,
   DropdownMenu,
   DropdownTrigger,
 } from "@/components/ui/dropdown";
 import { MenuItem } from "@/components/ui/menu-item";
-import { Tooltip } from "@/components/ui/tooltip";
+import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
+import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -128,6 +138,15 @@ declare module "@tanstack/react-table" {
     /** An icon before the header's title. DataTable draws it for a string
      *  `header`; DataTableColumnHeader draws it inside its sort button. */
     icon?: IconComponent;
+    /** How DataTableFilters filters the column: `"text"` (contains),
+     *  `"number"` (a min and a max), `"date"` (a range of days), options
+     *  (pick any of them), or `false` to leave it out. Omitted, it follows
+     *  the column's editor, then its values (numbers, ISO days, a few
+     *  repeated strings, or text). */
+    filter?: DataTableFilterKind | false;
+    /** A row's menu items, opened from its ⋯ and by right-clicking the row
+     *  (rowActionsColumn sets it). */
+    rowMenu?: (row: Row<TData>) => ReactNode;
     /** Makes the column's cells editable when DataTable has `onCellEdit`:
      *  `"text"` a text field, `"number"` a field with a list of `options`
      *  that also takes any number typed, `"date"` a date picker, `"tags"` a
@@ -162,6 +181,66 @@ type DataTableEditor =
  *  the menu shows as the option's dot (match the cell's badge). */
 type DataTableSelectOption = string | { value: string; label?: string; color?: BadgeColor };
 
+/** A text filter's condition, in the order its menu lists them. */
+const TEXT_OPS = [
+  "is",
+  "is not",
+  "contains",
+  "does not contain",
+  "starts with",
+  "ends with",
+  "is empty",
+  "is not empty",
+] as const;
+type DataTableTextOp = (typeof TEXT_OPS)[number];
+
+/** The search's text, on every column (a string) or on one. */
+type DataTableSearchValue = string | { column: string; query: string };
+
+/** The global filter's test, which DataTableSearch sets: the text, without
+ *  case, in any column, or in the one column it names. */
+function dataTableSearchFn<TData>(row: Row<TData>, columnId: string, search: DataTableSearchValue) {
+  const query = (typeof search === "string" ? search : search?.query ?? "").trim().toLowerCase();
+  if (!query) return true;
+  if (typeof search === "object" && search.column !== columnId) return false;
+  const value = row.getValue(columnId);
+  const text = Array.isArray(value) ? value.join(" ") : String(value ?? "");
+  return text.toLowerCase().includes(query);
+}
+
+/** How a column filters (see `meta.filter`). */
+type DataTableFilterKind =
+  | "text"
+  | "number"
+  | "date"
+  | { type: "options"; options: readonly DataTableSelectOption[] };
+
+/** A column's filter value, as DataTableFilters sets it. A plain string
+ *  (DataTableSearch on one column) means "contains". */
+type DataTableFilterValue =
+  | string
+  | {
+      kind: "text";
+      query: string;
+      /** How the text matches. @default "contains" */
+      op?: DataTableTextOp;
+    }
+  | {
+      kind: "options";
+      values: string[];
+      /** Rows with any of the values, or with none of them. @default "is" */
+      op?: "is" | "is not";
+    }
+  | { kind: "number"; min?: number; max?: number }
+  | {
+      kind: "date";
+      /** Between `from` and `to` (both days included), before `to`, or
+       *  after `from`. @default "between" */
+      op?: "between" | "before" | "after";
+      from?: string;
+      to?: string;
+    };
+
 /** One edit, as DataTable's `onCellEdit` receives it. Write `value` into
  *  your data: the table shows what your data holds. */
 interface DataTableCellEdit<TData> {
@@ -184,6 +263,28 @@ type UseDataTableOptions<TData> = Omit<TableOptions<TData>, "getCoreRowModel"> &
   pageSize?: number;
 };
 
+/** A column definition's id, as TanStack derives it: its `id`, else its
+ *  accessorKey (dots become underscores), else a string `header`. */
+function defId<TData>(def: ColumnDef<TData, unknown>): string | undefined {
+  if (def.id !== undefined) return def.id;
+  if ("accessorKey" in def && def.accessorKey != null) return String(def.accessorKey).replace(/\./g, "_");
+  return typeof def.header === "string" ? def.header : undefined;
+}
+
+/** The definitions that become columns, through any column groups. */
+function leafDefs<TData>(defs: ColumnDef<TData, unknown>[]): ColumnDef<TData, unknown>[] {
+  return defs.flatMap((def) => ("columns" in def && def.columns ? leafDefs(def.columns) : [def]));
+}
+
+function defaultPinning<TData>(columns: ColumnDef<TData, unknown>[]) {
+  const ids = leafDefs(columns).map(defId);
+  const first = ids.find((id) => id !== undefined && id !== "select" && id !== "actions");
+  return {
+    left: [...(ids.includes("select") ? ["select"] : []), ...(first ? [first] : [])],
+    right: ids.includes("actions") ? ["actions"] : [],
+  };
+}
+
 /** useReactTable with the row models every part here reads: sorted,
  *  filtered and paginated. Anything TanStack accepts still goes through. */
 function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDataTableOptions<TData>) {
@@ -205,8 +306,22 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     sortDescFirst: false,
     // Widths follow the pointer while a resize handle is dragged.
     columnResizeMode: "onChange",
+    // The search reads every column with an accessor. TanStack's own rule
+    // goes by the first row's value (a string or a number), which leaves
+    // out tags, dates, and any column whose first row is empty.
+    getColumnCanGlobalFilter: () => true,
     ...options,
+    // Every column filters the way DataTableFilters sets it, unless it
+    // brings its own filterFn; DataTableSearch has the global filter.
+    defaultColumn: { filterFn: dataTableFilterFn, ...options.defaultColumn },
+    globalFilterFn: options.globalFilterFn ?? dataTableSearchFn,
     initialState: {
+      // A wide table keeps its edges in view: the boxes and the first data
+      // column on the left, the row menus on the right. They only stick
+      // once the table scrolls sideways. Pass `columnPinning` to choose
+      // others, or `enableColumnPinning: false` for none.
+      columnPinning:
+        options.enableColumnPinning === false ? { left: [], right: [] } : defaultPinning(options.columns),
       ...initialState,
       pagination: { pageIndex: 0, pageSize, ...initialState?.pagination },
     },
@@ -226,6 +341,17 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // can hand focus to the rows.
   const focusRef = useRef<() => boolean>(() => false);
   const rootRef = useRef<() => HTMLElement | null>(() => null);
+  // The filter a part asked to open (a column's header menu, the Filter
+  // menu): DataTableFilterChips opens that chip's editor. The count opens
+  // a chip that's already there again.
+  const [filterRequest, setFilterRequest] = useState<{ id: string; n: number } | null>(null);
+  // How many DataTableFilterChips are mounted to show added filters.
+  // State, not a ref: the headers' menus read it while rendering (their
+  // Filter item), so mounting or unmounting the chips must redraw them.
+  const [chipsMounted, setChipsMounted] = useState(0);
+  // One function for the table's life: the chips register in an effect
+  // keyed on it, which a new one per view would re-run on every change.
+  const registerChips = useCallback((mounted: boolean) => setChipsMounted((n) => n + (mounted ? 1 : -1)), []);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -242,6 +368,21 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           rootRef.current = get;
         },
         getRootElement: () => rootRef.current(),
+        filterRequest,
+        _registerChips: registerChips,
+        openFilter: (id: string) => {
+          const column = table.getColumn(id);
+          const kind = column ? filterOf(table, column) : null;
+          if (!column || !kind) return false;
+          // A filter that's already set just opens again.
+          if (!table.getState().columnFilters.some((f) => f.id === id)) {
+            column.setFilterValue(emptyFilter(kind.type));
+            table.setPageIndex(0);
+          }
+          setFilterRequest((old) => ({ id, n: (old?.n ?? 0) + 1 }));
+          return true;
+        },
+        canOpenFilter: () => chipsMounted > 0,
         setColumnLines: (id: string, lines: ColumnLines | undefined) => {
           captureRef.current();
           setLines((old) => {
@@ -253,7 +394,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
         },
       }) as DataTableInstance<TData>,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state is the trigger
-    [table, state, columnLines]
+    [table, state, columnLines, filterRequest, chipsMounted]
   );
 }
 
@@ -279,6 +420,15 @@ interface DataTableExtras {
   _registerRoot: (get: () => HTMLElement | null) => void;
   /** Overrides a column's `meta.lines`; `undefined` hands it back. */
   setColumnLines: (id: string, lines: ColumnLines | undefined) => void;
+  /** Adds a filter on the column (or opens the one it has), its chip's
+   *  editor open. False when the column can't filter. */
+  openFilter: (id: string) => boolean;
+  /** Whether a DataTableFilterChips is mounted to show added filters. */
+  canOpenFilter: () => boolean;
+  /** The filter last asked to open, counted. */
+  filterRequest: { id: string; n: number } | null;
+  /** @internal DataTableFilterChips counts itself here. */
+  _registerChips: (mounted: boolean) => void;
 }
 
 type DataTableInstance<TData> = TanStackTable<TData> & DataTableExtras;
@@ -302,7 +452,9 @@ interface DataTableProps<TData> {
   /** Pins every row to one step of the size ladder (36px or 28px). Omitted,
    *  rows follow the surrounding SizeProvider. */
   size?: SizeVariant;
-  /** What the body says with no rows. Defaults to "No results". */
+  /** What the body says with no rows. Defaults to "No results"; with
+   *  column filters set, the description and action you leave out say
+   *  "Remove a filter to see more." and offer Clear filter(s). */
   empty?: DataTableEmpty;
   /** Makes body rows clickable. Clicks on a control inside the row (the
    *  selection box, a row menu) don't count. The rows also become one tab
@@ -344,6 +496,11 @@ interface DataTableProps<TData> {
    *  editor (an open list or calendar closes first); what was typed
    *  stays. */
   onCellEdit?: (edit: DataTableCellEdit<TData>) => void;
+  /** ⌘Z / Ctrl+Z while focus is in the table (a field being edited keeps
+   *  its own undo). Pair with useUndoableRows. */
+  onUndo?: () => void;
+  /** ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y while focus is in the table. */
+  onRedo?: () => void;
   className?: string;
 }
 
@@ -354,6 +511,10 @@ const SWAP_MS = 400;
 // Skeleton bars vary in width like real text does; a fixed cycle keeps
 // server and client renders identical.
 const SKELETON_WIDTHS = [72, 56, 88, 64, 48, 80, 60];
+
+// The library's loading fill, the sidebar's skeleton color: the hover tint
+// (4% of the foreground), lighter than shadcn Skeleton's own bg-accent.
+const SKELETON_FILL = "bg-hover";
 
 // Skeleton corners follow the shape setting, as the controls they stand in
 // for do: the checkbox's own radius for its square, and for text bars the
@@ -384,13 +545,14 @@ function skeletonFor(
         // 14px / 4px compact, square when sharp).
         <Skeleton
           className={cn(
+            SKELETON_FILL,
             compact ? "size-[14px]" : "size-4",
             (compact ? SKELETON_BOX_RADIUS_COMPACT : SKELETON_BOX_RADIUS)[shape]
           )}
         />
       ) : (
         <Skeleton
-          className={cn("h-2.5", SKELETON_BAR_RADIUS[shape])}
+          className={cn(SKELETON_FILL, "h-2.5", SKELETON_BAR_RADIUS[shape])}
           style={{ width: `${SKELETON_WIDTHS[(row * 3 + col) % SKELETON_WIDTHS.length]}%` }}
         />
       )}
@@ -424,10 +586,80 @@ const EDGE_SCROLL_MAX_DT = 50;
 // Keyboard resizing moves a column this many px per arrow press.
 const RESIZE_STEP = 16;
 const MIN_COLUMN_WIDTH = 48;
+/** The row-menu column: its 28px button with 4px each side, 4px less in
+ *  compact (the button flush right, on the compact controls' line). */
+const ACTIONS_WIDTH = 36;
+const ACTIONS_COMPACT_TRIM = 4;
+
+/** How wide a header's own content is (text or elements), leaving out the
+ *  resize handle and the drop marker. */
+function headerWidth(th: HTMLElement) {
+  let left = Infinity;
+  let right = -Infinity;
+  const range = document.createRange();
+  th.childNodes.forEach((node) => {
+    // Layers laid over the cell (the resize handle, the menu's hidden
+    // trigger, a pinned cell's fills) aren't its content.
+    if (node instanceof HTMLElement) {
+      if (node.hasAttribute("data-resize-handle")) return;
+      const position = getComputedStyle(node).position;
+      if (position === "absolute" || position === "fixed") return;
+    }
+    range.selectNode(node);
+    const r = range.getBoundingClientRect();
+    if (r.width === 0) return;
+    left = Math.min(left, r.left);
+    right = Math.max(right, r.right);
+  });
+  return right > left ? right - left : 0;
+}
+
+/** The `size` a column definition sets itself (TanStack fills in 150 for
+ *  the rest), looked up by id through any column groups. */
+function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number | undefined {
+  for (const def of defs) {
+    if (defId(def) === id) return def.size;
+    if ("columns" in def && def.columns) {
+      const found = ownSize(def.columns, id);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
+// The most width a column takes for its content alone: past this, its
+// text wraps or cuts short rather than crowd the columns beside it.
+const NATURAL_CAP = 240;
+
+/** A clear layer laid over the page, just under an open menu: the pointer
+ *  lights nothing else (no row, header or toolbar button) until the menu
+ *  closes, and a press on it is a press outside the menu, which closes it. */
+function MenuShield({ open, onClose }: { open: boolean; onClose?: () => void }) {
+  if (!open || typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      aria-hidden
+      data-slot="data-table-menu-shield"
+      className="fixed inset-0 z-[calc(var(--z-popover,60)-1)]"
+      onPointerDown={onClose}
+    />,
+    document.body
+  );
+}
+
+/** What a header's menu acts on: the table, and whether its columns move. */
+const HeaderMenuContext = createContext<{
+  table: TanStackTable<unknown>;
+  reorder: boolean;
+} | null>(null);
+
+// The table last clicked or focused, for the page-level undo keys.
+let lastUsedTable: HTMLElement | null = null;
 
 /** Data columns (with an accessor) move; selection and action columns hold
- *  their place at the ends. */
-const canReorder = <TData,>(column: Column<TData, unknown>) => column.accessorFn !== undefined;
+ *  their place at the ends, and pinned columns at theirs. */
+const canReorder = <TData,>(column: Column<TData, unknown>) =>
+  column.accessorFn !== undefined && !column.getIsPinned();
 
 /** Moves `id` before or after `refId` among the reorderable columns, leaving
  *  every other column in its slot. */
@@ -461,6 +693,8 @@ function DataTable<TData>({
   loading = false,
   loadingRows,
   onCellEdit,
+  onUndo,
+  onRedo,
   className,
 }: DataTableProps<TData>) {
   "use no memo";
@@ -477,6 +711,7 @@ function DataTable<TData>({
     : liveRows;
   const visible = table.getVisibleLeafColumns();
   const columnCount = visible.length;
+  const filterCount = table.getState().columnFilters.length;
   // The last resizable column takes whatever width is left, so fixed
   // columns after it (a row menu) keep theirs.
   // Taller rows read best from the top line down.
@@ -488,6 +723,16 @@ function DataTable<TData>({
         return l === 2 || l === "wrap";
       }));
   const flexId = [...visible].reverse().find((c) => c.getCanResize())?.id;
+  // What a body row's cells depend on beyond the row itself: the visible
+  // columns in order and how each fits its text. Rows re-render when this,
+  // their record, their selection or the columns change, and not on every
+  // state change of the table (a Shift + arrow step re-rendered every cell,
+  // editors and all).
+  // (A header icon counts too: it widens the header, so the widths are
+  // measured again.)
+  const layoutKey = visible
+    .map((c) => `${c.id}:${linesOf(table, c) ?? ""}:${c.columnDef.meta?.icon ? "i" : ""}`)
+    .join("|");
   // An empty body holds a page's worth of rows (as many as were showing
   // before the filter emptied it), so the pagination under the table stays
   // put while a filter runs dry.
@@ -557,6 +802,13 @@ function DataTable<TData>({
   // pagination under it glides. Nothing is measured on other renders.
   const reduceMotion = useReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null);
+  // The scroll box, as state too: expanding a preview (or any remount)
+  // gives the table a new one, and the effects that listen to it follow.
+  const [wrapEl, setWrapEl] = useState<HTMLDivElement | null>(null);
+  const setWrap = useCallback((node: HTMLDivElement | null) => {
+    wrapRef.current = node;
+    setWrapEl(node);
+  }, []);
   const snapshot = useRef<{
     lefts: Map<string, number>;
     tops: Map<string, number>;
@@ -576,6 +828,50 @@ function DataTable<TData>({
     snapshot.current = { lefts, tops, height: wrap.offsetHeight };
   };
   // Parts outside the table (the Columns menu) reach it through the table.
+  // Undo keys from the page too: a row menu, the selection bar or a toast
+  // can hand focus back to the page after an action, and ⌘Z should still
+  // take it back. Only the table used last answers, and only while nothing
+  // else holds focus (a field keeps its own undo).
+  const undoRef = useRef({ onUndo, onRedo });
+  useLayoutEffect(() => {
+    undoRef.current = { onUndo, onRedo };
+  });
+  const hasUndo = !!(onUndo || onRedo);
+  useEffect(() => {
+    const root = wrapEl;
+    if (!hasUndo || !root) return;
+    const use = (e: Event) => {
+      const target = e.target as Element | null;
+      // The table stays the one in use until another is: its menus, the
+      // selection bar and a toast's Undo all live outside its box.
+      if (target && root.contains(target)) lastUsedTable = root;
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (lastUsedTable !== root || e.defaultPrevented) return;
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.altKey) return;
+      const letter = e.key.toLowerCase();
+      const { onUndo: undo, onRedo: redo } = undoRef.current;
+      if (((letter === "z" && e.shiftKey) || (letter === "y" && e.ctrlKey && !e.metaKey)) && redo) {
+        e.preventDefault();
+        redo();
+      } else if (letter === "z" && !e.shiftKey && undo) {
+        e.preventDefault();
+        undo();
+      }
+    };
+    document.addEventListener("pointerdown", use, true);
+    document.addEventListener("focusin", use, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", use, true);
+      document.removeEventListener("focusin", use, true);
+      document.removeEventListener("keydown", onKey);
+      if (lastUsedTable === root) lastUsedTable = null;
+    };
+  }, [hasUndo, wrapEl]);
+
   // Filled, the header's hairline shows once the rows have scrolled: the
   // viewport marks the root, without a re-render on every scroll.
   useEffect(() => {
@@ -589,7 +885,7 @@ function DataTable<TData>({
       viewport.removeEventListener("scroll", mark);
       root.removeAttribute("data-scrolled");
     };
-  }, [fill]);
+  }, [fill, wrapEl]);
 
   // Opening and closing sub-rows: rows below jump to their new places in
   // one frame, with the selection fill and the highlight (Table snaps them
@@ -720,6 +1016,9 @@ function DataTable<TData>({
     label: string,
     icon: IconComponent | undefined
   ) => {
+    // A press in the header's menu (portalled, but bubbling here through
+    // React) isn't one on the cell.
+    if (!e.currentTarget.contains(e.target as Node)) return;
     if (e.button !== 0 || (e.target as Element).closest("[data-resize-handle]")) return;
     const startX = e.clientX;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -803,6 +1102,7 @@ function DataTable<TData>({
   };
 
   const moveByKey = (e: KeyboardEvent<HTMLTableCellElement>, id: string) => {
+    if (!e.currentTarget.contains(e.target as Node)) return;
     if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     const ids = visible.filter(canReorder).map((c) => c.id);
     const i = ids.indexOf(id);
@@ -813,23 +1113,210 @@ function DataTable<TData>({
     moveColumn(table, id, refId, e.key === "ArrowLeft" ? "before" : "after");
   };
 
-  // Resizing starts from the widths the table lays out on its own: the
-  // first render is auto layout, then each column's width is read once and
-  // the table switches to fixed layout at those widths.
+  // Columns start at their content's width. Each column is measured once
+  // per page of rows at its widest on one line, header included, and
+  // capped at NATURAL_CAP (a column's min width, or its header, can take
+  // it past). Those widths fill the box; the column that takes the rest (a
+  // `w-full` one, or the last resizable) gets what's left over. Short of
+  // room, the columns that can shrink give it up together, none narrower
+  // than its header, and past that the table scrolls sideways instead of
+  // cutting a name in two. A column `size` always wins.
+  // With resizeColumns the widths seed the sizing once and are yours from
+  // there; without, they follow the box as it resizes.
   const sizing = table.getState().columnSizing;
   const seeded = Object.keys(sizing).length > 0;
+  const restId = resizeColumns
+    ? flexId
+    : (visible.find((c) => /(^|\s)w-full(\s|$)/.test(c.columnDef.meta?.className ?? ""))?.id ??
+      [...visible].reverse().find((c) => c.accessorFn !== undefined)?.id);
+  const natural = useRef<{ id: string; width: number; floor: number; fixed: boolean }[] | null>(null);
+  const [fitted, setFitted] = useState<Record<string, number> | null>(null);
+  const fit = useCallback(() => {
+    const cols = natural.current;
+    const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!cols || !viewport) return null;
+    const total = cols.reduce((sum, c) => sum + c.width, 0);
+    const deficit = total - viewport.clientWidth;
+    const give = cols.reduce((sum, c) => sum + (c.fixed ? 0 : c.width - c.floor), 0);
+    const share = deficit > 0 && give > 0 ? Math.min(1, deficit / give) : 0;
+    return Object.fromEntries(
+      cols.map((c) => [c.id, Math.round(c.fixed ? c.width : c.width - (c.width - c.floor) * share)])
+    );
+  }, []);
+  // Measured again when the rows change in number, not when they're
+  // sorted, searched or edited: widths that jumped with every keystroke
+  // and every sort would be worse than ones read once.
+  const pageKey = `${table.options.data.length}:${table.getState().pagination.pageSize}`;
+  // Rows gaining sub-rows (or losing them) widen the chevron's column: read again.
+  const hasSubRows = table.getCanSomeRowsExpand();
+  // Read through a ref: useDataTable hands out a new view of the table on
+  // every state change, and as a dependency it measured the columns again
+  // on every sort, selection and keystroke.
+  const tableRef = useRef(table);
   useLayoutEffect(() => {
-    if (!resizeColumns || seeded) return;
-    const widths: Record<string, number> = {};
-    headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]").forEach((th) => {
-      widths[th.dataset.columnId!] = Math.round(th.getBoundingClientRect().width);
-    });
-    // Nothing measured (no visible columns yet): setting an empty sizing
+    tableRef.current = table;
+  });
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (resizeColumns && seeded) return;
+    const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
+    const ths = headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]");
+    // Nothing measured (no visible columns yet): setting empty widths
     // would only re-render into this same effect, forever.
-    if (Object.keys(widths).length === 0) return;
-    table.setColumnSizing((old) => ({ ...widths, ...old }));
-  }, [resizeColumns, seeded, table]);
-  const sized = resizeColumns && seeded;
+    if (!tableNode || !ths?.length) return;
+    // The column that carries the sub-rows' chevron (see expanderId below).
+    const expanderId = table.getCanSomeRowsExpand()
+      ? table.getVisibleLeafColumns().find((c) => c.accessorFn !== undefined)?.id
+      : undefined;
+    // Measured at max-content, every cell on one line, in one synchronous
+    // pass that never paints.
+    const saved = tableNode.style.cssText;
+    tableNode.style.cssText = "table-layout:auto;width:max-content;min-width:0";
+    tableNode.setAttribute("data-measuring", "");
+    natural.current = Array.from(ths).map((th) => {
+      const id = th.dataset.columnId!;
+      const column = table.getColumn(id);
+      const css = getComputedStyle(th);
+      const pad = parseFloat(css.paddingLeft) + parseFloat(css.paddingRight);
+      const head = headerWidth(th) + pad;
+      let floor = Math.ceil(Math.max(head, parseFloat(css.minWidth) || 0));
+      let content = th.getBoundingClientRect().width;
+      // The chevron's column also fits its sub-rows' text, which a
+      // collapsed row doesn't render: read from the data in the cell's own
+      // font, plus the cell's padding and the chevron's 24px slot and 4px
+      // gap, so opening a row never finds its children's names cut or
+      // wrapped.
+      if (id === expanderId) {
+        const sample = tableNode.querySelector<HTMLElement>(`tbody td[data-column-id="${id}"] span.min-w-0`);
+        const cellCss = sample?.closest("td") ? getComputedStyle(sample.closest("td")!) : null;
+        if (sample && cellCss) {
+          let widest = 0;
+          let widestWord = 0;
+          for (const r of table.getCoreRowModel().flatRows) {
+            const value = r.getValue(id);
+            if (value == null || value === "") continue;
+            const text = String(value);
+            if (r.depth > 0) widest = Math.max(widest, textWidth(sample, text));
+            for (const word of text.split(/\s+/)) if (word) widestWord = Math.max(widestWord, textWidth(sample, word));
+          }
+          const chrome = parseFloat(cellCss.paddingLeft) + parseFloat(cellCss.paddingRight) + 24 + 4;
+          if (widest > 0) content = Math.max(content, widest + chrome);
+          // Short of room, a column gives up width down to its floor, and a
+          // wrapping name would then break inside a word ("FieldDescripti /
+          // on"). This one never goes narrower than its widest word, parents
+          // and sub-rows alike, so names wrap between words only.
+          if (widestWord > 0) floor = Math.max(floor, Math.ceil(Math.min(widestWord + chrome, NATURAL_CAP)));
+        }
+      }
+      const size = ownSize(table.options.columns, id);
+      const own = size !== undefined || !column?.getCanResize();
+      return {
+        id,
+        width: size !== undefined ? size : Math.ceil(own ? content : Math.max(Math.min(content, NATURAL_CAP), floor)),
+        floor,
+        // Pinned columns keep theirs too: scrolling, not cutting, makes room.
+        fixed: own || !!column?.getIsPinned(),
+      };
+    });
+    tableNode.removeAttribute("data-measuring");
+    tableNode.style.cssText = saved;
+    if (resizeColumns) {
+      const widths = fit();
+      if (widths) table.setColumnSizing((old) => ({ ...widths, ...old }));
+      return;
+    }
+    // Without resizing, the widths follow the box. The observer reports
+    // the box once on observing too, before the next paint.
+    const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => {
+      const widths = fit();
+      if (widths) setFitted((old) => (JSON.stringify(old) === JSON.stringify(widths) ? old : widths));
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+    // `loading` too: skeleton rows give way to real ones of other widths.
+  }, [resizeColumns, seeded, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl, hasSubRows, loading]);
+  const sized = resizeColumns ? seeded : fitted !== null;
+  // The row-menu column hugs its button: 4px narrower in compact, where the
+  // button sits flush right on the compact controls' center line.
+  const trim = (id: string, w: number) => (id === "actions" && sizeClasses.variant === "compact" ? w - ACTIONS_COMPACT_TRIM : w);
+  const actionsShown = !!table.getAllLeafColumns().find((c) => c.id === "actions")?.getIsVisible();
+  const widthOf = (id: string, size: number) => {
+    const w = resizeColumns ? size : fitted?.[id];
+    return w === undefined ? undefined : trim(id, w);
+  };
+  // Pinned columns stick to their edge, each offset by the pinned columns
+  // between it and the edge. Unsized (before the widths are measured),
+  // nothing sticks.
+  const pinWidth = (column: Column<TData, unknown>) =>
+    trim(column.id, (resizeColumns ? column.getSize() : fitted?.[column.id]) ?? 0);
+  const pinsKey = sized
+    ? [
+        ...table.getLeftVisibleLeafColumns().map((c) => `l:${c.id}:${pinWidth(c)}`),
+        ...table.getRightVisibleLeafColumns().map((c) => `r:${c.id}:${pinWidth(c)}`),
+      ].join("|")
+    : "";
+  const pins = useMemo(() => {
+    const map: Record<string, PinInfo> = {};
+    if (!pinsKey) return map;
+    const lefts = pinsKey.split("|").filter((p) => p.startsWith("l:")).map((p) => p.split(":"));
+    const rights = pinsKey.split("|").filter((p) => p.startsWith("r:")).map((p) => p.split(":"));
+    let at = 0;
+    lefts.forEach(([, id, w], i) => {
+      map[id] = { side: "left", offset: at, edge: i === lefts.length - 1, outer: i === 0 && visible[0]?.id === id };
+      at += Number(w);
+    });
+    at = 0;
+    [...rights].reverse().forEach(([, id, w], i) => {
+      map[id] = { side: "right", offset: at, edge: i === rights.length - 1, outer: i === 0 && visible[visible.length - 1]?.id === id };
+      at += Number(w);
+    });
+    return map;
+    // visible is read for the outer column only, which pinsKey's order settles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinsKey]);
+  const pinnedLeft = pinsKey.includes("l:");
+  const pinnedRight = pinsKey.includes("r:");
+  // How far the pinned columns reach in from each side: the scroll fade
+  // sits there, at the divider, rather than on the box's outer edges.
+  const pinWidths = pinsKey
+    .split("|")
+    .filter(Boolean)
+    .reduce(
+      (sum, p) => {
+        const [side, , w] = p.split(":");
+        return side === "l" ? { ...sum, l: sum.l + Number(w) } : { ...sum, r: sum.r + Number(w) };
+      },
+      { l: 0, r: 0 }
+    );
+  // Where the table sits in its sideways scroll, on the root, for the
+  // pinned cells: opaque (with copies of the row fills) and edged with a
+  // hairline only while content passes under them.
+  useEffect(() => {
+    const root = wrapRef.current;
+    const viewport = root?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!root || !viewport) return;
+    const mark = () => {
+      const max = viewport.scrollWidth - viewport.clientWidth;
+      root.toggleAttribute("data-x-start", viewport.scrollLeft > 0.5);
+      root.toggleAttribute("data-x-end", max - viewport.scrollLeft > 0.5);
+      // The visible width, for what stays put while the table scrolls (the
+      // empty state's message).
+      root.style.setProperty("--table-view-w", `${viewport.clientWidth}px`);
+    };
+    mark();
+    viewport.addEventListener("scroll", mark, { passive: true });
+    const observer = new ResizeObserver(mark);
+    observer.observe(viewport);
+    const content = viewport.firstElementChild;
+    if (content) observer.observe(content);
+    return () => {
+      viewport.removeEventListener("scroll", mark);
+      observer.disconnect();
+    };
+    // Re-run once the widths are in, and for a new scroll box.
+  }, [sized, wrapEl]);
   // Keys, like a spreadsheet's rows (Google Sheets, Gmail):
   //   ↓ on a header  the first row
   //   ↑ / ↓          the row above / below; Home / End the first / last.
@@ -853,8 +1340,13 @@ function DataTable<TData>({
   // The far end of a Shift + arrow range, so the next step can shrink it.
   const rangeHead = useRef<string | null>(null);
   const extendTo = (fromId: string, toId: string) => {
-    const anchor = selectionAnchors.get(table.getState) ?? fromId;
     const ids = rows.map((r) => r.id);
+    // A range needs its anchor among these rows (as a shift-click does):
+    // one left on another page starts over from the focused row.
+    const stored = selectionAnchors.get(table.getState);
+    const onPage = stored !== undefined && ids.includes(stored);
+    if (!onPage) rangeHead.current = null;
+    const anchor = onPage ? stored : fromId;
     const span = (a: string, b: string) => {
       const i = ids.indexOf(a);
       const j = ids.indexOf(b);
@@ -893,6 +1385,21 @@ function DataTable<TData>({
     // Typing in a field (a search, an editable cell) keeps its keys.
     if (target.closest("input, textarea, select, [contenteditable=true]")) return;
     const mod = e.metaKey || e.ctrlKey;
+    const letter = e.key.toLowerCase();
+    if (mod && !e.altKey && ((letter === "z" && e.shiftKey) || (letter === "y" && e.ctrlKey && !e.metaKey)) && onRedo) {
+      e.preventDefault();
+      onRedo();
+      return;
+    }
+    if (mod && !e.altKey && !e.shiftKey && letter === "z" && onUndo) {
+      e.preventDefault();
+      onUndo();
+      return;
+    }
+    // Keys from a menu or a calendar opened in the table (portalled, but
+    // bubbling here through React) are the popup's: its Escape closes it
+    // and leaves the selection alone.
+    if (!e.currentTarget.contains(target)) return;
     if (hasSelection && mod && !e.altKey && e.key.toLowerCase() === "a") {
       e.preventDefault();
       selectAllRows(table, true);
@@ -901,6 +1408,7 @@ function DataTable<TData>({
     if (hasSelection && e.key === "Escape" && Object.keys(table.getState().rowSelection).length) {
       e.preventDefault();
       table.resetRowSelection();
+      selectionAnchors.delete(table.getState);
       rangeHead.current = null;
       return;
     }
@@ -1070,6 +1578,23 @@ function DataTable<TData>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- table is one object for its life
   }, [rowsFocusable, hasSelection]);
+  // The body keeps exactly one tab stop. The stop roves in the DOM (see the
+  // rows' onFocus) while each row still renders its own, so a sort could
+  // leave two rows with one, and a filter none.
+  useLayoutEffect(() => {
+    if (!rowsFocusable) return;
+    const body = wrapRef.current?.querySelector("tbody");
+    if (!body) return;
+    const stops = Array.from(body.querySelectorAll<HTMLElement>("tr[data-row-id][tabindex='0']"));
+    if (stops.length === 0) {
+      const first = body.querySelector<HTMLElement>("tr[data-row-id]");
+      if (first) first.tabIndex = 0;
+      return;
+    }
+    if (stops.length === 1) return;
+    const keep = stops.find((tr) => tr.contains(document.activeElement)) ?? stops[0];
+    for (const tr of stops) if (tr !== keep) tr.tabIndex = -1;
+  });
   // The table scrolling sideways while an editor's popup is open (a menu,
   // a list, a calendar) closes the popup, as Esc would, rather than let it
   // ride its trigger out of the table's box. The reveal's own scroll (an
@@ -1103,17 +1628,21 @@ function DataTable<TData>({
     registerRoot?.(() => wrapRef.current);
   });
 
-  // What a body row's cells depend on beyond the row itself: the visible
-  // columns in order and how each fits its text. Rows re-render when this,
-  // their record, their selection or the columns change, and not on every
-  // state change of the table (a Shift + arrow step re-rendered every cell,
-  // editors and all).
-  const layoutKey = visible.map((c) => `${c.id}:${linesOf(table, c) ?? ""}`).join("|");
   // With sub-rows, the first data column carries the chevron and the
   // indent.
   const expanderId = table.getCanSomeRowsExpand()
     ? visible.find((c) => c.accessorFn !== undefined)?.id
     : undefined;
+
+  const headerMenu = useMemo(
+    () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns }),
+    [table, reorderColumns]
+  );
+  // The row a right-click opened the menu for.
+  const rowMenu = table.getAllLeafColumns().find((c) => c.columnDef.meta?.rowMenu)?.columnDef.meta?.rowMenu;
+  const [menuRowId, setMenuRowId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRow = menuRowId ? table.getCoreRowModel().rowsById[menuRowId] : undefined;
 
   const tableEl = (
     <EditContext.Provider value={stableEditing}>
@@ -1132,13 +1661,30 @@ function DataTable<TData>({
       // crushing the column that takes the rest.
       className={cn(
         sized && "table-fixed",
-        // The column after the boxes drops its left padding: 8px from box
-        // to text, the gap a Checkbox keeps from its label.
-        "[&_[data-column-id=select]+[data-column-id]]:pl-0",
+        // Most of the gap between box and text (8px of its 12) belongs to
+        // the column after the boxes, not the boxes: its header fill then
+        // starts 8px before the label instead of on it.
+        "[&_[data-column-id=select]+[data-column-id]]:pl-2",
+        // Measuring (see `natural`): every cell at its one-line width.
+        "[&[data-measuring]_:is(th,td)]:!w-auto [&[data-measuring]_:is(th,td)]:!max-w-none [&[data-measuring]_*]:!whitespace-nowrap",
+        // The sub-row guides start from the first column's left padding.
+        sizeClasses.variant === "compact" ? "[--expander-pl:10px]" : "[--expander-pl:12px]",
+        "[&_[data-column-id=select]+[data-column-id]]:[--expander-pl:8px]",
         className
       )}
-      style={sized ? { minWidth: table.getTotalSize() } : undefined}
+      style={
+        sized
+          ? {
+              minWidth:
+                (resizeColumns
+                  ? table.getTotalSize()
+                  : Object.values(fitted ?? {}).reduce((sum, w) => sum + w, 0)) -
+                (actionsShown && sizeClasses.variant === "compact" ? ACTIONS_COMPACT_TRIM : 0),
+            }
+          : undefined
+      }
     >
+      <HeaderMenuContext.Provider value={headerMenu}>
       <TableHeader>
         {table.getHeaderGroups().map((group) => (
           // Sticky header rows ride above the body rows (both z-10 by
@@ -1161,7 +1707,7 @@ function DataTable<TData>({
                   // Headers that act join the header row's gliding fill (a
                   // filled table's sticky headers paint over it, so they
                   // keep a fill of their own).
-                  hoverIndex={!fill && (movable || column.getCanSort()) ? headerIndex : undefined}
+                  hoverIndex={!fill && (movable || column.getCanSort() || !!column.accessorFn) ? headerIndex : undefined}
                   aria-sort={
                     sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
                   }
@@ -1171,18 +1717,42 @@ function DataTable<TData>({
                   data-dragging={drag?.id === column.id || undefined}
                   onPointerDown={movable ? (e) => startDrag(e, column.id, label, meta?.icon) : undefined}
                   onKeyDown={movable ? (e) => moveByKey(e, column.id) : undefined}
+                  // The whole cell opens the header's menu, padding and the
+                  // space past the label included: a click anywhere else in
+                  // it goes to the header's button (shift kept, for a
+                  // multi-column sort).
+                  onClick={(e) => {
+                    const target = e.target as Element;
+                    // Only the cell's own clicks: React bubbles the header
+                    // menu's (portalled) item clicks up through here, and
+                    // reopening it made a pick look like it never closed.
+                    if (!e.currentTarget.contains(target)) return;
+                    if (target.closest("button, a, input, [role=checkbox], [data-resize-handle]")) return;
+                    const trigger = e.currentTarget.querySelector<HTMLButtonElement>("button[aria-haspopup=menu]:not([aria-hidden])");
+                    if (!trigger) return;
+                    const shiftKey = e.shiftKey;
+                    trigger.focus({ preventScroll: true });
+                    // After this click has finished: opened during it, the
+                    // menu would read the same click as one outside it and
+                    // close at once.
+                    setTimeout(() => trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey })));
+                  }}
                   // A column with no width of its own (one shown after the
                   // widths were read) shares what's left with the flex one.
-                  style={
-                    sized &&
-                    column.id !== flexId &&
-                    (column.id in sizing || column.columnDef.size !== undefined)
-                      ? { width: header.getSize() }
-                      : undefined
-                  }
+                  style={{
+                    ...(sized &&
+                    column.id !== restId &&
+                    (resizeColumns
+                      ? column.id in sizing || column.columnDef.size !== undefined
+                      : fitted?.[column.id] !== undefined)
+                      ? { width: widthOf(column.id, header.getSize()) }
+                      : undefined),
+                    ...pinProps(pins[column.id]).style,
+                  }}
                   className={cn(
                     // Headers step back to muted so the content leads.
-                    "relative text-muted-foreground",
+                    "group/th relative text-muted-foreground",
+                    pinProps(pins[column.id]).className,
                     // Filled, the header stays put while the rows scroll,
                     // and once they do, a hairline in the rows' rule color
                     // (accent/40) separates it from the rows passing under.
@@ -1200,24 +1770,45 @@ function DataTable<TData>({
                     "data-[drop=after]:before:-right-px data-[drop=after]:before:opacity-100",
                     // A header that sorts or moves behaves like a ghost
                     // Button: its label lifts from muted to foreground on
-                    // hover, and a surface 1px inside the cell fills with
-                    // --hover, spread back out by a same-color 1px ring;
-                    // pressed it turns --active and the ring collapses, so
-                    // the surface shrinks 1px a side. Once it drags, the
-                    // ghost takes over and the slot stays empty.
-                    (movable || column.getCanSort()) && [
-                      "hover:text-foreground transition-colors duration-80",
-                      "after:pointer-events-none after:absolute after:inset-px after:-z-10 after:bg-transparent after:shadow-[0_0_0_1px_transparent] after:transition-[background-color,box-shadow] after:duration-80",
-                      fill &&
-                        "not-data-dragging:hover:after:bg-hover not-data-dragging:hover:after:shadow-[0_0_0_1px_var(--hover)]",
-                      "not-data-dragging:active:after:bg-active not-data-dragging:active:after:shadow-[0_0_0_0px_var(--active)]",
-                      PRESS_RADIUS[shape.variant],
-                    ],
+                    // hover. Its fill is the header row's gliding one,
+                    // which Table turns --active while pressed: one surface.
+                    (movable || column.getCanSort() || !!column.accessorFn) &&
+                      "cursor-pointer hover:text-foreground transition-colors duration-80",
+                    // Filled, the sticky header paints over that fill, so
+                    // the cell draws its own, the same way: --hover, then
+                    // --active, clear of the header's bottom line. Once it
+                    // drags, the ghost takes over and the slot stays empty.
+                    fill &&
+                      (movable || column.getCanSort() || !!column.accessorFn) && [
+                        "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
+                        "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
+                        PRESS_RADIUS[shape.variant],
+                      ],
                     meta?.className
                   )}
                 >
+                  {pins[column.id] && (
+                    <PinLayers pin={pins[column.id]}>
+                      {/* Opaque, a pinned header covers the row's gliding
+                          fill: it draws its own, the same way. */}
+                      {!fill && (movable || column.getCanSort() || !!column.accessorFn) && (
+                        <span
+                          className={cn(
+                            "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
+                            "group-hover/th:bg-hover group-active/th:bg-active",
+                            shape.bg
+                          )}
+                        />
+                      )}
+                    </PinLayers>
+                  )}
                   {header.isPlaceholder ? null : typeof column.columnDef.header === "string" &&
-                    meta?.icon ? (
+                    column.accessorFn ? (
+                    // A plain-text header on a data column gets the same
+                    // header as DataTableColumnHeader: its menu (sort,
+                    // filter, move, freeze) and, if it sorts, the arrow.
+                    <DataTableColumnHeader column={column} title={column.columnDef.header} />
+                  ) : typeof column.columnDef.header === "string" && meta?.icon ? (
                     <HeaderLabel icon={meta.icon} title={column.columnDef.header} />
                   ) : (
                     flexRender(column.columnDef.header, header.getContext())
@@ -1243,12 +1834,19 @@ function DataTable<TData>({
                         header.getResizeHandler()(e);
                       }}
                       onReset={() => column.resetSize()}
-                      onStep={(delta) =>
+                      onStep={(delta, handle) => {
+                        // As a drag does: the flex column steps from the
+                        // width it shows, not the smaller size it holds.
+                        const rendered =
+                          column.id === flexId
+                            ? Math.round(handle.closest("th")?.getBoundingClientRect().width ?? 0)
+                            : 0;
+                        const from = Math.max(header.getSize(), rendered);
                         table.setColumnSizing((old) => ({
                           ...old,
-                          [column.id]: Math.max(MIN_COLUMN_WIDTH, header.getSize() + delta),
-                        }))
-                      }
+                          [column.id]: Math.max(MIN_COLUMN_WIDTH, from + delta),
+                        }));
+                      }}
                     />
                   )}
                 </TableHead>
@@ -1257,6 +1855,7 @@ function DataTable<TData>({
           </TableRow>
         ))}
       </TableHeader>
+      </HeaderMenuContext.Provider>
       <TableBody>
         {loading ? (
           // Loading: a page of rows the real rows' size, each cell holding a
@@ -1289,8 +1888,13 @@ function DataTable<TData>({
               row={row}
               i={i}
               selected={row.getIsSelected()}
+              runStart={row.getIsSelected() && !rows[i - 1]?.getIsSelected()}
+              runEnd={row.getIsSelected() && !rows[i + 1]?.getIsSelected()}
+              pins={pins}
+              menuOpen={menuOpen && menuRowId === row.id}
               someSelected={row.getIsSomeSelected()}
               expanded={row.getIsExpanded()}
+              grouped={(rows[i + 1]?.depth ?? 0) > 0}
               expanderId={expanderId}
               onToggleExpand={stableToggle}
               columns={table.options.columns}
@@ -1310,8 +1914,17 @@ function DataTable<TData>({
             columns={columnCount}
             rows={heldRows}
             title={empty?.title ?? "No results"}
-            description={empty?.description}
-            action={empty?.action}
+            // With filters set, the way back is taking one off: unless you
+            // say otherwise, the body says so and offers to clear them.
+            description={empty?.description ?? (filterCount > 0 ? "Remove a filter to see more." : undefined)}
+            action={
+              empty?.action ??
+              (filterCount > 0 ? (
+                <Button variant="ghost" size="compact" onClick={() => table.resetColumnFilters()}>
+                  {filterCount === 1 ? "Clear filter" : "Clear filters"}
+                </Button>
+              ) : undefined)
+            }
           />
         )}
       </TableBody>
@@ -1327,13 +1940,58 @@ function DataTable<TData>({
           while there's more to that side. Filled, it scrolls both ways
           under a sticky header. Its root clips, so a height that eases
           never flashes a scrollbar. */}
+      {pinnedLeft || pinnedRight ? (
+        <style href="ff-data-table-pin" precedence="default">
+          {PIN_CSS}
+        </style>
+      ) : null}
       <ScrollArea
-        ref={wrapRef}
+        ref={setWrap}
         orientation={fill ? "both" : "horizontal"}
-        className={cn("w-full", fill && "group/scroll min-h-0 flex-1")}
-        viewportClassName="scroll-fade-x"
+        className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
+        // Content fades while there's more to a side, at the line where it
+        // meets the pinned columns (the box's own edge when none are):
+        // scroll-fade-x's animated --sf-start / --sf-end, with the stops
+        // moved in by the pinned widths. The pinned cells themselves never
+        // fade.
+        style={{ "--pin-l": `${pinWidths.l}px`, "--pin-r": `${pinWidths.r}px` } as CSSProperties}
+        viewportClassName={cn(
+          "scroll-fade-x",
+          (pinnedLeft || pinnedRight) &&
+            "[mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]! [-webkit-mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]!"
+        )}
       >
-        {tableEl}
+        {rowMenu ? (
+          // Right-clicking a row (or Shift + F10 on a focused one) opens
+          // its ⋯ menu's items at the pointer. The selection stays as it is.
+          // The row stays named through the menu's exit, so its items don't
+          // empty while it fades; only the row's lit state drops at once.
+          <>
+          <MenuShield open={menuOpen} />
+          <ContextMenu onOpenChange={setMenuOpen}>
+            <ContextMenuTrigger
+              className="contents"
+              filter={(target) => !!target.closest("tbody tr[data-row-id]")}
+              onContextMenu={(e) => {
+                const tr = (e.target as Element).closest<HTMLElement>("tbody tr[data-row-id]");
+                setMenuRowId(tr?.dataset.rowId ?? null);
+              }}
+              onKeyDown={(e) => {
+                // Only the keys that open the menu: naming the row on every
+                // key re-rendered the table with each arrow press.
+                if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+                const tr = (e.target as Element).closest<HTMLElement>("tbody tr[data-row-id]");
+                if (tr) setMenuRowId(tr.dataset.rowId ?? null);
+              }}
+            >
+              {tableEl}
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-56">{menuRow && rowMenu(menuRow)}</ContextMenuContent>
+          </ContextMenu>
+          </>
+        ) : (
+          tableEl
+        )}
       </ScrollArea>
       {ghost &&
         createPortal(
@@ -1373,7 +2031,7 @@ interface ResizeHandleProps {
   resizing: boolean;
   onStart: (event: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => void;
   onReset: () => void;
-  onStep: (delta: number) => void;
+  onStep: (delta: number, handle: HTMLElement) => void;
 }
 
 /** An 8px grab strip over the header's right edge, showing a 1px rule on
@@ -1401,7 +2059,7 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
         e.preventDefault();
         // Handled here, so the header's own keys don't see it too.
         e.stopPropagation();
-        onStep(e.key === "ArrowLeft" ? -RESIZE_STEP : RESIZE_STEP);
+        onStep(e.key === "ArrowLeft" ? -RESIZE_STEP : RESIZE_STEP, e.currentTarget);
       }}
       className="group/resize absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none select-none outline-none"
     >
@@ -1417,12 +2075,14 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
 
 /** A header's icon and title. The 14px icon sits 4px before the title in
  *  the header's own muted color, so it labels without competing. */
+/** A header's icon and title; a column squeezed narrower than its title
+ *  ends the title in an ellipsis instead of cutting it at the edge. */
 function HeaderLabel({ icon, title }: { icon?: IconComponent; title: ReactNode }) {
-  if (!icon) return <>{title}</>;
+  if (!icon) return <span className="inline-block max-w-full truncate align-top">{title}</span>;
   return (
-    <span className="inline-flex items-center gap-1 align-top">
+    <span className="inline-flex max-w-full items-center gap-1 align-top">
       <Icon14 icon={icon} />
-      {title}
+      <span className="min-w-0 truncate">{title}</span>
     </span>
   );
 }
@@ -1446,9 +2106,10 @@ const HIDDEN = { opacity: 0, scale: 0.6, filter: "blur(4px)" };
 const enter = { type: "tween" as const, duration: spring.fast.duration, ease: "easeOut" as const };
 const leave = { type: "tween" as const, ...spring.fast.exit, ease: "easeIn" as const };
 
-/** A header that sorts its column: click for ascending, again for
- *  descending, a third time to clear. Shift-click adds a column to the
- *  sort. Columns that can't sort render the title alone. */
+/** A column's header: its title, and a menu on click with what the column
+ *  can do (sort either way, add a filter, move left or right, freeze the
+ *  columns up to it). Shift-click still adds the column to the sort.
+ *  Columns that can do none of it render the title alone. */
 function DataTableColumnHeader<TData, TValue>({
   column,
   title,
@@ -1456,61 +2117,167 @@ function DataTableColumnHeader<TData, TValue>({
 }: DataTableColumnHeaderProps<TData, TValue>) {
   "use no memo";
   const icons = useIcons();
-  const Unsorted = icons["chevrons-up-down"];
   const Arrow = icons["arrow-up"];
+  const ctx = useContext(HeaderMenuContext);
+  const table = ctx?.table as TanStackTable<TData> | undefined;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const icon = column.columnDef.meta?.icon;
-  if (!column.getCanSort())
+  const col = column as unknown as Column<TData, unknown>;
+  const canSort = column.getCanSort();
+  const canFilter = !!table && (table as Partial<DataTableExtras>).canOpenFilter?.() && column.getCanFilter();
+  // Moving follows the table's reorderColumns; the neighbors are the
+  // visible columns that move too.
+  const movable = !!table && !!ctx?.reorder && canReorder(col);
+  const order = movable ? table!.getVisibleLeafColumns().filter(canReorder).map((c) => c.id) : [];
+  const at = order.indexOf(column.id);
+  const canPin = !!table && column.getCanPin() && column.getIsPinned() !== "right";
+  const leftPins = table?.getState().columnPinning.left ?? [];
+  const frozenHere = leftPins[leftPins.length - 1] === column.id;
+  const hasMenu = !!table && (canSort || canFilter || movable || canPin);
+
+  const sorted = column.getIsSorted();
+  const label = (
+    <>
+      {icon && <Icon14 icon={icon} />}
+      {/* Ends in an ellipsis when the column is squeezed narrower. */}
+      <span className="min-w-0 truncate">{title}</span>
+    </>
+  );
+  if (!hasMenu && !canSort)
     return (
       <span className={className}>
         <HeaderLabel icon={icon} title={title} />
       </span>
     );
 
-  const sorted = column.getIsSorted();
+  const move = (place: "before" | "after") => {
+    const refId = order[place === "before" ? at - 1 : at + 1];
+    if (!table || !refId) return;
+    (table as Partial<DataTableExtras>).captureLayout?.();
+    moveColumn(table, column.id, refId, place);
+  };
+  const freeze = () => {
+    if (!table) return;
+    (table as Partial<DataTableExtras>).captureLayout?.();
+    if (frozenHere) {
+      // Unfreeze: the selection boxes stay put, the rest scroll.
+      table.setColumnPinning((old) => ({ ...old, left: old.left?.includes("select") && column.id !== "select" ? ["select"] : [] }));
+      return;
+    }
+    const right = new Set(table.getState().columnPinning.right ?? []);
+    const ids = table.getVisibleLeafColumns().map((c) => c.id).filter((id) => !right.has(id));
+    table.setColumnPinning((old) => ({ ...old, left: ids.slice(0, ids.indexOf(column.id) + 1) }));
+  };
 
-  return (
+  const items: { label: string; icon?: IconComponent; onSelect: () => void; disabled?: boolean }[] = [];
+  if (canSort) {
+    items.push(
+      { label: "Sort ascending", icon: icons["arrow-up"], onSelect: () => column.toggleSorting(false) },
+      { label: "Sort descending", icon: icons["arrow-down"], onSelect: () => column.toggleSorting(true) }
+    );
+    if (sorted) items.push({ label: "Clear sort", icon: icons.x, onSelect: () => column.clearSorting() });
+  }
+  if (canFilter) items.push({ label: "Filter", icon: icons.filter, onSelect: () => (table as Partial<DataTableExtras>).openFilter?.(column.id) });
+  if (movable) {
+    items.push(
+      { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0 },
+      { label: "Move right", icon: icons["arrow-right"], onSelect: () => move("after"), disabled: at === -1 || at >= order.length - 1 }
+    );
+  }
+  if (canPin) items.push({ label: frozenHere ? "Unfreeze columns" : "Freeze up to here", icon: icons["panel-left"], onSelect: freeze });
+
+  const button = (
     <button
+      ref={buttonRef}
       type="button"
-      onClick={column.getToggleSortingHandler()}
+      aria-haspopup={hasMenu ? "menu" : undefined}
+      aria-expanded={hasMenu ? menuOpen : undefined}
+      onClick={(e) => {
+        // Shift-click adds the column to the sort, as before; a plain click
+        // opens the column's menu.
+        if (e.shiftKey && canSort) column.toggleSorting(undefined, true);
+        else if (hasMenu) setMenuOpen(true);
+        else column.toggleSorting();
+      }}
       className={cn(
-        "group/sort inline-flex cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
+        "group/sort inline-flex max-w-full cursor-pointer items-center gap-1 rounded-[4px] align-top outline-none transition-colors duration-80",
         // The sorted column reads at full contrast, its icon and label with
         // the arrow, so the sort shows from across the table.
-        sorted && "text-foreground",
+        (sorted || menuOpen) && "text-foreground",
         "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
     >
-      {icon && <Icon14 icon={icon} />}
-      {title}
-      {/* One 14px cell for both glyphs, so the label never shifts. The arrow
-          turns over for descending instead of swapping glyphs. */}
-      <span
-        aria-hidden
-        className={cn(
-          "grid size-3.5 shrink-0 transition-colors duration-80",
-          sorted ? "text-foreground" : "text-muted-foreground group-hover/sort:text-foreground"
-        )}
-      >
-        <motion.span
-          className="col-start-1 row-start-1 flex"
-          initial={false}
-          animate={sorted ? HIDDEN : SHOWN}
-          transition={sorted ? leave : enter}
-        >
-          <Unsorted size={14} />
-        </motion.span>
-        <motion.span
-          className="col-start-1 row-start-1 flex"
-          initial={false}
-          animate={sorted ? { ...SHOWN, rotate: sorted === "desc" ? 180 : 0 } : { ...HIDDEN, rotate: 0 }}
-          transition={sorted ? { ...enter, rotate: spring.moderate } : leave}
-        >
-          <Arrow size={14} />
-        </motion.span>
-      </span>
+      {label}
+      {canSort && (
+        // A 14px cell, empty until the column is sorted, so the label never
+        // shifts and the column's width already holds the arrow. The arrow
+        // turns over for descending instead of swapping glyphs.
+        <span aria-hidden className="grid size-3.5 shrink-0 text-foreground">
+          <motion.span
+            className="col-start-1 row-start-1 flex"
+            initial={false}
+            animate={sorted ? { ...SHOWN, rotate: sorted === "desc" ? 180 : 0 } : { ...HIDDEN, rotate: 0 }}
+            transition={sorted ? { ...enter, rotate: spring.moderate } : leave}
+          >
+            <Arrow size={14} />
+          </motion.span>
+        </span>
+      )}
     </button>
+  );
+  if (!hasMenu) return button;
+
+  return (
+    <>
+      {button}
+      {/* While the menu is open, a clear layer under it takes the pointer:
+          nothing else on the page lights up, and a click on it closes the
+          menu. */}
+      <MenuShield open={menuOpen} onClose={() => setMenuOpen(false)} />
+      {/* The menu opens from the whole header cell: a hidden trigger over
+          it that never takes the pointer, so a press can still start a
+          column drag and only a click opens the menu. */}
+      <DropdownMenu
+        open={menuOpen}
+        onOpenChange={(next) => {
+          setMenuOpen(next);
+          // Focus returns to the header rather than the hidden trigger,
+          // unless it already went somewhere (a field, a filter chip).
+          if (!next)
+            requestAnimationFrame(() => {
+              const active = document.activeElement;
+              if (!active || active === document.body || active.getAttribute("aria-hidden") === "true")
+                buttonRef.current?.focus({ preventScroll: true });
+            });
+        }}
+      >
+        <DropdownTrigger
+          render={
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-0"
+            />
+          }
+        />
+        <DropdownContent align="start" sideOffset={2} className="w-52">
+          {items.map((item, i) => (
+            <MenuItem
+              key={item.label}
+              index={i}
+              icon={item.icon}
+              label={item.label}
+              disabled={item.disabled}
+              onSelect={item.onSelect}
+            />
+          ))}
+        </DropdownContent>
+      </DropdownMenu>
+    </>
   );
 }
 
@@ -1614,6 +2381,13 @@ function selectableRows<TData>(table: TanStackTable<TData>) {
   return table.getFilteredRowModel().flatRows.filter((r) => r.getCanSelect());
 }
 
+/** The selected rows, each counted once at its highest selected level: a
+ *  selected parent stands for its sub-rows, and a sub-row picked on its own
+ *  counts for itself (a row model's `rows` holds top-level rows only). */
+function selectedRows<TData>(model: { flatRows: Row<TData>[] }) {
+  return model.flatRows.filter((row) => !row.getParentRows().some((parent) => parent.getIsSelected()));
+}
+
 /** One state update for the whole result, whatever its size. */
 function selectAllRows<TData>(table: TanStackTable<TData>, value: boolean) {
   const rows = selectableRows(table);
@@ -1638,14 +2412,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
-    // 8px either side of the 16px box, so its focus ring never meets the
-    // row's edge (or the scroll box's clip).
-    size: 32,
-    // w-0 shrinks the column to the box and its 8px either side. The row
-    // dividers start after it: the cell's own transparent bottom border
-    // wins the collapsed-border conflict with the row's, so no line runs
-    // above or below a box.
-    meta: { className: "w-0 px-2 border-b border-b-transparent" },
+    // 8px before the 16px box, so its focus ring never meets the row's edge
+    // (or the scroll box's clip), and 4px after it; the next column's 8px
+    // left padding makes 12px from box to text.
+    size: 28,
+    // w-0 shrinks the column to the box and its padding. The row
+    // dividers start after it: its cells draw theirs transparent, so no
+    // line runs above or below a box.
+    meta: { className: "w-0 pl-2 pr-1 border-b-transparent!" },
     header: ({ table }) => {
       // Every row the search leaves, on every page: a page is a view, not
       // a scope, so "all" means the whole result.
@@ -1707,9 +2481,195 @@ function selectColumn<TData>(): ColumnDef<TData> {
 
 // ── Sub-rows ─────────────────────────────────────────────
 
-/** How far each level of sub-rows steps in: the chevron and its gap, so a
- *  child's chevron sits under its parent's text. */
-const SUB_ROW_INDENT = 20;
+// A row whose right-click menu is open holds the hover fill in its own
+// cells, rounded at its ends like the highlight.
+const MENU_ROW = {
+  rounded: "[&>td]:bg-hover [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg",
+  pill: "[&>td]:bg-hover [&>td:first-child]:rounded-l-[20px] [&>td:last-child]:rounded-r-[20px]",
+  sharp: "[&>td]:bg-hover [&>td:first-child]:rounded-l-[1px] [&>td:last-child]:rounded-r-[1px]",
+} as const;
+
+interface PinInfo {
+  side: "left" | "right";
+  /** Px from its edge: the pinned columns' widths between. */
+  offset: number;
+  /** The pinned column nearest the scrolling ones: it carries the hairline. */
+  edge: boolean;
+  /** The table's first (or last) column: its fills round like the row's. */
+  outer: boolean;
+}
+
+// Corner radii for a pinned cell's fills on the table's outer edge, per
+// shape, matching the row highlight and selection (literal classes, so
+// Tailwind sees them).
+const PIN_RADIUS = {
+  left: { rounded: "rounded-l-lg", pill: "rounded-l-[20px]", sharp: "rounded-l-[1px]" },
+  right: { rounded: "rounded-r-lg", pill: "rounded-r-[20px]", sharp: "rounded-r-[1px]" },
+  tl: { rounded: "rounded-tl-lg", pill: "rounded-tl-[20px]", sharp: "rounded-tl-[1px]" },
+  bl: { rounded: "rounded-bl-lg", pill: "rounded-bl-[20px]", sharp: "rounded-bl-[1px]" },
+  tr: { rounded: "rounded-tr-lg", pill: "rounded-tr-[20px]", sharp: "rounded-tr-[1px]" },
+  br: { rounded: "rounded-br-lg", pill: "rounded-br-[20px]", sharp: "rounded-br-[1px]" },
+} as const;
+
+/** A pinned cell's classes and offset. It sticks always (a no-op until
+ *  the table scrolls), and its layers (PinLayers) show only while content
+ *  passes under it: `--ff-pin` turns 1 then. A scroll-driven animation sets
+ *  it (PIN_CSS), in the same frame as the scroll; without one (Firefox),
+ *  the root's data-x-start / data-x-end do, a frame late. */
+function pinProps(pin: PinInfo | undefined) {
+  if (!pin) return { className: undefined, style: undefined };
+  const left = pin.side === "left";
+  return {
+    className: cn(
+      // z-[2]: above whatever a scrolling cell lifts to z-[1] (a date
+      // editor's trigger, a chip's parts), which at an equal z painted over
+      // the pinned cells in DOM order as it scrolled under them; a raised
+      // editor (z-30) still covers them, as it covers its neighbors.
+      "sticky z-[2] [--ff-pin:0]",
+      // The cell's own bottom rule sits in its border, outside the layers
+      // below (and out of reach where the cell clips), so the rules of the
+      // cells scrolling under showed through it. While pinned, a 1px strip
+      // of the cell's own background covers that border: the page color,
+      // under the row's fill where there is one (--pin-strip), and the
+      // cell's own rule still draws over it.
+      "bg-no-repeat [background-origin:border-box] [background-position:bottom] [background-size:100%_calc(var(--ff-pin)*1px)]",
+      "[background-image:linear-gradient(var(--pin-strip,transparent),var(--pin-strip,transparent)),linear-gradient(var(--background),var(--background))]",
+      left ? "ff-pin-l group-data-x-start/pin:[--ff-pin:1]" : "ff-pin-r group-data-x-end/pin:[--ff-pin:1]"
+    ),
+    style: left ? { left: pin.offset } : { right: pin.offset },
+  };
+}
+
+// The scroll-driven half of pinning: a pinned cell's `--ff-pin` flips to 1
+// once the table has scrolled 1px past its side, read from the scroll box's
+// own timeline, so the cell turns opaque in the frame the content moves
+// (a scroll event lands a frame later, and the content shows through).
+// Rendered once per page (React hoists and dedupes it by href).
+const PIN_CSS = `
+@keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
+@keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
+@supports (animation-timeline: scroll()) {
+  .ff-pin-l { animation: ff-pin-on linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
+  .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
+}`;
+
+/** A pinned cell's own surface while content passes under it: the page
+ *  background, what the row's fills (drawn behind the table) would show
+ *  through it, and the hairline at the pinned columns' edge. All of it
+ *  fades with `--ff-pin`; none of it glides (the row's own fill does that
+ *  under them, at rest). */
+function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
+      {/* 1px past its far side (and the table's clipped left edge): at a
+          fractional position each cell's fill snaps to the pixel grid on
+          its own, which left a hairline between two pinned cells where
+          text scrolling under showed through. Only ever under the NEXT
+          cell, which paints later: reaching back over the previous one
+          cut a 1px line of page color through its hover and selection. */}
+      <span
+        className={cn(
+          "absolute inset-y-0 left-0 right-0 bg-background",
+          !(pin.side === "left" && pin.edge) && "-right-px",
+          pin.side === "left" && pin.outer && "-left-px"
+        )}
+      />
+      {children}
+      {pin.edge && (
+        // The rule is a span inside the edge cell, in the rows' rule color.
+        <span className={cn("absolute inset-y-0 w-px bg-accent/40", pin.side === "left" ? "right-0" : "left-0")} />
+      )}
+    </span>
+  );
+}
+
+/** A pinned body cell's layers: the selection, and the hover over it. */
+function PinFills({
+  pin,
+  selected,
+  runStart,
+  runEnd,
+  shapeVariant,
+  tall = false,
+}: {
+  pin: PinInfo;
+  /** The fills also cover the cell's bottom border (the selection
+   *  column, which doesn't clip): its rounded fills can't be a strip. */
+  tall?: boolean;
+  selected: boolean;
+  runStart: boolean;
+  runEnd: boolean;
+  shapeVariant: keyof typeof SKELETON_BAR_RADIUS;
+}) {
+  const left = pin.side === "left";
+  // A left cell with a pinned cell after it runs 1px under that one, whose
+  // opaque layer covers the overlap: no seam at a fractional position.
+  const reach = cn(left && !pin.edge && "-right-px", tall && "-bottom-px");
+  return (
+    <PinLayers pin={pin}>
+      {selected && (
+        <span
+          className={cn(
+            "absolute inset-0 bg-active",
+            reach,
+            pin.outer && runStart && PIN_RADIUS[left ? "tl" : "tr"][shapeVariant],
+            pin.outer && runEnd && PIN_RADIUS[left ? "bl" : "br"][shapeVariant]
+          )}
+        />
+      )}
+      <span
+        className={cn(
+          "absolute inset-0 bg-hover opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100",
+          reach,
+          pin.outer && PIN_RADIUS[left ? "left" : "right"][shapeVariant]
+        )}
+      />
+    </PinLayers>
+  );
+}
+
+/** The tree line under an open row: a 1px rule dropped from the center of
+ *  the parent's chevron through every row below it, so a sub-row reads as
+ *  its parent's without a fill of its own (a fill would cover the hover
+ *  and selection drawn behind the table). Sub-rows don't indent: their
+ *  text lines up with the parent's, past the chevron's slot, which the
+ *  line runs through at every depth. Placed from the cell's left padding,
+ *  `--expander-pl`, which the table sets. */
+function SubRowGuides({
+  row,
+  expanded,
+  grouped,
+  alignTop,
+}: {
+  row: Row<unknown>;
+  expanded: boolean;
+  /** The next row is a sub-row too: the line runs on into it. */
+  grouped: boolean;
+  alignTop: boolean;
+}) {
+  // The center of the chevron's 24px slot (12px in, less the rule's half).
+  const x = "calc(var(--expander-pl) + 11.5px)";
+  const rule = "pointer-events-none absolute w-px bg-border";
+  return (
+    <>
+      {row.depth > 0 && (
+        // Each row's piece covers its own bottom rule (a pinned cell's fill
+        // would paint over a piece reaching up from the row below); the
+        // group's last row stops 8px short of its rule.
+        <span aria-hidden className={cn(rule, "top-0", grouped ? "-bottom-px" : "bottom-2")} style={{ left: x }} />
+      )}
+      {expanded && row.subRows.length > 0 && (
+        // From 6px under the open chevron (12px, half its 24px, + 6) to the
+        // row's bottom.
+        <span
+          aria-hidden
+          className={cn(rule, "-bottom-px", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+18px)]" : "top-[calc(50%+18px)]")}
+          style={{ left: x }}
+        />
+      )}
+    </>
+  );
+}
 
 /** The chevron that opens a row's sub-rows. Not a tab stop: from the row,
  *  → opens and ← closes. Turns a quarter on spring.fast. */
@@ -1741,17 +2701,25 @@ function ExpandToggle({
         onToggle();
       }}
       className={cn(
-        // 16px, its hit area 4px wider each way; above an editor's reach.
-        "relative z-[1] flex size-4 shrink-0 items-center justify-center text-muted-foreground outline-none",
-        "after:absolute after:-inset-1 transition-colors duration-80 hover:bg-hover hover:text-foreground",
+        // 24px, a small ghost icon button (its hover fill and color, the
+        // 14px chevron), so it reads and hits like a button; above an
+        // editor's reach.
+        "relative z-[1] flex size-6 shrink-0 items-center justify-center text-muted-foreground outline-none",
+        "transition-colors duration-80 hover:bg-hover hover:text-foreground",
         sharp ? "rounded-[1px]" : "rounded-[4px]"
       )}
     >
+      {/* A quarter turn over the moderate tier's 160ms, ease-out, as a
+          transform string so it runs as a browser animation off the main
+          thread: opening a row inserts its sub-rows in the same frame, and
+          a JS-driven rotate stalled through it and jumped (0, 17, 67°). A
+          tween, not the spring, so it lands on time instead of creeping
+          the last degrees. */}
       <motion.span
         className="flex"
         initial={false}
-        animate={{ rotate: expanded ? 90 : 0 }}
-        transition={spring.fast}
+        animate={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)" }}
+        transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: spring.moderate.duration }}
       >
         <Chevron size={14} strokeWidth={1.75} />
       </motion.span>
@@ -1767,9 +2735,21 @@ interface DataTableBodyRowProps<TData> {
   row: Row<TData>;
   i: number;
   selected: boolean;
+  /** Selected, and the first (or last) of its run: its pinned fills round. */
+  runStart: boolean;
+  runEnd: boolean;
+  /** The pinned columns, by id. Stable until a pin or its width changes. */
+  pins: Record<string, PinInfo>;
+  /** Its right-click menu is open: it stays lit while the pointer is on
+   *  the menu. */
+  menuOpen: boolean;
   /** Compared only: some, not all, of its sub-rows are selected. */
   someSelected: boolean;
   expanded: boolean;
+  /** The next row is a sub-row: an open group reads as one block, with no
+   *  rule under its parent or between its sub-rows (the last keeps its
+   *  rule, closing the group). */
+  grouped: boolean;
   /** The column that carries the chevron and the indent, with sub-rows. */
   expanderId: string | undefined;
   /** Stable for the table's life. */
@@ -1799,7 +2779,12 @@ const DataTableBodyRow = memo(
       row,
       i,
       selected,
+      runStart,
+      runEnd,
+      pins,
+      menuOpen,
       expanded,
+      grouped,
       expanderId,
       onToggleExpand,
       onRowClick,
@@ -1814,9 +2799,28 @@ const DataTableBodyRow = memo(
     ref
   ) {
     "use no memo";
+    // The rule under a row that opens or closes its group switches in the
+    // frame the sub-rows come and go: its usual 80ms fade (there for the
+    // gliding highlight) left a line fading across the opening group.
+    const rowRef = useRef<HTMLTableRowElement | null>(null);
+    const attachRow = useCallback(
+      (node: HTMLTableRowElement | null) => {
+        rowRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      },
+      [ref]
+    );
+    useLayoutEffect(() => {
+      const tr = rowRef.current;
+      if (!tr) return;
+      tr.setAttribute("data-snap-rule", "");
+      const frame = requestAnimationFrame(() => tr.removeAttribute("data-snap-rule"));
+      return () => cancelAnimationFrame(frame);
+    }, [grouped]);
     return (
     <TableRow
-      ref={ref}
+      ref={attachRow}
       data-row-id={row.id}
       index={i}
       data-state={selected ? "selected" : undefined}
@@ -1853,6 +2857,9 @@ const DataTableBodyRow = memo(
       className={cn(
         onRowClick && "cursor-pointer",
         rowsFocusable && "outline-none",
+        menuOpen && MENU_ROW[shapeVariant],
+        grouped && "*:border-transparent",
+        "data-snap-rule:*:duration-0",
         // Rows each stack on their own (z-10); the one holding a raised
         // editor lifts above the rows after it, so the field covers them.
         "has-[[data-cell-expanded]]:z-30",
@@ -1891,14 +2898,11 @@ const DataTableBodyRow = memo(
           ) : (
             rendered
           );
-        // With sub-rows, the first data column indents by depth and leads
-        // with the chevron (or its width, so siblings' text lines up).
+        // With sub-rows, the first data column leads with the chevron (or
+        // its width, so every row's text lines up, sub-rows included).
         const content =
           cell.column.id === expanderId ? (
-            <span
-              className="flex min-w-0 items-center gap-1"
-              style={row.depth ? { paddingLeft: row.depth * SUB_ROW_INDENT } : undefined}
-            >
+            <span className="flex min-w-0 items-center gap-1">
               {row.getCanExpand() ? (
                 <ExpandToggle
                   expanded={expanded}
@@ -1907,7 +2911,7 @@ const DataTableBodyRow = memo(
                   onToggle={() => onToggleExpand(row as Row<unknown>)}
                 />
               ) : (
-                <span aria-hidden className="size-4 shrink-0" />
+                <span aria-hidden className="size-6 shrink-0" />
               )}
               <span
                 className={cn(
@@ -1931,12 +2935,21 @@ const DataTableBodyRow = memo(
               // Content reads at full strength, above the muted
               // headers.
               "text-foreground",
-              // Anchors the skeleton that fades over it on landing.
-              swapping && "relative",
+              // Anchors the skeleton that fades over it on landing, and
+              // the sub-row guides.
+              (swapping || cell.column.id === expanderId) && "relative",
+              pinProps(pins[cell.column.id]).className,
+              // The strip over its bottom border takes the row's fill
+              // (outer cells' fills round, so theirs stays the page color).
+              pins[cell.column.id] && !pins[cell.column.id].outer &&
+                (selected ? "[--pin-strip:var(--active)]" : "group-[.is-active]/row:[--pin-strip:var(--hover)]"),
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
               (lines === 1 || (sized && lines === undefined)) && "truncate",
+              // Pinned, the boxes' cell lets its fills reach over its
+              // bottom border (it has no text to cut).
+              pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
               // Long unbroken text (a URL) breaks anywhere rather
               // than running out of its column.
               lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
@@ -1952,7 +2965,19 @@ const DataTableBodyRow = memo(
               meta?.className
             )}
             onClick={editor ? pressCellEditor : undefined}
+            style={pinProps(pins[cell.column.id]).style}
           >
+            {pins[cell.column.id] && (
+              <PinFills
+                pin={pins[cell.column.id]}
+                selected={selected}
+                runStart={runStart}
+                runEnd={runEnd}
+                shapeVariant={shapeVariant}
+                tall={cell.column.id === "select"}
+              />
+            )}
+            {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
             {swapping && (
               // The hand-over: a skeleton over the cell's content box,
               // shown at once (its delayed reveal and pulse turned
@@ -1995,12 +3020,20 @@ const DataTableBodyRow = memo(
       })}
     </TableRow>);
   }),
+  // Every prop that changes what a row draws, or a row keeps drawing its
+  // last state: the pins (missing, a sticky switch moved only the header),
+  // a selection run's ends (the pinned fills' corners), the open row menu.
   (a, b) =>
     a.row === b.row &&
     a.i === b.i &&
     a.selected === b.selected &&
+    a.runStart === b.runStart &&
+    a.runEnd === b.runEnd &&
+    a.pins === b.pins &&
+    a.menuOpen === b.menuOpen &&
     a.someSelected === b.someSelected &&
     a.expanded === b.expanded &&
+    a.grouped === b.grouped &&
     a.expanderId === b.expanderId &&
     a.columns === b.columns &&
     a.layoutKey === b.layoutKey &&
@@ -2082,12 +3115,15 @@ const editorOptions = (e: DataTableEditor): EditorOptions =>
   typeof e === "string" ? {} : (e as EditorOptions);
 const itemText = (item: string | { value: string }) => (typeof item === "string" ? item : item.value);
 
-/** "YYYY-MM-DD" read as that day where the viewer is (not UTC midnight,
- *  which lands on the day before west of Greenwich), or a Date as is. */
+/** "YYYY-MM-DD" (or a string that starts with one, as dayOf reads them)
+ *  read as that day where the viewer is (not UTC midnight, which lands on
+ *  the day before west of Greenwich), or a Date as is. */
 function toDate(value: unknown): Date | undefined {
   if (value instanceof Date) return value;
-  if (typeof value !== "string" || !value) return undefined;
-  const [y, m, d] = value.split("-").map(Number);
+  if (typeof value !== "string") return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return undefined;
+  const [y, m, d] = match.slice(1).map(Number);
   return y && m && d ? new Date(y, m - 1, d) : undefined;
 }
 
@@ -2102,8 +3138,11 @@ function toIsoDay(date: Date) {
 // is each control's own inset less the cell's (12px, 10px compact).
 // A control fills the row's height, so a focus ring drawn outside it would
 // be cut by the cell's clip: rings inside the cell draw inset.
+// Every ring inside an editor draws inset ([--tw-ring-inset:inset] on all of
+// it, not only the focused element): a field whose wrapper rings for its
+// focused input (the Combobox editors) reached past the cell, which clips.
 const CELL_CONTROL =
-  "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1 [&_:focus-visible]:ring-inset";
+  "-my-(--table-cell-py) flex min-w-0 items-center [&>*]:min-w-0 [&>*]:flex-1 [&_:focus-visible]:ring-inset [&_*]:[--tw-ring-inset:inset]";
 // The Combobox editors drop their field's ring and fills, like the text
 // field: the cell's own text, with the text cursor.
 const BARE_FIELD =
@@ -2364,7 +3403,10 @@ function EditorBody<TData>({
           onOpenChange={hold.onOpenChange}
           onValueChange={(next) => {
             const day = next instanceof Date ? next : undefined;
-            commit(day ? (typeof value === "string" ? toIsoDay(day) : day) : null);
+            // A string keeps whatever follows its day (a timestamp's time).
+            commit(
+              day ? (typeof value === "string" ? toIsoDay(day) + (dayOf(value) ? value.slice(10) : "") : day) : null
+            );
           }}
           className="min-w-0"
         />
@@ -2375,6 +3417,7 @@ function EditorBody<TData>({
   return (
     <TagsEditor
       boundary={boundary}
+      wrap={lines === "wrap"}
       reach={CELL_REACH.tags[step]}
       boxRef={boxRef}
       onFocus={onFocus}
@@ -2686,9 +3729,16 @@ function SelectEditor({
   "use no memo";
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : { label: o.value, ...o }));
   const checked = items.findIndex((o) => o.value === value);
+  const [open, setOpen] = useState(false);
   return (
     <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className={CELL_CONTROL}>
-      <DropdownMenu onOpenChange={hold.onOpenChange}>
+      <MenuShield open={open} />
+      <DropdownMenu
+        onOpenChange={(next) => {
+          setOpen(next);
+          hold.onOpenChange(next);
+        }}
+      >
         <DropdownTrigger
           render={
             <button
@@ -2713,20 +3763,8 @@ function SelectEditor({
               key={option.value}
               index={i}
               label={option.label}
-              // A badge's dot, in the Badge's own colors (gray reads as the
-              // muted foreground there too), so the menu matches the cell.
-              leading={
-                "color" in option && option.color ? (
-                  <span
-                    aria-hidden
-                    className="size-[7px] shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        option.color === "gray" ? "var(--muted-foreground)" : badgeColors[option.color],
-                    }}
-                  />
-                ) : undefined
-              }
+              // A badge's dot, so the menu matches the cell.
+              leading={"color" in option && option.color ? <BadgeDot color={option.color} /> : undefined}
               checked={option.value === value}
               onSelect={() => onChange(option.value)}
             />
@@ -2826,6 +3864,7 @@ function NumberEditor({
 
 function TagsEditor({
   boundary,
+  wrap,
   reach,
   boxRef,
   onFocus,
@@ -2838,6 +3877,8 @@ function TagsEditor({
   onChange,
 }: {
   boundary: Element | null;
+  /** The column wraps its text: the chips wrap onto more lines too. */
+  wrap: boolean;
   reach: string;
   boxRef: RefObject<HTMLDivElement | null>;
   onFocus: () => void;
@@ -2862,8 +3903,13 @@ function TagsEditor({
         CELL_CONTROL,
         reach,
         // One line of chips, as tall as the row: the chip row scrolls
-        // sideways instead of wrapping (the field follows its caret).
-        "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+        // sideways instead of wrapping (the field follows its caret). In a
+        // column that wraps its text (`lines: "wrap"`), the chips wrap too
+        // and the row grows with them, like its text.
+        !wrap && "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+        // On one line, a chip cut at the cell's edge fades out over its last
+        // 16px, as truncated text ends in an ellipsis.
+        !wrap && "[&_.flex-wrap]:[mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]",
         "[&_[aria-label=Open]]:hidden"
       )}
     >
@@ -2909,17 +3955,26 @@ interface DataTableSearchProps<TData> {
   /** The column id to search. Omitted, the field searches every column. */
   column?: string;
   placeholder?: string;
+  /** Starts as a ghost search button that opens into the field, and
+   *  closes back once the field is empty and loses focus. `false` keeps
+   *  the field open. @default true */
+  collapsible?: boolean;
+  /** The open field's width, in px. @default 224 */
+  width?: number;
   size?: SizeVariant;
   className?: string;
 }
 
-/** A search field that narrows the rows as you type, by one column or all.
- *  The magnifying glass sits over the field's left padding, where Input
- *  puts a file field's icon. */
+/** A search that narrows the rows as you type, by one column or all. It
+ *  rests as a ghost icon button; a click opens it into the field (its width
+ *  springs open from the button's), and an empty field closes on blur or
+ *  Esc. The magnifying glass stays put through both. */
 function DataTableSearch<TData>({
   table,
   column,
   placeholder = "Search…",
+  collapsible = true,
+  width = 224,
   size,
   className,
 }: DataTableSearchProps<TData>) {
@@ -2927,49 +3982,1064 @@ function DataTableSearch<TData>({
   const icons = useIcons();
   const SearchIcon = icons.search;
   const sizeClasses = useSize(size);
+  const compact = sizeClasses.variant === "compact";
   const target = column ? table.getColumn(column) : undefined;
-  const value = (target ? target.getFilterValue() : table.getState().globalFilter) ?? "";
+  // The search keeps to the table's global filter, apart from the column
+  // filters DataTableFilters sets: on one column it holds { column, query },
+  // so a filter chip on that same column stays its own filter.
+  const raw = table.getState().globalFilter as DataTableSearchValue | undefined;
+  const value = typeof raw === "string" ? raw : (raw?.query ?? "");
+  const label = placeholder.replace(/…$/, "");
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const reduceMotion = useReducedMotion();
+  // A search with text stays open, whatever opened it.
+  const expanded = !collapsible || open || value !== "";
+  // Opened from the button: the field takes focus once it's live.
+  const focusOnOpen = useRef(false);
+  useEffect(() => {
+    if (!expanded || !focusOnOpen.current) return;
+    focusOnOpen.current = false;
+    inputRef.current?.focus();
+  }, [expanded]);
+  // Closed with Esc: the button takes focus once it's mounted again.
+  const focusButton = useRef(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (expanded || !focusButton.current) return;
+    focusButton.current = false;
+    buttonRef.current?.focus();
+  }, [expanded]);
+  // The button's square: the icon sits at its center, open or closed.
+  const box = compact ? 28 : 36;
+
+  const setValue = (next: string) => {
+    table.setGlobalFilter(target && next ? { column: target.id, query: next } : next);
+    // A search that shrinks the rows starts over on the first page.
+    table.setPageIndex(0);
+  };
 
   return (
-    <span data-slot="data-table-search" className={cn("relative block w-full max-w-xs min-w-0", className)}>
+    <motion.span
+      data-slot="data-table-search"
+      className={cn("relative block min-w-0 shrink", className)}
+      initial={false}
+      animate={{ width: expanded ? width : box }}
+      transition={reduceMotion ? { duration: 0 } : spring.moderate}
+      style={{ maxWidth: "100%" }}
+    >
       <SearchIcon
         size={sizeClasses.icon}
         strokeWidth={1.5}
         aria-hidden
+        // Centered in the button's square (16px in 36, 14px in 28).
         className={cn(
-          "pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground",
-          "left-2"
+          "pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground",
+          compact ? "left-[7px]" : "left-2.5"
         )}
       />
+      {!expanded && (
+        <Tooltip content={label}>
+          <Button
+            variant="ghost"
+            size={compact ? "icon-compact" : "icon"}
+            ref={buttonRef}
+            aria-label={label}
+            aria-expanded={false}
+            className="absolute inset-0"
+            onClick={() => {
+              focusOnOpen.current = true;
+              setOpen(true);
+            }}
+          />
+        </Tooltip>
+      )}
       <Input
+        ref={inputRef}
         type="search"
         size={size}
         placeholder={placeholder}
-        aria-label={placeholder.replace(/…$/, "")}
-        value={String(value)}
-        onChange={(e) => {
-          const next = e.target.value;
-          if (target) target.setFilterValue(next);
-          else table.setGlobalFilter(next);
-          // A search that shrinks the rows starts over on the first page.
-          table.setPageIndex(0);
+        aria-label={label}
+        tabIndex={expanded ? undefined : -1}
+        aria-hidden={expanded ? undefined : true}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => {
+          if (collapsible && value === "") setOpen(false);
         }}
-        // ↓ steps from the search into the rows.
         onKeyDown={(e) => {
+          // Esc clears the search and closes it.
+          if (e.key === "Escape" && collapsible) {
+            e.preventDefault();
+            // One press does one thing: with text to clear (or a field to
+            // close) it stops here, and a Dialog around it stays open.
+            e.stopPropagation();
+            setValue("");
+            setOpen(false);
+            // Focus goes to the search button once it's back, not to
+            // <body> (the field is out of the tab order when closed).
+            focusButton.current = true;
+            e.currentTarget.blur();
+            return;
+          }
+          // ↓ steps from the search into the rows.
           if (e.key !== "ArrowDown" || e.altKey || e.metaKey || e.ctrlKey) return;
           if ((table as Partial<DataTableExtras>).focusFirstRow?.()) e.preventDefault();
         }}
-        // The icon sits 8px in, on the selection checkbox's line; then the
-        // icon and an 8px gap (16 + 8, 14 + 6 compact).
+        // The text starts after the icon and an 8px gap (6px compact).
         // Ghost, like the toolbar's buttons: no hairline at rest, the hover
         // fill on hover, and the fill held while focused so the field still
-        // shows where typing goes.
+        // shows where typing goes. Closed, it's out of sight under the
+        // button.
         className={cn(
-          "pl-8",
-          "border-transparent focus:border-transparent aria-invalid:focus:border-transparent focus:bg-hover focus:hover:bg-hover"
+          compact ? "pl-[28px]" : "pl-9",
+          "border-transparent focus:border-transparent aria-invalid:focus:border-transparent focus:bg-hover focus:hover:bg-hover",
+          !expanded && "pointer-events-none opacity-0"
         )}
       />
-    </span>
+    </motion.span>
+  );
+}
+
+// ── useUndoableRows ──────────────────────────────────────
+
+interface UndoStep<T> {
+  /** What the step did, for an Undo toast: "Deleted 3 rows". */
+  label: string;
+  before: T[];
+  after: T[];
+  /** Edits to one cell, typed in a burst, merge into one step. */
+  mergeKey?: string;
+  at: number;
+}
+
+interface UseUndoableRowsOptions<T> {
+  /** A row's id, as getRowId gives it to the table. */
+  getId: (row: T) => string;
+  /** Steps kept to undo. @default 100 */
+  limit?: number;
+}
+
+// A cell's keystrokes within this long of each other undo as one step.
+const MERGE_MS = 1000;
+
+/** Rows you can change and take back: every change through it is a step
+ *  that undo reverses and redo plays again. A cell typed in a burst is one
+ *  step, so ⌘Z takes back the word, not the last letter. Pass `rows` to
+ *  useDataTable and `undo` / `redo` to DataTable's onUndo / onRedo. */
+function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: UseUndoableRowsOptions<T>) {
+  const [state, setState] = useState(() => ({
+    rows: typeof initial === "function" ? initial() : initial,
+    past: [] as UndoStep<T>[],
+    future: [] as UndoStep<T>[],
+    // Steps trimmed off the front at `limit`: stepCount keeps counting
+    // past it, so a count read before a trim still names its step.
+    dropped: 0,
+  }));
+
+  const apply = useCallback(
+    (label: string, change: (rows: T[]) => T[], mergeKey?: string) =>
+      setState((s) => {
+        const after = change(s.rows);
+        if (after === s.rows) return s;
+        const now = Date.now();
+        const last = s.past[s.past.length - 1];
+        if (mergeKey && last?.mergeKey === mergeKey && now - last.at < MERGE_MS)
+          return { ...s, rows: after, past: [...s.past.slice(0, -1), { ...last, after, at: now }], future: [] };
+        const step = { label, before: s.rows, after, mergeKey, at: now };
+        const past = [...s.past, step];
+        const over = Math.max(0, past.length - limit);
+        return { rows: after, past: past.slice(over), future: [], dropped: s.dropped + over };
+      }),
+    [limit]
+  );
+
+  const edit = useCallback(
+    (id: string, change: Partial<T>, label = "Edited a row") =>
+      apply(
+        label,
+        (rows) => rows.map((r) => (getId(r) === id ? { ...r, ...change } : r)),
+        // One cell's burst merges: the same row and the same fields.
+        `${id}:${Object.keys(change).sort().join(",")}`
+      ),
+    [apply, getId]
+  );
+
+  const remove = useCallback(
+    (ids: readonly string[], label = `Deleted ${ids.length} ${ids.length === 1 ? "row" : "rows"}`) =>
+      apply(label, (rows) => {
+        const next = rows.filter((r) => !ids.includes(getId(r)));
+        return next.length === rows.length ? rows : next;
+      }),
+    [apply, getId]
+  );
+
+  const insert = useCallback(
+    (items: readonly T[], index?: number, label = `Added ${items.length} ${items.length === 1 ? "row" : "rows"}`) =>
+      apply(label, (rows) => {
+        const at = index === undefined ? rows.length : index;
+        return [...rows.slice(0, at), ...items, ...rows.slice(at)];
+      }),
+    [apply]
+  );
+
+  const undo = useCallback(
+    () =>
+      setState((s) => {
+        const step = s.past[s.past.length - 1];
+        if (!step) return s;
+        return { ...s, rows: step.before, past: s.past.slice(0, -1), future: [step, ...s.future] };
+      }),
+    []
+  );
+
+  // Back to how the rows were with `count` steps behind them: a toast's
+  // Undo takes back its own step (and anything done since), not whatever
+  // happened last.
+  const undoTo = useCallback(
+    (count: number) =>
+      setState((s) => {
+        // `count` is a stepCount: steps ever taken, trimmed ones included.
+        // A step trimmed away can't be undone: back as far as there is.
+        const at = Math.max(0, count - s.dropped);
+        if (at >= s.past.length) return s;
+        const undone = s.past.slice(at);
+        return { ...s, rows: undone[0].before, past: s.past.slice(0, at), future: [...undone, ...s.future] };
+      }),
+    []
+  );
+
+  const redo = useCallback(
+    () =>
+      setState((s) => {
+        const step = s.future[0];
+        if (!step) return s;
+        return { ...s, rows: step.after, past: [...s.past, step], future: s.future.slice(1) };
+      }),
+    []
+  );
+
+  return {
+    rows: state.rows,
+    /** Any change, as one step: `change` gets the rows and returns new ones. */
+    apply,
+    edit,
+    remove,
+    insert,
+    undo,
+    undoTo,
+    redo,
+    /** Steps taken so far: read it before a change, pass it to undoTo. */
+    stepCount: state.dropped + state.past.length,
+    canUndo: state.past.length > 0,
+    canRedo: state.future.length > 0,
+    /** The step undo would take back, for a toast's text. */
+    lastStep: state.past[state.past.length - 1]?.label,
+  };
+}
+
+// ── DataTableTitle ───────────────────────────────────────
+
+interface DataTableTitleProps extends HTMLAttributes<HTMLHeadingElement> {
+  /** The heading level. @default "h1" */
+  as?: "h1" | "h2" | "h3";
+  /** The table it names: with a selection column, the title steps in to
+   *  start where the first data column does (past the 28px column of
+   *  boxes), the edge it shares with the table when there are none. */
+  table?: TanStackTable<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  size?: SizeVariant;
+}
+
+/** The table's heading, on the toolbar's row: the page-title role of the
+ *  type scale (28px, 24 compact), semibold. Optional. */
+function DataTableTitle({ as: Tag = "h1", table, size, className, style, ...props }: DataTableTitleProps) {
+  "use no memo";
+  const compact = useSize(size).variant === "compact";
+  // Looked up among the columns (getColumn warns about a missing id).
+  const boxes = !!table?.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
+  return (
+    <Tag
+      data-slot="data-table-title"
+      className={cn(
+        typeClass("display", compact ? "compact" : "default"),
+        "text-foreground",
+        boxes && "pl-7",
+        className
+      )}
+      style={{ fontVariationSettings: fontWeights.semibold, ...style }}
+      {...props}
+    />
+  );
+}
+
+// ── DataTableFilters ─────────────────────────────────────
+
+/** A day as "YYYY-MM-DD", from a Date (its local day) or a string that
+ *  starts with one. */
+function dayOf(value: unknown): string | undefined {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : toIsoDay(value);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return undefined;
+}
+
+/** The filterFn every column gets by default: it reads the shapes
+ *  DataTableFilters sets (and a plain string, "contains"). An empty filter
+ *  keeps every row, so a chip being filled in hides nothing yet. */
+function dataTableFilterFn<TData>(row: Row<TData>, columnId: string, filter: DataTableFilterValue) {
+  const value = row.getValue(columnId);
+  if (filter == null) return true;
+  if (typeof filter === "string" || filter.kind === "text") {
+    const op = typeof filter === "string" ? "contains" : (filter.op ?? "contains");
+    const text = (Array.isArray(value) ? value.join(" ") : String(value ?? "")).trim().toLowerCase();
+    if (op === "is empty") return text === "";
+    if (op === "is not empty") return text !== "";
+    const query = (typeof filter === "string" ? filter : filter.query).trim().toLowerCase();
+    // A condition with nothing typed yet hides nothing.
+    if (!query) return true;
+    if (op === "is") return text === query;
+    if (op === "is not") return text !== query;
+    if (op === "does not contain") return !text.includes(query);
+    if (op === "starts with") return text.startsWith(query);
+    if (op === "ends with") return text.endsWith(query);
+    return text.includes(query);
+  }
+  if (filter.kind === "options") {
+    if (filter.values.length === 0) return true;
+    const have = Array.isArray(value) ? value.map(String) : [String(value ?? "")];
+    const any = have.some((v) => filter.values.includes(v));
+    return filter.op === "is not" ? !any : any;
+  }
+  if (filter.kind === "number") {
+    if (filter.min === undefined && filter.max === undefined) return true;
+    if (value === null || value === undefined || value === "") return false;
+    const n = Number(value);
+    if (Number.isNaN(n)) return false;
+    return (filter.min === undefined || n >= filter.min) && (filter.max === undefined || n <= filter.max);
+  }
+  const dateOp = filter.op ?? "between";
+  const bound = dateOp === "before" ? filter.to : dateOp === "after" ? filter.from : filter.from || filter.to;
+  if (!bound) return true;
+  const day = dayOf(value);
+  if (!day) return false;
+  if (dateOp === "before") return day < filter.to!;
+  if (dateOp === "after") return day > filter.from!;
+  return (!filter.from || day >= filter.from) && (!filter.to || day <= filter.to);
+}
+
+type ResolvedFilter =
+  | { type: "text" | "number" | "date" }
+  | { type: "options"; options: { value: string; label: string; color?: BadgeColor }[] };
+
+const optionOf = (o: DataTableSelectOption) =>
+  typeof o === "string" ? { value: o, label: o } : { value: o.value, label: o.label ?? o.value, color: o.color };
+
+/** How a column filters: its `meta.filter`, else its editor, else what its
+ *  values look like. */
+function filterOf<TData>(table: TanStackTable<TData>, column: Column<TData, unknown>): ResolvedFilter | null {
+  const meta = column.columnDef.meta;
+  if (meta?.filter === false) return null;
+  if (meta?.filter) {
+    return typeof meta.filter === "string"
+      ? { type: meta.filter }
+      : { type: "options", options: meta.filter.options.map(optionOf) };
+  }
+  const editor = meta?.editor;
+  if (editor) {
+    const type = editorType(editor);
+    if (type === "select" && typeof editor === "object" && "options" in editor && editor.options)
+      return { type: "options", options: (editor.options as readonly DataTableSelectOption[]).map(optionOf) };
+    if (type === "tags" && typeof editor === "object" && "options" in editor && editor.options?.length)
+      return { type: "options", options: (editor.options as readonly string[]).map(optionOf) };
+    if (type === "number" || type === "date") return { type };
+    if (type === "text") return { type: "text" };
+  }
+  // Read from the data through the accessor, not a row model: building a
+  // row model here, in a part that renders before DataTable, arms
+  // TanStack's page reset during hydration and fires it on a table that
+  // hasn't mounted yet.
+  const accessor = column.accessorFn;
+  if (!accessor) return { type: "text" };
+  const values = table.options.data
+    .slice(0, 500)
+    .map((original, i) => accessor(original, i))
+    .filter((v) => v !== null && v !== undefined && v !== "");
+  if (values.length === 0) return { type: "text" };
+  if (values.every((v) => typeof v === "number")) return { type: "number" };
+  if (values.every((v) => dayOf(v) !== undefined)) return { type: "date" };
+  const flat = values.flatMap((v) => (Array.isArray(v) ? v : [v]));
+  if (flat.every((v) => typeof v === "string")) {
+    const distinct = [...new Set(flat as string[])];
+    // A few values, each repeated: a set to pick from rather than text.
+    if (distinct.length <= 12 && distinct.length < flat.length)
+      return { type: "options", options: distinct.sort().map((v) => ({ value: v, label: v })) };
+  }
+  return { type: "text" };
+}
+
+const emptyFilter = (type: ResolvedFilter["type"]): DataTableFilterValue =>
+  type === "options"
+    ? { kind: "options", values: [] }
+    : type === "number"
+      ? { kind: "number" }
+      : type === "date"
+        ? { kind: "date" }
+        : { kind: "text", query: "" };
+
+interface DataTableFiltersProps<TData> {
+  table: TanStackTable<TData>;
+  size?: SizeVariant;
+  className?: string;
+}
+
+/** The table's filters, read from its state: the ones set (DataTableFilters
+ *  chips) and every column that can filter, with its kind. The kinds are
+ *  read again only when the data or the columns change. */
+function useFilters<TData>(table: TanStackTable<TData>) {
+  "use no memo";
+  const data = table.options.data;
+  const defs = table.options.columns;
+  const kinds = useMemo(
+    () => new Map(table.getAllLeafColumns().map((c) => [c.id, filterOf(table, c)] as const)),
+    // table is a new view on every state change; the kinds follow data and defs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, defs]
+  );
+  const active = table
+    .getState()
+    .columnFilters.filter((f) => typeof f.value === "object" && f.value !== null && "kind" in f.value);
+  const filterable = table
+    .getAllLeafColumns()
+    .filter((c) => c.accessorFn !== undefined && c.getCanFilter())
+    .map((column) => ({ column, filter: kinds.get(column.id) ?? filterOf(table, column) }))
+    .filter((c): c is { column: Column<TData, unknown>; filter: ResolvedFilter } => c.filter !== null);
+  return { active, filterable };
+}
+
+/** An icon button that adds a filter: its menu lists the columns that can
+ *  filter, with a search on top, and a pick adds that column's chip to
+ *  DataTableFilterChips with its editor open. */
+function DataTableFilters<TData>({
+  table,
+  size,
+  className,
+  add = false,
+}: DataTableFiltersProps<TData> & {
+  /** The chips row's own button: a + that adds one more filter, gone once
+   *  every column that can filter has one. */
+  add?: boolean;
+}) {
+  "use no memo";
+  const icons = useIcons();
+  const FilterIcon = add ? icons.plus : icons.filter;
+  const compact = useSize(size).variant === "compact";
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const { active, filterable } = useFilters(table);
+  const available = filterable.filter(({ column }) => !active.some((f) => f.id === column.id));
+  const q = query.trim().toLowerCase();
+  const matches = available.filter(({ column }) => columnLabel(column).toLowerCase().includes(q));
+  const label = add ? "Add filter" : "Filter";
+  if (add && available.length === 0) return null;
+
+  return (
+    // The tooltip's trigger is a wrapper, so the button stays the menu's.
+    <Tooltip content={label} forceOpen={open ? false : undefined}>
+      <span data-slot="data-table-filters" className={cn("inline-flex", className)}>
+        <MenuShield open={open} />
+        <DropdownMenu
+          size={size}
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setQuery("");
+          }}
+        >
+          <DropdownTrigger
+            render={
+              <Button
+                variant="ghost"
+                size={compact ? "icon-compact" : "icon"}
+                aria-label={label}
+                disabled={available.length === 0}
+              >
+                <FilterIcon />
+              </Button>
+            }
+          />
+          <DropdownContent align={add ? "start" : "end"} className="w-56">
+            <DropdownSearch value={query} onValueChange={setQuery} placeholder="Filter by…" />
+            {matches.map(({ column }, i) => (
+              <MenuItem
+                key={column.id}
+                index={i}
+                icon={column.columnDef.meta?.icon}
+                label={columnLabel(column)}
+                onSelect={() => (table as Partial<DataTableExtras>).openFilter?.(column.id)}
+              />
+            ))}
+            {matches.length === 0 && <DropdownEmpty>No columns match</DropdownEmpty>}
+          </DropdownContent>
+        </DropdownMenu>
+      </span>
+    </Tooltip>
+  );
+}
+
+/** A row above the table that comes and goes (the filter chips): its
+ *  height springs open from 0 and back, measured rather than "auto", with
+ *  the parent's gap folded in so the table below glides instead of
+ *  jumping. On the page's first render it is simply there. */
+function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
+  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
+}
+
+function RowRevealPart({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isPresent, safeToRemove] = usePresence();
+  const initial = useContext(PresenceContext)?.initial;
+  const reduceMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (isPresent && initial === false) return;
+    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
+    const height = el.offsetHeight;
+    const clear = () => {
+      el.style.height = "";
+      el.style.marginTop = "";
+      el.style.overflow = "";
+      el.style.opacity = "";
+    };
+    if (reduceMotion) {
+      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
+      if (!isPresent) fade.then(() => safeToRemove?.());
+      return () => fade.stop();
+    }
+    // Clipped only while it moves: at rest a chip's focus ring shows.
+    // clip, not hidden: hidden makes the row a scroll container, and a
+    // field focused inside it as it grows (a new chip's input, a view's
+    // name) scrolled the row to show it, shifting its content, which then
+    // jumped back when the clip came off.
+    el.style.overflow = "clip";
+    // The start, set before this frame paints: animate() only applies its
+    // first keyframe on the next one, which showed the row whole for a frame.
+    if (isPresent) {
+      el.style.height = "0px";
+      el.style.marginTop = `${-gap}px`;
+      el.style.opacity = "0";
+    }
+    const run = isPresent
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
+      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+    run.then(() => (isPresent ? clear() : safeToRemove?.()));
+    // Stopped early (a re-run, Strict Mode's double effect): back to its
+    // natural size, so the next run measures the real height.
+    return () => {
+      run.stop();
+      if (isPresent) clear();
+    };
+  }, [isPresent]); // eslint-disable-line react-hooks/exhaustive-deps -- runs as it enters and as it leaves
+  return <div ref={ref}>{children}</div>;
+}
+
+/** The filters set on the table, one chip each (the column, what it
+ *  matches, the value, and × to remove it), on a row of their own between
+ *  the toolbar and the table, ended by a + that adds one more. Renders
+ *  nothing while no filter is set. Each
+ *  column filters by its kind (see `meta.filter`): text it contains,
+ *  options to pick, a number range, or a range of days. */
+function DataTableFilterChips<TData>({
+  table,
+  size,
+  className,
+  children,
+}: DataTableFiltersProps<TData> & {
+  /** Actions about the table's state (a Save view button), right after
+   *  the + that adds a filter. They show the row on their own too, so a
+   *  change with no filter (a hidden or moved column) can still be saved;
+   *  pass nothing (or false) and the row waits for a filter. */
+  children?: ReactNode;
+}) {
+  "use no memo";
+  const compact = useSize(size).variant === "compact";
+  const { active, filterable } = useFilters(table);
+  const extras = table as Partial<DataTableExtras>;
+  const request = extras.filterRequest ?? null;
+  const register = extras._registerChips;
+  useEffect(() => {
+    register?.(true);
+    return () => register?.(false);
+  }, [register]);
+
+  const set = (column: Column<TData, unknown>, value: DataTableFilterValue | undefined) => {
+    column.setFilterValue(value);
+    table.setPageIndex(0);
+  };
+  // Past a selection column, the row steps in with the title, to the first
+  // data column's text.
+  const boxes = !!table.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
+
+  return (
+    <RowReveal show={active.length > 0 || Children.toArray(children).length > 0}>
+      <div
+        data-slot="data-table-filter-chips"
+        // Past a selection column the chips start where the first data
+        // column does, 28px in (past the boxes), like the title: the edge
+        // they share with the table when there are no boxes.
+        className={cn("flex flex-wrap items-center gap-1", boxes && "pl-7", className)}
+      >
+        {active.map((f) => {
+          const entry = filterable.find(({ column }) => column.id === f.id);
+          if (!entry) return null;
+          // The chip asked for opens its editor; the count remounts it if it
+          // was already there.
+          const asked = request?.id === f.id;
+          return (
+            <FilterChip
+              key={asked ? `${f.id}:${request.n}` : f.id}
+              label={columnLabel(entry.column)}
+              filter={entry.filter}
+              value={f.value as Exclude<DataTableFilterValue, string>}
+              autoOpen={asked}
+              compact={compact}
+              size={size}
+              onChange={(value) => set(entry.column, value)}
+              onRemove={() => set(entry.column, undefined)}
+            />
+          );
+        })}
+        <DataTableFilters table={table} size={size} add />
+        {children}
+      </div>
+    </RowReveal>
+  );
+}
+
+interface FilterChipProps {
+  label: string;
+  filter: ResolvedFilter;
+  value: Exclude<DataTableFilterValue, string>;
+  autoOpen: boolean;
+  compact: boolean;
+  size?: SizeVariant;
+  onChange: (value: DataTableFilterValue) => void;
+  onRemove: () => void;
+}
+
+// A chip's field: the chip's own text on no fill, so the chip reads as one
+// phrase ("Name contains ada").
+const CHIP_FIELD =
+  "min-w-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+
+/** A Badge's dot in the Badge's own colors (gray reads as the muted
+ *  foreground there too), for menus listing badge values. */
+function BadgeDot({ color }: { color: BadgeColor }) {
+  return (
+    <span
+      aria-hidden
+      className="size-[7px] shrink-0 rounded-full"
+      style={{ backgroundColor: color === "gray" ? "var(--muted-foreground)" : badgeColors[color] }}
+    />
+  );
+}
+
+/** Ranges a date filter offers beside its calendar, ending today. Made
+ *  when the chip renders (a chip only exists after a click, so never on
+ *  the server). */
+function datePresets() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const back = (days: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() - days);
+  return [
+    { label: "Today", range: { from: today, to: today } },
+    { label: "Last 7 days", range: { from: back(6), to: today } },
+    { label: "Last 30 days", range: { from: back(29), to: today } },
+    { label: "This month", range: { from: new Date(today.getFullYear(), today.getMonth(), 1), to: today } },
+    { label: "Last 3 months", range: { from: new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()), to: today } },
+    { label: "This year", range: { from: new Date(today.getFullYear(), 0, 1), to: today } },
+  ];
+}
+
+/** One filter: "Status is Active, Invited ×". */
+function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, onRemove }: FilterChipProps) {
+  const icons = useIcons();
+  const X = icons.x;
+  const shape = useShape();
+  const sizeClasses = useSize(size);
+  const [open, setOpen] = useState(autoOpen);
+  const [typing, setTyping] = useState(false);
+  // The DatePicker field's recipe: a hairline box, its parts 2px inside
+  // with corners nested in its radius (8 - 3 = 5px, 20 - 3 = 17px), and one
+  // fluid hover gliding between the filter and its ×.
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const hover = useFluidHover(boxRef, { axis: "x", gapClick: false });
+  const { registerItem } = hover;
+  // Three stops for the gliding fill: the word (when it's a menu), the
+  // value, and the ×. Registered from ref objects after mount: a callback
+  // ref passed through a menu trigger or a tooltip is a new function each
+  // render, which unregistered and registered the stop on every render and
+  // dropped the fill.
+  const verbRef = useRef<HTMLButtonElement>(null);
+  const valueRef = useRef<HTMLElement>(null);
+  const clearRef = useRef<HTMLButtonElement>(null);
+  useRegisterFluidHoverItem(registerItem, 0, verbRef);
+  useRegisterFluidHoverItem(registerItem, 1, valueRef);
+  useRegisterFluidHoverItem(registerItem, 2, clearRef);
+  // The parts' own width, read as it changes: the box springs to it (plus
+  // its 1px border and 2px inset on each side).
+  const contentRef = useRef<HTMLSpanElement>(null);
+  const [contentWidth, setContentWidth] = useState<number | null>(null);
+  const reduceMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setContentWidth(el.offsetWidth));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const innerRadius = { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[shape.variant];
+  const segment = cn(
+    "relative z-[1] inline-flex h-full min-w-0 items-center gap-1 outline-none",
+    // 4px around the word and the value (the × keeps its square).
+    "px-1",
+    "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+    innerRadius
+  );
+
+  let op: string;
+  let control: ReactNode;
+  // The date filter's word is a menu of its own (between, before, after).
+  let opControl: ReactNode = null;
+  if (value.kind === "text") {
+    const textOp = value.op ?? "contains";
+    op = textOp;
+    opControl = (
+      <OpMenu
+        triggerRef={verbRef}
+        className={segment}
+        label={label}
+        word={textOp}
+        size={size}
+        ops={TEXT_OPS}
+        current={textOp}
+        onPick={(next) => onChange({ ...value, op: next as DataTableTextOp })}
+      />
+    );
+    // "Is empty" and "is not empty" need no text.
+    control = textOp === "is empty" || textOp === "is not empty" ? null : (
+      <input
+        aria-label={`${label} ${textOp}`}
+        autoFocus={autoOpen}
+        value={value.query}
+        placeholder="text"
+        onChange={(e) => onChange({ ...value, query: e.target.value })}
+        // Hugs what's typed (the placeholder when empty).
+        className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-48 min-w-6")}
+      />
+    );
+  } else if (value.kind === "number") {
+    op = "from";
+    const num = (raw: string) => (raw === "" || Number.isNaN(Number(raw)) ? undefined : Number(raw));
+    control = (
+      <span className="flex items-center gap-1">
+        <input
+          type="number"
+          inputMode="decimal"
+          aria-label={`${label} from`}
+          autoFocus={autoOpen}
+          value={value.min ?? ""}
+          placeholder="min"
+          onChange={(e) => onChange({ ...value, min: num(e.target.value) })}
+          className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-24 min-w-4")}
+        />
+        <span className="text-muted-foreground">to</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          aria-label={`${label} to`}
+          value={value.max ?? ""}
+          placeholder="max"
+          onChange={(e) => onChange({ ...value, max: num(e.target.value) })}
+          className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-24 min-w-4")}
+        />
+      </span>
+    );
+  } else if (value.kind === "date") {
+    const dateOp = value.op ?? "between";
+    op = dateOp;
+    const single = dateOp === "before" ? value.to : dateOp === "after" ? value.from : undefined;
+    const range =
+      value.from || value.to
+        ? { from: value.from ? toDate(value.from) : undefined, to: value.to ? toDate(value.to) : undefined }
+        : undefined;
+    // Changing the word keeps the day: "between" starts its range there.
+    const setOp = (next: "between" | "before" | "after") => {
+      const day = single ?? value.from ?? value.to;
+      onChange(
+        next === "before"
+          ? { kind: "date", op: next, to: day }
+          : next === "after"
+            ? { kind: "date", op: next, from: day }
+            : { kind: "date", op: next, from: day }
+      );
+    };
+    opControl = (
+      <OpMenu
+        triggerRef={verbRef}
+        className={segment}
+        label={label}
+        word={dateOp}
+        size={size}
+        ops={["between", "before", "after"]}
+        current={dateOp}
+        onPick={(next) => setOp(next as "between" | "before" | "after")}
+      />
+    );
+    control =
+      dateOp === "between" ? (
+        <DatePicker
+          mode="range"
+          variant="ghost"
+          size={size}
+          presets={datePresets()}
+          aria-label={`${label} between`}
+          value={range}
+          placeholder="any day"
+          // The chip springs to its content: no room held for a longer date.
+          // Typed like the text chips' values, or picked.
+          fitLabel
+          typeable
+          onValueChange={(next) =>
+            onChange({
+              kind: "date",
+              op: "between",
+              from: next?.from ? toIsoDay(next.from) : undefined,
+              to: next?.to ? toIsoDay(next.to) : undefined,
+            })
+          }
+          // The chip's inner row, like its other parts: 2px inside its
+          // border, so the date's fill sits where the word's does.
+          className="h-full min-w-0"
+        />
+      ) : (
+        <DatePicker
+          variant="ghost"
+          size={size}
+          aria-label={`${label} ${dateOp}`}
+          value={single ? toDate(single) : undefined}
+          placeholder="any day"
+          fitLabel
+          typeable
+          onValueChange={(next) => {
+            const day = next instanceof Date ? toIsoDay(next) : undefined;
+            onChange(dateOp === "before" ? { kind: "date", op: "before", to: day } : { kind: "date", op: "after", from: day });
+          }}
+          // The chip's inner row, like its other parts: 2px inside its
+          // border, so the date's fill sits where the word's does.
+          className="h-full min-w-0"
+        />
+      );
+  } else {
+    const negate = value.op === "is not";
+    const many = value.values.length > 1;
+    op = negate ? (many ? "is none of" : "is not") : many ? "is any of" : "is";
+    const options = filter.type === "options" ? filter.options : [];
+    const picked = options.filter((o) => value.values.includes(o.value));
+    const toggle = (v: string) =>
+      onChange({
+        ...value,
+        values: value.values.includes(v) ? value.values.filter((x) => x !== v) : [...value.values, v],
+      });
+    opControl = (
+      <OpMenu
+        triggerRef={verbRef}
+        className={segment}
+        label={label}
+        word={op}
+        size={size}
+        ops={["is", "is not"]}
+        current={negate ? "is not" : "is"}
+        onPick={(next) => onChange({ ...value, op: next as "is" | "is not" })}
+      />
+    );
+    control = (
+      <>
+      <MenuShield open={open} />
+      <DropdownMenu size={size} open={open} onOpenChange={setOpen}>
+        <DropdownTrigger
+          render={
+            <button
+              ref={valueRef as RefObject<HTMLButtonElement>}
+              type="button"
+              aria-label={`${label} ${op} ${picked.length ? picked.map((o) => o.label).join(", ") : "any"}`}
+              className={cn(segment, "max-w-56 cursor-pointer")}
+            >
+              {/* One value reads in full, cut short when it's long; more
+                  read as their dots and a count, so the chip keeps its
+                  width. */}
+              <span className={cn("flex min-w-0 items-center gap-1.5", picked.length ? "text-foreground" : "text-muted-foreground")}>
+                {picked.length === 0 && "any"}
+                {picked.length === 1 && (
+                  <>
+                    {picked[0].color && <BadgeDot color={picked[0].color} />}
+                    <span className="min-w-0 truncate">{picked[0].label}</span>
+                  </>
+                )}
+                {picked.length > 1 && (
+                  <>
+                    {picked.some((o) => o.color) && (
+                      <span className="flex shrink-0 items-center -space-x-0.5">
+                        {picked.slice(0, 4).map((o) => (o.color ? <BadgeDot key={o.value} color={o.color} /> : null))}
+                      </span>
+                    )}
+                    <span className="shrink-0 whitespace-nowrap">{picked.length} items</span>
+                  </>
+                )}
+              </span>
+            </button>
+          }
+        />
+        <DropdownContent
+          className="w-48"
+          checkedIndices={options.flatMap((o, i) => (value.values.includes(o.value) ? [i] : []))}
+        >
+          {options.map((o, i) => (
+            <MenuItem
+              key={o.value}
+              index={i}
+              label={o.label}
+              // Options with a Badge color show its dot, as the cells do.
+              leading={o.color ? <BadgeDot color={o.color} /> : undefined}
+              checked={value.values.includes(o.value)}
+              onSelect={() => toggle(o.value)}
+            />
+          ))}
+        </DropdownContent>
+      </DropdownMenu>
+      </>
+    );
+  }
+
+  return (
+    // The box springs to its content's measured width as the value
+    // changes (a pixel width, never "auto"): its parts sit in a max-content
+    // row the box clips while it catches up.
+    <motion.span
+      ref={boxRef}
+      data-slot="data-table-filter"
+      className={cn(
+        // Field's border: `border-border` at rest, darker only while a text
+        // field in it has focus. A menu trigger keeps focus after its menu
+        // closes, so focus anywhere in the chip left it dark.
+        "relative inline-flex max-w-full items-center overflow-hidden border border-border p-0.5 text-muted-foreground transition-colors duration-80",
+        "data-typing:border-foreground/40",
+        sizeClasses.control,
+        sizeClasses.text,
+        shape.input
+      )}
+      initial={false}
+      animate={contentWidth === null ? undefined : { width: contentWidth + 6 }}
+      transition={reduceMotion ? { duration: 0 } : spring.moderate}
+      data-typing={typing || undefined}
+      onFocus={(e) => setTyping(e.target instanceof HTMLInputElement)}
+      onBlur={() => setTyping(false)}
+      {...hover.handlers}
+    >
+      <FluidHoverHighlight hover={hover} className={cn("z-0", innerRadius)} />
+      <span ref={contentRef} className="inline-flex h-full w-max shrink-0 items-center">
+        {/* The column, then the word, the value and the ×, each a stop. */}
+        <span className={cn("relative z-[1] shrink-0 whitespace-nowrap text-foreground", compact ? "pl-1.5" : "pl-2")}>
+          {label}
+        </span>
+        {opControl ?? <span className={cn("relative z-[1] shrink-0 whitespace-nowrap", "pl-1")}>{op}</span>}
+        {value.kind === "options" ? (
+          control
+        ) : value.kind === "date" ? (
+          // The DatePicker brings its own hover over its dates.
+          <span className="relative z-[1] flex h-full min-w-0 items-center">{control}</span>
+        ) : (
+          // The fields' label: a click anywhere in it types. Kept mounted
+          // (hidden while "is empty" needs no text), so its hover stop stays
+          // registered.
+          <label
+            ref={valueRef as RefObject<HTMLLabelElement>}
+            className={cn(segment, "cursor-text", !control && "hidden")}
+          >
+            {control}
+          </label>
+        )}
+        <Tooltip content="Remove filter">
+        <button
+          ref={clearRef}
+          type="button"
+          aria-label={`Remove the ${label} filter`}
+          onClick={onRemove}
+          className={cn(
+            "relative z-[1] inline-flex h-full shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none hover:text-foreground",
+            "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+            compact ? "w-6" : "w-7",
+            innerRadius
+          )}
+        >
+          <X size={sizeClasses.icon} strokeWidth={1.5} />
+        </button>
+        </Tooltip>
+      </span>
+    </motion.span>
+  );
+}
+
+/** What a filter matches, as a word that opens its own menu: "is" or
+ *  "is not", "between", "before" or "after". */
+function OpMenu({
+  triggerRef,
+  className,
+  label,
+  word,
+  ops,
+  current,
+  size,
+  onPick,
+}: {
+  triggerRef?: RefObject<HTMLButtonElement | null>;
+  className?: string;
+  label: string;
+  word: string;
+  ops: readonly string[];
+  current: string;
+  size?: SizeVariant;
+  onPick: (op: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+    <MenuShield open={open} />
+    <DropdownMenu size={size} onOpenChange={setOpen}>
+      <DropdownTrigger
+        render={
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-label={`${label}: ${word}`}
+            className={cn("shrink-0 cursor-pointer whitespace-nowrap transition-colors duration-80 hover:text-foreground", className)}
+          >
+            {word}
+          </button>
+        }
+      />
+      <DropdownContent align="start" className="w-36" checkedIndex={ops.indexOf(current)}>
+        {ops.map((o, i) => (
+          <MenuItem
+            key={o}
+            index={i}
+            label={o.charAt(0).toUpperCase() + o.slice(1)}
+            checked={o === current}
+            onSelect={() => onPick(o)}
+          />
+        ))}
+      </DropdownContent>
+    </DropdownMenu>
+    </>
   );
 }
 
@@ -2984,9 +5054,14 @@ interface DataTableViewOptionsProps<TData> {
   className?: string;
 }
 
+/** A column's name in menus and filters: `meta.label`, a string header,
+ *  or its id made readable ("lastActive" reads "Last active"). */
 function columnLabel<TData>(column: Column<TData, unknown>) {
   const header = column.columnDef.header;
-  return column.columnDef.meta?.label ?? (typeof header === "string" ? header : column.id);
+  if (column.columnDef.meta?.label) return column.columnDef.meta.label;
+  if (typeof header === "string") return header;
+  const words = column.id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** Every leaf column's id in display order: the saved columnOrder, then
@@ -3152,6 +5227,7 @@ function DataTableViewOptions<TData>({
     // wrapper from it.
     <Tooltip content={label} forceOpen={open ? false : undefined}>
       <span className={cn("inline-flex", className)}>
+        <MenuShield open={open} />
         <DropdownMenu size={size} open={open} onOpenChange={setOpen}>
           <DropdownTrigger
             render={
@@ -3235,12 +5311,16 @@ function DataTableRowActions({ children, label = "Row actions" }: DataTableRowAc
   // button moves 4px out to stay under them (18px at the default step, with
   // rowActionsColumn's padding).
   const compact = useSize().variant === "compact";
+  const [open, setOpen] = useState(false);
   return (
     <span className={cn("flex h-[1lh] items-center justify-end", compact && "-mr-1")}>
-      <DropdownMenu>
+      <MenuShield open={open} />
+      <DropdownMenu onOpenChange={setOpen}>
         <DropdownTrigger
           render={
-            <Button variant="ghost" size="icon-compact" aria-label={label}>
+            // Its ring drawn inside: flush with the cell's edge in compact,
+            // an outer ring was cut off by the cell and the scroll box.
+            <Button variant="ghost" size="icon-compact" aria-label={label} className="focus-visible:ring-inset">
               <More />
             </Button>
           }
@@ -3254,10 +5334,11 @@ function DataTableRowActions({ children, label = "Row actions" }: DataTableRowAc
   );
 }
 
-/** A ready-made last column for DataTableRowActions: 40px wide (8px, the
- *  28px button, 4px), so its ⋯ centers on the line the Columns button and
- *  the next-page arrow share; never sorted, hidden or resized. Put it last
- *  in your `columns`. */
+/** A ready-made last column for DataTableRowActions, hugging its 28px
+ *  button with 4px each side (36px; 32px compact, the button flush right),
+ *  so its ⋯ centers on the line the top bar's last button and the
+ *  next-page arrow share; never sorted, hidden or resized. Put it last in
+ *  your `columns`. */
 function rowActionsColumn<TData>(
   items: (row: Row<TData>) => ReactNode,
   { label }: { label?: string } = {}
@@ -3267,8 +5348,8 @@ function rowActionsColumn<TData>(
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
-    size: 40,
-    meta: { className: "w-0 pl-2 pr-1" },
+    size: ACTIONS_WIDTH,
+    meta: { className: "w-0 px-1", rowMenu: items },
     cell: ({ row }) => <DataTableRowActions label={label}>{items(row)}</DataTableRowActions>,
   };
 }
@@ -3302,7 +5383,7 @@ function DataTablePagination<TData>({
   const Next = icons["arrow-right"];
   const iconSize = sizeClasses.variant === "compact" ? "icon-compact" : "icon";
   const total = table.getFilteredRowModel().rows.length;
-  const selected = table.getFilteredSelectedRowModel().rows.length;
+  const selected = selectedRows(table.getFilteredSelectedRowModel()).length;
   const pageCount = Math.max(1, table.getPageCount());
   const page = Math.min(table.getState().pagination.pageIndex + 1, pageCount);
   const pageSize = table.getState().pagination.pageSize;
@@ -3349,28 +5430,31 @@ function DataTablePagination<TData>({
           <span>
             Page {page} of {pageCount}
           </span>
-          <Tooltip content="Previous page">
-            <Button
-              variant="ghost"
-              size={iconSize}
-              aria-label="Previous page"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <Prev />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Next page">
-            <Button
-              variant="ghost"
-              size={iconSize}
-              aria-label="Next page"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <Next />
-            </Button>
-          </Tooltip>
+          {/* The arrows share one gliding tooltip. */}
+          <TooltipGroup>
+            <Tooltip content="Previous page">
+              <Button
+                variant="ghost"
+                size={iconSize}
+                aria-label="Previous page"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <Prev />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Next page">
+              <Button
+                variant="ghost"
+                size={iconSize}
+                aria-label="Next page"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <Next />
+              </Button>
+            </Tooltip>
+          </TooltipGroup>
         </span>
       </div>
     </div>
@@ -3422,7 +5506,7 @@ function DataTableSelectionBar<TData>({
   const icons = useIcons();
   const XIcon = icons.x;
   const reduceMotion = useReducedMotion();
-  const selected = table.getSelectedRowModel().rows;
+  const selected = selectedRows(table.getSelectedRowModel());
   const count = selected.length;
   // The last count shown, so the bar keeps its number while it leaves.
   const [shown, setShown] = useState(count);
@@ -3446,6 +5530,20 @@ function DataTableSelectionBar<TData>({
       const bar = barRef.current;
       const root = getRoot?.();
       if (!bar || !root) return;
+      // A table inside a layer above the page (a dialog, a full-window
+      // preview) would hide the bar under that layer: the bar takes the
+      // highest z-index among the table's ancestors, plus one.
+      let lift = 0;
+      for (let el = root.parentElement; el; el = el.parentElement) {
+        const z = Number.parseInt(getComputedStyle(el).zIndex, 10);
+        if (!Number.isNaN(z)) lift = Math.max(lift, z + 1);
+      }
+      // Only ever raised: below its own --z-sticky it would slip under the
+      // page's sticky bars. Read on every placement, so a table lifted into
+      // a layer while the bar is up follows it.
+      bar.style.zIndex = "";
+      const own = Number.parseInt(getComputedStyle(bar).zIndex, 10) || 0;
+      if (lift > own) bar.style.zIndex = String(lift);
       const r = root.getBoundingClientRect();
       const bottom = Math.min(r.bottom, window.innerHeight) - BAR_INSET;
       bar.style.left = `${r.left + r.width / 2}px`;
@@ -3471,6 +5569,7 @@ function DataTableSelectionBar<TData>({
   const clear = () => {
     setMenuOpen(false);
     table.resetRowSelection();
+    selectionAnchors.delete(table.getState);
   };
   const noun = shown === 1 ? "row" : "rows";
 
@@ -3480,17 +5579,23 @@ function DataTableSelectionBar<TData>({
         <motion.div
           key="bar"
           ref={barRef}
-          // Grows up from its bottom center, the edge it's anchored by.
+          // The toast's entrance: it slides up by its own height and fades,
+          // no scale. The slide springs (spring.moderate); the fade is a
+          // short ease-out tween, so the bar doesn't creep the last few
+          // percent of its opacity the way a spring would. It leaves the way
+          // it came, quicker, slide and fade together.
           className="pointer-events-auto fixed z-[var(--z-sticky,30)] -translate-x-1/2 -translate-y-full"
-          style={{ transformOrigin: "50% 100%" }}
-          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "100%" }}
+          animate={{ opacity: 1, y: 0 }}
           exit={
             reduceMotion
-              ? { opacity: 0, transition: spring.moderate.exit }
-              : { opacity: 0, y: 8, scale: 0.96, transition: spring.moderate.exit }
+              ? { opacity: 0, transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
+              : { opacity: 0, y: "100%", transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
           }
-          transition={spring.moderate}
+          transition={{
+            y: spring.moderate,
+            opacity: { type: "tween", ease: "easeOut", ...spring.moderate.exit },
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape" && !menuOpen) {
               e.preventDefault();
@@ -3586,13 +5691,17 @@ export {
   useDataTable,
   DataTable,
   DataTableColumnHeader,
+  DataTableTitle,
   DataTableSearch,
+  DataTableFilters,
+  DataTableFilterChips,
   DataTableViewOptions,
   DataTableRowActions,
   DataTablePagination,
   DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
+  useUndoableRows,
 };
 export type {
   DataTableInstance,
@@ -3605,10 +5714,16 @@ export type {
   DataTableProps,
   DataTableEmpty,
   DataTableColumnHeaderProps,
+  DataTableTitleProps,
   DataTableSearchProps,
+  DataTableFiltersProps,
+  UseUndoableRowsOptions,
+  DataTableFilterKind,
+  DataTableFilterValue,
+  DataTableSearchValue,
   DataTableViewOptionsProps,
   DataTableRowActionsProps,
   DataTablePaginationProps,
   DataTableSelectionBarProps,
 };
-export type { ColumnDef } from "@tanstack/react-table";
+export type { ColumnDef, TableState } from "@tanstack/react-table";

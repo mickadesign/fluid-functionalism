@@ -114,7 +114,70 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tdIPp"`);
+    expect(code).toMatchInlineSnapshot(`"ti8ovp"`);
+  });
+
+  // Version "g" codes were published before saved views (on by default).
+  it("a version-g code still decodes, with views on", () => {
+    const back = decodeDataTablePreset("tg4Q9J");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("g");
+    expect(back.preset.views).toBe(true);
+  });
+
+  // Version "f" codes were published while one switch held both sides.
+  it("a version-f code still decodes, both sides sticky", () => {
+    const back = decodeDataTablePreset("tf2Dl3");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("f");
+    expect(back.preset.pinning).toBe(true);
+    expect(back.preset.pinRight).toBe(true);
+  });
+
+  it("each side encodes on its own", () => {
+    const back = decodeDataTablePreset(encodeDataTablePreset({ pinning: false, pinRight: true }));
+    expect(back.preset.pinning).toBe(false);
+    expect(back.preset.pinRight).toBe(true);
+  });
+
+  // Version "e" codes were published before the title heading.
+  it("a version-e code still decodes", () => {
+    const back = decodeDataTablePreset("te17Yv");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("e");
+    expect(back.preset.filter).toBe("all");
+    expect(back.preset.title).toBe(true);
+  });
+
+  // Version "d" codes were published before filters and sticky columns.
+  it("a version-d code still decodes", () => {
+    const back = decodeDataTablePreset("tdIPp");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("d");
+    expect(back.preset).toEqual({
+      ...DEFAULT_DATA_TABLE_PRESET,
+      filter: "all",
+      selection: false,
+      pageSize: "20",
+      lines: "wrap",
+      align: "top",
+      headerIcons: false,
+      flavor: "base",
+    });
+    // Filters came after version d: its codes take today's default (on).
+    expect(back.preset.filters).toBe(true);
+    expect(back.preset.pinning).toBe(true);
+  });
+
+  // Version "h" codes were published while filters defaulted off.
+  it("a version-h code keeps its filters setting", () => {
+    const off = decodeDataTablePreset("th0");
+    expect(off.ok).toBe(true);
+    expect(off.version).toBe("h");
+    expect(off.preset).toEqual({ ...DEFAULT_DATA_TABLE_PRESET, filters: false });
+    const on = decodeDataTablePreset("th6xRlg");
+    expect(on.ok).toBe(true);
+    expect(on.preset.filters).toBe(true);
   });
 
   // Version "c" codes were published while header icons defaulted on.

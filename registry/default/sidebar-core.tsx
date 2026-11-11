@@ -432,6 +432,53 @@ function assignRef<T>(target: Ref<T> | undefined, node: T | null) {
   else if (target) (target as React.MutableRefObject<T | null>).current = node;
 }
 
+/** Calls `onToggle` as a popup trigger opens and closes, read from the
+ *  attributes the primitives set on the trigger itself (Radix data-state,
+ *  Base UI data-popup-open, aria-expanded). Returns a ref callback for the
+ *  trigger. Watched on that one element on purpose: a `:has()` rule keyed
+ *  on those attributes made every menu anywhere on the page recalc the
+ *  whole document's style as it opened (about 25ms on a long page). */
+export function useTriggerOpen(onToggle: ((open: boolean) => void) | undefined) {
+  const toggleRef = useRef(onToggle);
+  useIsoLayoutEffect(() => {
+    toggleRef.current = onToggle;
+  });
+  const watch = useRef<{ el: HTMLElement | null; observer: MutationObserver | null; open: boolean }>({
+    el: null,
+    observer: null,
+    open: false,
+  });
+  useEffect(
+    () => () => {
+      const w = watch.current;
+      w.observer?.disconnect();
+      if (w.open) toggleRef.current?.(false);
+      watch.current = { el: null, observer: null, open: false };
+    },
+    []
+  );
+  // Slot templates hand the ref a fresh callback each render (null, then
+  // the same node): only a new element starts a new watch.
+  return useCallback((el: HTMLElement | null) => {
+    const w = watch.current;
+    if (!el || el === w.el || typeof MutationObserver === "undefined") return;
+    w.observer?.disconnect();
+    const read = () => {
+      const open =
+        el.getAttribute("data-state") === "open" ||
+        el.hasAttribute("data-popup-open") ||
+        el.getAttribute("aria-expanded") === "true";
+      if (open === w.open) return;
+      w.open = open;
+      toggleRef.current?.(open);
+    };
+    w.el = el;
+    w.observer = new MutationObserver(read);
+    w.observer.observe(el, { attributes: true, attributeFilter: ["data-state", "data-popup-open", "aria-expanded"] });
+    read();
+  }, []);
+}
+
 /** Resolves the element to clone: `render` wins, else `asChild`'s single
  *  element child. `content` is what should render inside it — for `asChild`
  *  the child element's own children, otherwise the caller's. */
@@ -1271,6 +1318,9 @@ interface SidebarGroupContextValue {
   /** How many header action buttons overlay the label's right edge — the
    *  collapsible label pads itself so its chevron clears them. */
   actionsCount: number;
+  /** True while a header action's popup is open: the chevron stays shown. */
+  actionOpen: boolean;
+  onActionToggle: (open: boolean) => void;
 }
 
 const SidebarGroupContext = createContext<SidebarGroupContextValue | null>(null);
@@ -1419,9 +1469,15 @@ const SidebarGroup = forwardRef<HTMLDivElement, SidebarGroupProps>(
       }
     }
 
+    const [openActions, setOpenActions] = useState(0);
+    const onActionToggle = useCallback(
+      (next: boolean) => setOpenActions((n) => Math.max(0, n + (next ? 1 : -1))),
+      []
+    );
+    const actionOpen = openActions > 0;
     const ctx = useMemo(
-      () => ({ open, toggle, contentId, actionsCount }),
-      [open, toggle, contentId, actionsCount]
+      () => ({ open, toggle, contentId, actionsCount, actionOpen, onActionToggle }),
+      [open, toggle, contentId, actionsCount, actionOpen, onActionToggle]
     );
 
     return (
@@ -1532,8 +1588,10 @@ const SidebarGroupLabel = forwardRef<HTMLDivElement, SidebarGroupLabelProps>(
             <span
               className={cn(
                 "ml-auto flex h-6 shrink-0 items-center justify-center overflow-hidden",
-                group.open
-                  ? "w-0 opacity-0 group-hover/group-header:w-6 group-hover/group-header:opacity-100 group-focus-within/group-header:w-6 group-focus-within/group-header:opacity-100 group-has-[[data-sidebar=group-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/group-header:w-6 group-has-[[data-sidebar=group-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/group-header:opacity-100 pointer-coarse:w-6 pointer-coarse:opacity-100"
+                group.open && group.actionOpen
+                  ? "w-6 opacity-100"
+                  : group.open
+                  ? "w-0 opacity-0 group-hover/group-header:w-6 group-hover/group-header:opacity-100 group-focus-within/group-header:w-6 group-focus-within/group-header:opacity-100 pointer-coarse:w-6 pointer-coarse:opacity-100"
                   : "w-6 opacity-100"
               )}
             >
@@ -1590,12 +1648,18 @@ const SidebarGroupAction = forwardRef<HTMLButtonElement, SidebarGroupActionProps
     const shape = useShape();
     const sizeClasses = useSize();
     const inCluster = useContext(GroupActionsContext);
+    const group = useContext(SidebarGroupContext);
+    const watchOpen = useTriggerOpen(group?.onActionToggle);
     const { template, content } = resolveSlotTemplate(render, asChild, children);
     return (
       <SlotElement
         template={template}
         defaultTag="button"
-        elementRef={ref as Ref<HTMLElement>}
+        elementRef={(node: HTMLElement | null) => {
+          watchOpen(node);
+          if (typeof ref === "function") ref(node as HTMLButtonElement | null);
+          else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+        }}
         props={{
           type: template ? undefined : "button",
           "data-sidebar": "group-action",

@@ -1,25 +1,39 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useShape } from "@/lib/shape-context";
+import { useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
+import { spring } from "@/lib/springs";
 import {
   useDataTable,
   DataTable,
   DataTableColumnHeader,
+  DataTableTitle,
   DataTableSearch,
+  DataTableFilters,
+  DataTableFilterChips,
   DataTableViewOptions,
   DataTablePagination,
   DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
+  useUndoableRows,
   type ColumnDef,
 } from "@/registry/default/data-table";
-import type { Row } from "@tanstack/react-table";
+import type { Row, TableState } from "@tanstack/react-table";
+import { Tabs, TabsItem } from "@/components/ui/tabs";
+import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
+import { fieldTouchClass, typeClass } from "@/lib/size-context";
+import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
+import { showUndoToast } from "@/lib/docs/settings-toast";
 import { Badge } from "@/registry/default/badge";
 import { Switch } from "@/registry/radix/switch";
 import {
   PLAY_SWITCH,
   PlayDivider,
+  PlaySection,
   PlayField,
   PlaySelect,
   PlaygroundPanel,
@@ -182,6 +196,8 @@ function buildColumns(o: {
   /** The icon set, when headers show icons. */
   icons: Icons | null;
   editable: boolean;
+  /** Deletes a row (and its parts), as an undoable step. */
+  onDelete: (row: ComponentRow) => void;
 }): ColumnDef<ComponentRow>[] {
   const icon = (name: keyof Icons) => (o.icons ? o.icons[name] : undefined);
   // Text wrap on wraps every text column; off, names and links keep one
@@ -201,7 +217,7 @@ function buildColumns(o: {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Primitives" />,
       cell: ({ row }) => (
         // The 24px badge overhangs the line box instead of growing the row.
-        <span className="flex h-[1lh] items-center">
+        <span className="flex h-[1lh] min-w-0 items-center">
           <Badge variant="ghost" color={PRIMITIVE_COLOR[row.original.primitives]}>
             {row.original.primitives}
           </Badge>
@@ -211,6 +227,8 @@ function buildColumns(o: {
         label: "Primitives",
         icon: icon("folder"),
         editor: o.editable ? { type: "select", options: PRIMITIVE_OPTIONS } : undefined,
+        // The filter lists them with their badge's dot.
+        filter: { type: "options", options: PRIMITIVE_OPTIONS },
       },
     },
     {
@@ -250,6 +268,8 @@ function buildColumns(o: {
               label: "Tags",
               className: "min-w-56",
               icon: icon("tag"),
+              // Text wrap wraps the chips too, so none is cut at the edge.
+              lines: wrap ? "wrap" : undefined,
               editor: { type: "tags", options: DATA_TABLE_TAG_OPTIONS, creatable: true },
             },
           } satisfies ColumnDef<ComponentRow>,
@@ -284,7 +304,7 @@ function buildColumns(o: {
       meta: {
         label: "Summary",
         className: "w-full min-w-64",
-        lines: wrap ? "wrap" : 2,
+        lines: wrap ? "wrap" : 1,
         icon: icon("file"),
         editor: o.editable ? "text" : undefined,
       },
@@ -307,6 +327,7 @@ function buildColumns(o: {
                   )
                 }
               />
+              <MenuItem index={2} label="Delete" destructive onSelect={() => o.onDelete(row.original)} />
             </>
           )),
         ]
@@ -315,6 +336,13 @@ function buildColumns(o: {
 }
 
 /** Writes one edit into the rows, a sub-row's into its parent's parts. */
+/** The rows without these slugs, at any depth. */
+function removeRows(list: ComponentRow[], slugs: readonly string[]): ComponentRow[] {
+  return list
+    .filter((r) => !slugs.includes(r.slug))
+    .map((r) => (r.subRows ? { ...r, subRows: removeRows(r.subRows, slugs) } : r));
+}
+
 function updateRow(list: ComponentRow[], slug: string, key: string, value: unknown): ComponentRow[] {
   return list.map((r) =>
     r.slug === slug
@@ -337,12 +365,22 @@ function pick<T>(options: readonly T[]): T {
   return options[Math.floor(Math.random() * options.length)];
 }
 
+/** The pins a one-sided setting keeps, as code: the boxes and the first
+ *  column on the left, the row menus on the right. */
+export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selection" | "rowActions">) {
+  const left = o.pinning ? [...(o.selection ? [`"select"`] : []), `"name"`] : [];
+  const right = o.pinRight && o.rowActions ? [`"actions"`] : [];
+  return `{ left: [${left.join(", ")}], right: [${right.join(", ")}] }`;
+}
+
 export function buildDataTablePlaygroundCode(o: PlayState): string {
   const parts = [
     "useDataTable",
     "DataTable",
     "DataTableColumnHeader",
+    ...(o.title ? ["DataTableTitle"] : []),
     ...(o.filter !== "none" ? ["DataTableSearch"] : []),
+    ...(o.filters ? ["DataTableFilters", "DataTableFilterChips"] : []),
     ...(o.viewMenu ? ["DataTableViewOptions"] : []),
     ...(o.rowActions ? ["rowActionsColumn"] : []),
     ...(o.pagination ? ["DataTablePagination"] : []),
@@ -350,7 +388,11 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.selection ? ["selectColumn"] : []),
     "type ColumnDef",
   ];
-  const toolbar = o.filter !== "none" || o.viewMenu;
+  // Saved views come with filters: they save what the filters set.
+  const views = o.views && o.filters;
+  const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views;
+  // Two icons or more on the row share one gliding tooltip bubble.
+  const grouped = [o.filters, o.viewMenu, o.filter !== "none"].filter(Boolean).length > 1;
   const filter =
     o.filter === "column"
       ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
@@ -360,6 +402,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  ${parts.join(", ")},`,
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
+    ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
+    ...(grouped ? [`import { TooltipGroup } from "./components";`] : []),
     ...(o.headerIcons
       ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
       : []),
@@ -408,7 +452,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `    accessorKey: "tags",`,
           `    header: "Tags",`,
           `    enableSorting: false,`,
-          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
+          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}${o.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
           `  },`,
         ]
       : []),
@@ -421,7 +465,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  {`,
     `    accessorKey: "summary",`,
     `    header: "Summary",`,
-    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : 2}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
+    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : 1}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
     `  },`,
     ...(o.rowActions
       ? [
@@ -441,20 +485,79 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
+    ...(!o.pinning
+      ? [`  // No sticky left columns, and no Freeze item in the header menus.`, `  enableColumnPinning: false,`]
+      : []),
     `  initialState: {`,
     `    sorting: [{ id: "added", desc: true }],`,
     `    columnVisibility: { fluidHover: false },`,
+    ...(o.pinning !== o.pinRight ? [`    // Sticky on one side only.`, `    columnPinning: ${pinningCode(o)},`] : []),
     `  },`,
     `});`,
     ``,
-    `<div className="flex flex-col gap-3">`,
-    ...(toolbar
+    ...(views
       ? [
-          `  <div className="flex items-center gap-2">`,
-          ...(o.filter !== "none" ? [filter] : []),
-          ...(o.viewMenu ? [`    <DataTableViewOptions table={table} className="ml-auto" />`] : []),
+          `// Saved views: the table's state, named (filters, search, sort, columns).`,
+          `const [views, setViews] = useState<{ name: string; state: Partial<TableState> }[]>([]);`,
+          `const [viewIndex, setViewIndex] = useState(0);`,
+          `const allView = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: { fluidHover: false } };`,
+          `const openView = (i: number) => {`,
+          `  const view = i === 0 ? allView : views[i - 1].state;`,
+          `  table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`,
+          `  setViewIndex(i);`,
+          `};`,
+          `const saveView = () => {`,
+          `  const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();`,
+          `  setViews((old) => [...old, { name: \`View \${old.length + 1}\`, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);`,
+          `  setViewIndex(views.length + 1);`,
+          `};`,
+          `// Save view shows once the table differs from the open view.`,
+          `const viewKeys = ["columnFilters", "globalFilter", "sorting", "columnOrder", "columnVisibility"] as const;`,
+          `const snapshot = (state: Partial<TableState>) => JSON.stringify(viewKeys.map((key) => state[key] ?? null));`,
+          `const changed = snapshot(table.getState()) !== snapshot(viewIndex === 0 ? allView : views[viewIndex - 1].state);`,
+          ``,
+        ]
+      : []),
+    `<div className="flex flex-col gap-2">`,
+    ...(toolbar || o.title
+      ? [
+          `  <div className="${o.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`,
+          ...(o.title ? [`    <DataTableTitle table={table}>Components</DataTableTitle>`] : []),
+          `    <span className="ml-auto" />`,
+          ...(grouped ? [`    <TooltipGroup>`] : []),
+          ...[
+            ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
+            ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
+            ...(o.filter !== "none" ? [filter] : []),
+          ].map((line) => (grouped ? `  ${line}` : line)),
+          ...(grouped ? [`    </TooltipGroup>`] : []),
           `  </div>`,
         ]
+      : []),
+    ...(views
+      ? [
+          `  {views.length > 0 && (`,
+          ...(o.selection ? [`    <div className="pl-7">`] : []),
+          ...[
+            `    <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
+            `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
+            `        <TabsItem key={name} index={i} label={name} />`,
+            `      ))}`,
+            `    </Tabs>`,
+          ].map((line) => (o.selection ? `  ${line}` : line)),
+          ...(o.selection ? [`    </div>`] : []),
+          `  )}`,
+        ]
+      : []),
+    ...(o.filters
+      ? views
+        ? [
+            `  {/* Save view after the chips' + Add filter, with the first filter. */}`,
+            `  <DataTableFilterChips table={table}>`,
+            `    {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`,
+            `  </DataTableFilterChips>`,
+          ]
+        : [`  <DataTableFilterChips table={table} />`]
       : []),
     ...(o.editable
       ? [
@@ -486,8 +589,15 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
 }
 
 /** The selection bar's actions, for the selected components. */
-function selectionActions(rows: Row<ComponentRow>[], icons: Icons) {
+function selectionActions(rows: Row<ComponentRow>[], icons: Icons, onDelete: (rows: Row<ComponentRow>[]) => void) {
   return [
+    {
+      value: "delete",
+      label: rows.length === 1 ? "Delete" : `Delete ${rows.length} rows`,
+      icon: icons.x,
+      destructive: true,
+      onSelect: () => onDelete(rows),
+    },
     {
       value: "install",
       label: "Copy install command",
@@ -506,9 +616,99 @@ function selectionActions(rows: Row<ComponentRow>[], icons: Icons) {
   ];
 }
 
+// ── Saved views ──────────────────────────────────────────
+
+type SavedView = {
+  /** Stable through renames and reorders: the tab's key, so a dragged tab
+   *  (and its focus) moves with its view. */
+  id: number;
+  name: string;
+  state: Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;
+};
+
+/** JSON with sorted keys, so two states compare by their values. */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v
+  );
+}
+
+/** Only the hidden columns: an empty visibility and one listing every
+ *  column as shown say the same thing. */
+const visibleOnly = (visibility: Record<string, boolean> | undefined) =>
+  Object.keys(visibility ?? {}).filter((id) => visibility?.[id] === false).sort();
+
+/** The "All" view: the table as it starts. */
+const ALL_VIEW: SavedView["state"] = {
+  columnFilters: [],
+  globalFilter: "",
+  sorting: [{ id: "added", desc: true }],
+  columnOrder: [],
+  columnVisibility: { fluidHover: false },
+};
+
 // ── Playground ───────────────────────────────────────────
 
+/** The views' tab row as it comes and goes (the first saved view, the
+ *  last deleted): its height springs from 0 and back, measured, never
+ *  "auto", with the column's gap folded in, so the table glides. The same
+ *  reveal DataTableFilterChips gives its row. */
+function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
+  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
+}
+
+function RowRevealPart({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isPresent, safeToRemove] = usePresence();
+  const initial = useContext(PresenceContext)?.initial;
+  const reduceMotion = useReducedMotion();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (isPresent && initial === false) return;
+    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
+    const height = el.offsetHeight;
+    if (reduceMotion) {
+      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
+      if (!isPresent) fade.then(() => safeToRemove?.());
+      return () => fade.stop();
+    }
+    // clip, not hidden: hidden makes the row a scroll container, and a
+    // field focused inside it as it grows (a new chip's input, a view's
+    // name) scrolled the row to show it, shifting its content, which then
+    // jumped back when the clip came off.
+    el.style.overflow = "clip";
+    // The start, set before this frame paints: animate() only applies its
+    // first keyframe on the next one, which showed the row whole for a frame.
+    if (isPresent) {
+      el.style.height = "0px";
+      el.style.marginTop = `${-gap}px`;
+      el.style.opacity = "0";
+    }
+    const run = isPresent
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
+      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+    const clear = () => {
+      el.style.height = "";
+      el.style.marginTop = "";
+      el.style.overflow = "";
+      el.style.opacity = "";
+    };
+    run.then(() => (isPresent ? clear() : safeToRemove?.()));
+    // Stopped early (a re-run, Strict Mode's double effect): back to its
+    // natural size, so the next run measures the real height.
+    return () => {
+      run.stop();
+      if (isPresent) clear();
+    };
+  }, [isPresent]); // runs as it enters and as it leaves
+  return <div ref={ref}>{children}</div>;
+}
+
 export function DataTablePlayground({ children }: PlaygroundProps) {
+  const shape = useShape();
   const [state, setState] = useState<PlayState>(DEFAULT_STATE);
   // The settings as of the latest change, for callbacks that outlive the
   // render they were made in.
@@ -525,7 +725,19 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // Expanded, the table fills the layer's height (search and pagination
   // pinned, the rows scrolling between them).
   const [expanded, setExpanded] = useState(false);
-  const [data, setData] = useState(buildRows);
+  // Edits and deletes are undoable steps (⌘Z / ⇧⌘Z in the table). Nothing
+  // is saved: a refresh brings every row back.
+  const history = useUndoableRows(buildRows, { getId: (r) => r.slug });
+  const data = history.rows;
+  const { apply: applyStep, undoTo, stepCount } = history;
+  // A delete says what went, with its way back to before it.
+  const deleteRows = useCallback(
+    (slugs: string[], label: string) => {
+      applyStep(label, (old) => removeRows(old, slugs));
+      showUndoToast(label, () => undoTo(stepCount));
+    },
+    [applyStep, undoTo, stepCount]
+  );
   // Sub-rows on, the rows carry their parts; off, they're left out (a new
   // array, so the table builds its rows again).
   const tableData = useMemo(
@@ -541,8 +753,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         lines: state.lines,
         icons: state.headerIcons ? icons : null,
         editable: state.editable,
+        onDelete: (row) => deleteRows([row.slug], `Deleted ${row.name}`),
       }),
-    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons]
+    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
   );
 
   const table = useDataTable({
@@ -551,9 +764,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     pageSize: Number(DEFAULT_STATE.pageSize),
     getRowId: (row) => row.slug,
     getSubRows: (row) => row.subRows,
+    // Off with the sticky left columns: the header menus drop Freeze.
+    enableColumnPinning: state.pinning,
     initialState: {
       sorting: [{ id: "added", desc: true }],
       columnVisibility: { fluidHover: false },
+      // Set by hand rather than left to useDataTable, which pins nothing
+      // when the table starts with pinning off.
+      columnPinning: { left: ["select", "name"], right: ["actions"] },
     },
   });
 
@@ -567,7 +785,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     // Columns, wrapping and alignment changes below animate from here; the
     // expand / collapse swap doesn't, since the layer's own motion carries
     // it (a row-height spring there let the table overflow the shrinking box).
-    if (animate) table.captureLayout();
+    // Header icons don't either: they change every width at once, and cells
+    // sliding in from their old places while the widths snap read as a
+    // glitch.
+    if (animate && next.headerIcons === prev.headerIcons) table.captureLayout();
     if (next.filter !== prev.filter) {
       table.resetColumnFilters();
       table.setGlobalFilter("");
@@ -576,9 +797,20 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     if (!next.viewMenu) table.resetColumnVisibility();
     // The Tags column comes and goes with editing: the widths are read
     // again, so it starts at its own width rather than none.
-    if (!next.resize || next.editable !== prev.editable) table.resetColumnSizing();
+    // Header icons widen the headers: the widths are read again too.
+    // Sub-rows widen the first column to fit their names: read again too.
+    if (!next.resize || next.editable !== prev.editable || next.headerIcons !== prev.headerIcons || next.expandable !== prev.expandable)
+      table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
+    if (!next.filters) table.resetColumnFilters();
+    // Each side sticks on its own: the left the boxes and the first
+    // column, the right the row menus (useDataTable's own pins).
+    if (next.pinning !== prev.pinning || next.pinRight !== prev.pinRight)
+      table.setColumnPinning({
+        left: next.pinning ? (table.initialState.columnPinning.left ?? []) : [],
+        right: next.pinRight ? (table.initialState.columnPinning.right ?? []) : [],
+      });
     // The Text wrap switch sets the columns' own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
     if (next.lines !== prev.lines)
@@ -614,26 +846,404 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       headerIcons: Math.random() > 0.3,
       editable: Math.random() > 0.5,
       expandable: Math.random() > 0.5,
+      filters: Math.random() > 0.5,
+      pinning: Math.random() > 0.3,
+      pinRight: Math.random() > 0.3,
+      title: Math.random() > 0.3,
+      views: Math.random() > 0.3,
     });
 
-  const toolbar = (state.filter !== "none" || state.viewMenu) && (
-    <div className="flex items-center gap-2">
-      {state.filter !== "none" && (
-        <DataTableSearch
-          // Remounts the field when the mode flips, so it starts empty.
-          key={state.filter}
-          table={table}
-          column={state.filter === "column" ? "name" : undefined}
-          placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
-        />
+  // ── Saved views ────────────────────────────────────────
+  // A view is the table's state, named: its filters, search, sort, column
+  // order and visible columns. "All" is the table as it starts. Kept in
+  // memory: a refresh starts over.
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [viewIndex, setViewIndex] = useState(0);
+  const openView = (i: number) => {
+    const view = i === 0 ? ALL_VIEW : views[i - 1]?.state;
+    if (!view) return;
+    table.captureLayout();
+    table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
+    setViewIndex(i);
+  };
+  // Naming a view happens inline, in its tab: the tab's own label becomes
+  // the draft, so the tab grows as you type and pushes the ones after it,
+  // and a bare field sits on that label (the tab's fill shows through, no
+  // box or shadow of its own), with a × fading in at the tab's end. Saving
+  // opens it on the new tab; clicking the open tab again opens it to
+  // rename. Enter or a click away keeps the name, Esc keeps the old one, and
+  // the × deletes the view.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [naming, setNaming] = useState<{ at: number; draft: string } | null>(null);
+  const nameView = (i: number, name: string) => setNaming({ at: i - 1, draft: name });
+  // Where the field and its × sit, read from the tab after each keystroke
+  // has resized it: the label's left edge and type, the tab's right end.
+  const [nameBox, setNameBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    weight: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (!naming) {
+      setNameBox(null);
+      return;
+    }
+    const box = tabsRef.current;
+    const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[naming.at + 1];
+    const label = tab?.querySelector<HTMLElement>("span > span:not([aria-hidden])");
+    if (!box || !tab || !label) return;
+    const b = box.getBoundingClientRect();
+    const t = tab.getBoundingClientRect();
+    const l = label.getBoundingClientRect();
+    const next = {
+      left: l.left - b.left,
+      top: t.top - b.top,
+      width: t.right - l.left,
+      height: t.height,
+      weight: getComputedStyle(label).fontVariationSettings,
+    };
+    setNameBox((old) => (old && JSON.stringify(old) === JSON.stringify(next) ? old : next));
+  }, [naming]);
+  // A view saved this render gets its field once its tab is there.
+  const [nameNext, setNameNext] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (nameNext === null) return;
+    nameView(nameNext, views[nameNext - 1]?.name ?? "");
+    setNameNext(null);
+    // nameView reads the tabs just rendered; it runs once per request.
+  }, [nameNext]);
+  // The field takes focus with its name selected, once per opening.
+  const nameRef = useRef<HTMLInputElement>(null);
+  // (The field mounts once its place is read, a render after naming starts.)
+  const namingAt = naming?.at ?? null;
+  const fieldPlaced = nameBox !== null;
+  useLayoutEffect(() => {
+    if (namingAt === null || !fieldPlaced) return;
+    nameRef.current?.focus({ preventScroll: true });
+    nameRef.current?.select();
+  }, [namingAt, fieldPlaced]);
+  const commitName = () => {
+    if (!naming) return;
+    const name = naming.draft.trim();
+    if (name) setViews((old) => old.map((v, i) => (i === naming.at ? { ...v, name } : v)));
+    setNaming(null);
+  };
+  // (The tabs fire no change for the tab already open: its own click does.)
+  const renameView = (i: number) => {
+    if (i !== viewIndex || i === 0) return;
+    nameView(i, views[i - 1]?.name ?? "");
+  };
+  const deleteView = () => {
+    setNaming(null);
+    const at = viewIndex - 1;
+    const view = views[at];
+    if (!view) return;
+    setViews((old) => old.filter((_, i) => i !== at));
+    openView(0);
+    // Its way back: the view returns to its place, open.
+    showUndoToast(`Deleted ${view.name}`, () => {
+      setViews((old) => [...old.slice(0, at), view, ...old.slice(at)]);
+      table.setState((old) => ({ ...old, ...view.state, pagination: { ...old.pagination, pageIndex: 0 } }));
+      setViewIndex(at + 1);
+    });
+  };
+  const saveView = () => {
+    const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();
+    const name = `View ${views.length + 1}`;
+    const id = (views.reduce((max, v) => Math.max(max, v.id), 0) || 0) + 1;
+    setViews((old) => [...old, { id, name, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);
+    setViewIndex(views.length + 1);
+    // Ask for its name in place, on the new tab.
+    setNameNext(views.length + 1);
+  };
+
+  // Saved views come with filters: they save what the filters set.
+  const showViews = state.views && state.filters;
+  // Save view shows once the table differs from the open view: there's
+  // nothing new to save before.
+  const viewChanged = (() => {
+    const open = viewIndex === 0 ? ALL_VIEW : views[viewIndex - 1]?.state;
+    if (!open) return true;
+    const now = table.getState();
+    const same = (a: unknown, b: unknown) => stableJson(a) === stableJson(b);
+    return !(
+      same(now.columnFilters, open.columnFilters) &&
+      same(now.globalFilter ?? "", open.globalFilter ?? "") &&
+      same(now.sorting, open.sorting) &&
+      same(now.columnOrder, open.columnOrder) &&
+      same(visibleOnly(now.columnVisibility), visibleOnly(open.columnVisibility))
+    );
+  })();
+
+  // Saved tabs reorder the way the table's column headers do ("All" stays
+  // first): past 4px a press lifts a copy of the tab that follows the
+  // pointer (80%, the pressed fill, held inside the row), its slot empties,
+  // a 2px accent bar marks where it lands, and it moves on release, the
+  // other tabs sliding to their new places. The click the drag ends with is
+  // swallowed, so it doesn't rename. Alt + ← / → moves a focused tab.
+  const dragged = useRef(false);
+  const tabGhostRef = useRef<HTMLDivElement>(null);
+  const [tabGhost, setTabGhost] = useState<{ label: string; top: number; left: number; width: number; height: number } | null>(null);
+  const [tabDrag, setTabDrag] = useState<{ from: number; bar: number | null } | null>(null);
+  // Tab lefts before a move, by view id, so the next commit slides them.
+  const tabLefts = useRef<Map<number, number> | null>(null);
+  const tabEls = () => [...(tabsRef.current?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])];
+  const moveViewTab = (from: number, to: number) => {
+    if (to === from || to < 1 || from < 1) return;
+    tabLefts.current = new Map(tabEls().map((t) => [Number(t.dataset.viewId), t.getBoundingClientRect().left]));
+    setViews((old) => {
+      const next = [...old];
+      const [moved] = next.splice(from - 1, 1);
+      next.splice(to - 1, 0, moved);
+      return next;
+    });
+    // The open view stays open wherever it lands.
+    setViewIndex((cur) =>
+      cur === from ? to : cur > Math.min(from, to) && cur <= Math.max(from, to) ? cur + (from < to ? -1 : 1) : cur
+    );
+  };
+  useLayoutEffect(() => {
+    const before = tabLefts.current;
+    if (!before) return;
+    tabLefts.current = null;
+    for (const t of tabEls()) {
+      const was = before.get(Number(t.dataset.viewId));
+      const dx = was === undefined ? 0 : was - t.getBoundingClientRect().left;
+      if (dx) animate(t, { x: [dx, 0] }, spring.moderate);
+    }
+  }, [views]);
+  const onTabsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || naming) return;
+    const box = tabsRef.current;
+    const from = tabEls().findIndex((t) => t.contains(e.target as Node));
+    if (!box || from < 1) return;
+    const tab = tabEls()[from];
+    const rect = tab.getBoundingClientRect();
+    const startX = e.clientX;
+    let moved = false;
+    let to = from;
+    // Where the dragged tab would land for a pointer x: before the first
+    // saved tab whose middle is past it, or last.
+    const land = (x: number) => {
+      const els = tabEls();
+      const i = els.findIndex((t, k) => k >= 1 && x < t.getBoundingClientRect().left + t.getBoundingClientRect().width / 2);
+      const slot = i === -1 ? els.length : i;
+      // A slot right before or after itself is no move.
+      const target = slot > from ? slot - 1 : slot;
+      const b = box.getBoundingClientRect();
+      const barX = i === -1 ? els[els.length - 1].getBoundingClientRect().right - b.left + 1 : els[i].getBoundingClientRect().left - b.left - 3;
+      return { target: Math.max(1, target), bar: target === from ? null : barX };
+    };
+    const move = (ev: PointerEvent) => {
+      if (!moved && Math.abs(ev.clientX - startX) < 4) return;
+      if (!moved) {
+        moved = true;
+        dragged.current = true;
+        setTabGhost({ label: tab.textContent?.slice(0, (tab.textContent?.length ?? 0) / 2) ?? "", top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+      }
+      // The ghost stays within the row of tabs.
+      const b = box.getBoundingClientRect();
+      const dx = Math.min(Math.max(ev.clientX - startX, b.left - rect.left), b.right - rect.right);
+      if (tabGhostRef.current) tabGhostRef.current.style.transform = `translateX(${dx}px)`;
+      const next = land(startX + dx);
+      to = next.target;
+      setTabDrag({ from, bar: next.bar });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setTabGhost(null);
+      setTabDrag(null);
+      if (!moved) return;
+      // The release's click would rename the tab: swallowed for this one
+      // gesture (a drop off the tab fires none, so the guard comes off on
+      // the next tick).
+      const swallow = (ev: Event) => ev.stopPropagation();
+      window.addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => {
+        window.removeEventListener("click", swallow, { capture: true });
+        dragged.current = false;
+      }, 0);
+      moveViewTab(from, to);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const onTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+    const from = tabEls().findIndex((t) => t === document.activeElement);
+    if (from < 1) return;
+    const to = from + (e.key === "ArrowLeft" ? -1 : 1);
+    if (to < 1 || to > views.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    moveViewTab(from, to);
+  };
+  const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
+  // One row: the title on the left; the Filter button, the Columns button
+  // and the search at the right end. Added filters sit on their own row
+  // under it, above the table.
+  const toolbar = (state.title || tools) && (
+    // 12px under the title (the stack's 8px plus 4): the heading stands a
+    // step off the table, while the tabs, chips and table keep 8px between
+    // them as one unit.
+    <div className={cn("flex flex-wrap items-center gap-1", state.title && "mb-1")}>
+      {/* font-heading-display: the site's Heading font setting reaches the
+          title (a site class, so the generated code leaves it out). */}
+      {state.title && (
+        <DataTableTitle table={table} className="font-heading-display">
+          Components
+        </DataTableTitle>
       )}
-      {state.viewMenu && <DataTableViewOptions table={table} className="ml-auto" />}
+      <span className="ml-auto" />
+      {/* The icons share one tooltip bubble that glides between them. */}
+      <TooltipGroup>
+        {state.filters && <DataTableFilters table={table} />}
+        {state.viewMenu && <DataTableViewOptions table={table} />}
+        {state.filter !== "none" && (
+          <DataTableSearch
+            // Remounts the field when the mode flips, so it starts empty.
+            key={state.filter}
+            table={table}
+            column={state.filter === "column" ? "name" : undefined}
+            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+          />
+        )}
+      </TooltipGroup>
     </div>
   );
 
+  const filterCount = table.getState().columnFilters.length;
+
   const body = (
-    <div className={cn("flex w-full flex-col gap-3", expanded && "h-full")}>
+    <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
+      {/* The views as subtle tabs, stepped in with the title past a
+          selection column. A lone "All" tab says nothing, so the row
+          waits for the first saved view. */}
+      <RowReveal show={showViews && views.length > 0}>
+        {/* Past a selection column the tabs start where the first data
+            column does, 28px in, like the title and the chips: the edge they
+            share with the table when there are no boxes. */}
+        <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-7")}>
+          <Tabs
+            size="compact"
+            selectedIndex={viewIndex}
+            onSelect={(i) => !dragged.current && openView(i)}
+            onPointerDownCapture={onTabsPointerDown}
+            onKeyDownCapture={onTabsKeyDown}
+            aria-label="Views"
+          >
+            {[{ id: 0, name: "All" }, ...views].map(({ id, name }, i) => {
+              const editing = naming !== null && naming.at === i - 1;
+              return (
+                <TabsItem
+                  key={id}
+                  index={i}
+                  // Being named, the tab sizes to the draft (spaces kept, so a
+                  // trailing one widens it too), its own text hidden under the
+                  // field, with room at its end for the ×.
+                  label={editing ? naming.draft.replace(/ /g, "\u00a0") || "\u00a0" : name}
+                  data-view-id={id}
+                  // The dragged tab's slot shows empty; its copy rides the pointer.
+                  className={cn(
+                    i > 0 && "touch-none select-none",
+                    tabDrag?.from === i && "invisible",
+                    editing && "pr-8 [&_span]:!text-transparent"
+                  )}
+                  onClick={() => renameView(i)}
+                />
+              );
+            })}
+          </Tabs>
+          {tabDrag?.bar != null && (
+            // Where the tab lands: the column drag's 2px accent bar.
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-1 w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+              style={{ left: tabDrag.bar }}
+            />
+          )}
+          {tabGhost &&
+            createPortal(
+              // The lifted tab: the pressed fill over the page background,
+              // at 80%, following the pointer.
+              <div
+                ref={tabGhostRef}
+                aria-hidden
+                // The dragged tab's own corners and type.
+                className={cn(
+                  "pointer-events-none fixed z-[var(--z-popover,60)] flex items-center justify-center whitespace-nowrap bg-background bg-[linear-gradient(var(--active),var(--active))] px-3 text-foreground opacity-80",
+                  typeClass("body", "compact"),
+                  shape.item
+                )}
+                style={{ top: tabGhost.top, left: tabGhost.left, width: tabGhost.width, height: tabGhost.height }}
+              >
+                {tabGhost.label}
+              </div>,
+              document.body
+            )}
+          {naming && nameBox && (
+            // The bare field on the tab's label, in the label's own type and
+            // weight, so the name doesn't move or change size as it turns
+            // editable; the tab's fill behind it is the only surface.
+            <span
+              className={cn("absolute z-10 flex items-center", typeClass("body", "compact"))}
+              style={{ left: nameBox.left, top: nameBox.top, width: nameBox.width, height: nameBox.height }}
+            >
+              <input
+                ref={nameRef}
+                aria-label="View name"
+                value={naming.draft}
+                onChange={(e) => setNaming({ ...naming, draft: e.target.value })}
+                onBlur={(e) => {
+                  // Leaving for the field's own ×: that click decides.
+                  if (e.relatedTarget?.closest("[data-view-delete]")) return;
+                  commitName();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitName();
+                  if (e.key === "Escape") setNaming(null);
+                }}
+                style={{ fontVariationSettings: nameBox.weight }}
+                // 16px on touch screens, so iOS doesn't zoom into the field.
+                className={cn("h-full min-w-0 flex-1 bg-transparent p-0 text-foreground outline-none", fieldTouchClass)}
+              />
+              <Tooltip content="Delete view">
+                <motion.button
+                  type="button"
+                  data-view-delete=""
+                  aria-label="Delete view"
+                  onClick={deleteView}
+                  // Fades in as the tab turns editable.
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={spring.fast}
+                  className={cn("mr-0.5 grid size-6 shrink-0 cursor-pointer place-items-center text-muted-foreground outline-none hover:bg-hover hover:text-destructive", shape.item)}
+                >
+                  <icons.x size={14} strokeWidth={1.5} />
+                </motion.button>
+              </Tooltip>
+            </span>
+          )}
+        </div>
+      </RowReveal>
+      {state.filters && (
+        // Save view after the chips' + Add filter, once the table differs
+        // from the open view: a filter, a sort, a hidden or moved column.
+        // It brings the row along when no filter is set.
+        <DataTableFilterChips table={table}>
+          {showViews && viewChanged && (
+            <Button variant="ghost" size="compact" onClick={saveView}>
+              Save view
+            </Button>
+          )}
+        </DataTableFilterChips>
+      )}
       <DataTable
         table={table}
         resizeColumns={state.resize}
@@ -641,19 +1251,51 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         cellAlign={state.align}
         fill={expanded}
         loading={loading}
-        empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
+        // With filters set, the table's own default says to remove one and
+        // offers Clear filter(s); a search alone gets a different word.
+        // Every row deleted reads as that, with its way back; a search or
+        // filters that find nothing say so instead.
+        empty={
+          data.length === 0
+            ? {
+                title: "No components left",
+                description: "Undo brings back what you deleted.",
+                action: history.canUndo ? (
+                  <Button variant="ghost" size="compact" onClick={history.undo}>
+                    Undo
+                  </Button>
+                ) : undefined,
+              }
+            : filterCount > 0
+              ? { title: "No components match" }
+              : { title: "No components match", description: "Try a name like Dialog or Tabs." }
+        }
         onCellEdit={
           state.editable
             ? ({ row, columnId, value }) =>
-                setData((old) => updateRow(old, row.original.slug, columnId, value))
+                history.apply(
+                  `Edited ${row.original.name}`,
+                  (old) => updateRow(old, row.original.slug, columnId, value),
+                  `${row.original.slug}:${columnId}`
+                )
             : undefined
         }
+        onUndo={history.undo}
+        onRedo={history.redo}
       />
       {state.pagination && <DataTablePagination table={table} />}
       {state.selection && (
         <DataTableSelectionBar
           table={table}
-          actions={(rows) => selectionActions(rows, icons)}
+          actions={(rows) =>
+            selectionActions(rows, icons, (picked) => {
+              deleteRows(
+                picked.map((r) => r.original.slug),
+                picked.length === 1 ? `Deleted ${picked[0].original.name}` : `Deleted ${picked.length} rows`
+              );
+              table.resetRowSelection();
+            })
+          }
         />
       )}
     </div>
@@ -665,6 +1307,13 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const controls = useMemo(
     () => (
       <PlaygroundPanel onShuffle={randomize}>
+        <PlaySection label="Top bar" />
+        <Switch
+          label="Title"
+          checked={state.title}
+          onToggle={() => set("title", !state.title)}
+          className={PLAY_SWITCH}
+        />
         <PlayField label="Search">
           <PlaySelect
             value={state.filter}
@@ -677,11 +1326,59 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           />
         </PlayField>
         <Switch
+          label="Filters"
+          checked={state.filters}
+          onToggle={() => set("filters", !state.filters)}
+          className={PLAY_SWITCH}
+        />
+        {/* Saved views save what the filters set: off without them. */}
+        <Switch
+          label="Saved views"
+          checked={state.views && state.filters}
+          disabled={!state.filters}
+          onToggle={() => set("views", !state.views)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
           label="Columns menu"
           checked={state.viewMenu}
           onToggle={() => set("viewMenu", !state.viewMenu)}
           className={PLAY_SWITCH}
         />
+        <PlayDivider />
+        <PlaySection label="Columns" />
+        <Switch
+          label="Header icons"
+          checked={state.headerIcons}
+          onToggle={() => set("headerIcons", !state.headerIcons)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Resize columns"
+          checked={state.resize}
+          onToggle={() => set("resize", !state.resize)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Reorder columns"
+          checked={state.reorder}
+          onToggle={() => set("reorder", !state.reorder)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sticky left columns"
+          checked={state.pinning}
+          onToggle={() => set("pinning", !state.pinning)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Sticky right column"
+          checked={state.pinRight}
+          onToggle={() => set("pinRight", !state.pinRight)}
+          className={PLAY_SWITCH}
+        />
+        <PlayDivider />
+        <PlaySection label="Rows" />
         <Switch
           label="Row selection"
           checked={state.selection}
@@ -724,35 +1421,6 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           />
         </PlayField>
         <Switch
-          label="Loading"
-          checked={loading}
-          onToggle={() => {
-            if (reloadTimer.current) clearTimeout(reloadTimer.current);
-            setLoading(!loading);
-          }}
-          className={PLAY_SWITCH}
-        />
-        <Switch
-          label="Header icons"
-          checked={state.headerIcons}
-          onToggle={() => set("headerIcons", !state.headerIcons)}
-          className={PLAY_SWITCH}
-        />
-        <PlayDivider />
-        <Switch
-          label="Resize columns"
-          checked={state.resize}
-          onToggle={() => set("resize", !state.resize)}
-          className={PLAY_SWITCH}
-        />
-        <Switch
-          label="Reorder columns"
-          checked={state.reorder}
-          onToggle={() => set("reorder", !state.reorder)}
-          className={PLAY_SWITCH}
-        />
-        <PlayDivider />
-        <Switch
           label="Pagination"
           checked={state.pagination}
           onToggle={() => set("pagination", !state.pagination)}
@@ -769,6 +1437,15 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             ]}
           />
         </PlayField>
+        <Switch
+          label="Loading"
+          checked={loading}
+          onToggle={() => {
+            if (reloadTimer.current) clearTimeout(reloadTimer.current);
+            setLoading(!loading);
+          }}
+          className={PLAY_SWITCH}
+        />
         <PlayDivider />
         {/* shadcn's preset principle: the exact configuration above, as a
             stateless code the registry can turn into an installable block. */}
