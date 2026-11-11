@@ -300,7 +300,7 @@ function buildColumns(o: {
       meta: {
         label: "Summary",
         className: "w-full min-w-64",
-        lines: wrap ? "wrap" : 2,
+        lines: wrap ? "wrap" : 1,
         icon: icon("file"),
         editor: o.editable ? "text" : undefined,
       },
@@ -458,7 +458,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  {`,
     `    accessorKey: "summary",`,
     `    header: "Summary",`,
-    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : 2}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
+    `    meta: { className: "w-full min-w-64", lines: ${o.lines === "wrap" ? `"wrap"` : 1}${o.headerIcons ? ", icon: File" : ""}${o.editable ? `, editor: "text"` : ""} },`,
     `  },`,
     ...(o.rowActions
       ? [

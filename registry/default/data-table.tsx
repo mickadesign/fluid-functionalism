@@ -1767,6 +1767,7 @@ function DataTable<TData>({
               menuOpen={menuOpen && menuRowId === row.id}
               someSelected={row.getIsSomeSelected()}
               expanded={row.getIsExpanded()}
+              grouped={(rows[i + 1]?.depth ?? 0) > 0}
               expanderId={expanderId}
               onToggleExpand={stableToggle}
               columns={table.options.columns}
@@ -2331,10 +2332,6 @@ function selectColumn<TData>(): ColumnDef<TData> {
 
 // ── Sub-rows ─────────────────────────────────────────────
 
-/** How far each level of sub-rows steps in: a child's chevron starts where
- *  its parent's ends, so the guide line runs clear of it. */
-const SUB_ROW_INDENT = 16;
-
 // A row whose right-click menu is open holds the hover fill in its own
 // cells, rounded at its ends like the highlight.
 const MENU_ROW = {
@@ -2449,25 +2446,25 @@ function PinFills({
   );
 }
 
-/** The tree lines under an open row: one 1px rule per depth, dropped from
- *  the center of the parent's chevron through every row below it, so a
- *  sub-row reads as its parent's without a fill of its own (a fill would
- *  cover the hover and selection drawn behind the table). Placed from the
- *  cell's left padding, `--expander-pl`, which the table sets. */
+/** The tree line under an open row: a 1px rule dropped from the center of
+ *  the parent's chevron through every row below it, so a sub-row reads as
+ *  its parent's without a fill of its own (a fill would cover the hover
+ *  and selection drawn behind the table). Sub-rows don't indent: their
+ *  text lines up with the parent's, past the chevron's slot, which the
+ *  line runs through at every depth. Placed from the cell's left padding,
+ *  `--expander-pl`, which the table sets. */
 function SubRowGuides({ row, expanded, alignTop }: { row: Row<unknown>; expanded: boolean; alignTop: boolean }) {
-  const x = (depth: number) => `calc(var(--expander-pl) + ${depth * SUB_ROW_INDENT + 7.5}px)`;
+  const x = "calc(var(--expander-pl) + 7.5px)";
   const rule = "pointer-events-none absolute w-px bg-border";
   return (
     <>
-      {Array.from({ length: row.depth }, (_, d) => (
-        <span key={d} aria-hidden className={cn(rule, "-top-px bottom-0")} style={{ left: x(d) }} />
-      ))}
+      {row.depth > 0 && <span aria-hidden className={cn(rule, "-top-px bottom-0")} style={{ left: x }} />}
       {expanded && row.subRows.length > 0 && (
         // From 6px under the open chevron to the row's bottom.
         <span
           aria-hidden
           className={cn(rule, "bottom-0", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+14px)]" : "top-[calc(50%+14px)]")}
-          style={{ left: x(row.depth) }}
+          style={{ left: x }}
         />
       )}
     </>
@@ -2541,6 +2538,10 @@ interface DataTableBodyRowProps<TData> {
   /** Compared only: some, not all, of its sub-rows are selected. */
   someSelected: boolean;
   expanded: boolean;
+  /** The next row is a sub-row: an open group reads as one block, with no
+   *  rule under its parent or between its sub-rows (the last keeps its
+   *  rule, closing the group). */
+  grouped: boolean;
   /** The column that carries the chevron and the indent, with sub-rows. */
   expanderId: string | undefined;
   /** Stable for the table's life. */
@@ -2575,6 +2576,7 @@ const DataTableBodyRow = memo(
       pins,
       menuOpen,
       expanded,
+      grouped,
       expanderId,
       onToggleExpand,
       onRowClick,
@@ -2629,6 +2631,7 @@ const DataTableBodyRow = memo(
         onRowClick && "cursor-pointer",
         rowsFocusable && "outline-none",
         menuOpen && MENU_ROW[shapeVariant],
+        grouped && "*:border-transparent",
         // Rows each stack on their own (z-10); the one holding a raised
         // editor lifts above the rows after it, so the field covers them.
         "has-[[data-cell-expanded]]:z-30",
@@ -2667,14 +2670,11 @@ const DataTableBodyRow = memo(
           ) : (
             rendered
           );
-        // With sub-rows, the first data column indents by depth and leads
-        // with the chevron (or its width, so siblings' text lines up).
+        // With sub-rows, the first data column leads with the chevron (or
+        // its width, so every row's text lines up, sub-rows included).
         const content =
           cell.column.id === expanderId ? (
-            <span
-              className="flex min-w-0 items-center gap-1"
-              style={row.depth ? { paddingLeft: row.depth * SUB_ROW_INDENT } : undefined}
-            >
+            <span className="flex min-w-0 items-center gap-1">
               {row.getCanExpand() ? (
                 <ExpandToggle
                   expanded={expanded}
@@ -2790,6 +2790,7 @@ const DataTableBodyRow = memo(
     a.selected === b.selected &&
     a.someSelected === b.someSelected &&
     a.expanded === b.expanded &&
+    a.grouped === b.grouped &&
     a.expanderId === b.expanderId &&
     a.columns === b.columns &&
     a.layoutKey === b.layoutKey &&

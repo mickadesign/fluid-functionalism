@@ -41,7 +41,6 @@ function dataTableDemoFile(p: DataTablePreset): string {
   const views = p.views && p.filters;
   const wrap = p.lines === "wrap";
   const lines = wrap ? `"wrap"` : "1";
-  const summaryLines = wrap ? `"wrap"` : "2";
   const parts = [
     "useDataTable",
     "DataTable",
@@ -169,7 +168,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    accessorKey: "summary",`);
   l.push(`    header: "Summary",`);
   l.push(`    // Last of the data columns: it takes the width left, at least 256px.`);
-  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${summaryLines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
+  l.push(`    meta: { label: "Summary", className: "w-full min-w-64", lines: ${lines}${icon("File")}${edit ? `, editor: "text"` : ""} },`);
   l.push(`  },`);
   if (p.rowActions) {
     l.push(`  rowActionsColumn<Row>((row) => (`);
