@@ -17,7 +17,10 @@ import {
   useUndoableRows,
   type ColumnDef,
 } from "@/registry/default/data-table";
-import type { Row } from "@tanstack/react-table";
+import type { Row, TableState } from "@tanstack/react-table";
+import { Tabs, TabsItem } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { useSize } from "@/lib/size-context";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
 import { Badge } from "@/registry/default/badge";
@@ -377,7 +380,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.selection ? ["selectColumn"] : []),
     "type ColumnDef",
   ];
-  const toolbar = o.filter !== "none" || o.filters || o.viewMenu;
+  const toolbar = o.filter !== "none" || o.filters || o.viewMenu || o.views;
   const filter =
     o.filter === "column"
       ? `    <DataTableSearch table={table} column="name" placeholder="Search components…" />`
@@ -387,6 +390,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  ${parts.join(", ")},`,
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
+    ...(o.views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
     ...(o.headerIcons
       ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
       : []),
@@ -478,6 +482,25 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  },`,
     `});`,
     ``,
+    ...(o.views
+      ? [
+          `// Saved views: the table's state, named (filters, search, sort, columns).`,
+          `const [views, setViews] = useState<{ name: string; state: Partial<TableState> }[]>([]);`,
+          `const [viewIndex, setViewIndex] = useState(0);`,
+          `const allView = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: { fluidHover: false } };`,
+          `const openView = (i: number) => {`,
+          `  const view = i === 0 ? allView : views[i - 1].state;`,
+          `  table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`,
+          `  setViewIndex(i);`,
+          `};`,
+          `const saveView = () => {`,
+          `  const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();`,
+          `  setViews((old) => [...old, { name: \`View \${old.length + 1}\`, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);`,
+          `  setViewIndex(views.length + 1);`,
+          `};`,
+          ``,
+        ]
+      : []),
     `<div className="flex flex-col gap-2">`,
     ...(toolbar || o.title
       ? [
@@ -487,7 +510,17 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
           ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
           ...(o.filter !== "none" ? [filter] : []),
+          ...(o.views ? [`    <Button variant="ghost" onClick={saveView}>Save view</Button>`] : []),
           `  </div>`,
+        ]
+      : []),
+    ...(o.views
+      ? [
+          `  <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
+          `    {["All", ...views.map((v) => v.name)].map((name, i) => (`,
+          `      <TabsItem key={name} index={i} label={name} />`,
+          `    ))}`,
+          `  </Tabs>`,
         ]
       : []),
     ...(o.filters ? [`  <DataTableFilterChips table={table} />`] : []),
@@ -547,6 +580,22 @@ function selectionActions(rows: Row<ComponentRow>[], icons: Icons, onDelete: (ro
     },
   ];
 }
+
+// ── Saved views ──────────────────────────────────────────
+
+type SavedView = {
+  name: string;
+  state: Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;
+};
+
+/** The "All" view: the table as it starts. */
+const ALL_VIEW: SavedView["state"] = {
+  columnFilters: [],
+  globalFilter: "",
+  sorting: [{ id: "added", desc: true }],
+  columnOrder: [],
+  columnVisibility: { fluidHover: false },
+};
 
 // ── Playground ───────────────────────────────────────────
 
@@ -681,9 +730,31 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       pinning: Math.random() > 0.3,
       pinRight: Math.random() > 0.3,
       title: Math.random() > 0.3,
+      views: Math.random() > 0.3,
     });
 
-  const tools = state.filter !== "none" || state.filters || state.viewMenu;
+  // ── Saved views ────────────────────────────────────────
+  // A view is the table's state, named: its filters, search, sort, column
+  // order and visible columns. "All" is the table as it starts. Kept in
+  // memory: a refresh starts over.
+  const [views, setViews] = useState<SavedView[]>([]);
+  const [viewIndex, setViewIndex] = useState(0);
+  const openView = (i: number) => {
+    const view = i === 0 ? ALL_VIEW : views[i - 1]?.state;
+    if (!view) return;
+    table.captureLayout();
+    table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
+    setViewIndex(i);
+  };
+  const saveView = () => {
+    const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();
+    const name = `View ${views.length + 1}`;
+    setViews((old) => [...old, { name, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);
+    setViewIndex(views.length + 1);
+  };
+  const compact = useSize().variant === "compact";
+
+  const tools = state.filter !== "none" || state.filters || state.viewMenu || state.views;
   // One row: the title on the left; the Filter button, the Columns button
   // and the search at the right end. Added filters sit on their own row
   // under it, above the table.
@@ -702,12 +773,28 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
         />
       )}
+      {state.views && (
+        <Button variant="ghost" size={compact ? "compact" : "default"} onClick={saveView}>
+          Save view
+        </Button>
+      )}
     </div>
   );
 
   const body = (
     <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
+      {state.views && (
+        // The views as subtle tabs, stepped in with the title past a
+        // selection column.
+        <div className={cn("flex", state.selection && "pl-9")}>
+          <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">
+            {["All", ...views.map((v) => v.name)].map((name, i) => (
+              <TabsItem key={name} index={i} label={name} />
+            ))}
+          </Tabs>
+        </div>
+      )}
       {state.filters && <DataTableFilterChips table={table} />}
       <DataTable
         table={table}
@@ -758,6 +845,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           label="Title"
           checked={state.title}
           onToggle={() => set("title", !state.title)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Saved views"
+          checked={state.views}
+          onToggle={() => set("views", !state.views)}
           className={PLAY_SWITCH}
         />
         <PlayField label="Search">

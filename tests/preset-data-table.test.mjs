@@ -114,7 +114,15 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tg4Q9J"`);
+    expect(code).toMatchInlineSnapshot(`"th8ovp"`);
+  });
+
+  // Version "g" codes were published before saved views (on by default).
+  it("a version-g code still decodes, with views on", () => {
+    const back = decodeDataTablePreset("tg4Q9J");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("g");
+    expect(back.preset.views).toBe(true);
   });
 
   // Version "f" codes were published while one switch held both sides.

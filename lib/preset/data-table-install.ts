@@ -53,6 +53,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.selection ? ["selectColumn"] : []),
     ...(p.rowActions ? ["rowActionsColumn"] : []),
     "type ColumnDef",
+    ...(p.views ? ["type TableState"] : []),
   ];
   const icon = (name: string) => (icons ? `, icon: ${name}` : "");
   const l: string[] = [];
@@ -61,12 +62,16 @@ function dataTableDemoFile(p: DataTablePreset): string {
   const tree = p.expandable;
   l.push(`"use client";`);
   l.push(``);
-  if (edit) l.push(`import { useState } from "react";`);
+  if (edit || p.views) l.push(`import { useState } from "react";`);
   l.push(`import {`);
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`} from "@/components/ui/data-table";`);
   if (p.rowActions) l.push(`import { MenuItem } from "@/components/ui/menu-item";`);
   l.push(`import { Badge } from "@/components/ui/badge";`);
+  if (p.views) {
+    l.push(`import { Button } from "@/components/ui/button";`);
+    l.push(`import { Tabs, TabsItem } from "@/components/ui/tabs";`);
+  }
   if (icons) {
     l.push(
       `import { Calendar, File, Folder, Link, SlidersHorizontal, SquareLibrary } from "lucide-react";`
@@ -209,9 +214,28 @@ function dataTableDemoFile(p: DataTablePreset): string {
   }
   l.push(`  });`);
   l.push(``);
+  if (p.views) {
+    // Saved views: the table's state, named. Keep them wherever the app
+    // keeps settings; here, in memory.
+    l.push(`  type View = Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;`);
+    l.push(`  const [views, setViews] = useState<{ name: string; state: View }[]>([]);`);
+    l.push(`  const [viewIndex, setViewIndex] = useState(0);`);
+    l.push(`  const allView: View = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: {} };`);
+    l.push(`  const openView = (i: number) => {`);
+    l.push(`    const view = i === 0 ? allView : views[i - 1].state;`);
+    l.push(`    table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`);
+    l.push(`    setViewIndex(i);`);
+    l.push(`  };`);
+    l.push(`  const saveView = () => {`);
+    l.push(`    const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();`);
+    l.push(`    setViews((old) => [...old, { name: \`View \${old.length + 1}\`, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);`);
+    l.push(`    setViewIndex(views.length + 1);`);
+    l.push(`  };`);
+    l.push(``);
+  }
   l.push(`  return (`);
   l.push(`    <div className="flex w-full flex-col gap-2">`);
-  if (p.title || p.filter !== "none" || p.filters || p.viewMenu) {
+  if (p.title || p.filter !== "none" || p.filters || p.viewMenu || p.views) {
     // The title, then the tools at the right end, on one row.
     l.push(`      <div className="flex flex-wrap items-center gap-1">`);
     if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
@@ -223,7 +247,15 @@ function dataTableDemoFile(p: DataTablePreset): string {
     } else if (p.filter === "all") {
       l.push(`        <DataTableSearch table={table} placeholder="Search all columns…" />`);
     }
+    if (p.views) l.push(`        <Button variant="ghost" onClick={saveView}>Save view</Button>`);
     l.push(`      </div>`);
+  }
+  if (p.views) {
+    l.push(`      <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
+    l.push(`        {["All", ...views.map((v) => v.name)].map((name, i) => (`);
+    l.push(`          <TabsItem key={name} index={i} label={name} />`);
+    l.push(`        ))}`);
+    l.push(`      </Tabs>`);
   }
   if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
@@ -283,8 +315,8 @@ export function generateDataTablePresetFiles(p: DataTablePreset): PresetFile[] {
 /** Registry dependencies the generated file needs, as plain names. The
  *  route flavors them: data-table pulls dual-flavor parts, so it resolves to
  *  the chosen flavor's payload. */
-export function dataTablePresetRegistryDeps(_p: DataTablePreset): string[] {
-  return ["utils", "data-table", "badge"];
+export function dataTablePresetRegistryDeps(p: DataTablePreset): string[] {
+  return ["utils", "data-table", "badge", ...(p.views ? ["button", "tabs"] : [])];
 }
 
 /** npm dependencies beyond what registryDependencies pull transitively. */
