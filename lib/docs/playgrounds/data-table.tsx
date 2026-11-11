@@ -1,5 +1,6 @@
 "use client";
 
+import { useShape } from "@/lib/shape-context";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { animate } from "motion/react";
@@ -633,6 +634,7 @@ const ALL_VIEW: SavedView["state"] = {
 // ── Playground ───────────────────────────────────────────
 
 export function DataTablePlayground({ children }: PlaygroundProps) {
+  const shape = useShape();
   const [state, setState] = useState<PlayState>(DEFAULT_STATE);
   // The settings as of the latest change, for callbacks that outlive the
   // render they were made in.
@@ -1063,7 +1065,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           {naming && (
             // The name field, laid over its tab and growing with the name.
             <span
-              className="absolute z-10 flex items-center rounded-full border border-border bg-background pr-0.5 text-site-caption shadow-sm"
+              // Its tab's corners: pill, rounded or sharp with the Shape setting.
+              className={cn("absolute z-10 flex items-center border border-border bg-background pr-0.5 text-site-caption shadow-sm", shape.item)}
               style={{ left: naming.rect.left, top: naming.rect.top, minWidth: naming.rect.minWidth, height: naming.rect.height }}
             >
               <input
@@ -1089,7 +1092,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                   data-view-delete=""
                   aria-label="Delete view"
                   onClick={deleteView}
-                  className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground outline-none hover:bg-hover hover:text-destructive"
+                  className={cn("grid size-6 shrink-0 cursor-pointer place-items-center text-muted-foreground outline-none hover:bg-hover hover:text-destructive", shape.item)}
                 >
                   <icons.x size={14} strokeWidth={1.5} />
                 </button>
