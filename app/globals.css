@@ -680,7 +680,7 @@ html[data-size="compact"] {
     margin-top: var(--typeset-space-subsection);
   }
 
-  :where(.typeset :is(h1, h2, h3, h4, h5, h6) + *):not(:where(.typeset .not-typeset *)) {
+  :where(.typeset :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tableWrapper, img, video, .not-typeset, h1, h2, h3, h4, h5, h6, hr, div, section, aside, dl, details, nav, header, footer, form)):not(:where(.typeset .not-typeset *)) {
     margin-top: var(--typeset-space-heading);
   }
 
@@ -690,7 +690,7 @@ html[data-size="compact"] {
     margin-top: var(--typeset-space-rule);
   }
 
-  :where(.typeset hr + *):not(:where(.typeset .not-typeset *)) {
+  :where(.typeset hr + :is(p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tableWrapper, img, video, .not-typeset, h1, h2, h3, h4, h5, h6, hr, div, section, aside, dl, details, nav, header, footer, form)):not(:where(.typeset .not-typeset *)) {
     margin-top: var(--typeset-space-rule);
   }
 

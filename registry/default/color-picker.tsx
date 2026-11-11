@@ -2130,7 +2130,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 
         {/* A hue picked on the rail is a new stated hue, so the sticky
             OKLCH hue is dropped and OKLCH H follows the color again. */}
-        <div className="flex flex-col [&>*]:mb-0 [&>*+*]:-mt-px">
+        <div className="flex flex-col [&>*]:mb-0 [&>*:not(:first-child)]:-mt-px">
           <HueSlider h={hsv.h} onChange={(h) => { setOklchHue(null); updateHsv({ h }); }} />
           <AlphaSlider
             a={hsv.a}

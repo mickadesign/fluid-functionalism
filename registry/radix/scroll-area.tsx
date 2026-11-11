@@ -9,12 +9,16 @@
 import {
   createContext,
   forwardRef,
+  memo,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
+  type ReactNode,
+  type UIEventHandler,
 } from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cn } from "@/lib/utils";
@@ -38,6 +42,32 @@ const ScrollbarVisibleContext = createContext<boolean>(true);
 // Hover hide is
 // immediate — the fade classes add their own 160ms grace.
 const SCROLL_LINGER_MS = 600;
+
+// Radix's Viewport renders a <style> (it hides the native scrollbar) with a
+// new `dangerouslySetInnerHTML` object each render, and React rewrites its
+// innerHTML every time: each re-render of the area (a hover, a scroll, new
+// children) replaced a stylesheet, and the next layout read restyled the
+// whole page. The Viewport renders once instead: memoized, its only child
+// one stable element that reads the real children from context, so content
+// still updates and the Viewport (and its <style>) never re-renders.
+const ViewportChildrenContext = createContext<ReactNode>(null);
+function ViewportChildren() {
+  return useContext(ViewportChildrenContext);
+}
+const viewportChildren = <ViewportChildren />;
+const StableViewport = memo(function StableViewport({
+  className,
+  onScroll,
+}: {
+  className: string;
+  onScroll: UIEventHandler<HTMLDivElement>;
+}) {
+  return (
+    <ScrollAreaPrimitive.Viewport data-slot="scroll-area-viewport" onScroll={onScroll} className={className}>
+      {viewportChildren}
+    </ScrollAreaPrimitive.Viewport>
+  );
+});
 
 type Orientation = "vertical" | "horizontal" | "both";
 
@@ -79,11 +109,12 @@ const ScrollArea = forwardRef<
       },
       []
     );
-    const handleScroll = () => {
+    // Stable, so the memoized viewport below doesn't re-render for it.
+    const handleScroll = useCallback(() => {
       setScrolling(true);
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
       scrollTimerRef.current = setTimeout(() => setScrolling(false), SCROLL_LINGER_MS);
-    };
+    }, []);
 
     return (
       <ScrollAreaContext.Provider value={isTouch}>
@@ -125,13 +156,12 @@ const ScrollArea = forwardRef<
               className={cn("relative overflow-hidden", className)}
               {...props}
             >
-              <ScrollAreaPrimitive.Viewport
-                data-slot="scroll-area-viewport"
-                onScroll={handleScroll}
-                className={cn("size-full rounded-[inherit]", viewportClassName)}
-              >
-                {children}
-              </ScrollAreaPrimitive.Viewport>
+              <ViewportChildrenContext.Provider value={children}>
+                <StableViewport
+                  onScroll={handleScroll}
+                  className={cn("size-full rounded-[inherit]", viewportClassName)}
+                />
+              </ViewportChildrenContext.Provider>
               {orientation !== "horizontal" && <ScrollBar orientation="vertical" />}
               {orientation !== "vertical" && <ScrollBar orientation="horizontal" />}
               {orientation === "both" && <ScrollAreaPrimitive.Corner />}

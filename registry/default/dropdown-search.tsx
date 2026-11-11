@@ -258,18 +258,36 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
     // No results keeps the height the last results showed (what was on
     // screen of it, not what scrolled), so DropdownEmpty sits where the rows
     // were and the menu doesn't jump on each keystroke into and out of an
-    // empty query. Runs after every commit: the query and the rows it
-    // filters change together.
+    // empty query. The height is read as a key is typed, while the layout
+    // is still clean; after a commit only the rows are counted (no layout
+    // read), so a commit that isn't a keystroke (the menu closing, the page
+    // re-rendering around it) never forces the page's layout.
     const shownHeightRef = useRef(0);
+    const listRef = useRef<HTMLElement | null>(null);
+    const heldRef = useRef(false);
+    const recordShownHeight = () => {
+      if (heldRef.current) return;
+      const list = (listRef.current ??= rowsBox(inputRef.current));
+      if (!list || menuRows(inputRef.current).length === 0) return;
+      const viewport = list.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+      shownHeightRef.current = Math.min(list.offsetHeight, viewport?.clientHeight ?? Infinity);
+    };
+    // For the redirected keystrokes (typed on a row), registered once.
+    const recordShownHeightRef = useRef(recordShownHeight);
     useIsoLayoutEffect(() => {
-      const list = rowsBox(inputRef.current);
+      recordShownHeightRef.current = recordShownHeight;
+    });
+    useIsoLayoutEffect(() => {
+      const empty = menuRows(inputRef.current).length === 0;
+      if (empty === heldRef.current) return;
+      const list = listRef.current;
       if (!list) return;
-      if (menuRows(inputRef.current).length > 0) {
+      if (!empty) {
         list.style.minHeight = "";
-        const viewport = list.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
-        shownHeightRef.current = Math.min(list.offsetHeight, viewport?.clientHeight ?? Infinity);
+        heldRef.current = false;
       } else if (shownHeightRef.current) {
         list.style.minHeight = `${shownHeightRef.current}px`;
+        heldRef.current = true;
       }
     });
 
@@ -282,9 +300,14 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
         get autoFocus() {
           return autoFocusRef.current;
         },
-        append: (text) => onValueChangeRef.current(valueRef.current + text),
-        deleteBackward: () =>
-          onValueChangeRef.current(valueRef.current.slice(0, -1)),
+        append: (text) => {
+          recordShownHeightRef.current();
+          onValueChangeRef.current(valueRef.current + text);
+        },
+        deleteBackward: () => {
+          recordShownHeightRef.current();
+          onValueChangeRef.current(valueRef.current.slice(0, -1));
+        },
       });
     }, [host]);
 
@@ -374,7 +397,10 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
           autoCorrect="off"
           spellCheck={false}
           value={value}
-          onChange={(e) => onValueChange(e.target.value)}
+          onChange={(e) => {
+            recordShownHeight();
+            onValueChange(e.target.value);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           // rounded-none: the site's base :focus-visible rule hands focused
