@@ -566,6 +566,10 @@ const EDGE_SCROLL_MAX_DT = 50;
 // Keyboard resizing moves a column this many px per arrow press.
 const RESIZE_STEP = 16;
 const MIN_COLUMN_WIDTH = 48;
+/** The row-menu column: its 28px button with 4px each side, 4px less in
+ *  compact (the button flush right, on the compact controls' line). */
+const ACTIONS_WIDTH = 36;
+const ACTIONS_COMPACT_TRIM = 4;
 
 /** How wide a header's own content is (text or elements), leaving out the
  *  resize handle and the drop marker. */
@@ -1173,12 +1177,19 @@ function DataTable<TData>({
     return () => observer.disconnect();
   }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl]);
   const sized = resizeColumns ? seeded : fitted !== null;
-  const widthOf = (id: string, size: number) => (resizeColumns ? size : (fitted?.[id] ?? undefined));
+  // The row-menu column hugs its button: 4px narrower in compact, where the
+  // button sits flush right on the compact controls' center line.
+  const trim = (id: string, w: number) => (id === "actions" && sizeClasses.variant === "compact" ? w - ACTIONS_COMPACT_TRIM : w);
+  const actionsShown = !!table.getAllLeafColumns().find((c) => c.id === "actions")?.getIsVisible();
+  const widthOf = (id: string, size: number) => {
+    const w = resizeColumns ? size : fitted?.[id];
+    return w === undefined ? undefined : trim(id, w);
+  };
   // Pinned columns stick to their edge, each offset by the pinned columns
   // between it and the edge. Unsized (before the widths are measured),
   // nothing sticks.
   const pinWidth = (column: Column<TData, unknown>) =>
-    (resizeColumns ? column.getSize() : fitted?.[column.id]) ?? 0;
+    trim(column.id, (resizeColumns ? column.getSize() : fitted?.[column.id]) ?? 0);
   const pinsKey = sized
     ? [
         ...table.getLeftVisibleLeafColumns().map((c) => `l:${c.id}:${pinWidth(c)}`),
@@ -1576,9 +1587,11 @@ function DataTable<TData>({
       style={
         sized
           ? {
-              minWidth: resizeColumns
-                ? table.getTotalSize()
-                : Object.values(fitted ?? {}).reduce((sum, w) => sum + w, 0),
+              minWidth:
+                (resizeColumns
+                  ? table.getTotalSize()
+                  : Object.values(fitted ?? {}).reduce((sum, w) => sum + w, 0)) -
+                (actionsShown && sizeClasses.variant === "compact" ? ACTIONS_COMPACT_TRIM : 0),
             }
           : undefined
       }
@@ -5135,10 +5148,11 @@ function DataTableRowActions({ children, label = "Row actions" }: DataTableRowAc
   );
 }
 
-/** A ready-made last column for DataTableRowActions: 40px wide (8px, the
- *  28px button, 4px), so its ⋯ centers on the line the Columns button and
- *  the next-page arrow share; never sorted, hidden or resized. Put it last
- *  in your `columns`. */
+/** A ready-made last column for DataTableRowActions, hugging its 28px
+ *  button with 4px each side (36px; 32px compact, the button flush right),
+ *  so its ⋯ centers on the line the top bar's last button and the
+ *  next-page arrow share; never sorted, hidden or resized. Put it last in
+ *  your `columns`. */
 function rowActionsColumn<TData>(
   items: (row: Row<TData>) => ReactNode,
   { label }: { label?: string } = {}
@@ -5148,8 +5162,8 @@ function rowActionsColumn<TData>(
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
-    size: 40,
-    meta: { className: "w-0 pl-2 pr-1", rowMenu: items },
+    size: ACTIONS_WIDTH,
+    meta: { className: "w-0 px-1", rowMenu: items },
     cell: ({ row }) => <DataTableRowActions label={label}>{items(row)}</DataTableRowActions>,
   };
 }
