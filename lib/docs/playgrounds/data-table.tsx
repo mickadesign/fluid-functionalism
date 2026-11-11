@@ -597,9 +597,26 @@ function selectionActions(rows: Row<ComponentRow>[], icons: Icons, onDelete: (ro
 // ── Saved views ──────────────────────────────────────────
 
 type SavedView = {
+  /** Stable through renames and reorders: the tab's key, so a dragged tab
+   *  (and its focus) moves with its view. */
+  id: number;
   name: string;
   state: Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;
 };
+
+/** JSON with sorted keys, so two states compare by their values. */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v
+  );
+}
+
+/** Only the hidden columns: an empty visibility and one listing every
+ *  column as shown say the same thing. */
+const visibleOnly = (visibility: Record<string, boolean> | undefined) =>
+  Object.keys(visibility ?? {}).filter((id) => visibility?.[id] === false).sort();
 
 /** The "All" view: the table as it starts. */
 const ALL_VIEW: SavedView["state"] = {
@@ -826,7 +843,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const saveView = () => {
     const { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } = table.getState();
     const name = `View ${views.length + 1}`;
-    setViews((old) => [...old, { name, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);
+    const id = (views.reduce((max, v) => Math.max(max, v.id), 0) || 0) + 1;
+    setViews((old) => [...old, { id, name, state: { columnFilters, globalFilter, sorting, columnOrder, columnVisibility } }]);
     setViewIndex(views.length + 1);
     // Ask for its name in place, on the new tab.
     setNameNext(views.length + 1);
@@ -834,6 +852,66 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
 
   // Saved views come with filters: they save what the filters set.
   const showViews = state.views && state.filters;
+  // Save view shows once the table differs from the open view: there's
+  // nothing new to save before.
+  const viewChanged = (() => {
+    const open = viewIndex === 0 ? ALL_VIEW : views[viewIndex - 1]?.state;
+    if (!open) return true;
+    const now = table.getState();
+    const same = (a: unknown, b: unknown) => stableJson(a) === stableJson(b);
+    return !(
+      same(now.columnFilters, open.columnFilters) &&
+      same(now.globalFilter ?? "", open.globalFilter ?? "") &&
+      same(now.sorting, open.sorting) &&
+      same(now.columnOrder, open.columnOrder) &&
+      same(visibleOnly(now.columnVisibility), visibleOnly(open.columnVisibility))
+    );
+  })();
+
+  // Saved tabs reorder by dragging ("All" stays first): past 4px a press
+  // turns into a drag, and the tab swaps places as the pointer crosses a
+  // neighbor's middle. A drag doesn't count as the click that renames.
+  const dragged = useRef(false);
+  const onTabsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || naming) return;
+    const box = tabsRef.current;
+    const tabEls = () => [...(box?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])];
+    let from = tabEls().findIndex((t) => t.contains(e.target as Node));
+    if (from < 1) return;
+    const startX = e.clientX;
+    dragged.current = false;
+    const move = (ev: PointerEvent) => {
+      if (!dragged.current && Math.abs(ev.clientX - startX) < 4) return;
+      dragged.current = true;
+      const els = tabEls();
+      const to = els.findIndex((t, i) => {
+        if (i < 1 || i === from) return false;
+        const r = t.getBoundingClientRect();
+        return i > from ? ev.clientX > r.left + r.width / 2 : ev.clientX < r.left + r.width / 2;
+      });
+      if (to < 1) return;
+      const a = from - 1;
+      const b = to - 1;
+      setViews((old) => {
+        const next = [...old];
+        const [moved] = next.splice(a, 1);
+        next.splice(b, 0, moved);
+        return next;
+      });
+      // The open view stays open wherever it lands.
+      setViewIndex((cur) => (cur === from ? to : cur > Math.min(from, to) && cur <= Math.max(from, to) ? cur + (from < to ? -1 : 1) : cur));
+      from = to;
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      // After the click this release may fire, so a drag that ends off its
+      // tab doesn't swallow the next click.
+      setTimeout(() => (dragged.current = false), 0);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
   // One row: the title on the left; the Filter button, the Columns button
   // and the search at the right end. Added filters sit on their own row
@@ -863,9 +941,28 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         // The views as subtle tabs, stepped in with the title past a
         // selection column.
         <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-9")}>
-          <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">
-            {["All", ...views.map((v) => v.name)].map((name, i) => (
-              <TabsItem key={i} index={i} label={name} onClick={() => renameView(i)} />
+          <Tabs
+            size="compact"
+            selectedIndex={viewIndex}
+            onSelect={(i) => !dragged.current && openView(i)}
+            onPointerDownCapture={onTabsPointerDown}
+            aria-label="Views"
+          >
+            {[{ id: 0, name: "All" }, ...views].map(({ id, name }, i) => (
+              <TabsItem
+                key={id}
+                index={i}
+                label={name}
+                className={i > 0 ? "touch-none" : undefined}
+                onClick={() => {
+                  // The click a drag ends with doesn't rename.
+                  if (dragged.current) {
+                    dragged.current = false;
+                    return;
+                  }
+                  renameView(i);
+                }}
+              />
             ))}
           </Tabs>
           {naming && (
@@ -910,7 +1007,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         // Save view at the far right of the filters' row: it shows with the
         // first filter, since there's nothing to save before.
         <DataTableFilterChips table={table}>
-          {showViews && (
+          {showViews && viewChanged && (
             <Button variant="ghost" size="compact" onClick={saveView}>
               Save view
             </Button>
