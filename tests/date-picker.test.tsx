@@ -282,6 +282,30 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
     expect(trigger().textContent).toContain("Oct 23");
   });
 
+  it("stays mounted through its exit after a pick", async () => {
+    render(<Single />);
+    await act(async () => {
+      fireEvent.click(trigger());
+    });
+    const day = await screen.findByRole("button", { name: /October 23rd, 2026/ });
+    let mountedAtClose: boolean | null = null;
+    const observer = new MutationObserver(() => {
+      if (mountedAtClose === null && trigger().getAttribute("aria-expanded") === "false") {
+        mountedAtClose = popup() !== null;
+      }
+    });
+    observer.observe(trigger(), { attributes: true, attributeFilter: ["aria-expanded"] });
+    await act(async () => {
+      fireEvent.click(day);
+    });
+    await waitFor(() => expect(trigger().getAttribute("aria-expanded")).toBe("false"), {
+      timeout: 1000,
+    });
+    observer.disconnect();
+    expect(mountedAtClose).toBe(true);
+    await waitFor(() => expect(popup()).toBeNull(), { timeout: 1000 });
+  });
+
   it("commits a typed time on Enter", async () => {
     let value: string | null = "11:00";
     function Timed() {
