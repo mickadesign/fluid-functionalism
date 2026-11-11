@@ -5147,6 +5147,20 @@ function DataTableSelectionBar<TData>({
       const bar = barRef.current;
       const root = getRoot?.();
       if (!bar || !root) return;
+      // A table inside a layer above the page (a dialog, a full-window
+      // preview) would hide the bar under that layer: the bar takes the
+      // highest z-index among the table's ancestors, plus one.
+      let lift = 0;
+      for (let el = root.parentElement; el; el = el.parentElement) {
+        const z = Number.parseInt(getComputedStyle(el).zIndex, 10);
+        if (!Number.isNaN(z)) lift = Math.max(lift, z + 1);
+      }
+      // Only ever raised: below its own --z-sticky it would slip under the
+      // page's sticky bars. Read on every placement, so a table lifted into
+      // a layer while the bar is up follows it.
+      bar.style.zIndex = "";
+      const own = Number.parseInt(getComputedStyle(bar).zIndex, 10) || 0;
+      if (lift > own) bar.style.zIndex = String(lift);
       const r = root.getBoundingClientRect();
       const bottom = Math.min(r.bottom, window.innerHeight) - BAR_INSET;
       bar.style.left = `${r.left + r.width / 2}px`;

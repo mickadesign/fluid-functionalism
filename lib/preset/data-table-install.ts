@@ -201,7 +201,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    pageSize: ${p.pagination ? p.pageSize : "ROWS.length"},`);
   l.push(`    getRowId: (row) => row.slug,`);
   if (tree) l.push(`    getSubRows: (row) => row.subRows,`);
-  if (!p.pinning && !p.pinRight) l.push(`    enableColumnPinning: false,`);
+  // No sticky left columns: no Freeze item in the header menus either.
+  if (!p.pinning) l.push(`    enableColumnPinning: false,`);
   if (p.pinning !== p.pinRight) {
     // Sticky on one side only: the left the boxes and the first column,
     // the right the row menus.

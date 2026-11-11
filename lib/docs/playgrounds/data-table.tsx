@@ -478,8 +478,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
-    ...(!o.pinning && !o.pinRight
-      ? [`  // No sticky edge columns when the table scrolls sideways.`, `  enableColumnPinning: false,`]
+    ...(!o.pinning
+      ? [`  // No sticky left columns, and no Freeze item in the header menus.`, `  enableColumnPinning: false,`]
       : []),
     `  initialState: {`,
     `    sorting: [{ id: "added", desc: true }],`,
@@ -688,9 +688,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     pageSize: Number(DEFAULT_STATE.pageSize),
     getRowId: (row) => row.slug,
     getSubRows: (row) => row.subRows,
+    // Off with the sticky left columns: the header menus drop Freeze.
+    enableColumnPinning: state.pinning,
     initialState: {
       sorting: [{ id: "added", desc: true }],
       columnVisibility: { fluidHover: false },
+      // Set by hand rather than left to useDataTable, which pins nothing
+      // when the table starts with pinning off.
+      columnPinning: { left: ["select", "name"], right: ["actions"] },
     },
   });
 
