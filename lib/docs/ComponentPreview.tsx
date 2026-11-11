@@ -6,7 +6,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
 import { Tabs, TabsItem } from "@/components/flavored/tabs";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
 import { InspectOverlay } from "./InspectOverlay";
@@ -171,6 +171,9 @@ export function ComponentPreview({
           <TabsItem index={1} label="Code" />
         </Tabs>
         <div className="ml-auto flex items-center gap-1">
+          {/* The header's icons (the playground pen, replay, expand) share
+              one tooltip bubble that glides between them. */}
+          <TooltipGroup>
           {inspectable && tab === 0 && (
             // Toggling Inspect must not dismiss whatever the preview has open
             // (a dropdown, a popover) — inspecting THAT state is the point.
@@ -223,6 +226,7 @@ export function ComponentPreview({
               </button>
             </Tooltip>
           )}
+          </TooltipGroup>
         </div>
       </div>
       )}

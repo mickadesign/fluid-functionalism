@@ -82,7 +82,7 @@ import { MenuItem } from "@/components/ui/menu-item";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -5244,28 +5244,31 @@ function DataTablePagination<TData>({
           <span>
             Page {page} of {pageCount}
           </span>
-          <Tooltip content="Previous page">
-            <Button
-              variant="ghost"
-              size={iconSize}
-              aria-label="Previous page"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <Prev />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Next page">
-            <Button
-              variant="ghost"
-              size={iconSize}
-              aria-label="Next page"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <Next />
-            </Button>
-          </Tooltip>
+          {/* The arrows share one gliding tooltip. */}
+          <TooltipGroup>
+            <Tooltip content="Previous page">
+              <Button
+                variant="ghost"
+                size={iconSize}
+                aria-label="Previous page"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <Prev />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Next page">
+              <Button
+                variant="ghost"
+                size={iconSize}
+                aria-label="Next page"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <Next />
+              </Button>
+            </Tooltip>
+          </TooltipGroup>
         </span>
       </div>
     </div>

@@ -9,7 +9,7 @@ import { buildInstallPrompt } from "@/lib/docs/install-prompt";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { docOrder, systemList } from "@/lib/docs/components";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { useBase, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
 import { useHoverMode } from "@/lib/docs/hover-mode";
 
@@ -91,32 +91,35 @@ export function DocPage({
             // line box instead of stretching the row, so the description
             // stays 8px under the title at every size.
             <div className="flex items-center gap-1 shrink-0 -my-2">
-              {prev ? (
-                <Tooltip content={<span>{prev.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
-                  <Button asChild variant="ghost" size={iconSize}>
-                    <Link href={prev.href} aria-label={`Previous: ${prev.name}`}>
-                      <ArrowRight className="rotate-180" />
-                    </Link>
+              {/* Prev and next share one gliding tooltip. */}
+              <TooltipGroup>
+                {prev ? (
+                  <Tooltip content={<span>{prev.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
+                    <Button asChild variant="ghost" size={iconSize}>
+                      <Link href={prev.href} aria-label={`Previous: ${prev.name}`}>
+                        <ArrowRight className="rotate-180" />
+                      </Link>
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Button variant="ghost" size={iconSize} disabled aria-label="No previous component">
+                    <ArrowRight className="rotate-180" />
                   </Button>
-                </Tooltip>
-              ) : (
-                <Button variant="ghost" size={iconSize} disabled aria-label="No previous component">
-                  <ArrowRight className="rotate-180" />
-                </Button>
-              )}
-              {next ? (
-                <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
-                  <Button asChild variant="ghost" size={iconSize}>
-                    <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
-                      <ArrowRight />
-                    </Link>
+                )}
+                {next ? (
+                  <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+                    <Button asChild variant="ghost" size={iconSize}>
+                      <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
+                        <ArrowRight />
+                      </Link>
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Button variant="ghost" size={iconSize} disabled aria-label="No next component">
+                    <ArrowRight />
                   </Button>
-                </Tooltip>
-              ) : (
-                <Button variant="ghost" size={iconSize} disabled aria-label="No next component">
-                  <ArrowRight />
-                </Button>
-              )}
+                )}
+              </TooltipGroup>
             </div>
           )}
         </div>

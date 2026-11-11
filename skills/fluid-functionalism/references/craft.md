@@ -332,6 +332,7 @@ Systems first — their craft applies across every component below.
 - Channel fields are scrubbable (Base UI NumberField ScrubArea with pointer-lock and a virtual cursor); a no-drag press enters edit mode (focus + select), typing commits on blur (per-keystroke parses ignored) while keyboard nudges/scroll/scrub commit immediately, and Escape reverts the draft; nudge steps are 1 / Shift 10 (0.01 / 0.1 for OKLCH chroma).
 - Hue-like fields wrap modulo instead of clamping (361 → 1, -1 → 359; exactly max stays put) — used for HSL hue and OKLCH H.
 - Swatch selection compares hex-normalized values, resolving named CSS colors ("red", "tomato") through the browser in an effect so render/SSR never touch the DOM; the hex field accepts named colors too, via a canvas fillStyle round-trip.
+- Swatch names share one TooltipGroup (300ms before the first): once a name shows, the bubble glides from swatch to swatch with the next name instead of closing and reopening, and it's never hoverable, so crossing a name never holds off the swatches in its path.
 
 <a id="combobox"></a>
 ## Combobox
@@ -390,7 +391,7 @@ Systems first — their craft applies across every component below.
 - Checkboxes, badges and the ⋯ button sit in a `h-[1lh]` cell and overhang it evenly, so nothing pushes a row off the 36px / 28px ladder. Status badges use Badge `variant="ghost"`: no outline or side padding, so the dot lines up with the column and the label reads as row text.
 - Edges line up: the selection checkbox and the row count sit 8px in, the box 4px from its column's end and 12px from the text; the search sits at the right end beside the Columns icon, the ⋯ row icons (rowActionsColumn hugs its 28px button with 4px each side: 36px, and 32px compact with the button flush right, so a sticky right column is no wider than its button) and the next-page arrow share one center line 18px from the right (14px compact).
 - Nothing in a cell is ever cut at its edge: text ends in an ellipsis (or clamps to its lines), a header's title truncates beside its icon and sort arrow, a Badge shrinks and ellipsizes its label (overflow-x: clip, so its trimmed descenders survive), and a tags field wraps its chips when its column wraps text (`lines: "wrap"`) or, on one line, scrolls sideways with its last 16px faded.
-- DataTablePagination wraps by group, never by word: on a narrow bar the row count, the Rows per page select and the "Page n of m" with its arrows each stay whole (`whitespace-nowrap`) and drop to the next line together, so no label ever breaks over two lines.
+- DataTablePagination wraps by group, never by word: on a narrow bar the row count, the Rows per page select and the "Page n of m" with its arrows each stay whole (`whitespace-nowrap`) and drop to the next line together, so no label ever breaks over two lines. Its two arrows share one TooltipGroup.
 
 <a id="data-table-top-bar"></a>
 ### Top bar
@@ -721,7 +722,7 @@ Systems first — their craft applies across every component below.
 - A corner-arrow sits in the 40px left gutter with an 'N queued messages' tooltip; the count fades/scales in beside it only once cards overflow the visible peeks, pinned so the number appearing never nudges the arrow.
 - Drag-to-reorder works only while expanded: a 4px dead zone arms the drag, the card follows the pointer at duration 0 (scale 1.03, z-index 200) while the rest spring to their slots; listeners are on window so release works anywhere, and touchAction none claims the vertical gesture so a touch drag reorders instead of scrolling the transcript.
 - morphLayoutId shares a framer layoutId between a dispatching card and its sent bubble — but only for text-only cards (attachment layouts differ too much; those fade) and only while no drag is in progress (layout projection fights the animated y transform). The consumer clears the morph props ~450ms after dispatch so later transcript reflows don't re-fire it.
-- Edit (pencil, same as double-click) and remove buttons are hidden until hover — out of layout so the text gets the full card width — and always visible on touch; both stopPropagation on pointer-down so they never start a drag.
+- Edit (pencil, same as double-click) and remove buttons are hidden until hover — out of layout so the text gets the full card width — and always visible on touch; both stopPropagation on pointer-down so they never start a drag. Their tooltips share one TooltipGroup, so the bubble glides from Edit to Remove.
 - Attachment thumbnails and the +N tile derive their radius from the queue card's radius minus the actual 8px inset (~7px compact), so the leading nested corner remains concentric in both rounded and pill modes.
 
 <a id="sidebar-app"></a>
