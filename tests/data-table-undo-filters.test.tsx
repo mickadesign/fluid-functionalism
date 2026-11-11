@@ -95,6 +95,22 @@ describe("the default filterFn", () => {
     expect(ids([{ id: "due", value: { kind: "date", op: "after" } }])).toHaveLength(3);
   });
 
+  it("keeps the search apart from a filter on the same column", () => {
+    const { result } = renderHook(() =>
+      useDataTable({
+        data: ROWS,
+        columns,
+        getRowId: (r) => r.id,
+        initialState: {
+          columnFilters: [{ id: "name", value: { kind: "text", query: "a" } }],
+          globalFilter: { column: "name", query: "en" },
+        },
+      })
+    );
+    // "a" in the name (Ada, Lena) and, apart, "en" in it (Kenji, Lena).
+    expect(result.current.getRowModel().rows.map((r) => r.id)).toEqual(["c"]);
+  });
+
   it("keeps every row while a filter is empty", () => {
     expect(ids([{ id: "tags", value: { kind: "options", values: [] } }])).toHaveLength(3);
     expect(ids([{ id: "points", value: { kind: "number" } }])).toHaveLength(3);

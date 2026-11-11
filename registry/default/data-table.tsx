@@ -178,6 +178,20 @@ type DataTableEditor =
  *  the menu shows as the option's dot (match the cell's badge). */
 type DataTableSelectOption = string | { value: string; label?: string; color?: BadgeColor };
 
+/** The search's text, on every column (a string) or on one. */
+type DataTableSearchValue = string | { column: string; query: string };
+
+/** The global filter's test, which DataTableSearch sets: the text, without
+ *  case, in any column, or in the one column it names. */
+function dataTableSearchFn<TData>(row: Row<TData>, columnId: string, search: DataTableSearchValue) {
+  const query = (typeof search === "string" ? search : search?.query ?? "").trim().toLowerCase();
+  if (!query) return true;
+  if (typeof search === "object" && search.column !== columnId) return false;
+  const value = row.getValue(columnId);
+  const text = Array.isArray(value) ? value.join(" ") : String(value ?? "");
+  return text.toLowerCase().includes(query);
+}
+
 /** How a column filters (see `meta.filter`). */
 type DataTableFilterKind =
   | "text"
@@ -259,9 +273,10 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     // Widths follow the pointer while a resize handle is dragged.
     columnResizeMode: "onChange",
     ...options,
-    // Every column filters the way DataTableFilters and DataTableSearch set
-    // it, unless it brings its own filterFn.
+    // Every column filters the way DataTableFilters sets it, unless it
+    // brings its own filterFn; DataTableSearch has the global filter.
     defaultColumn: { filterFn: dataTableFilterFn, ...options.defaultColumn },
+    globalFilterFn: options.globalFilterFn ?? dataTableSearchFn,
     initialState: {
       // A wide table keeps its edges in view: the boxes and the first data
       // column on the left, the row menus on the right. They only stick
@@ -3673,12 +3688,11 @@ function DataTableSearch<TData>({
   const sizeClasses = useSize(size);
   const compact = sizeClasses.variant === "compact";
   const target = column ? table.getColumn(column) : undefined;
-  // A column's search shares its filter with a DataTableFilters chip on the
-  // same column: a text chip's query is the search's text, both ways, so
-  // the two stay one filter (another kind of chip leaves the field empty).
-  const raw = target ? target.getFilterValue() : table.getState().globalFilter;
-  const chip = raw && typeof raw === "object" && "kind" in raw ? (raw as Exclude<DataTableFilterValue, string>) : null;
-  const value = chip ? (chip.kind === "text" ? chip.query : "") : String(raw ?? "");
+  // The search keeps to the table's global filter, apart from the column
+  // filters DataTableFilters sets: on one column it holds { column, query },
+  // so a filter chip on that same column stays its own filter.
+  const raw = table.getState().globalFilter as DataTableSearchValue | undefined;
+  const value = typeof raw === "string" ? raw : (raw?.query ?? "");
   const label = placeholder.replace(/…$/, "");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -3696,8 +3710,7 @@ function DataTableSearch<TData>({
   const box = compact ? 28 : 36;
 
   const setValue = (next: string) => {
-    if (target) target.setFilterValue(chip?.kind === "text" ? { ...chip, query: next } : next);
-    else table.setGlobalFilter(next);
+    table.setGlobalFilter(target && next ? { column: target.id, query: next } : next);
     // A search that shrinks the rows starts over on the first page.
     table.setPageIndex(0);
   };
@@ -5244,6 +5257,7 @@ export type {
   UseUndoableRowsOptions,
   DataTableFilterKind,
   DataTableFilterValue,
+  DataTableSearchValue,
   DataTableViewOptionsProps,
   DataTableRowActionsProps,
   DataTablePaginationProps,
