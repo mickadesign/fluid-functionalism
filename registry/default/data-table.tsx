@@ -2033,6 +2033,19 @@ function DataTableColumnHeader<TData, TValue>({
   return (
     <>
       {button}
+      {/* While the menu is open, a clear layer under it takes the pointer:
+          nothing else on the page lights up, and a click on it closes the
+          menu. */}
+      {menuOpen &&
+        createPortal(
+          <div
+            aria-hidden
+            data-slot="data-table-menu-shield"
+            className="fixed inset-0 z-[calc(var(--z-popover,60)-1)]"
+            onPointerDown={() => setMenuOpen(false)}
+          />,
+          document.body
+        )}
       {/* The menu opens from the whole header cell: a hidden trigger over
           it that never takes the pointer, so a press can still start a
           column drag and only a click opens the menu. */}
