@@ -265,10 +265,10 @@ function dataTableDemoFile(p: DataTablePreset): string {
   if (views) {
     // No tabs until a view is saved: a lone "All" tab says nothing.
     l.push(`      {views.length > 0 && (`);
-    // Past a selection column, the tab labels line up with the title's, 36px
-    // in: the tab's own 10px padding earlier.
+    // Past a selection column the tabs start where the title's text does,
+    // 36px in, like the chips.
     const pad = p.selection ? "  " : "";
-    if (p.selection) l.push(`        <div className="pl-[26px]">`);
+    if (p.selection) l.push(`        <div className="pl-9">`);
     l.push(`${pad}        <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
     l.push(`${pad}          {["All", ...views.map((v) => v.name)].map((name, i) => (`);
     l.push(`${pad}            <TabsItem key={name} index={i} label={name} />`);
