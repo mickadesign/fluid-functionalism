@@ -88,6 +88,13 @@ describe("the default filterFn", () => {
     expect(ids([{ id: "due", value: { kind: "date", from: "2026-11-13", to: "2026-11-20" } }])).toEqual(["b"]);
   });
 
+  it("reads is not, before and after", () => {
+    expect(ids([{ id: "tags", value: { kind: "options", op: "is not", values: ["Web"] } }])).toEqual(["c"]);
+    expect(ids([{ id: "due", value: { kind: "date", op: "before", to: "2026-11-18" } }])).toEqual(["a"]);
+    expect(ids([{ id: "due", value: { kind: "date", op: "after", from: "2026-11-12" } }])).toEqual(["b", "c"]);
+    expect(ids([{ id: "due", value: { kind: "date", op: "after" } }])).toHaveLength(3);
+  });
+
   it("keeps every row while a filter is empty", () => {
     expect(ids([{ id: "tags", value: { kind: "options", values: [] } }])).toHaveLength(3);
     expect(ids([{ id: "points", value: { kind: "number" } }])).toHaveLength(3);

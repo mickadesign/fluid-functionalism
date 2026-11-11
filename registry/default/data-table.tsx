@@ -190,9 +190,21 @@ type DataTableFilterKind =
 type DataTableFilterValue =
   | string
   | { kind: "text"; query: string }
-  | { kind: "options"; values: string[] }
+  | {
+      kind: "options";
+      values: string[];
+      /** Rows with any of the values, or with none of them. @default "is" */
+      op?: "is" | "is not";
+    }
   | { kind: "number"; min?: number; max?: number }
-  | { kind: "date"; from?: string; to?: string };
+  | {
+      kind: "date";
+      /** Between `from` and `to` (both days included), before `to`, or
+       *  after `from`. @default "between" */
+      op?: "between" | "before" | "after";
+      from?: string;
+      to?: string;
+    };
 
 /** One edit, as DataTable's `onCellEdit` receives it. Write `value` into
  *  your data: the table shows what your data holds. */
@@ -3924,7 +3936,8 @@ function dataTableFilterFn<TData>(row: Row<TData>, columnId: string, filter: Dat
   if (filter.kind === "options") {
     if (filter.values.length === 0) return true;
     const have = Array.isArray(value) ? value.map(String) : [String(value ?? "")];
-    return have.some((v) => filter.values.includes(v));
+    const any = have.some((v) => filter.values.includes(v));
+    return filter.op === "is not" ? !any : any;
   }
   if (filter.kind === "number") {
     if (filter.min === undefined && filter.max === undefined) return true;
@@ -3933,9 +3946,13 @@ function dataTableFilterFn<TData>(row: Row<TData>, columnId: string, filter: Dat
     if (Number.isNaN(n)) return false;
     return (filter.min === undefined || n >= filter.min) && (filter.max === undefined || n <= filter.max);
   }
-  if (!filter.from && !filter.to) return true;
+  const dateOp = filter.op ?? "between";
+  const bound = dateOp === "before" ? filter.to : dateOp === "after" ? filter.from : filter.from || filter.to;
+  if (!bound) return true;
   const day = dayOf(value);
   if (!day) return false;
+  if (dateOp === "before") return day < filter.to!;
+  if (dateOp === "after") return day > filter.from!;
   return (!filter.from || day >= filter.from) && (!filter.to || day <= filter.to);
 }
 
@@ -4200,8 +4217,11 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const boxRef = useRef<HTMLSpanElement>(null);
   const hover = useFluidHover(boxRef, { axis: "x", gapClick: false });
   const { registerItem } = hover;
-  const mainRef = useCallback((el: HTMLElement | null) => registerItem(0, el), [registerItem]);
-  const clearRef = useCallback((el: HTMLElement | null) => registerItem(1, el), [registerItem]);
+  // Three stops for the gliding fill: the word (when it's a menu), the
+  // value, and the ×.
+  const verbRef = useCallback((el: HTMLElement | null) => registerItem(0, el), [registerItem]);
+  const valueRef = useCallback((el: HTMLElement | null) => registerItem(1, el), [registerItem]);
+  const clearRef = useCallback((el: HTMLElement | null) => registerItem(2, el), [registerItem]);
   const innerRadius = { rounded: "rounded-[5px]", pill: "rounded-[17px]", sharp: "rounded-none" }[shape.variant];
   const segment = cn(
     "relative z-[1] inline-flex h-full min-w-0 items-center gap-1 outline-none",
@@ -4212,6 +4232,8 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
 
   let op: string;
   let control: ReactNode;
+  // The date filter's word is a menu of its own (between, before, after).
+  let opControl: ReactNode = null;
   if (value.kind === "text") {
     op = "contains";
     control = (
@@ -4221,7 +4243,8 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
         value={value.query}
         placeholder="text"
         onChange={(e) => onChange({ kind: "text", query: e.target.value })}
-        className={cn(CHIP_FIELD, sizeClasses.field, "w-24")}
+        // Hugs what's typed (the placeholder when empty).
+        className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-48 min-w-6")}
       />
     );
   } else if (value.kind === "number") {
@@ -4237,7 +4260,7 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           value={value.min ?? ""}
           placeholder="min"
           onChange={(e) => onChange({ ...value, min: num(e.target.value) })}
-          className={cn(CHIP_FIELD, sizeClasses.field, "w-12")}
+          className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-24 min-w-4")}
         />
         <span className="text-muted-foreground">to</span>
         <input
@@ -4247,55 +4270,108 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
           value={value.max ?? ""}
           placeholder="max"
           onChange={(e) => onChange({ ...value, max: num(e.target.value) })}
-          className={cn(CHIP_FIELD, sizeClasses.field, "w-12")}
+          className={cn(CHIP_FIELD, sizeClasses.field, "[field-sizing:content] max-w-24 min-w-4")}
         />
       </span>
     );
   } else if (value.kind === "date") {
-    op = "between";
+    const dateOp = value.op ?? "between";
+    op = dateOp;
+    const single = dateOp === "before" ? value.to : dateOp === "after" ? value.from : undefined;
     const range =
       value.from || value.to
         ? { from: value.from ? toDate(value.from) : undefined, to: value.to ? toDate(value.to) : undefined }
         : undefined;
-    control = (
-      <DatePicker
-        mode="range"
-        variant="ghost"
+    // Changing the word keeps the day: "between" starts its range there.
+    const setOp = (next: "between" | "before" | "after") => {
+      const day = single ?? value.from ?? value.to;
+      onChange(
+        next === "before"
+          ? { kind: "date", op: next, to: day }
+          : next === "after"
+            ? { kind: "date", op: next, from: day }
+            : { kind: "date", op: next, from: day }
+      );
+    };
+    opControl = (
+      <OpMenu
+        triggerRef={verbRef}
+        className={segment}
+        label={label}
+        word={dateOp}
         size={size}
-        presets={datePresets()}
-        aria-label={`${label} between`}
-        value={range}
-        placeholder="any day"
-        onValueChange={(next) =>
-          onChange({
-            kind: "date",
-            from: next?.from ? toIsoDay(next.from) : undefined,
-            to: next?.to ? toIsoDay(next.to) : undefined,
-          })
-        }
-        className="-my-1 min-w-0"
+        ops={["between", "before", "after"]}
+        current={dateOp}
+        onPick={(next) => setOp(next as "between" | "before" | "after")}
       />
     );
+    control =
+      dateOp === "between" ? (
+        <DatePicker
+          mode="range"
+          variant="ghost"
+          size={size}
+          presets={datePresets()}
+          aria-label={`${label} between`}
+          value={range}
+          placeholder="any day"
+          onValueChange={(next) =>
+            onChange({
+              kind: "date",
+              op: "between",
+              from: next?.from ? toIsoDay(next.from) : undefined,
+              to: next?.to ? toIsoDay(next.to) : undefined,
+            })
+          }
+          className="-my-1 min-w-0"
+        />
+      ) : (
+        <DatePicker
+          variant="ghost"
+          size={size}
+          aria-label={`${label} ${dateOp}`}
+          value={single ? toDate(single) : undefined}
+          placeholder="any day"
+          onValueChange={(next) => {
+            const day = next instanceof Date ? toIsoDay(next) : undefined;
+            onChange(dateOp === "before" ? { kind: "date", op: "before", to: day } : { kind: "date", op: "after", from: day });
+          }}
+          className="-my-1 min-w-0"
+        />
+      );
   } else {
-    op = value.values.length > 1 ? "is any of" : "is";
+    const negate = value.op === "is not";
+    const many = value.values.length > 1;
+    op = negate ? (many ? "is none of" : "is not") : many ? "is any of" : "is";
     const options = filter.type === "options" ? filter.options : [];
     const picked = options.filter((o) => value.values.includes(o.value));
     const toggle = (v: string) =>
       onChange({
-        kind: "options",
+        ...value,
         values: value.values.includes(v) ? value.values.filter((x) => x !== v) : [...value.values, v],
       });
+    opControl = (
+      <OpMenu
+        triggerRef={verbRef}
+        className={segment}
+        label={label}
+        word={op}
+        size={size}
+        ops={["is", "is not"]}
+        current={negate ? "is not" : "is"}
+        onPick={(next) => onChange({ ...value, op: next as "is" | "is not" })}
+      />
+    );
     control = (
       <DropdownMenu size={size} open={open} onOpenChange={setOpen}>
         <DropdownTrigger
           render={
             <button
-              ref={mainRef}
+              ref={valueRef}
               type="button"
               aria-label={`${label} ${op} ${picked.length ? picked.map((o) => o.label).join(", ") : "any"}`}
-              className={cn(segment, "max-w-72 cursor-pointer")}
+              className={cn(segment, "max-w-56 cursor-pointer")}
             >
-              <Phrase label={label} op={op} />
               {/* One value reads in full, cut short when it's long; more
                   read as their dots and a count, so the chip keeps its
                   width. */}
@@ -4355,21 +4431,23 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
       {...hover.handlers}
     >
       <FluidHoverHighlight hover={hover} className={cn("z-0", innerRadius)} />
+      {/* The column, then the word, the value and the ×, each a stop. */}
+      <span className={cn("relative z-[1] shrink-0 whitespace-nowrap text-foreground", compact ? "pl-1.5" : "pl-2")}>
+        {label}
+      </span>
+      {opControl ?? <span className={cn("relative z-[1] shrink-0 whitespace-nowrap", compact ? "pl-1.5" : "pl-2")}>{op}</span>}
       {value.kind === "options" ? (
         control
       ) : value.kind === "date" ? (
         // The DatePicker brings its own hover over its dates.
-        <span className={cn(segment, "pr-0")}>
-          <Phrase label={label} op={op} />
-          {control}
-        </span>
+        <span className="relative z-[1] flex min-w-0 items-center">{control}</span>
       ) : (
-        // The phrase is the fields' label: a click anywhere in it types.
-        <label ref={mainRef} className={cn(segment, "cursor-text")}>
-          <Phrase label={label} op={op} />
+        // The fields' label: a click anywhere in it types.
+        <label ref={valueRef} className={cn(segment, "cursor-text")}>
           {control}
         </label>
       )}
+      <Tooltip content="Remove filter">
       <button
         ref={clearRef}
         type="button"
@@ -4384,16 +4462,58 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
       >
         <X size={sizeClasses.icon} strokeWidth={1.5} />
       </button>
+      </Tooltip>
     </span>
   );
 }
 
-/** "Status is": the column in the foreground, what it matches muted. */
-function Phrase({ label, op }: { label: string; op: string }) {
+/** What a filter matches, as a word that opens its own menu: "is" or
+ *  "is not", "between", "before" or "after". */
+function OpMenu({
+  triggerRef,
+  className,
+  label,
+  word,
+  ops,
+  current,
+  size,
+  onPick,
+}: {
+  triggerRef?: (el: HTMLElement | null) => void;
+  className?: string;
+  label: string;
+  word: string;
+  ops: readonly string[];
+  current: string;
+  size?: SizeVariant;
+  onPick: (op: string) => void;
+}) {
   return (
-    <span className="shrink-0 whitespace-nowrap">
-      <span className="text-foreground">{label}</span> {op}
-    </span>
+    <DropdownMenu size={size}>
+      <DropdownTrigger
+        render={
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-label={`${label}: ${word}`}
+            className={cn("shrink-0 cursor-pointer whitespace-nowrap transition-colors duration-80 hover:text-foreground", className)}
+          >
+            {word}
+          </button>
+        }
+      />
+      <DropdownContent align="start" className="w-36" checkedIndex={ops.indexOf(current)}>
+        {ops.map((o, i) => (
+          <MenuItem
+            key={o}
+            index={i}
+            label={o.charAt(0).toUpperCase() + o.slice(1)}
+            checked={o === current}
+            onSelect={() => onPick(o)}
+          />
+        ))}
+      </DropdownContent>
+    </DropdownMenu>
   );
 }
 
