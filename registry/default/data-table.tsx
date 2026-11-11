@@ -2454,6 +2454,14 @@ function pinProps(pin: PinInfo | undefined) {
       // the pinned cells in DOM order as it scrolled under them; a raised
       // editor (z-30) still covers them, as it covers its neighbors.
       "sticky z-[2] [--ff-pin:0]",
+      // The cell's own bottom rule sits in its border, outside the layers
+      // below (and out of reach where the cell clips), so the rules of the
+      // cells scrolling under showed through it. While pinned, a 1px strip
+      // of the cell's own background covers that border: the page color,
+      // under the row's fill where there is one (--pin-strip), and the
+      // cell's own rule still draws over it.
+      "bg-no-repeat [background-origin:border-box] [background-position:bottom] [background-size:100%_calc(var(--ff-pin)*1px)]",
+      "[background-image:linear-gradient(var(--pin-strip,transparent),var(--pin-strip,transparent)),linear-gradient(var(--background),var(--background))]",
       left ? "ff-pin-l group-data-x-start/pin:[--ff-pin:1]" : "ff-pin-r group-data-x-end/pin:[--ff-pin:1]"
     ),
     style: left ? { left: pin.offset } : { right: pin.offset },
@@ -2481,11 +2489,19 @@ const PIN_CSS = `
 function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
-      {/* 1px past both sides: at a fractional position each cell's fill
-          snaps to the pixel grid on its own, which left a hairline between
-          two pinned cells (and at the table's clipped edge) where text
-          scrolling under showed through. Neighbours overlap instead. */}
-      <span className="absolute inset-y-0 -inset-x-px bg-background" />
+      {/* 1px past its far side (and the table's clipped left edge): at a
+          fractional position each cell's fill snaps to the pixel grid on
+          its own, which left a hairline between two pinned cells where
+          text scrolling under showed through. Only ever under the NEXT
+          cell, which paints later: reaching back over the previous one
+          cut a 1px line of page color through its hover and selection. */}
+      <span
+        className={cn(
+          "absolute inset-y-0 left-0 right-0 bg-background",
+          !(pin.side === "left" && pin.edge) && "-right-px",
+          pin.side === "left" && pin.outer && "-left-px"
+        )}
+      />
       {children}
       {pin.edge && (
         // The rule is a span inside the edge cell, in the rows' rule color.
@@ -2502,20 +2518,28 @@ function PinFills({
   runStart,
   runEnd,
   shapeVariant,
+  tall = false,
 }: {
   pin: PinInfo;
+  /** The fills also cover the cell's bottom border (the selection
+   *  column, which doesn't clip): its rounded fills can't be a strip. */
+  tall?: boolean;
   selected: boolean;
   runStart: boolean;
   runEnd: boolean;
   shapeVariant: keyof typeof SKELETON_BAR_RADIUS;
 }) {
   const left = pin.side === "left";
+  // A left cell with a pinned cell after it runs 1px under that one, whose
+  // opaque layer covers the overlap: no seam at a fractional position.
+  const reach = cn(left && !pin.edge && "-right-px", tall && "-bottom-px");
   return (
     <PinLayers pin={pin}>
       {selected && (
         <span
           className={cn(
             "absolute inset-0 bg-active",
+            reach,
             pin.outer && runStart && PIN_RADIUS[left ? "tl" : "tr"][shapeVariant],
             pin.outer && runEnd && PIN_RADIUS[left ? "bl" : "br"][shapeVariant]
           )}
@@ -2524,6 +2548,7 @@ function PinFills({
       <span
         className={cn(
           "absolute inset-0 bg-hover opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100",
+          reach,
           pin.outer && PIN_RADIUS[left ? "left" : "right"][shapeVariant]
         )}
       />
@@ -2842,10 +2867,17 @@ const DataTableBodyRow = memo(
               // the sub-row guides.
               (swapping || cell.column.id === expanderId) && "relative",
               pinProps(pins[cell.column.id]).className,
+              // The strip over its bottom border takes the row's fill
+              // (outer cells' fills round, so theirs stays the page color).
+              pins[cell.column.id] && !pins[cell.column.id].outer &&
+                (selected ? "[--pin-strip:var(--active)]" : "group-[.is-active]/row:[--pin-strip:var(--hover)]"),
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
               (lines === 1 || (sized && lines === undefined)) && "truncate",
+              // Pinned, the boxes' cell lets its fills reach over its
+              // bottom border (it has no text to cut).
+              pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
               // Long unbroken text (a URL) breaks anywhere rather
               // than running out of its column.
               lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
@@ -2870,6 +2902,7 @@ const DataTableBodyRow = memo(
                 runStart={runStart}
                 runEnd={runEnd}
                 shapeVariant={shapeVariant}
+                tall={cell.column.id === "select"}
               />
             )}
             {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
