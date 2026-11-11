@@ -344,10 +344,11 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
       <div
         // Sticky at the top of the scrolling popup, bleeding into its 4px
         // padding so the divider runs edge to edge and rows scroll underneath
-        // it; margin + the list gap put the first row 4px below the divider —
-        // the same inset as the popup's side padding.
+        // it. A row's height above its divider (box-content: the 1px rule
+        // sits outside it), so the field reads like a menu row, and the first
+        // row 4px below the divider: the popup's side padding.
         className={cn(
-          "group/search sticky top-0 z-20 -mx-1 -mt-1 mb-0.5 flex shrink-0 items-center border-b border-border/60",
+          "group/search sticky top-0 z-20 -mx-1 -mt-1 mb-1 box-content flex shrink-0 items-center border-b border-border/60",
           SURFACE_BG[surface],
           sizeClasses.control,
           sizeClasses.gap,
