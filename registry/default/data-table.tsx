@@ -4015,8 +4015,8 @@ interface DataTableTitleProps extends HTMLAttributes<HTMLHeadingElement> {
   /** The heading level. @default "h1" */
   as?: "h1" | "h2" | "h3";
   /** The table it names: with a selection column, the title steps in to
-   *  start where the first data column's text does (the 28px column of
-   *  boxes, then that column's 8px). */
+   *  start where the first data column does (past the 28px column of
+   *  boxes), the edge it shares with the table when there are none. */
   table?: TanStackTable<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   size?: SizeVariant;
 }
@@ -4034,7 +4034,7 @@ function DataTableTitle({ as: Tag = "h1", table, size, className, style, ...prop
       className={cn(
         typeClass("display", compact ? "compact" : "default"),
         "text-foreground",
-        boxes && "pl-9",
+        boxes && "pl-7",
         className
       )}
       style={{ fontVariationSettings: fontWeights.semibold, ...style }}
@@ -4354,10 +4354,10 @@ function DataTableFilterChips<TData>({
     <RowReveal show={active.length > 0 || Children.toArray(children).length > 0}>
       <div
         data-slot="data-table-filter-chips"
-        // Past a selection column the chips start where the title's text
-        // does, 36px in: the same edge they keep with the title when there
-        // are no boxes.
-        className={cn("flex flex-wrap items-center gap-1", boxes && "pl-9", className)}
+        // Past a selection column the chips start where the first data
+        // column does, 28px in (past the boxes), like the title: the edge
+        // they share with the table when there are no boxes.
+        className={cn("flex flex-wrap items-center gap-1", boxes && "pl-7", className)}
       >
         {active.map((f) => {
           const entry = filterable.find(({ column }) => column.id === f.id);

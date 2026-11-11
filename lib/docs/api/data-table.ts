@@ -62,7 +62,7 @@ export const undoableRowsProps: PropDef[] = [
 
 export const titleProps: PropDef[] = [
   { name: "children", type: "ReactNode", description: "The table's name, on the toolbar's row: the page-title role (28px, 24 compact), semibold. Optional." },
-  { name: "table", type: "Table<TData>", description: "With a selection column, the title steps in 36px so it starts where the first data column's text does." },
+  { name: "table", type: "Table<TData>", description: "With a selection column, the title steps in 28px so it starts where the first data column does, as it does with the table's edge when there's none." },
   { name: "as", type: '"h1" | "h2" | "h3"', default: '"h1"', description: "The heading level. Use a lower one under a page that already has an h1." },
   { name: "size", type: '"default" | "compact"', description: "Pins the heading to one size step." },
 ];

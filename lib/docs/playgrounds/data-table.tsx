@@ -535,7 +535,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(views
       ? [
           `  {views.length > 0 && (`,
-          ...(o.selection ? [`    <div className="pl-9">`] : []),
+          ...(o.selection ? [`    <div className="pl-7">`] : []),
           ...[
             `    <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
             `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
@@ -1123,10 +1123,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           selection column. A lone "All" tab says nothing, so the row
           waits for the first saved view. */}
       <RowReveal show={showViews && views.length > 0}>
-        {/* Past a selection column the tabs start where the title's text
-            does, 36px in, like the chips: the edge they keep with the title
-            when there are no boxes. */}
-        <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-9")}>
+        {/* Past a selection column the tabs start where the first data
+            column does, 28px in, like the title and the chips: the edge they
+            share with the table when there are no boxes. */}
+        <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-7")}>
           <Tabs
             size="compact"
             selectedIndex={viewIndex}
