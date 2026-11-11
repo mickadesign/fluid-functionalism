@@ -1128,6 +1128,8 @@ function DataTable<TData>({
   // sorted, searched or edited: widths that jumped with every keystroke
   // and every sort would be worse than ones read once.
   const pageKey = `${table.options.data.length}:${table.getState().pagination.pageSize}`;
+  // Rows gaining sub-rows (or losing them) widen the chevron's column: read again.
+  const hasSubRows = table.getCanSomeRowsExpand();
   useLayoutEffect(() => {
     if (resizeColumns && seeded) return;
     const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
@@ -1135,6 +1137,10 @@ function DataTable<TData>({
     // Nothing measured (no visible columns yet): setting empty widths
     // would only re-render into this same effect, forever.
     if (!tableNode || !ths?.length) return;
+    // The column that carries the sub-rows' chevron (see expanderId below).
+    const expanderId = table.getCanSomeRowsExpand()
+      ? table.getVisibleLeafColumns().find((c) => c.accessorFn !== undefined)?.id
+      : undefined;
     // Measured at max-content, every cell on one line, in one synchronous
     // pass that never paints.
     const saved = tableNode.style.cssText;
@@ -1147,7 +1153,29 @@ function DataTable<TData>({
       const pad = parseFloat(css.paddingLeft) + parseFloat(css.paddingRight);
       const head = headerWidth(th) + pad;
       const floor = Math.ceil(Math.max(head, parseFloat(css.minWidth) || 0));
-      const content = th.getBoundingClientRect().width;
+      let content = th.getBoundingClientRect().width;
+      // The chevron's column also fits its sub-rows' text, which a
+      // collapsed row doesn't render: read from the data in the cell's own
+      // font, plus the cell's padding and the chevron's 16px slot and 4px
+      // gap, so opening a row never finds its children's names cut or
+      // wrapped.
+      if (id === expanderId) {
+        const sample = tableNode.querySelector<HTMLElement>(`tbody td[data-column-id="${id}"] span.min-w-0`);
+        const cellCss = sample?.closest("td") ? getComputedStyle(sample.closest("td")!) : null;
+        if (sample && cellCss) {
+          let widest = 0;
+          for (const r of table.getCoreRowModel().flatRows) {
+            if (r.depth === 0) continue;
+            const value = r.getValue(id);
+            if (value == null || value === "") continue;
+            widest = Math.max(widest, textWidth(sample, String(value)));
+          }
+          if (widest > 0) {
+            const chrome = parseFloat(cellCss.paddingLeft) + parseFloat(cellCss.paddingRight) + 16 + 4;
+            content = Math.max(content, widest + chrome);
+          }
+        }
+      }
       const size = ownSize(table.options.columns, id);
       const own = size !== undefined || !column?.getCanResize();
       return {
@@ -1175,7 +1203,7 @@ function DataTable<TData>({
     });
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl]);
+  }, [resizeColumns, seeded, table, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl, hasSubRows]);
   const sized = resizeColumns ? seeded : fitted !== null;
   // The row-menu column hugs its button: 4px narrower in compact, where the
   // button sits flush right on the compact controls' center line.

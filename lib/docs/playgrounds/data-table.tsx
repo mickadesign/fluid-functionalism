@@ -798,7 +798,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     // The Tags column comes and goes with editing: the widths are read
     // again, so it starts at its own width rather than none.
     // Header icons widen the headers: the widths are read again too.
-    if (!next.resize || next.editable !== prev.editable || next.headerIcons !== prev.headerIcons)
+    // Sub-rows widen the first column to fit their names: read again too.
+    if (!next.resize || next.editable !== prev.editable || next.headerIcons !== prev.headerIcons || next.expandable !== prev.expandable)
       table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
