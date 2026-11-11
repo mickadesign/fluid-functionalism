@@ -1156,7 +1156,7 @@ function DataTable<TData>({
       let content = th.getBoundingClientRect().width;
       // The chevron's column also fits its sub-rows' text, which a
       // collapsed row doesn't render: read from the data in the cell's own
-      // font, plus the cell's padding and the chevron's 16px slot and 4px
+      // font, plus the cell's padding and the chevron's 24px slot and 4px
       // gap, so opening a row never finds its children's names cut or
       // wrapped.
       if (id === expanderId) {
@@ -1172,7 +1172,7 @@ function DataTable<TData>({
             if (r.depth > 0) widest = Math.max(widest, textWidth(sample, text));
             for (const word of text.split(/\s+/)) if (word) widestWord = Math.max(widestWord, textWidth(sample, word));
           }
-          const chrome = parseFloat(cellCss.paddingLeft) + parseFloat(cellCss.paddingRight) + 16 + 4;
+          const chrome = parseFloat(cellCss.paddingLeft) + parseFloat(cellCss.paddingRight) + 24 + 4;
           if (widest > 0) content = Math.max(content, widest + chrome);
           // Short of room, a column gives up width down to its floor, and a
           // wrapping name would then break inside a word ("FieldDescripti /
@@ -2546,7 +2546,8 @@ function SubRowGuides({
   grouped: boolean;
   alignTop: boolean;
 }) {
-  const x = "calc(var(--expander-pl) + 7.5px)";
+  // The center of the chevron's 24px slot (12px in, less the rule's half).
+  const x = "calc(var(--expander-pl) + 11.5px)";
   const rule = "pointer-events-none absolute w-px bg-border";
   return (
     <>
@@ -2557,10 +2558,11 @@ function SubRowGuides({
         <span aria-hidden className={cn(rule, "top-0", grouped ? "-bottom-px" : "bottom-2")} style={{ left: x }} />
       )}
       {expanded && row.subRows.length > 0 && (
-        // From 6px under the open chevron to the row's bottom.
+        // From 6px under the open chevron (12px, half its 24px, + 6) to the
+        // row's bottom.
         <span
           aria-hidden
-          className={cn(rule, "-bottom-px", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+14px)]" : "top-[calc(50%+14px)]")}
+          className={cn(rule, "-bottom-px", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+18px)]" : "top-[calc(50%+18px)]")}
           style={{ left: x }}
         />
       )}
@@ -2598,9 +2600,11 @@ function ExpandToggle({
         onToggle();
       }}
       className={cn(
-        // 16px, its hit area 4px wider each way; above an editor's reach.
-        "relative z-[1] flex size-4 shrink-0 items-center justify-center text-muted-foreground outline-none",
-        "after:absolute after:-inset-1 transition-colors duration-80 hover:bg-hover hover:text-foreground",
+        // 24px, a small ghost icon button (its hover fill and color, the
+        // 14px chevron), so it reads and hits like a button; above an
+        // editor's reach.
+        "relative z-[1] flex size-6 shrink-0 items-center justify-center text-muted-foreground outline-none",
+        "transition-colors duration-80 hover:bg-hover hover:text-foreground",
         sharp ? "rounded-[1px]" : "rounded-[4px]"
       )}
     >
@@ -2800,7 +2804,7 @@ const DataTableBodyRow = memo(
                   onToggle={() => onToggleExpand(row as Row<unknown>)}
                 />
               ) : (
-                <span aria-hidden className="size-4 shrink-0" />
+                <span aria-hidden className="size-6 shrink-0" />
               )}
               <span
                 className={cn(
