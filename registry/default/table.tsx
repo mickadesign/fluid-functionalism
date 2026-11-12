@@ -75,12 +75,18 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Hides the header cells' fluid hover highlight, e.g. while a header
    *  is dragged. */
   hideHeadHighlight?: boolean;
+  /** A mark that rides the row highlight, for the body row at `index`:
+   *  drawn inside the fill, so it glides from row to row with it. */
+  hoverMarker?: (index: number) => ReactNode;
 }
 
 const NO_SELECTION: readonly number[] = [];
 
+/** Dispatched (bubbling) from a row to move the table's highlight onto it. */
+const TABLE_HIGHLIGHT_EVENT = "fluid-table-highlight";
+
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, hoverMarker, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
@@ -140,6 +146,26 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       return true;
     };
 
+    // A row can ask for the highlight (`TABLE_HIGHLIGHT_EVENT`, bubbling
+    // from the row): DataTable does after it moves a row from the keyboard,
+    // so the fill, and what it carries, goes with the row to its new place
+    // rather than staying where the pointer happens to rest. The keyboard
+    // owns the highlight from there, until the pointer moves.
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      const claim = (e: Event) => {
+        const index = (e.target as HTMLElement | null)
+          ?.closest?.("[data-fluid-hover-index]")
+          ?.getAttribute("data-fluid-hover-index");
+        if (index == null) return;
+        keyboardOwns.current = true;
+        setActiveIndex(Number(index));
+      };
+      container.addEventListener(TABLE_HIGHLIGHT_EVENT, claim);
+      return () => container.removeEventListener(TABLE_HIGHLIGHT_EVENT, claim);
+    }, [setActiveIndex]);
+
     // A held arrow key repeats faster than the highlight's spring settles,
     // so while it repeats the highlight snaps row to row and stays on the
     // focused one; a single press, and the pointer, still glide.
@@ -156,17 +182,60 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     // hover change itself would drop the rule before the fill gets there.
     // Straight to the DOM (no render per frame); reads first, then writes.
     // A rule goes at once as the fill reaches it and fades back in after.
+    // Where each row's rule sits, measured once and kept until the rows can
+    // have moved (a render, a resize, rows added or removed). Layout
+    // offsets, so a row mid-slide (a sort's FLIP) reads where it lands,
+    // and a scroll changes nothing. Reading boxes on every frame of
+    // the glide forced a layout in the middle of each frame, right after
+    // the fill had moved, and the attribute written after it a second one:
+    // most of what a sweep down the table cost. With nothing read per
+    // frame, the browser lays the frame out once.
+    const ruleEdges = useRef<{ tr: HTMLTableRowElement; bottom: number }[] | null>(null);
+    const ruleState = useRef(new WeakMap<HTMLTableRowElement, boolean>());
+    // New children are a new set of rows; a render for the hover alone
+    // (the fill moving to another row) keeps what was measured.
+    useLayoutEffect(() => {
+      ruleEdges.current = null;
+    }, [children]);
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container || typeof ResizeObserver === "undefined") return;
+      const drop = () => {
+        ruleEdges.current = null;
+      };
+      const sizes = new ResizeObserver(drop);
+      sizes.observe(container);
+      // Rows coming and going (not what the fill carries beside the table).
+      const rows = new MutationObserver(drop);
+      container.querySelectorAll("thead, tbody").forEach((part) => rows.observe(part, { childList: true }));
+      return () => {
+        sizes.disconnect();
+        rows.disconnect();
+      };
+    }, []);
     const hideCoveredRules = useCallback((box: { y: number; height: number; opacity: number }) => {
       const container = containerRef.current;
       if (!container) return;
-      const top = container.getBoundingClientRect().top;
-      const rows = Array.from(container.querySelectorAll<HTMLTableRowElement>("thead > tr, tbody > tr"));
-      const covered = rows.map((tr) => {
-        if (box.opacity < 0.5) return false;
-        const bottom = tr.getBoundingClientRect().bottom - top;
-        return bottom >= box.y - 1.5 && bottom <= box.y + box.height + 1.5;
-      });
-      rows.forEach((tr, i) => tr.toggleAttribute("data-under-highlight", covered[i]));
+      if (!ruleEdges.current) {
+        let top: number | null = null;
+        ruleEdges.current = Array.from(
+          container.querySelectorAll<HTMLTableRowElement>("thead > tr, tbody > tr")
+        ).map((tr) => ({
+          tr,
+          bottom:
+            tr.offsetParent === container
+              ? tr.offsetTop + tr.offsetHeight
+              : tr.getBoundingClientRect().bottom - (top ??= container.getBoundingClientRect().top),
+        }));
+      }
+      const shown = box.opacity >= 0.5;
+      for (const { tr, bottom } of ruleEdges.current) {
+        const on = shown && bottom >= box.y - 1.5 && bottom <= box.y + box.height + 1.5;
+        // Written only when it changes: the attribute restyles the row's cells.
+        if (ruleState.current.get(tr) === on) continue;
+        ruleState.current.set(tr, on);
+        tr.toggleAttribute("data-under-highlight", on);
+      }
     }, []);
 
     const headCell =
@@ -255,7 +324,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             className={shape.bg}
             transition={repeating || snap.on ? false : undefined}
             onFrame={hideCoveredRules}
-          />
+          >
+            {hoverMarker && hover.activeIndex !== null ? hoverMarker(hover.activeIndex) : null}
+          </FluidHoverHighlight>
           {/* The header's fill stops 1px short of the header's bottom line,
               and turns --active while its cell is pressed: one surface for
               hover and press. */}
@@ -491,4 +562,4 @@ TableEmpty.displayName = "TableEmpty";
 
 // ── Exports ──────────────────────────────────────────────
 
-export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty };
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty, TABLE_HIGHLIGHT_EVENT };

@@ -22,6 +22,7 @@ export const dataTableProps: PropDef[] = [
   { name: "fill", type: "boolean", default: "false", description: "Fills a flex column: rows scroll under a sticky header, search and pages stay in view." },
   { name: "reorderColumns", type: "boolean", default: "false", description: "Drag a header to move its column, or press `Alt` + `←` / `→` on it." },
   { name: "onCellEdit", type: "({ row, columnId, value }) => void", description: "Turns on `meta.editor` and gets each change. Write `value` back to your data." },
+  { name: "onRowReorder", type: "({ rows, target, place }) => void", description: "Rows move by the `rowHandleColumn()` handle, or `Alt` + `↑` / `↓` on the row under the pointer or holding focus. Write the order back with `moveRows(data, move)`. While a column is sorted, a drop or the keys ask whether to remove the sort first." },
   { name: "onUndo", type: "() => void", description: "⌘Z (Ctrl+Z) while focus is in the table; a field being edited keeps its own undo. Pass useUndoableRows' `undo`." },
   { name: "onRedo", type: "() => void", description: "⇧⌘Z (Ctrl+Shift+Z, Ctrl+Y) while focus is in the table. Pass useUndoableRows' `redo`." },
 ];
@@ -113,6 +114,11 @@ export const selectColumnProps: PropDef[] = [
   { name: "selectColumn()", type: "ColumnDef<TData>", description: "A first column of checkboxes. The header box selects every row the search leaves, on every page, and counts them in its tooltip." },
 ];
 
+export const rowHandleColumnProps: PropDef[] = [
+  { name: "rowHandleColumn()", type: "ColumnDef<TData>", description: "A first column of drag handles, before `selectColumn()`. Rows move once DataTable has `onRowReorder`; sub-rows travel with their parent." },
+  { name: "moveRows(data, move)", type: "TData[]", description: "`data` with a move from `onRowReorder` applied: the moved rows, in order, right before or after the target." },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "useDataTable", props: useDataTableProps },
@@ -129,5 +135,6 @@ export const apiReference: ApiTable[] = [
   { title: "DataTablePagination", props: paginationProps },
   { title: "DataTableSelectionBar", props: selectionBarProps },
   { title: "selectColumn", props: selectColumnProps },
+  { title: "rowHandleColumn", props: rowHandleColumnProps },
   { title: "rowActionsColumn", props: rowActionsColumnProps },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useShape } from "@/lib/shape-context";
-import { useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
@@ -18,13 +18,14 @@ import {
   DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
+  rowHandleColumn,
   useUndoableRows,
   type ColumnDef,
 } from "@/registry/default/data-table";
 import type { Row, TableState } from "@tanstack/react-table";
 import { Tabs, TabsItem } from "@/components/ui/tabs";
 import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
-import { fieldTouchClass, typeClass } from "@/lib/size-context";
+import { fieldTouchClass, typeClass, useSize } from "@/lib/size-context";
 import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
@@ -110,7 +111,7 @@ const ADDED: Record<string, string> = {
   tooltip: "2026-03-06",
 };
 
-type Primitives = "Radix + Base UI" | "Built on both" | "None";
+type Primitives = "Radix + Base UI" | "None";
 
 export type ComponentRow = {
   slug: string;
@@ -127,6 +128,8 @@ export type ComponentRow = {
 };
 
 const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
+// Built on both primitives through other parts: the same tag as a
+// component with a file per flavor.
 const flavoredSingle = new Set<string>(FLAVORED_SINGLE_SOURCE_SLUGS);
 const fluid = new Set<string>(FLUID_HOVER_SLUGS);
 
@@ -136,7 +139,7 @@ export function buildRows(): ComponentRow[] {
     name,
     summary: description,
     website: `fluidfunctionalism.com/docs/${slug}`,
-    primitives: dual.has(slug) ? "Radix + Base UI" : flavoredSingle.has(slug) ? "Built on both" : "None",
+    primitives: dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None",
     props: (API_REFERENCE[slug] ?? []).reduce((sum, table) => sum + table.props.length, 0),
     fluidHover: fluid.has(slug),
     added: ADDED[slug] ?? "",
@@ -151,7 +154,7 @@ function partsOf(slug: string, name: string): ComponentRow[] | undefined {
   const tables = API_REFERENCE[slug] ?? [];
   if (tables.length < 2) return undefined;
   const fluidHover = fluid.has(slug);
-  const primitives: Primitives = dual.has(slug) ? "Radix + Base UI" : flavoredSingle.has(slug) ? "Built on both" : "None";
+  const primitives: Primitives = dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None";
   return tables.map((t) => ({
     slug: `${slug}/${t.title}`,
     name: t.title,
@@ -174,7 +177,7 @@ export function formatDay(iso: string) {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", "Built on both": "purple", None: "gray" } as const;
+export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", None: "gray" } as const;
 
 // The select editor's options carry the badge colors, so its menu shows
 // each option's dot.
@@ -190,6 +193,8 @@ type Lines = DataTableLines;
 type Icons = ReturnType<typeof useIcons>;
 
 function buildColumns(o: {
+  /** Drag handles, left of the boxes. */
+  rowReorder: boolean;
   selection: boolean;
   rowActions: boolean;
   lines: Lines;
@@ -205,6 +210,7 @@ function buildColumns(o: {
   const wrap = o.lines === "wrap";
   const lines = wrap ? "wrap" : 1;
   return [
+    ...(o.rowReorder ? [rowHandleColumn<ComponentRow>()] : []),
     ...(o.selection ? [selectColumn<ComponentRow>()] : []),
     {
       accessorKey: "name",
@@ -343,6 +349,23 @@ function removeRows(list: ComponentRow[], slugs: readonly string[]): ComponentRo
     .map((r) => (r.subRows ? { ...r, subRows: removeRows(r.subRows, slugs) } : r));
 }
 
+/** The top-level rows with these slugs moved before or after another. By
+ *  slug: with sub-rows off the table holds copies of the rows. */
+function moveBySlug(list: ComponentRow[], slugs: readonly string[], target: string, place: "before" | "after"): ComponentRow[] {
+  const moved = list.filter((r) => slugs.includes(r.slug));
+  const rest = list.filter((r) => !slugs.includes(r.slug));
+  const at = rest.findIndex((r) => r.slug === target);
+  if (at < 0) return list;
+  const index = place === "before" ? at : at + 1;
+  return [...rest.slice(0, index), ...moved, ...rest.slice(index)];
+}
+
+/** The leading columns' gutter: the tabs start where the first data
+ *  column's text does, past the handles and the boxes. */
+function gutterClass(o: { rowReorder: boolean; selection: boolean }) {
+  return o.rowReorder && o.selection ? "pl-12" : o.selection ? "pl-7" : o.rowReorder ? "pl-5" : undefined;
+}
+
 function updateRow(list: ComponentRow[], slug: string, key: string, value: unknown): ComponentRow[] {
   return list.map((r) =>
     r.slug === slug
@@ -367,8 +390,8 @@ function pick<T>(options: readonly T[]): T {
 
 /** The pins a one-sided setting keeps, as code: the boxes and the first
  *  column on the left, the row menus on the right. */
-export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selection" | "rowActions">) {
-  const left = o.pinning ? [...(o.selection ? [`"select"`] : []), `"name"`] : [];
+export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selection" | "rowActions" | "rowReorder">) {
+  const left = o.pinning ? [...(o.rowReorder ? [`"drag"`] : []), ...(o.selection ? [`"select"`] : []), `"name"`] : [];
   const right = o.pinRight && o.rowActions ? [`"actions"`] : [];
   return `{ left: [${left.join(", ")}], right: [${right.join(", ")}] }`;
 }
@@ -386,10 +409,24 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.pagination ? ["DataTablePagination"] : []),
     ...(o.selection ? ["DataTableSelectionBar"] : []),
     ...(o.selection ? ["selectColumn"] : []),
+    ...(o.rowReorder ? ["rowHandleColumn", "moveRows"] : []),
     "type ColumnDef",
   ];
   // Saved views come with filters: they save what the filters set.
   const views = o.views && o.filters;
+  // Rows that change (edits, moves) live in state.
+  const held = o.editable || o.rowReorder;
+  // Rows moved by hand start unsorted: under a sort, a move first asks to
+  // remove it.
+  const sorting = o.rowReorder ? "[]" : `[{ id: "added", desc: true }]`;
+  const gutter = gutterClass(o);
+  const viewTabsCode = [
+    `    <Tabs selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
+    `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
+    `        <TabsItem key={name} index={i} label={name} />`,
+    `      ))}`,
+    `    </Tabs>`,
+  ];
   const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views;
   // Two icons or more on the row share one gliding tooltip bubble.
   const grouped = [o.filters, o.viewMenu, o.filter !== "none"].filter(Boolean).length > 1;
@@ -409,6 +446,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       : []),
     ``,
     `const columns: ColumnDef<ComponentRow>[] = [`,
+    ...(o.rowReorder ? [`  rowHandleColumn<ComponentRow>(),`] : []),
     ...(o.selection ? [`  selectColumn<ComponentRow>(),`] : []),
     `  {`,
     `    accessorKey: "name",`,
@@ -425,7 +463,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.headerIcons || o.editable
       ? [
           `    meta: { ${[o.headerIcons && "icon: Folder", o.editable &&
-              `editor: { type: "select", options: [{ value: "Radix + Base UI", color: "blue" }, { value: "Built on both", color: "purple" }, { value: "None", color: "gray" }] }`].filter(Boolean).join(", ")} },`,
+              `editor: { type: "select", options: [{ value: "Radix + Base UI", color: "blue" }, { value: "None", color: "gray" }] }`].filter(Boolean).join(", ")} },`,
         ]
       : []),
     `  },`,
@@ -479,9 +517,9 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       : []),
     `];`,
     ``,
-    ...(o.editable ? [`const [rows, setRows] = useState(components);`, ``] : []),
+    ...(held ? [`const [rows, setRows] = useState(components);`, ``] : []),
     `const table = useDataTable({`,
-    `  data: ${o.editable ? "rows" : "components"},`,
+    `  data: ${held ? "rows" : "components"},`,
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
@@ -489,7 +527,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       ? [`  // No sticky left columns, and no Freeze item in the header menus.`, `  enableColumnPinning: false,`]
       : []),
     `  initialState: {`,
-    `    sorting: [{ id: "added", desc: true }],`,
+    ...(o.rowReorder ? [] : [`    sorting: ${sorting},`]),
     `    columnVisibility: { fluidHover: false },`,
     ...(o.pinning !== o.pinRight ? [`    // Sticky on one side only.`, `    columnPinning: ${pinningCode(o)},`] : []),
     `  },`,
@@ -500,7 +538,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `// Saved views: the table's state, named (filters, search, sort, columns).`,
           `const [views, setViews] = useState<{ name: string; state: Partial<TableState> }[]>([]);`,
           `const [viewIndex, setViewIndex] = useState(0);`,
-          `const allView = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: { fluidHover: false } };`,
+          `const allView = { columnFilters: [], globalFilter: "", sorting: ${sorting}, columnOrder: [], columnVisibility: { fluidHover: false } };`,
           `const openView = (i: number) => {`,
           `  const view = i === 0 ? allView : views[i - 1].state;`,
           `  table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`,
@@ -523,7 +561,16 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       ? [
           `  <div className="${o.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`,
           ...(o.title ? [`    <DataTableTitle table={table}>Components</DataTableTitle>`] : []),
-          `    <span className="ml-auto" />`,
+          // Without a title the saved views share the tools' row.
+          ...(views && !o.title
+            ? [
+                `    <div className="min-w-0 flex-1${gutter ? ` ${gutter}` : ""}">`,
+                `      {views.length > 0 && (`,
+                ...viewTabsCode.map((line) => `    ${line}`),
+                `      )}`,
+                `    </div>`,
+              ]
+            : [`    <span className="ml-auto" />`]),
           ...(grouped ? [`    <TooltipGroup>`] : []),
           ...[
             ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
@@ -534,18 +581,12 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  </div>`,
         ]
       : []),
-    ...(views
+    ...(views && o.title
       ? [
           `  {views.length > 0 && (`,
-          ...(o.selection ? [`    <div className="pl-7">`] : []),
-          ...[
-            `    <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
-            `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
-            `        <TabsItem key={name} index={i} label={name} />`,
-            `      ))}`,
-            `    </Tabs>`,
-          ].map((line) => (o.selection ? `  ${line}` : line)),
-          ...(o.selection ? [`    </div>`] : []),
+          ...(gutter ? [`    <div className="${gutter}">`] : []),
+          ...viewTabsCode.map((line) => (gutter ? `  ${line}` : line)),
+          ...(gutter ? [`    </div>`] : []),
           `  )}`,
         ]
       : []),
@@ -559,14 +600,24 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           ]
         : [`  <DataTableFilterChips table={table} />`]
       : []),
-    ...(o.editable
+    ...(held
       ? [
           `  <DataTable`,
           `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}`,
-          `    // Each edit writes back to your data; the table shows what it holds.`,
-          `    onCellEdit={({ row, columnId, value }) =>`,
-          `      setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`,
-          `    }`,
+          ...(o.editable
+            ? [
+                `    // Each edit writes back to your data; the table shows what it holds.`,
+                `    onCellEdit={({ row, columnId, value }) =>`,
+                `      setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`,
+                `    }`,
+              ]
+            : []),
+          ...(o.rowReorder
+            ? [
+                `    // Drag a handle, or Alt + ↑ / ↓ on a row. Under a sort, the table asks to remove it first.`,
+                `    onRowReorder={(move) => setRows((old) => moveRows(old, move))}`,
+              ]
+            : []),
           `  />`,
         ]
       : [
@@ -709,6 +760,9 @@ function RowRevealPart({ children }: { children: ReactNode }) {
 
 export function DataTablePlayground({ children }: PlaygroundProps) {
   const shape = useShape();
+  // The view tabs take the page's size setting, like the table: their
+  // dragged copy and the name field over a tab follow the same type.
+  const tabType = useSize().variant === "compact" ? "compact" : "default";
   const [state, setState] = useState<PlayState>(DEFAULT_STATE);
   // The settings as of the latest change, for callbacks that outlive the
   // render they were made in.
@@ -731,23 +785,42 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const data = history.rows;
   const { apply: applyStep, undoTo, stepCount } = history;
   // A delete says what went, with its way back to before it.
+  // Read through a ref: the step count changes with every edit, and as a
+  // dependency it rebuilt this, then the columns (their Delete item calls
+  // it), then every cell of the table, on each one.
+  const stepCountRef = useRef(stepCount);
+  useEffect(() => {
+    stepCountRef.current = stepCount;
+  });
   const deleteRows = useCallback(
     (slugs: string[], label: string) => {
+      const before = stepCountRef.current;
       applyStep(label, (old) => removeRows(old, slugs));
-      showUndoToast(label, () => undoTo(stepCount));
+      showUndoToast(label, () => undoTo(before));
     },
-    [applyStep, undoTo, stepCount]
+    [applyStep, undoTo]
   );
   // Sub-rows on, the rows carry their parts; off, they're left out (a new
   // array, so the table builds its rows again).
+  // One copy per row, kept: a new copy of every row on every edit would
+  // tell the table every record had changed, and it would render them all.
+  const flatRows = useRef(new WeakMap<ComponentRow, ComponentRow>());
   const tableData = useMemo(
-    () => (state.expandable ? data : data.map((r) => ({ ...r, subRows: undefined }))),
+    () =>
+      state.expandable
+        ? data
+        : data.map((r) => {
+            let flat = flatRows.current.get(r);
+            if (!flat) flatRows.current.set(r, (flat = { ...r, subRows: undefined }));
+            return flat;
+          }),
     [data, state.expandable]
   );
   const icons = useIcons();
   const columns = useMemo(
     () =>
       buildColumns({
+        rowReorder: state.rowReorder,
         selection: state.selection,
         rowActions: state.rowActions,
         lines: state.lines,
@@ -755,7 +828,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         editable: state.editable,
         onDelete: (row) => deleteRows([row.slug], `Deleted ${row.name}`),
       }),
-    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
+    [state.rowReorder, state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
   );
 
   const table = useDataTable({
@@ -771,7 +844,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       columnVisibility: { fluidHover: false },
       // Set by hand rather than left to useDataTable, which pins nothing
       // when the table starts with pinning off.
-      columnPinning: { left: ["select", "name"], right: ["actions"] },
+      columnPinning: { left: ["drag", "select", "name"], right: ["actions"] },
     },
   });
 
@@ -803,6 +876,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
+    // Rows moved by hand start unsorted (under a sort, a move first asks
+    // to remove it);
+    // off, the starting sort comes back.
+    if (next.rowReorder !== prev.rowReorder) table.setSorting(next.rowReorder ? [] : ALL_VIEW.sorting);
     if (!next.filters) table.resetColumnFilters();
     // Each side sticks on its own: the left the boxes and the first
     // column, the right the row menus (useDataTable's own pins).
@@ -851,6 +928,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       pinRight: Math.random() > 0.3,
       title: Math.random() > 0.3,
       views: Math.random() > 0.3,
+      rowReorder: Math.random() > 0.7,
     });
 
   // ── Saved views ────────────────────────────────────────
@@ -859,8 +937,10 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // memory: a refresh starts over.
   const [views, setViews] = useState<SavedView[]>([]);
   const [viewIndex, setViewIndex] = useState(0);
+  // "All" is unsorted while rows move by hand.
+  const allView = state.rowReorder ? { ...ALL_VIEW, sorting: [] } : ALL_VIEW;
   const openView = (i: number) => {
-    const view = i === 0 ? ALL_VIEW : views[i - 1]?.state;
+    const view = i === 0 ? allView : views[i - 1]?.state;
     if (!view) return;
     table.captureLayout();
     table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
@@ -964,7 +1044,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // Save view shows once the table differs from the open view: there's
   // nothing new to save before.
   const viewChanged = (() => {
-    const open = viewIndex === 0 ? ALL_VIEW : views[viewIndex - 1]?.state;
+    const open = viewIndex === 0 ? allView : views[viewIndex - 1]?.state;
     if (!open) return true;
     const now = table.getState();
     const same = (a: unknown, b: unknown) => stableJson(a) === stableJson(b);
@@ -1083,55 +1163,14 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     e.stopPropagation();
     moveViewTab(from, to);
   };
-  const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
-  // One row: the title on the left; the Filter button, the Columns button
-  // and the search at the right end. Added filters sit on their own row
-  // under it, above the table.
-  const toolbar = (state.title || tools) && (
-    // 12px under the title (the stack's 8px plus 4): the heading stands a
-    // step off the table, while the tabs, chips and table keep 8px between
-    // them as one unit.
-    <div className={cn("flex flex-wrap items-center gap-1", state.title && "mb-1")}>
-      {/* font-heading-display: the site's Heading font setting reaches the
-          title (a site class, so the generated code leaves it out). */}
-      {state.title && (
-        <DataTableTitle table={table} className="font-heading-display">
-          Components
-        </DataTableTitle>
-      )}
-      <span className="ml-auto" />
-      {/* The icons share one tooltip bubble that glides between them. */}
-      <TooltipGroup>
-        {state.filters && <DataTableFilters table={table} />}
-        {state.viewMenu && <DataTableViewOptions table={table} />}
-        {state.filter !== "none" && (
-          <DataTableSearch
-            // Remounts the field when the mode flips, so it starts empty.
-            key={state.filter}
-            table={table}
-            column={state.filter === "column" ? "name" : undefined}
-            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
-          />
-        )}
-      </TooltipGroup>
-    </div>
-  );
-
-  const filterCount = table.getState().columnFilters.length;
-
-  const body = (
-    <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
-      {toolbar}
-      {/* The views as subtle tabs, stepped in with the title past a
-          selection column. A lone "All" tab says nothing, so the row
-          waits for the first saved view. */}
-      <RowReveal show={showViews && views.length > 0}>
-        {/* Past a selection column the tabs start where the first data
-            column does, 28px in, like the title and the chips: the edge they
-            share with the table when there are no boxes. */}
-        <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-7")}>
+  // The views as subtle tabs. A lone "All" tab says nothing, so they wait
+  // for the first saved view. Past a selection column they start where the
+  // first data column does, 28px in, like the title and the chips: the edge
+  // they share with the table when there are no boxes.
+  const tabsShown = showViews && views.length > 0;
+  const viewTabs = (
+        <div ref={tabsRef} className={cn("relative flex items-center gap-1", gutterClass(state))}>
           <Tabs
-            size="compact"
             selectedIndex={viewIndex}
             onSelect={(i) => !dragged.current && openView(i)}
             onPointerDownCapture={onTabsPointerDown}
@@ -1178,7 +1217,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                 // The dragged tab's own corners and type.
                 className={cn(
                   "pointer-events-none fixed z-[var(--z-popover,60)] flex items-center justify-center whitespace-nowrap bg-background bg-[linear-gradient(var(--active),var(--active))] px-3 text-foreground opacity-80",
-                  typeClass("body", "compact"),
+                  typeClass("body", tabType),
                   shape.item
                 )}
                 style={{ top: tabGhost.top, left: tabGhost.left, width: tabGhost.width, height: tabGhost.height }}
@@ -1192,7 +1231,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             // weight, so the name doesn't move or change size as it turns
             // editable; the tab's fill behind it is the only surface.
             <span
-              className={cn("absolute z-10 flex items-center", typeClass("body", "compact"))}
+              className={cn("absolute z-10 flex items-center", typeClass("body", tabType))}
               style={{ left: nameBox.left, top: nameBox.top, width: nameBox.width, height: nameBox.height }}
             >
               <input
@@ -1231,7 +1270,71 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
             </span>
           )}
         </div>
-      </RowReveal>
+  );
+  const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
+  // One row: the title on the left (or, without one, the saved views); the
+  // Filter button, the Columns button and the search at the right end.
+  // Added filters sit on their own row under it, above the table.
+  const toolbar = (state.title || tools) && (
+    // 12px under the title (the stack's 8px plus 4): the heading stands a
+    // step off the table, while the tabs, chips and table keep 8px between
+    // them as one unit.
+    <div className={cn("flex flex-wrap items-center gap-1", state.title && "mb-1")}>
+      {/* font-heading-display: the site's Heading font setting reaches the
+          title (a site class, so the generated code leaves it out). */}
+      {state.title && (
+        <DataTableTitle table={table} className="font-heading-display">
+          Components
+        </DataTableTitle>
+      )}
+      {state.title ? (
+        <span className="ml-auto" />
+      ) : (
+        // No title: the views share the row with the tools, tabs from the
+        // left edge and the icons at the right end. They fade in with the
+        // first saved view (the row is already there, so nothing moves),
+        // and scroll sideways inside their share once they outgrow it.
+        <div className="min-w-0 flex-1">
+          <AnimatePresence initial={false}>
+            {tabsShown && (
+              <motion.div
+                key="views"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: spring.fast.exit }}
+                transition={spring.fast}
+              >
+                {viewTabs}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+      {/* The icons share one tooltip bubble that glides between them. */}
+      <TooltipGroup>
+        {state.filters && <DataTableFilters table={table} />}
+        {state.viewMenu && <DataTableViewOptions table={table} />}
+        {state.filter !== "none" && (
+          <DataTableSearch
+            // Remounts the field when the mode flips, so it starts empty.
+            key={state.filter}
+            table={table}
+            column={state.filter === "column" ? "name" : undefined}
+            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+          />
+        )}
+      </TooltipGroup>
+    </div>
+  );
+
+  const filterCount = table.getState().columnFilters.length;
+
+  const body = (
+    <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
+      {toolbar}
+      {/* Under a title the views get a row of their own; without one they
+          sit on the tools' row (see the toolbar). */}
+      {state.title && <RowReveal show={tabsShown}>{viewTabs}</RowReveal>}
       {state.filters && (
         // Save view after the chips' + Add filter, once the table differs
         // from the open view: a filter, a sort, a hidden or moved column.
@@ -1277,6 +1380,15 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                   `Edited ${row.original.name}`,
                   (old) => updateRow(old, row.original.slug, columnId, value),
                   `${row.original.slug}:${columnId}`
+                )
+            : undefined
+        }
+        onRowReorder={
+          state.rowReorder
+            ? (move) =>
+                history.apply(
+                  move.rows.length === 1 ? `Moved ${move.rows[0].original.name}` : `Moved ${move.rows.length} rows`,
+                  (old) => moveBySlug(old, move.rows.map((r) => r.original.slug), move.target.original.slug, move.place)
                 )
             : undefined
         }
@@ -1389,6 +1501,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           label="Row actions"
           checked={state.rowActions}
           onToggle={() => set("rowActions", !state.rowActions)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="Reorder rows"
+          checked={state.rowReorder}
+          onToggle={() => set("rowReorder", !state.rowReorder)}
           className={PLAY_SWITCH}
         />
         <Switch

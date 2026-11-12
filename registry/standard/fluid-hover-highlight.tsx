@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { ItemRect, UseFluidHoverReturn } from "@/hooks/use-fluid-hover";
 
@@ -48,6 +49,8 @@ export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) &
   className?: string;
   /** Unused by standard hover (nothing travels). */
   transition?: unknown;
+  /** Sits on the fill, positioned against it. */
+  children?: ReactNode;
 };
 
 export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
@@ -69,6 +72,8 @@ export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
         width: rect.width,
         height: rect.height,
       }}
-    />
+    >
+      {props.children}
+    </div>
   );
 }

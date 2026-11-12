@@ -21,7 +21,6 @@ import {
 
 const PRIMITIVE_COLOR: Record<string, string> = {
   "Radix + Base UI": "blue",
-  "Built on both": "purple",
   None: "gray",
 };
 
@@ -53,6 +52,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.selection ? ["DataTableSelectionBar"] : []),
     ...(p.selection ? ["selectColumn"] : []),
     ...(p.rowActions ? ["rowActionsColumn"] : []),
+    ...(p.rowReorder ? ["rowHandleColumn", "moveRows"] : []),
     "type ColumnDef",
     ...(views ? ["type TableState"] : []),
   ];
@@ -61,9 +61,18 @@ function dataTableDemoFile(p: DataTablePreset): string {
 
   const edit = p.editable;
   const tree = p.expandable;
+  const move = p.rowReorder;
+  // Rows that change (edits, moves) live in state.
+  const held = edit || move;
+  // Rows moved by hand start unsorted: under a sort, a move first asks to
+  // remove it.
+  const sorting = move ? "[]" : `[{ id: "added", desc: true }]`;
+  // The tabs start where the first data column's text does: past the
+  // handles (20px) and the boxes (28px).
+  const gutter = move && p.selection ? "pl-12" : p.selection ? "pl-7" : move ? "pl-5" : "";
   l.push(`"use client";`);
   l.push(``);
-  if (edit || views) l.push(`import { useState } from "react";`);
+  if (held || views) l.push(`import { useState } from "react";`);
   l.push(`import {`);
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`} from "@/components/ui/data-table";`);
@@ -106,6 +115,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`} as const;`);
   l.push(``);
   l.push(`const columns: ColumnDef<Row>[] = [`);
+  if (move) l.push(`  rowHandleColumn<Row>(),`);
   if (p.selection) l.push(`  selectColumn<Row>(),`);
   l.push(`  {`);
   l.push(`    accessorKey: "name",`);
@@ -183,9 +193,15 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`];`);
   l.push(``);
   l.push(`export function DataTableDemo() {`);
-  if (edit) {
-    l.push(`  // The table shows what your data holds: each edit writes back here.`);
+  if (held) {
+    l.push(
+      edit
+        ? `  // The table shows what your data holds: each edit writes back here.`
+        : `  // The table shows what your data holds: each move writes back here.`
+    );
     l.push(`  const [rows, setRows] = useState(ROWS);`);
+  }
+  if (edit) {
     if (tree) {
       l.push(`  // A sub-row's edit lands in its parent's subRows.`);
       l.push(`  const update = (list: Row[], slug: string, key: string, value: unknown): Row[] =>`);
@@ -197,7 +213,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     }
   }
   l.push(`  const table = useDataTable({`);
-  l.push(`    data: ${edit ? "rows" : "ROWS"},`);
+  l.push(`    data: ${held ? "rows" : "ROWS"},`);
   l.push(`    columns,`);
   l.push(`    pageSize: ${p.pagination ? p.pageSize : "ROWS.length"},`);
   l.push(`    getRowId: (row) => row.slug,`);
@@ -207,14 +223,14 @@ function dataTableDemoFile(p: DataTablePreset): string {
   if (p.pinning !== p.pinRight) {
     // Sticky on one side only: the left the boxes and the first column,
     // the right the row menus.
-    const left = p.pinning ? [...(p.selection ? [`"select"`] : []), `"name"`] : [];
+    const left = p.pinning ? [...(move ? [`"drag"`] : []), ...(p.selection ? [`"select"`] : []), `"name"`] : [];
     const right = p.pinRight && p.rowActions ? [`"actions"`] : [];
     l.push(`    initialState: {`);
-    l.push(`      sorting: [{ id: "added", desc: true }],`);
+    if (!move) l.push(`      sorting: ${sorting},`);
     l.push(`      columnPinning: { left: [${left.join(", ")}], right: [${right.join(", ")}] },`);
     l.push(`    },`);
-  } else {
-    l.push(`    initialState: { sorting: [{ id: "added", desc: true }] },`);
+  } else if (!move) {
+    l.push(`    initialState: { sorting: ${sorting} },`);
   }
   l.push(`  });`);
   l.push(``);
@@ -224,7 +240,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     l.push(`  type View = Pick<TableState, "columnFilters" | "globalFilter" | "sorting" | "columnOrder" | "columnVisibility">;`);
     l.push(`  const [views, setViews] = useState<{ name: string; state: View }[]>([]);`);
     l.push(`  const [viewIndex, setViewIndex] = useState(0);`);
-    l.push(`  const allView: View = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: {} };`);
+    l.push(`  const allView: View = { columnFilters: [], globalFilter: "", sorting: ${sorting}, columnOrder: [], columnVisibility: {} };`);
     l.push(`  const openView = (i: number) => {`);
     l.push(`    const view = i === 0 ? allView : views[i - 1].state;`);
     l.push(`    table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`);
@@ -248,7 +264,19 @@ function dataTableDemoFile(p: DataTablePreset): string {
     // 12px under a title (the stack's 8px plus 4), a step off the table.
     l.push(`      <div className="${p.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`);
     if (p.title) l.push(`        <DataTableTitle table={table}>Components</DataTableTitle>`);
-    l.push(`        <span className="ml-auto" />`);
+    if (views && !p.title) {
+      // Without a title the saved views share the tools' row: tabs from the
+      // left edge, scrolling sideways inside their share once they outgrow it.
+      l.push(`        <div className="min-w-0 flex-1${gutter ? ` ${gutter}` : ""}">`);
+      l.push(`          {views.length > 0 && (`);
+      l.push(`            <Tabs selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
+      l.push(`              {["All", ...views.map((v) => v.name)].map((name, i) => (`);
+      l.push(`                <TabsItem key={name} index={i} label={name} />`);
+      l.push(`              ))}`);
+      l.push(`            </Tabs>`);
+      l.push(`          )}`);
+      l.push(`        </div>`);
+    } else l.push(`        <span className="ml-auto" />`);
     // Two icons or more share one tooltip bubble that glides between them.
     const tools: string[] = [];
     if (p.filters) tools.push(`<DataTableFilters table={table} />`);
@@ -262,19 +290,19 @@ function dataTableDemoFile(p: DataTablePreset): string {
     } else tools.forEach((t) => l.push(`        ${t}`));
     l.push(`      </div>`);
   }
-  if (views) {
+  if (views && p.title) {
     // No tabs until a view is saved: a lone "All" tab says nothing.
     l.push(`      {views.length > 0 && (`);
     // Past a selection column the tabs start where the first data column
     // does, 28px in, like the title and the chips.
-    const pad = p.selection ? "  " : "";
-    if (p.selection) l.push(`        <div className="pl-7">`);
-    l.push(`${pad}        <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
+    const pad = gutter ? "  " : "";
+    if (gutter) l.push(`        <div className="${gutter}">`);
+    l.push(`${pad}        <Tabs selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`);
     l.push(`${pad}          {["All", ...views.map((v) => v.name)].map((name, i) => (`);
     l.push(`${pad}            <TabsItem key={name} index={i} label={name} />`);
     l.push(`${pad}          ))}`);
     l.push(`${pad}        </Tabs>`);
-    if (p.selection) l.push(`        </div>`);
+    if (gutter) l.push(`        </div>`);
     l.push(`      )}`);
   }
   if (p.filters && views) {
@@ -289,16 +317,22 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.reorder ? ["reorderColumns"] : []),
     ...(p.align !== "auto" ? [`cellAlign="${p.align}"`] : []),
   ];
-  if (edit) {
+  if (held) {
     l.push(`      <DataTable`);
     for (const prop of tableProps) l.push(`        ${prop}`);
-    l.push(`        onCellEdit={({ row, columnId, value }) =>`);
-    l.push(
-      tree
-        ? `          setRows((old) => update(old, row.original.slug, columnId, value))`
-        : `          setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`
-    );
-    l.push(`        }`);
+    if (edit) {
+      l.push(`        onCellEdit={({ row, columnId, value }) =>`);
+      l.push(
+        tree
+          ? `          setRows((old) => update(old, row.original.slug, columnId, value))`
+          : `          setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`
+      );
+      l.push(`        }`);
+    }
+    if (move) {
+      l.push(`        // Drag a handle, or Alt + \u2191 / \u2193 on a row. Under a sort, the table asks to remove it first.`);
+      l.push(`        onRowReorder={(move) => setRows((old) => moveRows(old, move))}`);
+    }
     l.push(`      />`);
   } else l.push(`      <DataTable ${tableProps.join(" ")} />`);
   if (p.pagination) l.push(`      <DataTablePagination table={table} />`);

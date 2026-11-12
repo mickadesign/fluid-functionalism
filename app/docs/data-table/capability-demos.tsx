@@ -18,7 +18,9 @@ import {
   DataTablePagination,
   DataTableSelectionBar,
   selectColumn,
+  rowHandleColumn,
   rowActionsColumn,
+  moveRows,
   type ColumnDef,
 } from "@/components/ui/data-table";
 import { MenuItem } from "@/components/ui/menu-item";
@@ -625,3 +627,60 @@ const openView = (view: View) =>
 <DataTableFilters table={table} />
 <DataTableFilterChips table={table} />
 <DataTable table={table} />`;
+
+// ── Reordering rows: a launch checklist ──────────────────
+
+type Step = { id: string; step: string; owner: string; when: string };
+
+const STEPS: Step[] = [
+  { id: "1", step: "Freeze the release branch", owner: "Kenji", when: "Mon" },
+  { id: "2", step: "Run the migration on staging", owner: "Lena", when: "Mon" },
+  { id: "3", step: "Write the changelog", owner: "Ada", when: "Tue" },
+  { id: "4", step: "Record the demo video", owner: "Omar", when: "Tue" },
+  { id: "5", step: "Email the beta group", owner: "Priya", when: "Wed" },
+  { id: "6", step: "Flip the feature flag", owner: "Kenji", when: "Thu" },
+  { id: "7", step: "Post the announcement", owner: "Ada", when: "Thu" },
+];
+
+export function ReorderTable() {
+  // Each move is a step ⌘Z takes back.
+  const history = useUndoableRows(STEPS, { getId: (s) => s.id });
+  // No sortable headers: a sorted column would decide the order instead.
+  const columns: ColumnDef<Step>[] = [
+    rowHandleColumn<Step>(),
+    selectColumn<Step>(),
+    { accessorKey: "step", header: "Step", enableSorting: false, meta: { className: "w-full" } },
+    { accessorKey: "owner", header: "Owner", enableSorting: false },
+    { accessorKey: "when", header: "When", enableSorting: false },
+  ];
+  const table = useDataTable({ data: history.rows, columns, getRowId: (s) => s.id });
+  return (
+    <div className="w-full">
+      <DataTable
+        table={table}
+        onRowReorder={(move) =>
+          history.apply(move.rows.length === 1 ? "Moved a row" : `Moved ${move.rows.length} rows`, (rows) => moveRows(rows, move))
+        }
+        onUndo={history.undo}
+        onRedo={history.redo}
+      />
+    </div>
+  );
+}
+
+export const reorderCode = `import { useState } from "react";
+import { useDataTable, DataTable, rowHandleColumn, selectColumn, moveRows, type ColumnDef } from "./components";
+
+const columns: ColumnDef<Step>[] = [
+  rowHandleColumn<Step>(), // the grip, before the boxes
+  selectColumn<Step>(),
+  { accessorKey: "step", header: "Step" },
+  { accessorKey: "owner", header: "Owner" },
+  { accessorKey: "when", header: "When" },
+];
+
+const [rows, setRows] = useState(steps);
+const table = useDataTable({ data: rows, columns, getRowId: (s) => s.id });
+
+// The table reports the move; moveRows writes it to your data.
+<DataTable table={table} onRowReorder={(move) => setRows((old) => moveRows(old, move))} />`;

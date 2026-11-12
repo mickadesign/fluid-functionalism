@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { highlightCode } from "./highlight-client";
 import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
@@ -11,6 +12,18 @@ import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
 import { InspectOverlay } from "./InspectOverlay";
 import { usePreviewExpand } from "@/lib/docs/preview-expand";
+
+// The expand button carries a dot until the visitor has used it once.
+const EXPAND_SEEN_KEY = "ff_expand_seen";
+const noSubscription = () => () => {};
+function readExpandSeen() {
+  try {
+    return localStorage.getItem(EXPAND_SEEN_KEY) === "1";
+  } catch {
+    // No storage (private mode): no dot rather than one that never goes away.
+    return true;
+  }
+}
 
 export interface PlaybackButton {
   icon: ReactNode;
@@ -93,6 +106,17 @@ export function ComponentPreview({
   const ExpandIcon = useIcon("maximize");
   const CollapseIcon = useIcon("minimize");
   const expand = usePreviewExpand();
+  // Seen on the server, so the dot only ever appears, never flashes away.
+  const expandSeenBefore = useSyncExternalStore(noSubscription, readExpandSeen, () => true);
+  const [expandUsed, setExpandUsed] = useState(false);
+  const expandHint = !!expand && !expand.expanded && !expandSeenBefore && !expandUsed;
+  const toggleExpand = () => {
+    setExpandUsed(true);
+    try {
+      localStorage.setItem(EXPAND_SEEN_KEY, "1");
+    } catch {}
+    expand?.toggle();
+  };
   const previewRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -108,8 +132,11 @@ export function ComponentPreview({
   useEffect(() => {
     if (!codeNeeded || !code) return;
     let cancelled = false;
-    import("./highlight")
-      .then(({ highlight }) => highlight(code))
+    // Colored in a worker (highlight-client): a playground rewrites its
+    // sample on every setting, and coloring each one on the main thread
+    // stalled the very transition the setting started (the preview
+    // expanding, rows arriving).
+    highlightCode(code)
       .then((html) => {
         if (!cancelled) setHighlighted({ code, html });
       })
@@ -217,12 +244,19 @@ export function ComponentPreview({
             <Tooltip content={expand.expanded ? "Collapse (Esc)" : "Expand"} side="top">
               <button
                 type="button"
-                onClick={expand.toggle}
+                onClick={toggleExpand}
                 aria-label={expand.expanded ? "Collapse preview" : "Expand preview"}
                 aria-pressed={expand.expanded}
-                className={`w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+                className={`relative w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
               >
                 {expand.expanded ? <CollapseIcon size={16} strokeWidth={1.5} /> : <ExpandIcon size={16} strokeWidth={1.5} />}
+                {/* Desktop only: on a phone the preview already fills the width. */}
+                {expandHint && (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute right-1.5 bottom-1.5 hidden size-1.5 rounded-full bg-[var(--fluid-accent,#6B97FF)] lg:block"
+                  />
+                )}
               </button>
             </Tooltip>
           )}
@@ -239,7 +273,11 @@ export function ComponentPreview({
           shape is active, and leaves the top corners square (the tab
           bar sits above, well below the outer's curved top edge). */}
       <div
-        className={`overflow-hidden ${expand?.expanded ? "flex min-h-0 flex-1 flex-col" : ""}`}
+        // An expandable preview is a flex column from the start: switching
+        // `display` as it expands made the browser rebuild the layout tree
+        // of everything inside (the whole table) in the frame it starts
+        // to grow.
+        className={`overflow-hidden ${expand ? "flex flex-col" : ""} ${expand?.expanded ? "min-h-0 flex-1" : ""}`}
         // With no header above it, the content owns all four corners.
         style={
           hideHeader

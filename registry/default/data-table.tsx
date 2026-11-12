@@ -65,10 +65,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TABLE_HIGHLIGHT_EVENT,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownContent,
   DropdownEmpty,
@@ -105,6 +115,7 @@ import {
   CommandMenuInput,
   CommandMenuList,
   CommandMenuShortcut,
+  useIsMac,
   type CommandMenuItemData,
 } from "@/components/ui/command-menu";
 import { Elevated } from "@/lib/elevated";
@@ -271,6 +282,11 @@ function defId<TData>(def: ColumnDef<TData, unknown>): string | undefined {
   return typeof def.header === "string" ? def.header : undefined;
 }
 
+// The ready-made columns that hold controls, not data: the row handle and
+// the selection boxes lead (in that order), the row menu closes.
+const LEADING_COLUMNS = ["drag", "select"];
+const UTILITY_COLUMNS = new Set([...LEADING_COLUMNS, "actions"]);
+
 /** The definitions that become columns, through any column groups. */
 function leafDefs<TData>(defs: ColumnDef<TData, unknown>[]): ColumnDef<TData, unknown>[] {
   return defs.flatMap((def) => ("columns" in def && def.columns ? leafDefs(def.columns) : [def]));
@@ -278,9 +294,9 @@ function leafDefs<TData>(defs: ColumnDef<TData, unknown>[]): ColumnDef<TData, un
 
 function defaultPinning<TData>(columns: ColumnDef<TData, unknown>[]) {
   const ids = leafDefs(columns).map(defId);
-  const first = ids.find((id) => id !== undefined && id !== "select" && id !== "actions");
+  const first = ids.find((id) => id !== undefined && !UTILITY_COLUMNS.has(id));
   return {
-    left: [...(ids.includes("select") ? ["select"] : []), ...(first ? [first] : [])],
+    left: [...LEADING_COLUMNS.filter((id) => ids.includes(id)), ...(first ? [first] : [])],
     right: ids.includes("actions") ? ["actions"] : [],
   };
 }
@@ -310,6 +326,12 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     // goes by the first row's value (a string or a number), which leaves
     // out tags, dates, and any column whose first row is empty.
     getColumnCanGlobalFilter: () => true,
+    // The page holds through a data change. TanStack's default returns to
+    // the first page whenever `data` is a new array, which an edited cell,
+    // a moved row, a delete or an undo each are: on page 2, any of them
+    // threw you back to page 1. A new search, filter or sort still starts
+    // from the first page, and a page past the end steps back (both below).
+    autoResetPageIndex: false,
     ...options,
     // Every column filters the way DataTableFilters sets it, unless it
     // brings its own filterFn; DataTableSearch has the global filter.
@@ -327,6 +349,24 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     },
   });
   const state = table.getState();
+  const ownPaging = options.autoResetPageIndex === undefined && !options.manualPagination;
+  const resultKey = JSON.stringify([state.columnFilters, state.globalFilter ?? "", state.sorting]);
+  const lastResultKey = useRef(resultKey);
+  const { pageIndex } = state.pagination;
+  useLayoutEffect(() => {
+    if (!ownPaging) return;
+    // What the rows are (a search, a filter) or their order (a sort)
+    // changed: back to the first page.
+    if (lastResultKey.current !== resultKey) {
+      lastResultKey.current = resultKey;
+      if (pageIndex !== 0) table.setPageIndex(0);
+      return;
+    }
+    // Fewer rows than before (a delete on the last page): the last page
+    // that still has rows.
+    const last = Math.max(0, table.getPageCount() - 1);
+    if (pageIndex > last) table.setPageIndex(last);
+  });
   // A fresh view of the same table on every state change (its methods are
   // closures, so the prototype chain serves them unchanged). A parent built
   // with the React Compiler then re-renders the parts it passes it to.
@@ -501,7 +541,43 @@ interface DataTableProps<TData> {
   onUndo?: () => void;
   /** ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y while focus is in the table. */
   onRedo?: () => void;
+  /** Lets rows be dragged to a new place by the handle `rowHandleColumn()`
+   *  adds, or moved with Alt + ↑ / ↓ from a focused row. Dragging a
+   *  selected row carries the page's other selected rows with it. The
+   *  table only reports the move: write the new order to your data
+   *  (`moveRows(data, move)` does it). While a column is sorted the sort
+   *  decides the order, so a drop or the keys open a dialog asking to
+   *  remove it first; confirmed, a dropped row lands beside its target. */
+  onRowReorder?: (move: DataTableRowMove<TData>) => void;
   className?: string;
+}
+
+/** A row move: `rows` (in their current order) go right before or after
+ *  `target`, which is never one of them. */
+interface DataTableRowMove<TData> {
+  rows: Row<TData>[];
+  target: Row<TData>;
+  place: "before" | "after";
+}
+
+/** `data` with a move applied: the moved rows, kept in order, right before
+ *  or after the target. Rows are matched by identity (`row.original`). */
+function moveRows<TData>(data: readonly TData[], move: DataTableRowMove<TData>): TData[] {
+  const moved = new Set(move.rows.map((r) => r.original));
+  const rest = data.filter((item) => !moved.has(item));
+  const at = rest.indexOf(move.target.original);
+  if (at < 0) return [...data];
+  const index = move.place === "before" ? at : at + 1;
+  return [...rest.slice(0, index), ...data.filter((item) => moved.has(item)), ...rest.slice(index)];
+}
+
+/** How far the title and the toolbar step in to start where the first data
+ *  column's text does: past the row handles (20px) and the boxes (28px). */
+function leadingGutter<TData>(table: TanStackTable<TData>) {
+  const shown = (id: string) => !!table.getAllLeafColumns().find((c) => c.id === id)?.getIsVisible();
+  const handles = shown("drag");
+  const boxes = shown("select");
+  return handles && boxes ? "pl-12" : boxes ? "pl-7" : handles ? "pl-5" : undefined;
 }
 
 // The skeleton → data hand-over: reveal-swap's fade on spring.moderate, with
@@ -525,7 +601,7 @@ const SKELETON_BAR_RADIUS = { rounded: "rounded-[3px]", pill: "rounded-full", sh
 
 /** Columns whose content is text to fade in (the selection and row-menu
  *  columns hold controls with hit areas that must not be clipped). */
-const textCell = (columnId: string) => columnId !== "select" && columnId !== "actions";
+const textCell = (columnId: string) => !UTILITY_COLUMNS.has(columnId);
 
 /** A cell's skeleton: the checkbox's square in the selection column, nothing
  *  for the row menu, otherwise a bar centered in the line box (a skeleton
@@ -537,7 +613,7 @@ function skeletonFor(
   shape: keyof typeof SKELETON_BAR_RADIUS,
   compact: boolean
 ) {
-  if (columnId === "actions") return null;
+  if (columnId === "actions" || columnId === "drag") return null;
   return (
     <span key="skeleton" className="flex h-[1lh] items-center">
       {columnId === "select" ? (
@@ -695,6 +771,7 @@ function DataTable<TData>({
   onCellEdit,
   onUndo,
   onRedo,
+  onRowReorder,
   className,
 }: DataTableProps<TData>) {
   "use no memo";
@@ -1130,6 +1207,8 @@ function DataTable<TData>({
     : (visible.find((c) => /(^|\s)w-full(\s|$)/.test(c.columnDef.meta?.className ?? ""))?.id ??
       [...visible].reverse().find((c) => c.accessorFn !== undefined)?.id);
   const natural = useRef<{ id: string; width: number; floor: number; fixed: boolean }[] | null>(null);
+  // Whether `natural` was read from real rows, not skeletons.
+  const naturalFromRows = useRef(false);
   const [fitted, setFitted] = useState<Record<string, number> | null>(null);
   const fit = useCallback(() => {
     const cols = natural.current;
@@ -1149,6 +1228,32 @@ function DataTable<TData>({
   const pageKey = `${table.options.data.length}:${table.getState().pagination.pageSize}`;
   // Rows gaining sub-rows (or losing them) widen the chevron's column: read again.
   const hasSubRows = table.getCanSomeRowsExpand();
+  // The date editors' label width, read from the first row's (the one that
+  // carries the sizer) and handed to the rest as --ff-date-w. Before the
+  // column measuring below, so the widths it reads already hold it.
+  const leadRowId = rows[0]?.id;
+  const dateEditors = !!onCellEdit;
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const read = () => {
+      let width = 0;
+      wrap
+        .querySelectorAll<HTMLElement>("tbody [data-date-lead] [data-slot=date-picker-trigger] > span")
+        .forEach((label) => (width = Math.max(width, label.getBoundingClientRect().width)));
+      if (width > 0) wrap.style.setProperty("--ff-date-w", `${Math.ceil(width * 100) / 100}px`);
+      else wrap.style.removeProperty("--ff-date-w");
+    };
+    read();
+    if (!dateEditors) return;
+    // Once more when the fonts land: the label is wider or narrower in them.
+    let live = true;
+    document.fonts?.ready.then(() => live && read());
+    return () => {
+      live = false;
+    };
+  }, [dateEditors, leadRowId, layoutKey, sizeClasses.variant, loading, wrapEl]);
+
   // Read through a ref: useDataTable hands out a new view of the table on
   // every state change, and as a dependency it measured the columns again
   // on every sort, selection and keystroke.
@@ -1168,8 +1273,21 @@ function DataTable<TData>({
     const expanderId = table.getCanSomeRowsExpand()
       ? table.getVisibleLeafColumns().find((c) => c.accessorFn !== undefined)?.id
       : undefined;
+    // Loading again (a reload, a refetch): the columns keep the widths the
+    // last rows gave them, so the skeletons sit where the data will land
+    // and nothing moves when it does. Only a first load, with no rows read
+    // yet, sizes from the headers and the skeleton bars.
+    const known = natural.current;
+    const keep =
+      loading &&
+      naturalFromRows.current &&
+      !!known &&
+      known.length === ths.length &&
+      Array.from(ths).every((th, i) => th.dataset.columnId === known[i].id);
     // Measured at max-content, every cell on one line, in one synchronous
     // pass that never paints.
+    if (!keep) {
+    naturalFromRows.current = !loading;
     const saved = tableNode.style.cssText;
     tableNode.style.cssText = "table-layout:auto;width:max-content;min-width:0";
     tableNode.setAttribute("data-measuring", "");
@@ -1208,6 +1326,11 @@ function DataTable<TData>({
           if (widestWord > 0) floor = Math.max(floor, Math.ceil(Math.min(widestWord + chrome, NATURAL_CAP)));
         }
       }
+      // A date editor's trigger can't cut its text short the way a plain
+      // cell does: short of room, its column keeps the date whole instead
+      // of running it into the cell's edge.
+      if (tableNode.querySelector(`tbody td[data-column-id="${id}"] [data-slot=date-picker]`))
+        floor = Math.max(floor, Math.ceil(Math.min(content, NATURAL_CAP)));
       const size = ownSize(table.options.columns, id);
       const own = size !== undefined || !column?.getCanResize();
       return {
@@ -1220,6 +1343,7 @@ function DataTable<TData>({
     });
     tableNode.removeAttribute("data-measuring");
     tableNode.style.cssText = saved;
+    }
     if (resizeColumns) {
       const widths = fit();
       if (widths) table.setColumnSizing((old) => ({ ...widths, ...old }));
@@ -1235,7 +1359,8 @@ function DataTable<TData>({
     });
     observer.observe(viewport);
     return () => observer.disconnect();
-    // `loading` too: skeleton rows give way to real ones of other widths.
+    // `loading` too: a first load's skeleton rows give way to real ones of
+    // other widths.
   }, [resizeColumns, seeded, fit, pageKey, layoutKey, sizeClasses.variant, wrapEl, hasSubRows, loading]);
   const sized = resizeColumns ? seeded : fitted !== null;
   // The row-menu column hugs its button: 4px narrower in compact, where the
@@ -1336,7 +1461,10 @@ function DataTable<TData>({
   // the body (the row last focused, else the first). A hovered
   // row counts as focused while nothing else is (see below).
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
-  const rowsFocusable = hasSelection || !!onRowClick || table.getCanSomeRowsExpand();
+  const rowsFocusable = hasSelection || !!onRowClick || !!onRowReorder || table.getCanSomeRowsExpand();
+  // Whether rows can move right now, for the window key listener below
+  // (set once the handles are known to show, further down).
+  const canMoveRows = useRef(false);
   // The far end of a Shift + arrow range, so the next step can shrink it.
   const rangeHead = useRef<string | null>(null);
   const extendTo = (fromId: string, toId: string) => {
@@ -1380,6 +1508,20 @@ function DataTable<TData>({
     target.focus();
     return true;
   };
+  // A held key repeats faster than a frame (30 a second and up), and each
+  // step that changes the rows is a full commit: undo, redo, a row move.
+  // Those take one step per frame; repeats that land before the last step
+  // has painted are dropped, so the table keeps pace with the key instead
+  // of queueing work it shows late.
+  const stepBusy = useRef(false);
+  const heldStep = (e: KeyboardEvent<HTMLTableElement>) => {
+    if (e.repeat && stepBusy.current) return false;
+    stepBusy.current = true;
+    requestAnimationFrame(() => {
+      stepBusy.current = false;
+    });
+    return true;
+  };
   const onBodyKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     const target = e.target as HTMLElement;
     // Typing in a field (a search, an editable cell) keeps its keys.
@@ -1388,12 +1530,12 @@ function DataTable<TData>({
     const letter = e.key.toLowerCase();
     if (mod && !e.altKey && ((letter === "z" && e.shiftKey) || (letter === "y" && e.ctrlKey && !e.metaKey)) && onRedo) {
       e.preventDefault();
-      onRedo();
+      if (heldStep(e)) onRedo();
       return;
     }
     if (mod && !e.altKey && !e.shiftKey && letter === "z" && onUndo) {
       e.preventDefault();
-      onUndo();
+      if (heldStep(e)) onUndo();
       return;
     }
     // Keys from a menu or a calendar opened in the table (portalled, but
@@ -1411,6 +1553,40 @@ function DataTable<TData>({
       selectionAnchors.delete(table.getState);
       rangeHead.current = null;
       return;
+    }
+    // Alt + ↑ / ↓ moves rows a place, as Alt + ← / → moves a column from
+    // its header: the selected rows when there are any, whichever row the
+    // keys come from (the selection is what's being worked on, so pointing
+    // elsewhere doesn't change what moves); else the row itself.
+    if (reorderShown && onRowReorder && e.altKey && !mod && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      if (sorted) {
+        e.preventDefault();
+        if (!e.repeat) setSortAsk(true);
+        return;
+      }
+      const tr = target.closest<HTMLElement>("tbody tr[data-row-id]");
+      const row = tr === target ? rows.find((r) => r.id === tr.dataset.rowId) : undefined;
+      const tops = rows.filter((r) => r.depth === 0);
+      const picked = tops.filter((r) => r.getIsSelected());
+      if (row && (picked.length > 0 || row.depth === 0)) {
+        e.preventDefault();
+        const up = e.key === "ArrowUp";
+        // Selected rows step together past the row before the first of
+        // them (or after the last), closing any gaps between them.
+        const moving = picked.length > 0 ? picked : [row];
+        const ref = up ? tops[tops.indexOf(moving[0]) - 1] : tops[tops.indexOf(moving[moving.length - 1]) + 1];
+        if (ref && heldStep(e)) {
+          // A held key steps without the slide: a move every frame leaves
+          // no time for one, and reading every row's place to start it
+          // was most of what each step cost.
+          if (!e.repeat) captureLayout();
+          // The row the keys came from keeps focus and the highlight when
+          // it is one of those moving; a row only pointed at stays as it is.
+          if (moving.includes(row)) refocusRow.current = row.id;
+          onRowReorder({ rows: moving, target: ref, place: up ? "before" : "after" });
+        }
+        return;
+      }
     }
     if (mod || e.altKey) return;
     if (target.closest("thead")) {
@@ -1535,8 +1711,11 @@ function DataTable<TData>({
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing || !ROW_KEYS.has(e.key)) return;
       const mod = e.metaKey || e.ctrlKey;
-      // ⌘A / Ctrl+A is the only modified key; a bare A is the page's.
-      if ((e.key === "a" || e.key === "A") !== mod || e.altKey) return;
+      // Alt + ↑ / ↓ moves the row under the pointer, where rows reorder.
+      const move =
+        e.altKey && !mod && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && canMoveRows.current;
+      // ⌘A / Ctrl+A is the only other modified key; a bare A is the page's.
+      if ((e.key === "a" || e.key === "A") !== mod || (e.altKey && !move)) return;
       // Select-all and clear only when they'd do something, so Escape still
       // closes what the page has open.
       if (mod && !hasSelection) return;
@@ -1564,6 +1743,7 @@ function DataTable<TData>({
           key: e.key,
           code: e.code,
           shiftKey: e.shiftKey,
+          altKey: e.altKey,
           metaKey: e.metaKey,
           ctrlKey: e.ctrlKey,
           bubbles: true,
@@ -1634,6 +1814,275 @@ function DataTable<TData>({
     ? visible.find((c) => c.accessorFn !== undefined)?.id
     : undefined;
 
+  // Rows move by their handle (rowHandleColumn) while nothing sorts them.
+  // A sort decides the order, so a move can't hold under one: the handles
+  // stay, and a move (a row dropped, Alt + ↑ / ↓ pressed) asks whether to
+  // remove the sort first rather than doing nothing or dropping it unasked.
+  const reorderShown = !!onRowReorder && !loading && visible[0]?.id === "drag";
+  const sorted = table.getState().sorting.length > 0;
+  const [sortAsk, setSortAsk] = useState(false);
+  // The drop that raised the question, made once the sort is removed.
+  const pendingMove = useRef<DataTableRowMove<TData> | null>(null);
+  useLayoutEffect(() => {
+    canMoveRows.current = reorderShown;
+  });
+  // A copy of the dragged row follows the pointer and a line marks where
+  // it would land; both are placed straight on their elements, so a drag
+  // re-renders nothing until it ends.
+  const [rowGhost, setRowGhost] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+    count: number;
+  } | null>(null);
+  const rowGhostRef = useRef<HTMLDivElement>(null);
+  const dropLineRef = useRef<HTMLDivElement>(null);
+  const draggedRow = useRef<HTMLTableRowElement | null>(null);
+  const ghostUp = rowGhost !== null;
+  useLayoutEffect(() => {
+    const host = rowGhostRef.current;
+    const tr = draggedRow.current;
+    const source = tr?.closest("table");
+    if (!ghostUp || !host || !tr || !source) return;
+    const slot = host.querySelector<HTMLElement>("[data-row-ghost-row]");
+    if (!slot) return;
+    // The row itself, copied as it looks right now: a one-row table with
+    // the real one's classes (its type), each cell at the width it has,
+    // and what the row took from the table around it written onto the copy
+    // (the cell padding, the chevron's inset, how opaque a frozen cell is),
+    // since the copy lives outside it.
+    const rowCss = getComputedStyle(tr);
+    const copy = document.createElement("table");
+    copy.className = source.className;
+    copy.style.cssText = `table-layout:fixed;min-width:0;width:${tr.offsetWidth}px;--table-cell-py:${rowCss.getPropertyValue("--table-cell-py")}`;
+    const body = document.createElement("tbody");
+    const row = tr.cloneNode(true) as HTMLElement;
+    row.removeAttribute("data-row-id");
+    row.removeAttribute("data-row-dragging");
+    row.classList.remove("is-active");
+    Array.from(row.children).forEach((cell, i) => {
+      const from = tr.children[i] as HTMLElement;
+      const css = getComputedStyle(from);
+      // Held to its width from both sides: a column's own min or max
+      // width would otherwise size the copy's cell differently.
+      const w = from.getBoundingClientRect().width;
+      // Frozen cells stay sticky: the copy scrolls sideways as far as the
+      // table has, so they sit where the row's do, over what passed under.
+      (cell as HTMLElement).style.cssText +=
+        `;box-sizing:border-box;width:${w}px;min-width:${w}px;max-width:${w}px;--ff-pin:${css.getPropertyValue("--ff-pin") || 0};--expander-pl:${css.getPropertyValue("--expander-pl")}`;
+    });
+    // The handle and the box show on the carried row, as they do on the
+    // row under the pointer (there, the highlight carries them).
+    row.querySelectorAll<HTMLElement>("[data-row-handle], [data-select-hit]").forEach((el) => {
+      el.style.setProperty("opacity", "1", "important");
+      if (el.matches("[data-row-handle]")) el.style.display = "flex";
+    });
+    body.append(row);
+    copy.append(body);
+    slot.replaceChildren(copy);
+    slot.scrollLeft = wrapRef.current?.querySelector("[data-slot=scroll-area-viewport]")?.scrollLeft ?? 0;
+  }, [ghostUp]);
+
+  /** Where a set of top-level rows would land for a pointer at `y`: the
+   *  row to put them next to and the line to draw, or null where the drop
+   *  would change nothing. Sub-rows travel with their parent, so the gaps
+   *  are the ones between top-level rows. */
+  const rowDropTarget = (body: HTMLElement, y: number, moving: Set<string>) => {
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const groups: { row: Row<TData>; top: number; bottom: number }[] = [];
+    body.querySelectorAll<HTMLElement>(":scope > tr[data-row-id]").forEach((el) => {
+      const row = byId.get(el.dataset.rowId!);
+      if (!row) return;
+      const rect = el.getBoundingClientRect();
+      if (row.depth === 0) groups.push({ row, top: rect.top, bottom: rect.bottom });
+      else if (groups.length) groups[groups.length - 1].bottom = rect.bottom;
+    });
+    if (!groups.length) return null;
+    // The gap the pointer is nearest: before group `gap`, or after the last.
+    const found = groups.findIndex((g) => y < (g.top + g.bottom) / 2);
+    const gap = found < 0 ? groups.length : found;
+    const line = gap < groups.length ? groups[gap].top : groups[groups.length - 1].bottom;
+    const staying = groups.filter((g) => !moving.has(g.row.id));
+    const index = groups.slice(0, gap).filter((g) => !moving.has(g.row.id)).length;
+    const after = [
+      ...staying.slice(0, index).map((g) => g.row.id),
+      ...groups.filter((g) => moving.has(g.row.id)).map((g) => g.row.id),
+      ...staying.slice(index).map((g) => g.row.id),
+    ];
+    if (!staying.length || after.every((id, i) => id === groups[i].row.id)) return null;
+    return index < staying.length
+      ? { target: staying[index].row, place: "before" as const, line }
+      : { target: staying[staying.length - 1].row, place: "after" as const, line };
+  };
+
+  const startRowDrag = (e: PointerEvent<HTMLTableElement>) => {
+    const handle = (e.target as Element).closest("[data-row-handle]");
+    if (!reorderShown || !onRowReorder || e.button !== 0 || !handle || !e.currentTarget.contains(handle)) return;
+    const tr = handle.closest<HTMLTableRowElement>("tbody tr[data-row-id]");
+    const body = tr?.parentElement;
+    const wrap = wrapRef.current;
+    const row = rows.find((r) => r.id === tr?.dataset.rowId);
+    if (!tr || !body || !wrap || !row) return;
+    // No text selection, and no focus on the handle.
+    e.preventDefault();
+    // A selected row carries the page's other selected rows with it.
+    const moving = row.getIsSelected() ? rows.filter((r) => r.depth === 0 && r.getIsSelected()) : [row];
+    const ids = new Set(moving.map((r) => r.id));
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const rect = tr.getBoundingClientRect();
+    let moved = false;
+    let lastY = startY;
+    let frame = 0;
+    let lastTime = 0;
+    let target: ReturnType<typeof rowDropTarget> = null;
+    // What scrolls the rows up and down: the table's own box when it
+    // fills its parent, else the nearest scrolling ancestor, else the page.
+    let scroller: HTMLElement | null = fill ? wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]") : null;
+    for (let el = wrap.parentElement; !scroller && el && el !== document.body; el = el.parentElement) {
+      const overflow = getComputedStyle(el).overflowY;
+      if ((overflow === "auto" || overflow === "scroll") && el.scrollHeight > el.clientHeight) scroller = el;
+    }
+    const place = (clientY: number) => {
+      // The copy stays over the rows: it stops at the first and the last.
+      const bounds = body.getBoundingClientRect();
+      const top = Math.min(Math.max(rect.top + clientY - startY, bounds.top), bounds.bottom - rect.height);
+      if (rowGhostRef.current) rowGhostRef.current.style.transform = `translateY(${top - rect.top}px)`;
+      // The drop follows where the row is being carried, not where its
+      // copy stops: held at the first row, the copy's middle is that row's
+      // middle, which never read as "above it", so nothing could be
+      // dropped first.
+      target = rowDropTarget(body, rect.top + clientY - startY + rect.height / 2, ids);
+      const line = dropLineRef.current;
+      if (!line) return;
+      const box = wrap.getBoundingClientRect();
+      line.style.display = target ? "block" : "none";
+      if (target) {
+        line.style.top = `${target.line - 1}px`;
+        line.style.left = `${box.left}px`;
+        line.style.width = `${box.width}px`;
+      }
+    };
+    // Near the top or bottom edge of what scrolls, it scrolls that way, so
+    // a row can be carried to one that's out of view.
+    const edgeScroll = (now: number) => {
+      frame = requestAnimationFrame(edgeScroll);
+      const dt = lastTime ? Math.min(now - lastTime, EDGE_SCROLL_MAX_DT) : 16;
+      lastTime = now;
+      const box = scroller?.getBoundingClientRect();
+      const top = Math.max(box?.top ?? 0, 0);
+      const bottom = Math.min(box?.bottom ?? window.innerHeight, window.innerHeight);
+      const pull = (d: number) => Math.min(1, Math.max(0, (EDGE_SCROLL_BAND - d) / EDGE_SCROLL_BAND));
+      const speed = (d: number) => Math.round((EDGE_SCROLL_SPEED * pull(d) * dt) / 1000);
+      const step =
+        lastY - top < EDGE_SCROLL_BAND ? -speed(lastY - top) : bottom - lastY < EDGE_SCROLL_BAND ? speed(bottom - lastY) : 0;
+      if (!step) return;
+      if (scroller) scroller.scrollTop += step;
+      else window.scrollBy(0, step);
+      place(lastY);
+    };
+    const groupOf = (el: HTMLElement) => {
+      // The row and the sub-rows under it.
+      const out = [el];
+      for (let next = el.nextElementSibling as HTMLElement | null; next; next = next.nextElementSibling as HTMLElement | null) {
+        const r = rows.find((x) => x.id === next!.dataset.rowId);
+        if (!r || r.depth === 0) break;
+        out.push(next);
+      }
+      return out;
+    };
+    const marked: HTMLElement[] = [];
+    const onMove = (ev: globalThis.PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
+      if (!moved) {
+        moved = true;
+        draggedRow.current = tr;
+        const box = wrap.getBoundingClientRect();
+        // The copy is as wide as the table's visible box, the row inside
+        // it scrolled sideways as far as the table is.
+        flushSync(() =>
+          setRowGhost({
+            top: rect.top,
+            left: box.left,
+            width: box.width,
+            height: rect.height,
+            count: moving.length,
+          })
+        );
+        body.querySelectorAll<HTMLElement>(":scope > tr[data-row-id]").forEach((el) => {
+          if (ids.has(el.dataset.rowId!)) marked.push(...groupOf(el));
+        });
+        marked.forEach((el) => el.setAttribute("data-row-dragging", ""));
+        frame = requestAnimationFrame(edgeScroll);
+      }
+      lastY = ev.clientY;
+      place(lastY);
+    };
+    const detach = () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKey, true);
+      marked.forEach((el) => el.removeAttribute("data-row-dragging"));
+      draggedRow.current = null;
+      dragCleanup.current = null;
+      setRowGhost(null);
+    };
+    const onUp = () => {
+      const drop = moved ? target : null;
+      detach();
+      if (!drop) return;
+      const move = { rows: moving, target: drop.target, place: drop.place };
+      // Sorted: the row drags as usual, and the drop asks about the sort.
+      // The move waits for the answer.
+      if (sorted) {
+        pendingMove.current = move;
+        setSortAsk(true);
+        return;
+      }
+      captureLayout();
+      onRowReorder(move);
+    };
+    const onCancel = () => detach();
+    // Escape puts the row back.
+    const onKey = (ev: globalThis.KeyboardEvent) => {
+      if (ev.key !== "Escape") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      detach();
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("keydown", onKey, true);
+    dragCleanup.current = detach;
+  };
+
+  // A row moved from the keyboard keeps focus (its element is put back in
+  // the page at its new place, which drops focus on the way) and keeps the
+  // highlight.
+  const refocusRow = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const id = refocusRow.current;
+    if (id === null) return;
+    refocusRow.current = null;
+    const tr = wrapRef.current?.querySelector<HTMLElement>(`tbody tr[data-row-id="${CSS.escape(id)}"]`);
+    if (!tr) return;
+    if (document.activeElement !== tr) tr.focus();
+    // The highlight goes with it: the row stays lit, with its handle and
+    // box, at its new place. (Left alone, the fill kept the old place: the
+    // row that slid under a resting pointer, or none.)
+    tr.dispatchEvent(new CustomEvent(TABLE_HIGHLIGHT_EVENT, { bubbles: true }));
+  });
+
+  // Where the carried box sits: 8px into the boxes' column, when only the
+  // handles' column comes before it. -1 with no boxes there.
+  const boxColumn = visible.findIndex((c) => c.id === "select");
+  const boxAt =
+    boxColumn === 0 ? 8 : boxColumn === 1 && visible[0].id === "drag" ? HANDLE_WIDTH + 8 : -1;
+
   const headerMenu = useMemo(
     () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns }),
     [table, reorderColumns]
@@ -1652,6 +2101,29 @@ function DataTable<TData>({
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
       snapKey={expandTick}
       hideHeadHighlight={!!drag}
+      // The handles' and the boxes' columns, leading: one grip and one
+      // empty box ride the highlight.
+      hoverMarker={
+        !loading && (reorderShown || boxAt >= 0)
+          ? (i) => {
+              const row = rows[i];
+              return (
+                <>
+                  {reorderShown && <HandleMarker top={alignTop} shown={!!row && row.depth === 0} />}
+                  {boxAt >= 0 && (
+                    <SelectMarker
+                      top={alignTop}
+                      left={boxAt}
+                      shown={!!row && row.getCanSelect() && !row.getIsSelected() && !row.getIsSomeSelected()}
+                    />
+                  )}
+                </>
+              );
+            }
+          : undefined
+      }
+      data-row-reorder={reorderShown || undefined}
+      onPointerDown={startRowDrag}
       // The skeleton rows are aria-hidden; this tells assistive tech the
       // table is loading rather than empty.
       aria-busy={loading || undefined}
@@ -1666,6 +2138,10 @@ function DataTable<TData>({
         // starts 8px before the label instead of on it.
         "[&_[data-column-id=select]+[data-column-id]]:pl-2",
         // Measuring (see `natural`): every cell at its one-line width.
+        // The rows being carried step back while their copy is out.
+        // Important: a row keeps an inline opacity from its last animation,
+        // which a plain rule here lost to (the rows stayed at full strength).
+        "[&_tr[data-row-dragging]]:opacity-40!",
         "[&[data-measuring]_:is(th,td)]:!w-auto [&[data-measuring]_:is(th,td)]:!max-w-none [&[data-measuring]_*]:!whitespace-nowrap",
         // The sub-row guides start from the first column's left padding.
         sizeClasses.variant === "compact" ? "[--expander-pl:10px]" : "[--expander-pl:12px]",
@@ -1993,6 +2469,88 @@ function DataTable<TData>({
           tableEl
         )}
       </ScrollArea>
+      {reorderShown && (
+        <Dialog
+          open={sortAsk}
+          onOpenChange={(open) => {
+            setSortAsk(open);
+            if (!open) pendingMove.current = null;
+          }}
+        >
+          <DialogContent size="sm">
+            <DialogHeader>
+              <DialogTitle>Remove sorting?</DialogTitle>
+              <DialogDescription>
+                Rows can only be moved while the table isn't sorted.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button
+                onClick={() => {
+                  // The rows slide from their sorted places to their own,
+                  // and a row that was dropped lands beside the row it
+                  // was dropped on.
+                  const move = pendingMove.current;
+                  pendingMove.current = null;
+                  captureLayout();
+                  table.setSorting([]);
+                  if (move) onRowReorder?.(move);
+                  setSortAsk(false);
+                }}
+              >
+                Remove sorting
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      {rowGhost &&
+        createPortal(
+          <>
+            {/* Over the page while a row is carried: the grabbing cursor
+                everywhere, and no row lights under the pointer. A layer,
+                not `cursor` on the root or `pointer-events` on the table:
+                both are inherited, so setting them restyled every element
+                under them at each end of the drag. */}
+            <div aria-hidden className="fixed inset-0 z-[var(--z-popover,60)] cursor-grabbing" />
+            <div
+              ref={rowGhostRef}
+              aria-hidden
+              inert
+              className={cn(
+                // The carried row, lifted like a dragged header: the
+                // --active fill over the page background, at 80%. The fill
+                // lies over the copy, so frozen cells (opaque once the
+                // table scrolls) take it with the rest.
+                "pointer-events-none fixed z-[var(--z-popover,60)] overflow-hidden bg-background opacity-80 after:absolute after:inset-0 after:z-10 after:bg-active",
+                shape.bg
+              )}
+              style={{ top: rowGhost.top, left: rowGhost.left, width: rowGhost.width, height: rowGhost.height }}
+            >
+              <div data-row-ghost-row="" className="overflow-hidden" />
+              {rowGhost.count > 1 && (
+                <span
+                  className={cn(
+                    "absolute top-1/2 right-2 z-20 -translate-y-1/2 bg-foreground px-1.5 text-background tabular-nums",
+                    sizeClasses.type.caption,
+                    shape.variant === "sharp" ? "rounded-[1px]" : "rounded-full"
+                  )}
+                >
+                  {rowGhost.count} rows
+                </span>
+              )}
+            </div>
+            <div
+              ref={dropLineRef}
+              aria-hidden
+              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden h-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+            />
+          </>,
+          document.body
+        )}
       {ghost &&
         createPortal(
           <div
@@ -2117,6 +2675,7 @@ function DataTableColumnHeader<TData, TValue>({
 }: DataTableColumnHeaderProps<TData, TValue>) {
   "use no memo";
   const icons = useIcons();
+  const shape = useShape();
   const Arrow = icons["arrow-up"];
   const ctx = useContext(HeaderMenuContext);
   const table = ctx?.table as TanStackTable<TData> | undefined;
@@ -2163,7 +2722,10 @@ function DataTableColumnHeader<TData, TValue>({
     (table as Partial<DataTableExtras>).captureLayout?.();
     if (frozenHere) {
       // Unfreeze: the selection boxes stay put, the rest scroll.
-      table.setColumnPinning((old) => ({ ...old, left: old.left?.includes("select") && column.id !== "select" ? ["select"] : [] }));
+      table.setColumnPinning((old) => ({
+        ...old,
+        left: LEADING_COLUMNS.includes(column.id) ? [] : (old.left ?? []).filter((id) => LEADING_COLUMNS.includes(id)),
+      }));
       return;
     }
     const right = new Set(table.getState().columnPinning.right ?? []);
@@ -2206,7 +2768,11 @@ function DataTableColumnHeader<TData, TValue>({
         // The sorted column reads at full contrast, its icon and label with
         // the arrow, so the sort shows from across the table.
         (sorted || menuOpen) && "text-foreground",
-        "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        // Keyboard focus rings the whole header cell, the area its hover
+        // fill covers, not the label alone: the ring is drawn from the cell
+        // (the nearest positioned box), clear of the header's bottom line.
+        "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:hidden after:border after:border-[color:var(--focus-ring,#6B97FF)] focus-visible:after:block",
+        shape.variant === "pill" ? "after:rounded-[20px]" : shape.variant === "sharp" ? "after:rounded-[1px]" : "after:rounded-lg",
         className
       )}
     >
@@ -2333,6 +2899,11 @@ function selectRange<TData>(table: TanStackTable<TData>, fromId: string, toId: s
  *  negative margins and puts it back as its own, so the row keeps its size.
  *  `group/field` lets the box darken its border while the area is hovered,
  *  as it does inside a Field. */
+// A key cap in a tooltip's inverted colors, as the Sidebar's tooltips draw
+// theirs.
+const TOOLTIP_CAP =
+  "-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background";
+
 interface SelectHitProps extends HTMLAttributes<HTMLSpanElement> {
   disabled?: boolean;
   onToggle: () => void;
@@ -2375,6 +2946,129 @@ SelectHit.displayName = "SelectHit";
  *  while the box is hidden. */
 const SELECT_REVEAL =
   "opacity-0 transition-opacity duration-80 group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100";
+/** A row's empty box is the one the highlight carries (SelectMarker), so
+ *  its own stays hidden under the pointer's row: one box glides down the
+ *  rows instead of each row's fading in and out. The row's own shows where
+ *  it says more than the carried one: checked or partly checked, under the
+ *  pointer itself or on the row holding keyboard focus (the darker hover
+ *  border) while the highlight is on that row: once the pointer takes the
+ *  highlight to another row, the focused row's box goes with it rather
+ *  than staying behind as a second box. Also on touch screens, and while
+ *  its column is pinned over
+ *  scrolling content (`--ff-pin`), which covers the carried box. */
+const SELECT_REVEAL_CARRIED =
+  "opacity-0 transition-opacity duration-80 group-hover/row:opacity-(--ff-pin,0) hover:opacity-100! group-[.is-active:focus-visible]/row:opacity-100 group-[.is-active:has(:focus-visible)]/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100";
+
+/** The empty selection box the row highlight carries: the Checkbox's own
+ *  box at rest, in the place a row's box sits (8px in, centered on the
+ *  first line). `shown` is off on a row that draws its own (checked) or
+ *  has none to offer (it can't be selected). */
+function SelectMarker({ shown, left, top }: { shown: boolean; left: number; top: boolean }) {
+  const compact = useSize().variant === "compact";
+  const sharp = useShape().variant === "sharp";
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute flex items-center transition-opacity duration-80 [@media(hover:none)]:hidden",
+        // Where the row's own box sits: on the first line of a row that
+        // reads from the top, else in the middle of the row, whatever its
+        // height (a fixed 36px slot sat 2px high in a 40px row).
+        top ? (compact ? "top-0 h-7" : "top-0 h-9") : "inset-y-0",
+        !shown && "opacity-0"
+      )}
+      style={{ left }}
+    >
+      <span
+        className={cn(
+          "border-[1.5px] border-solid border-border",
+          compact ? "size-[14px]" : "size-4",
+          sharp ? "rounded-none" : compact ? "rounded-[4px]" : "rounded-[5px]"
+        )}
+      />
+    </span>
+  );
+}
+
+// The row handles' column: 4px, then the 16px handle.
+const HANDLE_WIDTH = 20;
+
+/** The grip the row highlight carries, where a row's handle sits. */
+function HandleMarker({ shown, top }: { shown: boolean; top: boolean }) {
+  const compact = useSize().variant === "compact";
+  const Grip = useIcons()["grip-vertical"];
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute left-1 flex w-4 items-center justify-center text-muted-foreground transition-opacity duration-80 [@media(hover:none)]:hidden",
+        // As SelectMarker: the first line, or the row's middle.
+        top ? (compact ? "top-0 h-7" : "top-0 h-9") : "inset-y-0",
+        !shown && "opacity-0"
+      )}
+    >
+      <Grip size={compact ? 14 : 16} strokeWidth={1.5} />
+    </span>
+  );
+}
+
+/** A row's handle: press and drag to move the row. Like the row's empty
+ *  box, the grip you see on the pointer's row is the one the highlight
+ *  carries; this one shows under the pointer itself (darker), on touch
+ *  screens, and while its column is pinned over scrolling content. It is
+ *  there only while rows can move (DataTable marks the table). */
+function RowHandle() {
+  const compact = useSize().variant === "compact";
+  const Grip = useIcons()["grip-vertical"];
+  const mac = useIsMac();
+  const cap = TOOLTIP_CAP;
+  return (
+    <Tooltip
+      side="top"
+      content={
+        <span className="flex items-center gap-2">
+          Drag to move
+          <span className="flex items-center gap-0.5">
+            <kbd className={cap}>{mac ? "\u2325" : "Alt"}</kbd>
+            <kbd className={cap}>{"\u2191"}</kbd>
+            <kbd className={cap}>{"\u2193"}</kbd>
+          </span>
+        </span>
+      }
+    >
+    <button
+      type="button"
+      tabIndex={-1}
+      data-row-handle=""
+      aria-label="Drag to move row"
+      aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+      className={cn(
+        "-my-(--table-cell-py) hidden h-[calc(1lh+2*var(--table-cell-py))] w-4 cursor-grab touch-none items-center justify-center text-foreground outline-none select-none [[data-row-reorder]_&]:flex",
+        "opacity-0 transition-opacity duration-80 group-hover/row:opacity-(--ff-pin,0) hover:opacity-100! [@media(hover:none)]:opacity-100"
+      )}
+    >
+      <Grip size={compact ? 14 : 16} strokeWidth={1.5} />
+    </button>
+    </Tooltip>
+  );
+}
+
+/** A ready-made first column of handles to drag rows by, before
+ *  `selectColumn()` when there is one. Rows move once the table has
+ *  `onRowReorder`; sub-rows travel with their parent and have no handle
+ *  of their own. */
+function rowHandleColumn<TData>(): ColumnDef<TData> {
+  return {
+    id: "drag",
+    enableSorting: false,
+    enableHiding: false,
+    enableResizing: false,
+    size: HANDLE_WIDTH,
+    // Like the boxes' column: shrunk to its handle, no rule under it.
+    meta: { className: "w-0 pl-1 pr-0 border-b-transparent!" },
+    cell: ({ row }) => (row.depth === 0 ? <RowHandle /> : null),
+  };
+}
 
 /** The selectable rows the search leaves, sub-rows included, on every page. */
 function selectableRows<TData>(table: TanStackTable<TData>) {
@@ -2446,8 +3140,20 @@ function selectColumn<TData>(): ColumnDef<TData> {
       );
     },
     cell: ({ row, table }) => (
+      // Names the next click, with the key that does the same from the row.
+      <Tooltip
+        side="top"
+        content={
+          <span className="flex items-center gap-2">
+            {row.getIsSelected() ? "Unselect" : "Select"}
+            <kbd className={TOOLTIP_CAP}>X</kbd>
+          </span>
+        }
+      >
       <SelectHit
-        className={SELECT_REVEAL}
+        // A row that can't be selected shows its dimmed box the old way:
+        // the highlight carries none for it.
+        className={row.getCanSelect() ? SELECT_REVEAL_CARRIED : SELECT_REVEAL}
         disabled={!row.getCanSelect()}
         onToggle={() => row.toggleSelected()}
         // Shift-click selects (or clears) every row from the last one
@@ -2474,6 +3180,7 @@ function selectColumn<TData>(): ColumnDef<TData> {
           onCheckedChange={(checked) => row.toggleSelected(checked)}
         />
       </SelectHit>
+      </Tooltip>
     ),
   };
 }
@@ -2650,17 +3357,33 @@ function SubRowGuides({
   // The center of the chevron's 24px slot (12px in, less the rule's half).
   const x = "calc(var(--expander-pl) + 11.5px)";
   const rule = "pointer-events-none absolute w-px bg-border";
+  const chevron = row.subRows.length > 0;
   return (
     <>
-      {row.depth > 0 && (
-        // Each row's piece covers its own bottom rule (a pinned cell's fill
-        // would paint over a piece reaching up from the row below); the
-        // group's last row stops 8px short of its rule.
-        <span aria-hidden className={cn(rule, "top-0", grouped ? "-bottom-px" : "bottom-2")} style={{ left: x }} />
-      )}
-      {expanded && row.subRows.length > 0 && (
-        // From 6px under the open chevron (12px, half its 24px, + 6) to the
-        // row's bottom.
+      {row.depth > 0 &&
+        (chevron ? (
+          // A sub-row with a chevron of its own: the line stops 6px above
+          // it rather than running through it (nothing, in a row no taller
+          // than the chevron and its gaps).
+          <span
+            aria-hidden
+            className={cn(
+              rule,
+              "top-0",
+              alignTop ? "h-[max(0px,calc(var(--table-cell-py)+0.5lh-18px))]" : "bottom-[calc(50%+18px)]"
+            )}
+            style={{ left: x }}
+          />
+        ) : (
+          // Each row's piece covers its own bottom rule (a pinned cell's fill
+          // would paint over a piece reaching up from the row below); the
+          // group's last row stops 8px short of its rule.
+          <span aria-hidden className={cn(rule, "top-0", grouped ? "-bottom-px" : "bottom-2")} style={{ left: x }} />
+        ))}
+      {chevron && (expanded || (row.depth > 0 && grouped)) && (
+        // From 6px under the chevron (12px, half its 24px, + 6) to the
+        // row's bottom: an open row's own line, or its parent's picking up
+        // again under a closed sub-row's chevron.
         <span
           aria-hidden
           className={cn(rule, "-bottom-px", alignTop ? "top-[calc(var(--table-cell-py)+0.5lh+18px)]" : "top-[calc(50%+18px)]")}
@@ -2772,6 +3495,278 @@ interface DataTableBodyRowProps<TData> {
  *  its selection, the columns, their layout or the table's look change, not
  *  on every change to the table's state. A cell that reads other table
  *  state should live in a column you redefine when that state changes. */
+/** A row with a handle and a box shares one tooltip bubble between them:
+ *  it glides from one to the other instead of closing and opening again. */
+function RowTooltips({ on, children }: { on: boolean; children: ReactNode }) {
+  return on ? <TooltipGroup>{children}</TooltipGroup> : children;
+}
+
+/** Whether two Row objects stand for the same record in the same place in
+ *  the data. TanStack builds every Row again whenever `data` is a new
+ *  array, so after one edit, one moved row, one undo or one delete, every
+ *  row is a new object though all but a few hold the record they held.
+ *  Compared by object, every cell of every row rendered again each time;
+ *  compared by record, only the rows that changed do. (A row kept this way
+ *  keeps its older Row object, which reads the same record and the table's
+ *  current state.) */
+function sameRecord(a: Row<unknown>, b: Row<unknown>): boolean {
+  if (a === b) return true;
+  return (
+    a.id === b.id &&
+    a.original === b.original &&
+    a.index === b.index &&
+    a.depth === b.depth &&
+    a.parentId === b.parentId &&
+    a.subRows.length === b.subRows.length &&
+    a.subRows.every((sub, i) => sub.original === b.subRows[i].original)
+  );
+}
+
+type DataTableRowCellsProps = Pick<
+  DataTableBodyRowProps<unknown>,
+  | "table"
+  | "row"
+  | "selected"
+  | "runStart"
+  | "runEnd"
+  | "pins"
+  | "someSelected"
+  | "expanded"
+  | "grouped"
+  | "expanderId"
+  | "onToggleExpand"
+  | "columns"
+  | "layoutKey"
+  | "editable"
+  | "sized"
+  | "alignTop"
+  | "swapping"
+  | "compact"
+  | "shapeVariant"
+> & {
+  /** The page's first row (its date editor carries the label's sizer). */
+  lead: boolean;
+  skeletonRow: number;
+};
+
+/** A row's cells, apart from the row itself: a sort, a page turn or a row
+ *  moved by hand changes where a row sits (its index), not what its cells
+ *  show. Kept in the row, every cell of every row rendered again on each
+ *  of those, editors and all; here they're skipped and the row's DOM just
+ *  moves. */
+const DataTableRowCells = memo(
+  function DataTableRowCells({
+    table,
+    row,
+    selected,
+    runStart,
+    runEnd,
+    pins,
+    expanded,
+    grouped,
+    expanderId,
+    onToggleExpand,
+    editable,
+    sized,
+    alignTop,
+    swapping,
+    compact,
+    shapeVariant,
+    lead,
+    skeletonRow,
+  }: DataTableRowCellsProps) {
+    "use no memo";
+    return (
+      <RowTooltips on={LEADING_COLUMNS.every((id) => row.getVisibleCells().some((cell) => cell.column.id === id))}>
+      {row.getVisibleCells().map((cell, c) => {
+        const meta = cell.column.columnDef.meta;
+        const lines = linesOf(table, cell.column);
+        const editor = editable ? meta?.editor : undefined;
+        const rendered = editor ? (
+          <EditableCell
+            editor={editor}
+            row={row}
+            columnId={cell.column.id}
+            label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
+            lines={lines}
+            value={cell.getValue()}
+            lead={lead}
+            display={
+              typeof editor === "object" && editor.type === "select"
+                ? flexRender(cell.column.columnDef.cell, cell.getContext())
+                : undefined
+            }
+          />
+        ) : (
+          flexRender(cell.column.columnDef.cell, cell.getContext())
+        );
+        // line-clamp needs a block of its own; a cell isn't one.
+        const fitted =
+          lines === 2 ? (
+            <div className="line-clamp-2 [overflow-wrap:anywhere]">{rendered}</div>
+          ) : (
+            rendered
+          );
+        // With sub-rows, the first data column leads with the chevron (or
+        // its width, so every row's text lines up, sub-rows included).
+        const content =
+          cell.column.id === expanderId ? (
+            // Rows that read from the top put the chevron on the first
+            // line (where the guides under it start from), not the middle
+            // of the cell's content: beside a field taller than a line, the
+            // middle sat it 10px under the name.
+            <span className={cn("flex min-w-0 gap-1", alignTop ? "items-start" : "items-center")}>
+              {row.getCanExpand() ? (
+                <span className={cn("flex shrink-0 items-center", alignTop && "h-[1lh]")}>
+                  <ExpandToggle
+                    expanded={expanded}
+                    count={row.subRows.length}
+                    sharp={shapeVariant === "sharp"}
+                    onToggle={() => onToggleExpand(row as Row<unknown>)}
+                  />
+                </span>
+              ) : (
+                <span aria-hidden className={cn("w-6 shrink-0", alignTop ? "h-[1lh]" : "h-6")} />
+              )}
+              <span
+                className={cn(
+                  "min-w-0 flex-1",
+                  // An editor cuts its own text short, and its raised field
+                  // must reach past this box.
+                  !editor && (lines === 1 || (sized && lines === undefined)) && "truncate"
+                )}
+              >
+                {fitted}
+              </span>
+            </span>
+          ) : (
+            fitted
+          );
+        return (
+          <TableCell
+            key={cell.column.id}
+            data-column-id={cell.column.id}
+            className={cn(
+              // Content reads at full strength, above the muted
+              // headers.
+              "text-foreground",
+              // Anchors the skeleton that fades over it on landing, and
+              // the sub-row guides.
+              (swapping || cell.column.id === expanderId) && "relative",
+              pinProps(pins[cell.column.id]).className,
+              // The strip over its bottom border takes the row's fill.
+              // An outer cell's fill rounds, so there the strip stays the
+              // page color, except inside a run of selected rows: with
+              // another selected row under it the fill runs straight on,
+              // and a page-colored strip drew a line between the two.
+              pins[cell.column.id] &&
+                (!pins[cell.column.id].outer
+                  ? selected
+                    ? "[--pin-strip:var(--active)]"
+                    : "group-[.is-active]/row:[--pin-strip:var(--hover)]"
+                  : selected && !runEnd && "[--pin-strip:var(--active)]"),
+              alignTop && "align-top",
+              // A narrowed column cuts its text short instead of
+              // wrapping it onto a second line.
+              (lines === 1 || (sized && lines === undefined)) && "truncate",
+              // Pinned, the boxes' cell lets its fills reach over its
+              // bottom border (it has no text to cut).
+              pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
+              // Long unbroken text (a URL) breaks anywhere rather
+              // than running out of its column.
+              lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
+              // max-w-0 keeps long text from setting the column's
+              // width, so it fits the room the column is given.
+              lines !== undefined && "max-w-0",
+              // An editor raised past the column shows over its neighbors.
+              "has-[[data-cell-expanded]]:overflow-visible",
+              // The whole cell is the editor's: a row grown by a
+              // wrapped neighbor leaves room under the field, and a
+              // press there edits too (see pressCellEditor).
+              editor && (editorType(editor) === "text" ? "cursor-text" : "cursor-pointer"),
+              meta?.className
+            )}
+            onClick={editor ? pressCellEditor : undefined}
+            style={pinProps(pins[cell.column.id]).style}
+          >
+            {pins[cell.column.id] && (
+              <PinFills
+                pin={pins[cell.column.id]}
+                selected={selected}
+                runStart={runStart}
+                runEnd={runEnd}
+                shapeVariant={shapeVariant}
+                tall={cell.column.id === "select"}
+              />
+            )}
+            {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
+            {swapping && (
+              // The hand-over: a skeleton over the cell's content box,
+              // shown at once (its delayed reveal and pulse turned
+              // off, since this row is new) and fading out as the
+              // content fades in under it, so the cell is never empty
+              // and the content keeps its real layout the whole time.
+              <span
+                key="skeleton"
+                aria-hidden
+                className="pointer-events-none absolute inset-0 animate-[reveal-out_120ms_ease-in_forwards] [&_[data-slot=skeleton]]:animate-none"
+                style={{ padding: "inherit" }}
+              >
+                {skeletonFor(cell.column.id, skeletonRow, c, shapeVariant, compact)}
+              </span>
+            )}
+            {textCell(cell.column.id) && !editor ? (
+              // Text sits in a block that carries the cell's fitting
+              // (a block child escapes the cell's own ellipsis), so
+              // it can fade in on landing. Clipped sideways only, so
+              // a 24px badge still overhangs its 20px line.
+              <span
+                key="content"
+                className={cn(
+                  "block",
+                  (lines === 1 || (sized && lines === undefined)) &&
+                    "overflow-x-clip text-ellipsis whitespace-nowrap",
+                  lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
+                  // 160ms in, the moderate tier (CSS can't take the
+                  // spring token).
+                  swapping && "animate-[reveal-preset_160ms_ease-out_both]"
+                )}
+              >
+                {content}
+              </span>
+            ) : (
+              <Fragment key="content">{content}</Fragment>
+            )}
+          </TableCell>
+        );
+      })}
+      </RowTooltips>
+    );
+  },
+  // As the row's own list below, less what only the row's shell reads,
+  // and by the record rather than TanStack's Row object (see sameRecord).
+  (a, b) =>
+    sameRecord(a.row, b.row) &&
+    a.selected === b.selected &&
+    a.runStart === b.runStart &&
+    a.runEnd === b.runEnd &&
+    a.pins === b.pins &&
+    a.someSelected === b.someSelected &&
+    a.expanded === b.expanded &&
+    a.grouped === b.grouped &&
+    a.expanderId === b.expanderId &&
+    a.columns === b.columns &&
+    a.layoutKey === b.layoutKey &&
+    a.editable === b.editable &&
+    a.sized === b.sized &&
+    a.alignTop === b.alignTop &&
+    a.swapping === b.swapping &&
+    a.compact === b.compact &&
+    a.shapeVariant === b.shapeVariant &&
+    a.lead === b.lead &&
+    a.skeletonRow === b.skeletonRow
+);
+
 const DataTableBodyRow = memo(
   forwardRef<HTMLTableRowElement, DataTableBodyRowProps<unknown>>(function DataTableBodyRow(
     {
@@ -2783,6 +3778,9 @@ const DataTableBodyRow = memo(
       runEnd,
       pins,
       menuOpen,
+      someSelected,
+      columns,
+      layoutKey,
       expanded,
       grouped,
       expanderId,
@@ -2870,154 +3868,30 @@ const DataTableBodyRow = memo(
         "[&:is(:focus-visible,:has(:focus-visible))_[role=checkbox]]:border-foreground/40"
       )}
     >
-      {row.getVisibleCells().map((cell, c) => {
-        const meta = cell.column.columnDef.meta;
-        const lines = linesOf(table, cell.column);
-        const editor = editable ? meta?.editor : undefined;
-        const rendered = editor ? (
-          <EditableCell
-            editor={editor}
-            row={row}
-            columnId={cell.column.id}
-            label={meta?.label ?? (typeof cell.column.columnDef.header === "string" ? cell.column.columnDef.header : cell.column.id)}
-            lines={lines}
-            value={cell.getValue()}
-            display={
-              typeof editor === "object" && editor.type === "select"
-                ? flexRender(cell.column.columnDef.cell, cell.getContext())
-                : undefined
-            }
-          />
-        ) : (
-          flexRender(cell.column.columnDef.cell, cell.getContext())
-        );
-        // line-clamp needs a block of its own; a cell isn't one.
-        const fitted =
-          lines === 2 ? (
-            <div className="line-clamp-2 [overflow-wrap:anywhere]">{rendered}</div>
-          ) : (
-            rendered
-          );
-        // With sub-rows, the first data column leads with the chevron (or
-        // its width, so every row's text lines up, sub-rows included).
-        const content =
-          cell.column.id === expanderId ? (
-            <span className="flex min-w-0 items-center gap-1">
-              {row.getCanExpand() ? (
-                <ExpandToggle
-                  expanded={expanded}
-                  count={row.subRows.length}
-                  sharp={shapeVariant === "sharp"}
-                  onToggle={() => onToggleExpand(row as Row<unknown>)}
-                />
-              ) : (
-                <span aria-hidden className="size-6 shrink-0" />
-              )}
-              <span
-                className={cn(
-                  "min-w-0 flex-1",
-                  // An editor cuts its own text short, and its raised field
-                  // must reach past this box.
-                  !editor && (lines === 1 || (sized && lines === undefined)) && "truncate"
-                )}
-              >
-                {fitted}
-              </span>
-            </span>
-          ) : (
-            fitted
-          );
-        return (
-          <TableCell
-            key={cell.column.id}
-            data-column-id={cell.column.id}
-            className={cn(
-              // Content reads at full strength, above the muted
-              // headers.
-              "text-foreground",
-              // Anchors the skeleton that fades over it on landing, and
-              // the sub-row guides.
-              (swapping || cell.column.id === expanderId) && "relative",
-              pinProps(pins[cell.column.id]).className,
-              // The strip over its bottom border takes the row's fill
-              // (outer cells' fills round, so theirs stays the page color).
-              pins[cell.column.id] && !pins[cell.column.id].outer &&
-                (selected ? "[--pin-strip:var(--active)]" : "group-[.is-active]/row:[--pin-strip:var(--hover)]"),
-              alignTop && "align-top",
-              // A narrowed column cuts its text short instead of
-              // wrapping it onto a second line.
-              (lines === 1 || (sized && lines === undefined)) && "truncate",
-              // Pinned, the boxes' cell lets its fills reach over its
-              // bottom border (it has no text to cut).
-              pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
-              // Long unbroken text (a URL) breaks anywhere rather
-              // than running out of its column.
-              lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
-              // max-w-0 keeps long text from setting the column's
-              // width, so it fits the room the column is given.
-              lines !== undefined && "max-w-0",
-              // An editor raised past the column shows over its neighbors.
-              "has-[[data-cell-expanded]]:overflow-visible",
-              // The whole cell is the editor's: a row grown by a
-              // wrapped neighbor leaves room under the field, and a
-              // press there edits too (see pressCellEditor).
-              editor && (editorType(editor) === "text" ? "cursor-text" : "cursor-pointer"),
-              meta?.className
-            )}
-            onClick={editor ? pressCellEditor : undefined}
-            style={pinProps(pins[cell.column.id]).style}
-          >
-            {pins[cell.column.id] && (
-              <PinFills
-                pin={pins[cell.column.id]}
-                selected={selected}
-                runStart={runStart}
-                runEnd={runEnd}
-                shapeVariant={shapeVariant}
-                tall={cell.column.id === "select"}
-              />
-            )}
-            {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
-            {swapping && (
-              // The hand-over: a skeleton over the cell's content box,
-              // shown at once (its delayed reveal and pulse turned
-              // off, since this row is new) and fading out as the
-              // content fades in under it, so the cell is never empty
-              // and the content keeps its real layout the whole time.
-              <span
-                key="skeleton"
-                aria-hidden
-                className="pointer-events-none absolute inset-0 animate-[reveal-out_120ms_ease-in_forwards] [&_[data-slot=skeleton]]:animate-none"
-                style={{ padding: "inherit" }}
-              >
-                {skeletonFor(cell.column.id, i, c, shapeVariant, compact)}
-              </span>
-            )}
-            {textCell(cell.column.id) && !editor ? (
-              // Text sits in a block that carries the cell's fitting
-              // (a block child escapes the cell's own ellipsis), so
-              // it can fade in on landing. Clipped sideways only, so
-              // a 24px badge still overhangs its 20px line.
-              <span
-                key="content"
-                className={cn(
-                  "block",
-                  (lines === 1 || (sized && lines === undefined)) &&
-                    "overflow-x-clip text-ellipsis whitespace-nowrap",
-                  lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
-                  // 160ms in, the moderate tier (CSS can't take the
-                  // spring token).
-                  swapping && "animate-[reveal-preset_160ms_ease-out_both]"
-                )}
-              >
-                {content}
-              </span>
-            ) : (
-              <Fragment key="content">{content}</Fragment>
-            )}
-          </TableCell>
-        );
-      })}
+      <DataTableRowCells
+        table={table}
+        row={row}
+        selected={selected}
+        runStart={runStart}
+        runEnd={runEnd}
+        pins={pins}
+        someSelected={someSelected}
+        expanded={expanded}
+        grouped={grouped}
+        expanderId={expanderId}
+        onToggleExpand={onToggleExpand}
+        columns={columns}
+        layoutKey={layoutKey}
+        editable={editable}
+        sized={sized}
+        alignTop={alignTop}
+        swapping={swapping}
+        compact={compact}
+        shapeVariant={shapeVariant}
+        lead={i === 0}
+        // The skeleton bars' widths cycle by row; only read while they show.
+        skeletonRow={swapping ? i : 0}
+      />
     </TableRow>);
   }),
   // Every prop that changes what a row draws, or a row keeps drawing its
@@ -3274,6 +4148,7 @@ function EditorBody<TData>({
   lines,
   value,
   display,
+  lead = false,
 }: {
   editor: DataTableEditor;
   row: Row<TData>;
@@ -3285,6 +4160,8 @@ function EditorBody<TData>({
   value: unknown;
   /** A select's trigger: the column's own cell. */
   display?: ReactNode;
+  /** The page's first row: its date editor carries the label's sizer. */
+  lead?: boolean;
 }) {
   "use no memo";
   const ctx = useContext(EditContext)!;
@@ -3394,9 +4271,27 @@ function EditorBody<TData>({
   if (type === "date") {
     const date = toDate(value);
     return (
-      <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className={cn(CELL_CONTROL, CELL_REACH.date[step])}>
+      <div
+        ref={boxRef}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        // A date trigger holds the width of its widest label, so no date
+        // changes the trigger's size. DatePicker does that with an
+        // invisible stack of every weekday and month name, 26 elements a
+        // trigger. In a table only the page's first row carries the stack:
+        // its width is read into --ff-date-w (see DataTable), and every
+        // other row's label takes it as a min-width. Same widths, a
+        // fraction of the elements.
+        data-date-lead={lead || undefined}
+        className={cn(
+          CELL_CONTROL,
+          CELL_REACH.date[step],
+          !lead && "[&_[data-slot=date-picker-trigger]>span]:min-w-(--ff-date-w)"
+        )}
+      >
         <DatePicker
           variant="ghost"
+          fitLabel={!lead}
           aria-label={label}
           value={date}
           placeholder={options.placeholder}
@@ -4256,14 +5151,14 @@ function DataTableTitle({ as: Tag = "h1", table, size, className, style, ...prop
   "use no memo";
   const compact = useSize(size).variant === "compact";
   // Looked up among the columns (getColumn warns about a missing id).
-  const boxes = !!table?.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
+  const gutter = table ? leadingGutter(table) : undefined;
   return (
     <Tag
       data-slot="data-table-title"
       className={cn(
         typeClass("display", compact ? "compact" : "default"),
         "text-foreground",
-        boxes && "pl-7",
+        gutter,
         className
       )}
       style={{ fontVariationSettings: fontWeights.semibold, ...style }}
@@ -4365,6 +5260,10 @@ function filterOf<TData>(table: TanStackTable<TData>, column: Column<TData, unkn
     .filter((v) => v !== null && v !== undefined && v !== "");
   if (values.length === 0) return { type: "text" };
   if (values.every((v) => typeof v === "number")) return { type: "number" };
+  // True or false: two options to pick from. As text it could only match
+  // "true" and "false", never the Yes and No a cell shows for them.
+  if (values.every((v) => typeof v === "boolean"))
+    return { type: "options", options: [{ value: "true", label: "Yes" }, { value: "false", label: "No" }] };
   if (values.every((v) => dayOf(v) !== undefined)) return { type: "date" };
   const flat = values.flatMap((v) => (Array.isArray(v) ? v : [v]));
   if (flat.every((v) => typeof v === "string")) {
@@ -4577,7 +5476,7 @@ function DataTableFilterChips<TData>({
   };
   // Past a selection column, the row steps in with the title, to the first
   // data column's text.
-  const boxes = !!table.getAllLeafColumns().find((c) => c.id === "select")?.getIsVisible();
+  const gutter = leadingGutter(table);
 
   return (
     <RowReveal show={active.length > 0 || Children.toArray(children).length > 0}>
@@ -4586,7 +5485,7 @@ function DataTableFilterChips<TData>({
         // Past a selection column the chips start where the first data
         // column does, 28px in (past the boxes), like the title: the edge
         // they share with the table when there are no boxes.
-        className={cn("flex flex-wrap items-center gap-1", boxes && "pl-7", className)}
+        className={cn("flex flex-wrap items-center gap-1", gutter, className)}
       >
         {active.map((f) => {
           const entry = filterable.find(({ column }) => column.id === f.id);
@@ -5610,12 +6509,35 @@ function DataTableSelectionBar<TData>({
             aria-label="Selected rows"
             className={cn(
               "flex items-center whitespace-nowrap",
-              compact ? "gap-1 p-1 pl-3" : "gap-1.5 p-1.5 pl-4",
+              // Inverted, like a toast: the page's foreground as the bar's
+              // ground and its background as the bar's text, so it stands
+              // off the rows it floats over in either theme. The two are
+              // read here (--bar-bg, --bar-fg) and handed to everything
+              // inside as its own tokens (see the wrapper below).
+              "[--bar-bg:var(--foreground)] [--bar-fg:var(--background)] bg-(--bar-bg) text-(--bar-fg)",
+              // A menu's own insets, 4px around the buttons; the count sits
+              // 8px further in than a menu item's label (20px, 18px
+              // compact), so it reads with room at the bar's rounded end.
+              compact ? "gap-1 p-1 pl-4.5" : "gap-1 p-1 pl-5",
               shape.variant === "sharp" ? "rounded-[1px]" : shape.variant === "pill" ? "rounded-full" : "rounded-xl",
               sizeClasses.text,
               className
             )}
           >
+            {/* The bar's parts are the library's own (a ghost Button, key
+                caps): inside this box the color tokens they read are the
+                bar's, so they invert with it and need no styles of their
+                own. A box of no layout; the tokens are set a level under
+                where --bar-bg and --bar-fg are read, so neither refers to
+                itself. */}
+            <div
+              className={cn(
+                "contents",
+                "[--foreground:var(--bar-fg)] [--background:var(--bar-bg)]",
+                "[--muted-foreground:color-mix(in_oklab,var(--bar-fg)_65%,transparent)]",
+                "[--hover:color-mix(in_oklab,var(--bar-fg)_12%,transparent)] [--active:color-mix(in_oklab,var(--bar-fg)_20%,transparent)]"
+              )}
+            >
             <span aria-live="polite" className="tabular-nums text-foreground">
               {shown} selected
             </span>
@@ -5625,7 +6547,10 @@ function DataTableSelectionBar<TData>({
                 size={compact ? "compact" : "default"}
                 onClick={() => setMenuOpen(true)}
                 aria-keyshortcuts={shortcut ?? undefined}
-                className="ml-1"
+                // The key caps end the button like a trailing icon does, so
+                // it takes Button's own trailing inset (12px, 8px compact)
+                // in place of the label's 16px.
+                className={cn("ml-1", shortcut && (compact ? "pr-2" : "pr-3"))}
               >
                 Actions
                 {shortcut && <CommandMenuShortcut keys={shortcut} className="ml-1" />}
@@ -5637,7 +6562,7 @@ function DataTableSelectionBar<TData>({
                   Clear selection
                   {/* A key cap in the tooltip's inverted colors, as the
                       Sidebar's tooltips draw theirs. */}
-                  <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background">
+                  <kbd className={TOOLTIP_CAP}>
                     Esc
                   </kbd>
                 </span>
@@ -5653,6 +6578,7 @@ function DataTableSelectionBar<TData>({
                 <XIcon />
               </Button>
             </Tooltip>
+            </div>
           </Elevated>
         </motion.div>
       )}
@@ -5700,7 +6626,9 @@ export {
   DataTablePagination,
   DataTableSelectionBar,
   selectColumn,
+  rowHandleColumn,
   rowActionsColumn,
+  moveRows,
   useUndoableRows,
 };
 export type {
@@ -5712,6 +6640,7 @@ export type {
   ColumnLines,
   UseDataTableOptions,
   DataTableProps,
+  DataTableRowMove,
   DataTableEmpty,
   DataTableColumnHeaderProps,
   DataTableTitleProps,

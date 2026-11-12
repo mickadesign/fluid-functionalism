@@ -56,6 +56,10 @@ export interface DataTablePlayState {
   title: boolean;
   /** Saved views: a Save view button and tabs to switch between them. */
   views: boolean;
+  /** Drag handles left of the boxes: rows move by hand. Off by default,
+   *  since it drops the starting sort (under one, a move first asks to
+   *  remove it). */
+  rowReorder: boolean;
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -79,6 +83,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   pinRight: true,
   title: true,
   views: true,
+  rowReorder: false,
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -200,10 +205,18 @@ export const DATA_TABLE_PRESET_FIELDS_H: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_G.slice(-3),
 ];
 
-// Version i turns column filters on by default.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = DATA_TABLE_PRESET_FIELDS_H.map((field) =>
+// Version i turns column filters on by default. Kept so its codes still
+// decode.
+export const DATA_TABLE_PRESET_FIELDS_I: readonly PresetField[] = DATA_TABLE_PRESET_FIELDS_H.map((field) =>
   field.key === "filters" ? { ...field, values: [true, false] } : field
 );
+
+// Version j adds row reordering, off by default.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_I.slice(0, -3),
+  { key: "rowReorder", values: [false, true], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_I.slice(-3),
+];
 
 // ── Registration (tag "t") ──────────────────────────────────────────────────
 
@@ -211,8 +224,8 @@ export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "i",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS_I, j: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "j",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
@@ -246,13 +259,13 @@ export const DATA_TABLE_DEFAULT_CODE = encodeDataTablePreset({});
 // fixed sample in the same shape, to replace with real data.
 
 export const DATA_TABLE_SAMPLE_ROWS = [
-  { slug: "data-table", name: "DataTable", summary: "TanStack Table on the fluid hover Table: sorting, search, column resizing and reordering, row selection, and pagination.", primitives: "Built on both", props: 34, added: "2026-11-08" },
+  { slug: "data-table", name: "DataTable", summary: "TanStack Table on the fluid hover Table: sorting, search, column resizing and reordering, row selection, and pagination.", primitives: "Radix + Base UI", props: 34, added: "2026-11-08" },
   { slug: "checkbox", name: "Checkbox", summary: "A single checkbox: a hairline square that darkens on hover and a check that draws itself.", primitives: "Radix + Base UI", props: 9, added: "2026-11-04" },
   { slug: "field", name: "Field", summary: "Labels, controls, help text, and errors composed into accessible form fields.", primitives: "None", props: 18, added: "2026-11-04" },
-  { slug: "calendar", name: "Calendar", summary: "Month grid for a day or a range: one fluid hover across both months and week numbers.", primitives: "Built on both", props: 17, added: "2026-10-19" },
+  { slug: "calendar", name: "Calendar", summary: "Month grid for a day or a range: one fluid hover across both months and week numbers.", primitives: "Radix + Base UI", props: 17, added: "2026-10-19" },
   { slug: "date-picker", name: "DatePicker", summary: "Outline or ghost trigger for a date, a range, or a date and a time.", primitives: "Radix + Base UI", props: 24, added: "2026-10-19" },
-  { slug: "banner", name: "Banner", summary: "Status message in 5 statuses and 2 contrasts, inline or fixed at the top of the page.", primitives: "Built on both", props: 17, added: "2026-09-29" },
-  { slug: "command-menu", name: "CommandMenu", summary: "Type to filter a list of actions, arrow through them, press Enter to run.", primitives: "Built on both", props: 50, added: "2026-09-08" },
+  { slug: "banner", name: "Banner", summary: "Status message in 5 statuses and 2 contrasts, inline or fixed at the top of the page.", primitives: "Radix + Base UI", props: 17, added: "2026-09-29" },
+  { slug: "command-menu", name: "CommandMenu", summary: "Type to filter a list of actions, arrow through them, press Enter to run.", primitives: "Radix + Base UI", props: 50, added: "2026-09-08" },
   { slug: "combobox", name: "Combobox", summary: "Type-to-filter field with keyboard highlight, fluid hover, and a spring-animated list.", primitives: "Radix + Base UI", props: 36, added: "2026-09-06" },
   { slug: "sidebar", name: "Sidebar", summary: "Composable sidebar with offcanvas collapse, a drag-resize rail, and a mobile drawer.", primitives: "Radix + Base UI", props: 36, added: "2026-08-17" },
   { slug: "card", name: "Card", summary: "Compositional card in stacked, inline, and grid layouts with 2-D fluid hover.", primitives: "None", props: 32, added: "2026-07-20" },

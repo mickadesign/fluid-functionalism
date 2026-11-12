@@ -2175,6 +2175,7 @@
         "reveal",
         "combobox",
         "date-picker",
+        "dialog",
         "command-menu",
         "elevated",
         "badge",

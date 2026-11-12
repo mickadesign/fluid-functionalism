@@ -18,6 +18,8 @@ import {
   filesCode,
   ChangelogTable,
   changelogCode,
+  ReorderTable,
+  reorderCode,
 } from "./capability-demos";
 import { SortableTable, SearchTable, LoadingTable } from "./demo-data";
 
@@ -138,6 +140,16 @@ export default function DataTableDoc() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Reordering rows">
+        <p className="text-site-body text-muted-foreground">
+          Drag a row by its handle, or press Alt + ↑ / ↓ on the row under the pointer or holding focus. Select a few and drag one
+          to move them together. While a column sorts the table, dropping a row (or pressing the keys) asks whether to remove the sort first.
+        </p>
+        <ComponentPreview code={reorderCode}>
+          <ReorderTable />
+        </ComponentPreview>
+      </DocSection>
+
       <DocSection title="Sub-rows">
         <p className="text-site-body text-muted-foreground">
           A folder opens into its files. Click a chevron, or press → on a row and ← to close it.
@@ -203,6 +215,7 @@ export default function DataTableDoc() {
           <li>Rows take focus whenever they can be selected, opened or expanded, so the keys work without a selection column.</li>
           <li>In an editable cell, Enter or Esc leaves the field and keeps what you typed; F2 edits a link.</li>
           <li>With a selection, ⌘K opens its actions.</li>
+          <li>With row reordering, Alt + ↑ / ↓ moves the selected rows a place when there are any, else the row under the pointer or the focused one, and the highlight goes with a row it moves; Esc during a drag puts the row back.</li>
           <li>Alt + ← / → on a focused header moves its column; ← / → on a focused resize handle steps its width by 16px.</li>
         </ul>
       </DocSection>

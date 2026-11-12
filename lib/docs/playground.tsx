@@ -550,8 +550,12 @@ export function PlaygroundLayout({
         <div
           ref={frameRef}
           className={cn(
+            // Above the page and its sticky chrome, below every overlay:
+            // an expanded preview is still the page, so a dialog's or the
+            // command menu's dimmed backdrop covers it like the rest. (At
+            // the modal step it sat over those backdrops, undimmed.)
             expanded &&
-              "fixed z-[var(--z-modal,50)] bg-background"
+              "fixed z-[calc(var(--z-sticky,30)+3)] bg-background"
           )}
         >
           {preview}
@@ -561,7 +565,7 @@ export function PlaygroundLayout({
         createPortal(
           <div
             aria-hidden
-            className="pointer-events-none fixed inset-0 z-[var(--z-overlay,40)] bg-background transition-opacity duration-[160ms]"
+            className="pointer-events-none fixed inset-0 z-[calc(var(--z-sticky,30)+2)] bg-background transition-opacity duration-[160ms]"
             style={{ opacity: backdrop ? 1 : 0, visibility: expanded ? "visible" : "hidden" }}
           />,
           document.body
