@@ -434,10 +434,14 @@ function GroupBubble({
   );
 }
 
-// Radix renders a tooltip's children a second time, in the visually hidden
-// copy aria-describedby points at. That copy holds no bubble to animate.
-const inDescriptionCopy = (el: HTMLElement) =>
-  el.closest('[role="tooltip"]') !== null;
+// Radix before 1.2.13 renders a tooltip's children a second time, in the
+// visually hidden copy aria-describedby points at. That copy holds no bubble
+// to animate. From 1.2.13 the role sits on the content itself, which carries
+// data-side in every version; the hidden copy never does.
+const inDescriptionCopy = (el: HTMLElement) => {
+  const described = el.closest('[role="tooltip"]');
+  return described !== null && !described.hasAttribute("data-side");
+};
 
 /** One fluid tooltip for a row of triggers: the first opens after the delay,
  *  then the bubble glides from trigger to trigger, changing width and label,
