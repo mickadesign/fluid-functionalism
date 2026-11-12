@@ -1442,6 +1442,96 @@ function DataTable<TData>({
     };
     // Re-run once the widths are in, and for a new scroll box.
   }, [sized, wrapEl]);
+  // The scroll fade dissolves the rows toward the frozen columns with a
+  // mask, and a mask takes the selection's fill with the text: a selected
+  // row faded to the page color there. Behind the rows (outside the mask),
+  // each selected row gets a band over the fade's width that is the
+  // selection color where the mask has taken it and nothing where it
+  // hasn't: band and masked fill add up to the fill, so a selected row
+  // keeps its color to the frozen edge and only its content fades. The
+  // bands follow the same scroll timeline as the mask (PIN_CSS), so they
+  // come in as it does; without scroll timelines there is no fade and no
+  // band. Placed straight on the DOM: nothing renders for it.
+  const fadeHostRef = useRef<HTMLDivElement>(null);
+  // The hovered row gets the same from one band that rides the highlight:
+  // Table reports the fill's box every frame it moves, and the band takes
+  // its place, height and opacity (in the hover color; over a selected
+  // row the two bands add up, as the two fills do).
+  const hoverFadeRef = useRef<HTMLDivElement>(null);
+  const fadeBase = useRef(0);
+  const placeHoverFade = useCallback((box: { y: number; height: number; opacity: number }) => {
+    const band = hoverFadeRef.current;
+    if (!band) return;
+    band.style.transform = `translateY(${fadeBase.current + box.y}px)`;
+    band.style.height = `${box.height}px`;
+    band.style.opacity = String(box.opacity);
+  }, []);
+  const placeFadeBands = useCallback(() => {
+    const host = fadeHostRef.current;
+    const wrap = wrapRef.current;
+    if (!host || !wrap) return;
+    {
+      // Where the table's own box starts inside the scroll box, for both
+      // kinds of band (it moves when the table scrolls up and down).
+      const container = wrap.querySelector("table")?.parentElement;
+      const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+      if (container) fadeBase.current = container.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+      const frame = host.parentElement;
+      if (frame && viewport)
+        frame.style.setProperty("--ff-fade", getComputedStyle(viewport).getPropertyValue("--scroll-fade-size").trim() || "48px");
+    }
+    const picked = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-state=selected]"));
+    const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    const container = wrap.querySelector("table")?.parentElement;
+    if (!picked.length || !viewport || !container) {
+      if (host.childElementCount) host.replaceChildren();
+      return;
+    }
+    const base = fadeBase.current;
+    // One band per run of selected rows (layout offsets: a row mid-slide
+    // reads where it lands).
+    const runs: { top: number; bottom: number }[] = [];
+    for (const tr of picked) {
+      const top = base + tr.offsetTop;
+      const bottom = top + tr.offsetHeight;
+      const last = runs[runs.length - 1];
+      if (last && Math.abs(last.bottom - top) < 1) last.bottom = bottom;
+      else runs.push({ top, bottom });
+    }
+    const bands = runs.flatMap(({ top, bottom }) =>
+      (["l", "r"] as const).map((side) => {
+        const band = document.createElement("div");
+        band.className = side === "l" ? "ff-fade-l" : "ff-fade-r";
+        band.style.cssText =
+          `position:absolute;top:${top}px;height:${bottom - top}px;width:var(--ff-fade,48px);` +
+          (side === "l"
+            ? "left:var(--pin-l,0px);background:linear-gradient(to right,var(--active),transparent)"
+            : "right:var(--pin-r,0px);background:linear-gradient(to left,var(--active),transparent)");
+        return band;
+      })
+    );
+    host.replaceChildren(...bands);
+  }, []);
+  // After every render (a selection, a sort, a page turn), and when the
+  // rows change size or the table scrolls up and down inside its box.
+  useLayoutEffect(() => {
+    placeFadeBands();
+  });
+  useEffect(() => {
+    const wrap = wrapEl;
+    const viewport = wrap?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    const tableNode = wrap?.querySelector("table");
+    if (!wrap || !viewport || !tableNode) return;
+    const observer = new ResizeObserver(placeFadeBands);
+    observer.observe(tableNode);
+    observer.observe(wrap);
+    viewport.addEventListener("scroll", placeFadeBands, { passive: true });
+    return () => {
+      observer.disconnect();
+      viewport.removeEventListener("scroll", placeFadeBands);
+    };
+  }, [wrapEl, placeFadeBands]);
+
   // Keys, like a spreadsheet's rows (Google Sheets, Gmail):
   //   ↓ on a header  the first row
   //   ↑ / ↓          the row above / below; Home / End the first / last.
@@ -2103,6 +2193,7 @@ function DataTable<TData>({
       hideHeadHighlight={!!drag}
       // The handles' and the boxes' columns, leading: one grip and one
       // empty box ride the highlight.
+      onHighlightFrame={placeHoverFade}
       hoverMarker={
         !loading && (reorderShown || boxAt >= 0)
           ? (i) => {
@@ -2424,7 +2515,10 @@ function DataTable<TData>({
       <ScrollArea
         ref={setWrap}
         orientation={fill ? "both" : "horizontal"}
-        className={cn("group/pin w-full", fill && "group/scroll min-h-0 flex-1")}
+        // isolate: its own stacking context, so the selection's fade bands
+        // (placeFadeBands) can sit behind the rows without leaving the box.
+        data-ff-table=""
+        className={cn("group/pin isolate w-full", fill && "group/scroll min-h-0 flex-1")}
         // Content fades while there's more to a side, at the line where it
         // meets the pinned columns (the box's own edge when none are):
         // scroll-fade-x's animated --sf-start / --sf-end, with the stops
@@ -2469,6 +2563,24 @@ function DataTable<TData>({
           tableEl
         )}
       </ScrollArea>
+      {wrapEl &&
+        createPortal(
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-[1] overflow-hidden">
+            <div ref={fadeHostRef} />
+            {/* The hovered row's band: one pair, moved with the highlight. */}
+            <div ref={hoverFadeRef} className="absolute inset-x-0 top-0 opacity-0">
+              <div
+                className="ff-fade-l absolute inset-y-0 left-(--pin-l,0px) w-(--ff-fade,48px)"
+                style={{ background: "linear-gradient(to right, var(--hover), transparent)" }}
+              />
+              <div
+                className="ff-fade-r absolute inset-y-0 right-(--pin-r,0px) w-(--ff-fade,48px)"
+                style={{ background: "linear-gradient(to left, var(--hover), transparent)" }}
+              />
+            </div>
+          </div>,
+          wrapEl
+        )}
       {reorderShown && (
         <Dialog
           open={sortAsk}
@@ -3253,6 +3365,16 @@ function pinProps(pin: PinInfo | undefined) {
 // (a scroll event lands a frame later, and the content shows through).
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
+@keyframes ff-fade-on { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
+[data-ff-table] { --ff-fade: 48px; }
+.ff-fade-l, .ff-fade-r { opacity: 0; }
+@supports (timeline-scope: --ff-table-x) {
+  [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x; }
+  [data-ff-table] [data-slot=scroll-area-viewport] { scroll-timeline: --ff-table-x inline; }
+  .ff-fade-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0 var(--ff-fade, 48px); }
+  .ff-fade-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - var(--ff-fade, 48px)) 100%; }
+}
 @keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
 @keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
 @supports (animation-timeline: scroll()) {
@@ -3283,8 +3405,11 @@ function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
       />
       {children}
       {pin.edge && (
-        // The rule is a span inside the edge cell, in the rows' rule color.
-        <span className={cn("absolute inset-y-0 w-px bg-accent/40", pin.side === "left" ? "right-0" : "left-0")} />
+        // The rule is a span inside the edge cell. A see-through tint of
+        // the text color, not the rows' (opaque, light) rule color: that
+        // one vanished over a selected or hovered row's fill, where this
+        // darkens whatever is under it.
+        <span className={cn("absolute inset-y-0 w-px bg-foreground/[0.08]", pin.side === "left" ? "right-0" : "left-0")} />
       )}
     </span>
   );
@@ -3659,7 +3784,12 @@ const DataTableRowCells = memo(
               // page color, except inside a run of selected rows: with
               // another selected row under it the fill runs straight on,
               // and a page-colored strip drew a line between the two.
+              // The handles' and the boxes' cells take no strip at all:
+              // their fills reach over the border themselves (`tall`
+              // below), and a tinted strip under a fill drew the tint
+              // twice, as a line between rows.
               pins[cell.column.id] &&
+                !LEADING_COLUMNS.includes(cell.column.id) &&
                 (!pins[cell.column.id].outer
                   ? selected
                     ? "[--pin-strip:var(--active)]"
@@ -3669,9 +3799,12 @@ const DataTableRowCells = memo(
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
               (lines === 1 || (sized && lines === undefined)) && "truncate",
-              // Pinned, the boxes' cell lets its fills reach over its
-              // bottom border (it has no text to cut).
-              pins[cell.column.id] && cell.column.id === "select" && "overflow-visible",
+              // Pinned, the handles' and the boxes' cells let their fills
+              // reach over their bottom border (they have no text to cut).
+              // Both, whichever comes first: clipped, the first one's
+              // rounded fill sat inside the row's own and showed a second,
+              // tighter corner.
+              pins[cell.column.id] && LEADING_COLUMNS.includes(cell.column.id) && "overflow-visible",
               // Long unbroken text (a URL) breaks anywhere rather
               // than running out of its column.
               lines === "wrap" && "whitespace-normal [overflow-wrap:anywhere]",
@@ -3696,7 +3829,7 @@ const DataTableRowCells = memo(
                 runStart={runStart}
                 runEnd={runEnd}
                 shapeVariant={shapeVariant}
-                tall={cell.column.id === "select"}
+                tall={LEADING_COLUMNS.includes(cell.column.id)}
               />
             )}
             {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}

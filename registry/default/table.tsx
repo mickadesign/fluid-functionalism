@@ -78,6 +78,10 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** A mark that rides the row highlight, for the body row at `index`:
    *  drawn inside the fill, so it glides from row to row with it. */
   hoverMarker?: (index: number) => ReactNode;
+  /** The row highlight's live box on every frame it moves (`y` and
+   *  `height` from the table's top, and its opacity), to draw along with
+   *  it. Write to the DOM in it; don't set state. */
+  onHighlightFrame?: (box: { y: number; height: number; opacity: number }) => void;
 }
 
 const NO_SELECTION: readonly number[] = [];
@@ -86,7 +90,7 @@ const NO_SELECTION: readonly number[] = [];
 const TABLE_HIGHLIGHT_EVENT = "fluid-table-highlight";
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, hoverMarker, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, hoverMarker, onHighlightFrame, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
@@ -238,6 +242,22 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       }
     }, []);
 
+    // The fill's live box each frame: the rules under it hide here, and a
+    // caller that draws along with the fill (DataTable's scroll-fade bands)
+    // hears it too. Read through a ref, so a new callback each render costs
+    // the highlight nothing.
+    const frameRef = useRef(onHighlightFrame);
+    useEffect(() => {
+      frameRef.current = onHighlightFrame;
+    });
+    const onHighlightBox = useCallback(
+      (box: { y: number; height: number; opacity: number }) => {
+        hideCoveredRules(box);
+        frameRef.current?.(box);
+      },
+      [hideCoveredRules]
+    );
+
     const headCell =
       !hideHeadHighlight && headHover.isMeasured && headHover.activeIndex !== null
         ? headHover.itemRects[headHover.activeIndex]
@@ -323,7 +343,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             hover={hover}
             className={shape.bg}
             transition={repeating || snap.on ? false : undefined}
-            onFrame={hideCoveredRules}
+            onFrame={onHighlightBox}
           >
             {hoverMarker && hover.activeIndex !== null ? hoverMarker(hover.activeIndex) : null}
           </FluidHoverHighlight>
