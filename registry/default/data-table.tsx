@@ -1458,13 +1458,16 @@ function DataTable<TData>({
   // its place, height and opacity (in the hover color; over a selected
   // row the two bands add up, as the two fills do).
   const hoverFadeRef = useRef<HTMLDivElement>(null);
+  // And the highlight's own copy over the frozen columns (see its portal).
+  const pinHoverRef = useRef<HTMLDivElement>(null);
   const fadeBase = useRef(0);
   const placeHoverFade = useCallback((box: { y: number; height: number; opacity: number }) => {
-    const band = hoverFadeRef.current;
-    if (!band) return;
-    band.style.transform = `translateY(${fadeBase.current + box.y}px)`;
-    band.style.height = `${box.height}px`;
-    band.style.opacity = String(box.opacity);
+    for (const band of [hoverFadeRef.current, pinHoverRef.current]) {
+      if (!band) continue;
+      band.style.transform = `translateY(${fadeBase.current + box.y}px)`;
+      band.style.height = `${box.height}px`;
+      band.style.opacity = String(box.opacity);
+    }
   }, []);
   const placeFadeBands = useCallback(() => {
     const host = fadeHostRef.current;
@@ -1479,6 +1482,13 @@ function DataTable<TData>({
       const frame = host.parentElement;
       if (frame && viewport)
         frame.style.setProperty("--ff-fade", getComputedStyle(viewport).getPropertyValue("--scroll-fade-size").trim() || "48px");
+      // How far in from the box's edges the frozen cells start (the row
+      // fill overhangs the table by that much on each side).
+      const box = wrap.getBoundingClientRect();
+      const lefts = wrap.querySelector<HTMLElement>("thead th.ff-pin-l")?.getBoundingClientRect();
+      const rights = Array.from(wrap.querySelectorAll<HTMLElement>("thead th.ff-pin-r")).pop()?.getBoundingClientRect();
+      wrap.style.setProperty("--ff-inset-l", `${lefts ? Math.max(0, lefts.left - box.left) : 0}px`);
+      wrap.style.setProperty("--ff-inset-r", `${rights ? Math.max(0, box.right - rights.right) : 0}px`);
     }
     const picked = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-state=selected]"));
     const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
@@ -2581,6 +2591,34 @@ function DataTable<TData>({
           </div>,
           wrapEl
         )}
+      {wrapEl &&
+        createPortal(
+          // The row highlight over the frozen columns. Frozen cells are
+          // opaque once content passes under them, so they hide the
+          // gliding fill behind the table; a fill of their own could only
+          // fade in place, row by row, while the rest of the row glided.
+          // This one sits over them (a 4% tint, above the rows at z-10 and
+          // under a raised editor at z-30), takes the highlight's place,
+          // height and opacity each frame, and shows only while its side
+          // is frozen over content (the pin's own 2px scroll range).
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-[11] overflow-hidden">
+            <div ref={pinHoverRef} className="absolute inset-x-0 top-0 opacity-0">
+              <div
+                className={cn(
+                  "ff-pinhover-l absolute inset-y-0 left-(--ff-inset-l,0px) w-[calc(var(--pin-l,0px)-var(--ff-inset-l,0px))] bg-hover",
+                  PIN_RADIUS.left[shape.variant]
+                )}
+              />
+              <div
+                className={cn(
+                  "ff-pinhover-r absolute inset-y-0 right-(--ff-inset-r,0px) w-[calc(var(--pin-r,0px)-var(--ff-inset-r,0px))] bg-hover",
+                  PIN_RADIUS.right[shape.variant]
+                )}
+              />
+            </div>
+          </div>,
+          wrapEl
+        )}
       {reorderShown && (
         <Dialog
           open={sortAsk}
@@ -3367,13 +3405,16 @@ function pinProps(pin: PinInfo | undefined) {
 const PIN_CSS = `
 @keyframes ff-fade-on { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
-[data-ff-table] { --ff-fade: 48px; }
-.ff-fade-l, .ff-fade-r { opacity: 0; }
+[data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; }
+.ff-fade-l, .ff-fade-r, .ff-pinhover-l, .ff-pinhover-r { opacity: 0; }
+[data-ff-table][data-x-start] .ff-pinhover-l, [data-ff-table][data-x-end] .ff-pinhover-r { opacity: 1; }
 @supports (timeline-scope: --ff-table-x) {
   [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x; }
   [data-ff-table] [data-slot=scroll-area-viewport] { scroll-timeline: --ff-table-x inline; }
   .ff-fade-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0 var(--ff-fade, 48px); }
   .ff-fade-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - var(--ff-fade, 48px)) 100%; }
+  .ff-pinhover-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0px 2px; }
+  .ff-pinhover-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - 2px) 100%; }
 }
 @keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
 @keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
@@ -3415,7 +3456,8 @@ function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
   );
 }
 
-/** A pinned body cell's layers: the selection, and the hover over it. */
+/** A pinned body cell's layers: the selection. (The hover is one fill over
+ *  all the frozen cells, gliding with the row highlight: see DataTable.) */
 function PinFills({
   pin,
   selected,
@@ -3449,13 +3491,6 @@ function PinFills({
           )}
         />
       )}
-      <span
-        className={cn(
-          "absolute inset-0 bg-hover opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100",
-          reach,
-          pin.outer && PIN_RADIUS[left ? "left" : "right"][shapeVariant]
-        )}
-      />
     </PinLayers>
   );
 }
@@ -3790,11 +3825,9 @@ const DataTableRowCells = memo(
               // twice, as a line between rows.
               pins[cell.column.id] &&
                 !LEADING_COLUMNS.includes(cell.column.id) &&
-                (!pins[cell.column.id].outer
-                  ? selected
-                    ? "[--pin-strip:var(--active)]"
-                    : "group-[.is-active]/row:[--pin-strip:var(--hover)]"
-                  : selected && !runEnd && "[--pin-strip:var(--active)]"),
+                selected &&
+                (!pins[cell.column.id].outer || !runEnd) &&
+                "[--pin-strip:var(--active)]",
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
