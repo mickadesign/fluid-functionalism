@@ -4640,27 +4640,30 @@ function DataTableFilterChips<TData>({
         // they share with the table when there are no boxes.
         className={cn("flex flex-wrap items-center gap-1", boxes && "pl-7", className)}
       >
-        {active.map((f) => {
-          const entry = filterable.find(({ column }) => column.id === f.id);
-          if (!entry) return null;
-          // The chip asked for opens its editor; the count remounts it if it
-          // was already there.
-          const asked = request?.id === f.id;
-          return (
-            <FilterChip
-              key={asked ? `${f.id}:${request.n}` : f.id}
-              label={columnLabel(entry.column)}
-              filter={entry.filter}
-              value={f.value as Exclude<DataTableFilterValue, string>}
-              autoOpen={asked}
-              compact={compact}
-              size={size}
-              onChange={(value) => set(entry.column, value)}
-              onRemove={() => set(entry.column, undefined)}
-            />
-          );
-        })}
-        <DataTableFilters table={table} size={size} add />
+        {/* One bubble for the row: it glides from chip to chip. */}
+        <TooltipGroup>
+          {active.map((f) => {
+            const entry = filterable.find(({ column }) => column.id === f.id);
+            if (!entry) return null;
+            // The chip asked for opens its editor; the count remounts it if it
+            // was already there.
+            const asked = request?.id === f.id;
+            return (
+              <FilterChip
+                key={asked ? `${f.id}:${request.n}` : f.id}
+                label={columnLabel(entry.column)}
+                filter={entry.filter}
+                value={f.value as Exclude<DataTableFilterValue, string>}
+                autoOpen={asked}
+                compact={compact}
+                size={size}
+                onChange={(value) => set(entry.column, value)}
+                onRemove={() => set(entry.column, undefined)}
+              />
+            );
+          })}
+          <DataTableFilters table={table} size={size} add />
+        </TooltipGroup>
         {children}
       </div>
     </RowReveal>
@@ -5684,16 +5687,8 @@ function DataTableSelectionBar<TData>({
               </Button>
             )}
             <Tooltip
-              content={
-                <span className="flex items-center gap-2">
-                  Clear selection
-                  {/* A key cap in the tooltip's inverted colors, as the
-                      Sidebar's tooltips draw theirs. */}
-                  <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background">
-                    Esc
-                  </kbd>
-                </span>
-              }
+              content="Clear selection"
+              shortcut="Esc"
             >
               <Button
                 variant="ghost"

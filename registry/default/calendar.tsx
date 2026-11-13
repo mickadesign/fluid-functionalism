@@ -64,7 +64,7 @@ import {
 } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
 
 // ---------------------------------------------------------------------------
 // Calendar
@@ -912,11 +912,14 @@ function NavGroup({ buttons }: { buttons: ("previous" | "next")[] }) {
       }}
     >
       <FluidHoverHighlight hover={hover} className={cn("z-0", shape.button)} />
-      {buttons.map((b, i) => (
-        <NavSlot key={b} index={i} registerItem={hover.registerItem}>
-          <NavButton direction={b} />
-        </NavSlot>
-      ))}
+      {/* One bubble for the pair: it glides between the arrows. */}
+      <TooltipGroup>
+        {buttons.map((b, i) => (
+          <NavSlot key={b} index={i} registerItem={hover.registerItem}>
+            <NavButton direction={b} />
+          </NavSlot>
+        ))}
+      </TooltipGroup>
     </div>
   );
 }

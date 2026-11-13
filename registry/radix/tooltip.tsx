@@ -20,6 +20,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
@@ -101,6 +102,11 @@ type TooltipSide = "top" | "right" | "bottom" | "left";
 
 interface TooltipProps {
   content: ReactNode;
+  /** A keystroke shown after the label as a key cap, e.g. "Esc". The bubble
+   *  keeps the height of a tooltip without one. A combo ("⇧⌘O") draws one
+   *  cap per key; a key with a space in its name goes in an array
+   *  (["Page Up"]). Empty means no cap. */
+  shortcut?: string | readonly string[];
   children: React.ReactElement;
   side?: TooltipSide;
   sideOffset?: number;
@@ -145,6 +151,25 @@ function getSlideOffset(side: TooltipSide) {
 const bubbleText =
   "text-background text-[length:var(--fs-caption,12px)] leading-[var(--lh-caption,16px)] px-2 py-1 [text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both]:py-2";
 
+/** A keystroke in the bubble's inverted colors, one cap per key. Negative
+ *  margins keep the caps out of the row's height, so they never make a
+ *  bubble taller. */
+function TooltipShortcut({
+  children,
+  className,
+}: {
+  children: string | readonly string[];
+  className?: string;
+}) {
+  return (
+    <KeyCaps
+      keys={children}
+      tone="inverted"
+      className={cn("-my-[5px]", className)}
+    />
+  );
+}
+
 // ---------------------------------------------------------------------------
 // TooltipGroup
 // ---------------------------------------------------------------------------
@@ -159,22 +184,38 @@ interface GroupEntry {
   content: () => ReactNode;
   isOpen: () => boolean;
   release: () => void;
+  leave: () => void;
 }
 
 interface GroupStore {
   get: () => GroupEntry | null;
   set: (entry: GroupEntry | null) => void;
+  /** The side the group's bubbles sit on, once one has been placed. */
+  side: () => TooltipSide | null;
+  setSide: (side: TooltipSide | null) => void;
 }
 
 function createGroupStore(): GroupStore {
   let shown: GroupEntry | null = null;
+  let side: TooltipSide | null = null;
   return {
     get: () => shown,
     set: (entry) => {
       shown = entry;
     },
+    side: () => side,
+    setSide: (next) => {
+      side = next;
+    },
   };
 }
+
+// Where the primitive put a bubble, which is not always the side it was
+// asked for: one that doesn't fit flips to the opposite side.
+const placedSide = (el: HTMLElement) =>
+  (el.closest<HTMLElement>("[data-side]")?.dataset.side as
+    | TooltipSide
+    | undefined) ?? null;
 
 const TooltipGroupStoreContext = createContext<GroupStore | null>(null);
 
@@ -273,6 +314,11 @@ function GroupBubble({
         mv.opacity.set(0);
         latest.current.onExited();
       },
+      // The next bubble opened on another side: fade out now, no hold.
+      leave: () => {
+        settle();
+        exit();
+      },
     });
 
     // The tooltip's own entrance: fade in, 4px toward the trigger.
@@ -338,7 +384,11 @@ function GroupBubble({
       if (!shown) {
         enter();
         store.set(me);
-        return;
+        // Placed a microtask after the commit: the group's side from here on.
+        const frame = requestAnimationFrame(() => {
+          store.setSide(placedSide(box));
+        });
+        return () => cancelAnimationFrame(frame);
       }
       if (shown === me) {
         // Reopened during its own hold: it never left.
@@ -351,10 +401,18 @@ function GroupBubble({
       mv.opacity.set(0);
       const frame = requestAnimationFrame(() => {
         const from = store.get();
+        const placed = placedSide(box);
         store.set(me);
-        if (from && from !== me && !from.isOpen() && from.shape.isConnected) {
+        store.setSide(placed);
+        if (!from || from === me || from.isOpen() || !from.shape.isConnected) {
+          enter();
+        } else if (placedSide(from.shape) === placed) {
           glide(from);
         } else {
+          // This one flipped to the other side of its trigger. A glide from
+          // there would cross the button, so the two swap with a fade, and
+          // the group stays on this side.
+          from.leave();
           enter();
         }
       });
@@ -434,21 +492,36 @@ function GroupBubble({
   );
 }
 
-// Radix renders a tooltip's children a second time, in the visually hidden
-// copy aria-describedby points at. That copy holds no bubble to animate.
-const inDescriptionCopy = (el: HTMLElement) =>
-  el.closest('[role="tooltip"]') !== null;
+// Radix before 1.2.13 renders a tooltip's children a second time, in the
+// visually hidden copy aria-describedby points at. That copy holds no bubble
+// to animate. From 1.2.13 the role sits on the content itself, which carries
+// data-side in every version; the hidden copy never does.
+const inDescriptionCopy = (el: HTMLElement) => {
+  const described = el.closest('[role="tooltip"]');
+  return described !== null && !described.hasAttribute("data-side");
+};
 
 /** One fluid tooltip for a row of triggers: the first opens after the delay,
  *  then the bubble glides from trigger to trigger, changing width and label,
  *  instead of closing and reopening. Wrap the row; the Tooltips inside are
- *  written as usual. */
+ *  written as usual. The bubble keeps one side for the whole group: a glide
+ *  from above a trigger to below the next would cross the buttons. */
 function TooltipGroup({
   children,
   delayDuration = DEFAULT_DELAY,
   skipDelayDuration = 300,
 }: TooltipGroupProps) {
   const [store] = useState(createGroupStore);
+  // A side taken because a bubble had no room holds until the room changes.
+  useEffect(() => {
+    const reset = () => store.setSide(null);
+    window.addEventListener("scroll", reset, { capture: true, passive: true });
+    window.addEventListener("resize", reset);
+    return () => {
+      window.removeEventListener("scroll", reset, { capture: true });
+      window.removeEventListener("resize", reset);
+    };
+  }, [store]);
   return (
     <TooltipGroupStoreContext.Provider value={store}>
       {/* A hoverable bubble keeps the triggers in the pointer's path from
@@ -469,9 +542,10 @@ function TooltipGroup({
 // ---------------------------------------------------------------------------
 
 function Tooltip({
-  content,
+  content: label,
+  shortcut,
   children,
-  side = "top",
+  side: sideProp = "top",
   sideOffset = 8,
   delayDuration,
   className,
@@ -487,6 +561,20 @@ function Tooltip({
   const portalContainer = useContext(TooltipPortalContainerContext);
   const hasAmbientProvider = useContext(TooltipGroupContext);
   const groupStore = useContext(TooltipGroupStoreContext);
+  // A flex row escapes the bubble's text-box trim, so the label takes it
+  // again: with a key cap or without, the bubble is the same height.
+  const content =
+    shortcut == null || shortcut.length === 0 ? (
+      label
+    ) : (
+      <span className="flex items-center gap-2">
+        <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
+        <TooltipShortcut>{shortcut}</TooltipShortcut>
+      </span>
+    );
+  // In a group every bubble sits on the side the group is on: the one a
+  // neighbor was placed on, flipped or not, over this tooltip's own.
+  const side = groupStore?.side() ?? sideProp;
 
   // Set during the render that opens it, so the portal mounts in the same
   // commit as `open` rather than one after.
@@ -613,7 +701,13 @@ function Tooltip({
   );
 }
 
-export { Tooltip, TooltipGroup, TooltipPortalContainer, TooltipProvider };
+export {
+  Tooltip,
+  TooltipGroup,
+  TooltipPortalContainer,
+  TooltipProvider,
+  TooltipShortcut,
+};
 export type {
   TooltipGroupProps,
   TooltipProps,

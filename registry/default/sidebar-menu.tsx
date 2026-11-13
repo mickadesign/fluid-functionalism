@@ -36,6 +36,7 @@ import {
 } from "@/hooks/use-fluid-hover";
 import type { IconComponent } from "@/lib/icon-context";
 import { resolveSlotTemplate, SlotElement, useTriggerOpen } from "@/components/ui/sidebar-core";
+import { TooltipGroup } from "@/components/ui/tooltip";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 // SSR-safe layout effect (client components still server-render in Next).
@@ -1262,7 +1263,8 @@ const SidebarMenuActions = forwardRef<HTMLDivElement, SidebarMenuActionsProps>(
         {...props}
       >
         <MenuActionsClusterContext.Provider value={true}>
-          {children}
+          {/* One bubble for the cluster: it glides between the actions. */}
+          <TooltipGroup>{children}</TooltipGroup>
         </MenuActionsClusterContext.Provider>
       </div>
     );

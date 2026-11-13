@@ -23,6 +23,7 @@ import {
 } from "react";
 import { animate, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
 import { usePopupShape } from "@/lib/shape-context";
@@ -1212,30 +1213,17 @@ export interface CommandMenuShortcutProps extends HTMLAttributes<HTMLElement> {
 const CommandMenuShortcut = forwardRef<HTMLElement, CommandMenuShortcutProps>(
   ({ keys, className, ...props }, ref) => {
     const mac = useIsMac();
-    const compact = useSize().variant === "compact";
     const caps = (typeof keys === "string" ? [keys] : keys).flatMap((k) =>
       formatShortcut(k, mac)
     );
     return (
-      <kbd
+      <KeyCaps
         ref={ref}
+        keys={caps}
         data-slot="command-menu-shortcut"
-        className={cn("ml-auto inline-flex shrink-0 items-center gap-0.5 align-middle font-sans", className)}
+        className={cn("ml-auto align-middle", className)}
         {...props}
-      >
-        {caps.map((cap, i) => (
-          <span
-            key={`${cap}-${i}`}
-            className={cn(
-              "flex items-center justify-center rounded-[5px] bg-hover text-muted-foreground",
-              compact ? "h-4 min-w-4 px-1" : "h-5 min-w-5 px-1",
-              typeClass("micro", compact ? "compact" : "default")
-            )}
-          >
-            {cap}
-          </span>
-        ))}
-      </kbd>
+      />
     );
   }
 );
