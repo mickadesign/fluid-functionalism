@@ -13,6 +13,7 @@ export const contextMenuTriggerProps: PropDef[] = [
   { name: "filter", type: "(target: Element) => boolean", description: "Which right-clicked elements open the menu; the rest keep the browser's. Text fields always keep the browser's (paste, spelling)." },
   { name: "render", type: "ReactElement", description: "The element that opens the menu, in place of the default <div>. Its own onContextMenu and onKeyDown run first." },
   { name: "disabled", type: "boolean", default: "false", description: "This area keeps the browser's menu." },
+  { name: "data-open", type: "attribute", description: "Set on the area while its menu is open, to keep it styled as hovered. The rest of the page ignores the pointer until the menu closes." },
   { name: "...props", type: "HTMLAttributes<HTMLElement>", description: "Passed to the area. Shift + F10 or the Menu key opens the menu under the focused element inside it." },
 ];
 

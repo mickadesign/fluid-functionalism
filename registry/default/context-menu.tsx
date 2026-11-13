@@ -5,6 +5,7 @@ import {
   createContext,
   isValidElement,
   useContext,
+  useId,
   useRef,
   useState,
   type ComponentProps,
@@ -31,7 +32,9 @@ interface Point {
 }
 
 interface ContextMenuContextValue {
-  open: (point: Point, from: HTMLElement | null) => void;
+  open: (point: Point, from: HTMLElement | null, triggerId: string) => void;
+  /** The trigger whose menu is open. */
+  openId: string | null;
 }
 
 const ContextMenuContext = createContext<ContextMenuContextValue | null>(null);
@@ -49,6 +52,7 @@ interface ContextMenuProps {
 function ContextMenu({ children, onOpenChange, disabled = false, size }: ContextMenuProps) {
   const [open, setOpen] = useState(false);
   const [point, setPoint] = useState<Point | null>(null);
+  const [triggerId, setTriggerId] = useState<string | null>(null);
   // Where focus was when the menu opened: it goes back there on close
   // rather than to the hidden trigger.
   const returnTo = useRef<HTMLElement | null>(null);
@@ -69,12 +73,14 @@ function ContextMenu({ children, onOpenChange, disabled = false, size }: Context
   };
 
   const ctx: ContextMenuContextValue = {
-    open: (at, from) => {
+    openId: open ? triggerId : null,
+    open: (at, from, id) => {
       if (disabled) return;
       const active = document.activeElement;
       returnTo.current =
         active instanceof HTMLElement && active !== document.body ? active : from;
       setPoint(at);
+      setTriggerId(id);
       change(true);
     },
   };
@@ -101,6 +107,8 @@ function ContextMenu({ children, onOpenChange, disabled = false, size }: Context
             />,
             document.body
           )}
+        {/* The Dropdown shields the page while it is open, so what was
+            right-clicked stays the one thing marked. */}
       </DropdownMenu>
     </ContextMenuContext.Provider>
   );
@@ -133,6 +141,10 @@ function ContextMenuTrigger({
 }: ContextMenuTriggerProps) {
   const ctx = useContext(ContextMenuContext);
   if (!ctx) throw new Error("ContextMenuTrigger must be inside <ContextMenu>");
+  const id = useId();
+  // Set while this area's menu is open, to style what was right-clicked
+  // (the pointer has left it for the menu, so :hover no longer holds).
+  const openProps: { "data-open"?: "" } = ctx.openId === id ? { "data-open": "" } : {};
 
   const opens = (target: EventTarget, defaultPrevented: boolean) =>
     !disabled &&
@@ -149,7 +161,7 @@ function ContextMenuTrigger({
     // A nested menu that already opened claims the click.
     if (!opens(e.target, e.defaultPrevented)) return;
     e.preventDefault();
-    ctx.open({ x: e.clientX, y: e.clientY }, e.currentTarget);
+    ctx.open({ x: e.clientX, y: e.clientY }, e.currentTarget, id);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
@@ -159,12 +171,13 @@ function ContextMenuTrigger({
     if (!menuKey || !opens(e.target, e.defaultPrevented)) return;
     e.preventDefault();
     const rect = (e.target as Element).getBoundingClientRect();
-    ctx.open({ x: rect.left + 8, y: rect.bottom }, e.currentTarget);
+    ctx.open({ x: rect.left + 8, y: rect.bottom }, e.currentTarget, id);
   };
 
   if (isValidElement(render)) {
     return cloneElement(render, {
       ...props,
+      ...openProps,
       className: cn(own?.className, className),
       onContextMenu: handleContextMenu,
       onKeyDown: handleKeyDown,
@@ -177,6 +190,7 @@ function ContextMenuTrigger({
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
       {...props}
+      {...openProps}
     >
       {children}
     </div>

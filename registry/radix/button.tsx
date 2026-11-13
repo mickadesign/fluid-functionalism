@@ -223,7 +223,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       resolvedSize === "compact" || resolvedSize === "icon-compact";
     const iconSize = isCompact ? 14 : 16;
     const shape = useShape();
-    const bgClass = active
+    // The trigger of an open popup holds the pressed look: the pointer has
+    // left it for the popup, so :hover and :active can't.
+    const expanded = (props as { "aria-expanded"?: boolean | "true" | "false" })["aria-expanded"];
+    const held =
+      active ||
+      (!!(props as { "aria-haspopup"?: unknown })["aria-haspopup"] &&
+        (expanded === true || expanded === "true"));
+    const bgClass = held
       ? activeBgVariants[variant ?? "primary"]
       : loading
         ? loadingBgVariants[variant ?? "primary"]

@@ -39,6 +39,7 @@ import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -344,11 +345,17 @@ function DropdownMenu({
   // Whether the last open came from hovering an openOnHover trigger: such a
   // menu leaves focus where it was instead of moving it to its first row.
   const openedByHoverRef = useRef(false);
+  // The same fact for rendering: a hover-opened menu gets no shield, since
+  // the pointer leaving it is what closes it.
+  const [openedByHover, setOpenedByHover] = useState(false);
   const handleOpenChange = (
     next: boolean,
     details: { preventUnmountOnClose: () => void; reason?: string }
   ) => {
-    if (next) openedByHoverRef.current = details.reason === "trigger-hover";
+    if (next) {
+      openedByHoverRef.current = details.reason === "trigger-hover";
+      setOpenedByHover(openedByHoverRef.current);
+    }
     exitOnOpenChange(next, details);
   };
 
@@ -372,6 +379,7 @@ function DropdownMenu({
       >
         {children}
       </Menu.Root>
+      <PopupShield open={open && !openedByHover} />
     </DropdownMenuContext.Provider>
   );
 

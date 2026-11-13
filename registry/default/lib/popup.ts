@@ -1,3 +1,6 @@
+import { createElement, useLayoutEffect, useState, type MouseEvent, type RefObject } from "react";
+import { createPortal } from "react-dom";
+
 // ---------------------------------------------------------------------------
 // Shared popup chrome for the dropdown, select, and combobox popups: the
 // enter/exit choreography classes and the ScrollArea sizing the list scrolls
@@ -55,4 +58,60 @@ export const POPUP_NAV_KEYS = [
  */
 export function isDisabledRow(el: HTMLElement): boolean {
   return el.getAttribute("aria-disabled") === "true" || el.hasAttribute("data-disabled");
+}
+
+/**
+ * A clear layer laid over the page, just under an open popup. While the
+ * popup is open the pointer lights nothing else, so its trigger stays the
+ * one thing marked, and a press on the layer is a press outside the popup,
+ * which closes it. Render it beside the popup's content, never inside it.
+ *
+ * `anchor` cuts a hole over an element that stays live while the popup is
+ * open, such as a combobox's text field.
+ */
+export function PopupShield({
+  open,
+  anchor,
+}: {
+  open: boolean;
+  anchor?: RefObject<Element | null>;
+}) {
+  const [shield, setShield] = useState<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = anchor?.current;
+    if (!shield || !el) return;
+    const cut = () => {
+      const r = el.getBoundingClientRect();
+      shield.style.setProperty(
+        "clip-path",
+        "polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, " +
+          `${r.left}px ${r.top}px, ${r.left}px ${r.bottom}px, ${r.right}px ${r.bottom}px, ` +
+          `${r.right}px ${r.top}px, ${r.left}px ${r.top}px)`
+      );
+    };
+    cut();
+    const observer = new ResizeObserver(cut);
+    observer.observe(el);
+    window.addEventListener("scroll", cut, true);
+    window.addEventListener("resize", cut);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", cut, true);
+      window.removeEventListener("resize", cut);
+    };
+  }, [shield, anchor]);
+
+  if (!open || typeof document === "undefined") return null;
+  return createPortal(
+    createElement("div", {
+      ref: setShield,
+      "aria-hidden": true,
+      "data-slot": "popup-shield",
+      // pointer-events-auto: a modal dialog turns the pointer off for
+      // everything outside itself, and this layer sits outside.
+      className: "pointer-events-auto fixed inset-0 z-[calc(var(--z-popover,60)-1)]",
+      onContextMenu: (e: MouseEvent) => e.preventDefault(),
+    }),
+    document.body
+  );
 }

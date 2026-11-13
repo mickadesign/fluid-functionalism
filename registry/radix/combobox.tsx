@@ -40,6 +40,7 @@ import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -473,6 +474,8 @@ function Combobox<
             <input type="hidden" name={name} value={values[0] ?? ""} required={required} />
           ))}
       </PopoverPrimitive.Root>
+      {/* The field stays live under the open list: typing, chips, clear. */}
+      <PopupShield open={open} anchor={anchorRef} />
     </ComboboxHighlightContext.Provider>
     </ComboboxContext.Provider>
   );

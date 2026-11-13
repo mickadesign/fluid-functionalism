@@ -30,7 +30,7 @@ import { surfaceClasses } from "@/lib/surface-classes";
 import { useIcons } from "@/lib/icon-context";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { Elevated } from "@/lib/elevated";
-import { popupMotionClass } from "@/lib/popup";
+import { PopupShield, popupMotionClass } from "@/lib/popup";
 import { Slider } from "@/registry/radix/slider";
 import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
@@ -2506,6 +2506,9 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
     // A size prop pins the whole compound (trigger + portalled panel — React
     // context crosses portals) to one step of the ladder.
     const root = (
+      <>
+      {/* A trigger field with a remove button stays live under the panel. */}
+      <PopupShield open={open} anchor={triggerShowRemove ? fieldRef : undefined} />
       <Popover.Root
         open={rootOpen}
         onOpenChange={handleRootOpenChange}
@@ -2559,7 +2562,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
           ) : (
             <Popover.Trigger
               className={cn(
-                "flex items-center border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
+                "flex items-center border border-border bg-transparent hover:bg-hover data-[popup-open]:bg-active transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] cursor-pointer",
                 sizeClasses.gap,
                 sizeClasses.control,
                 compact ? "px-1.5" : "px-2",
@@ -2631,6 +2634,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
           </Popover.Portal>
         </div>
       </Popover.Root>
+      </>
     );
 
     return size ? <SizeProvider size={size}>{root}</SizeProvider> : root;

@@ -29,6 +29,7 @@ import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -326,7 +327,14 @@ function DropdownMenu({
   size,
 }: DropdownMenuProps) {
   const [open, handleOpenChange] = useControllableOpen(openProp, defaultOpen, onOpenChange);
-  const hover = useHoverControl(open, handleOpenChange);
+  // A hover-opened menu gets no shield: the pointer leaving it is what
+  // closes it. The hover timer opens through the first setter, everything
+  // else (a click, the keyboard) through the primitive's.
+  const [openedByHover, setOpenedByHover] = useState(false);
+  const hover = useHoverControl(open, (next) => {
+    if (next) setOpenedByHover(true);
+    handleOpenChange(next);
+  });
 
   const ctx = useMemo(
     () => ({ open, disabled, sub: false, hover }),
@@ -343,11 +351,15 @@ function DropdownMenu({
           scrolling and the popup tracks its anchor instead of detaching. */}
       <DropdownMenuPrimitive.Root
         open={open}
-        onOpenChange={handleOpenChange}
+        onOpenChange={(next) => {
+          if (next) setOpenedByHover(false);
+          handleOpenChange(next);
+        }}
         modal={false}
       >
         {children}
       </DropdownMenuPrimitive.Root>
+      <PopupShield open={open && !openedByHover} />
     </DropdownMenuContext.Provider>
   );
 

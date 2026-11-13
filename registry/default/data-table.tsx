@@ -1966,8 +1966,6 @@ function DataTable<TData>({
           // its ⋯ menu's items at the pointer. The selection stays as it is.
           // The row stays named through the menu's exit, so its items don't
           // empty while it fades; only the row's lit state drops at once.
-          <>
-          <MenuShield open={menuOpen} />
           <ContextMenu onOpenChange={setMenuOpen}>
             <ContextMenuTrigger
               className="contents"
@@ -1988,7 +1986,6 @@ function DataTable<TData>({
             </ContextMenuTrigger>
             <ContextMenuContent className="w-56">{menuRow && rowMenu(menuRow)}</ContextMenuContent>
           </ContextMenu>
-          </>
         ) : (
           tableEl
         )}
@@ -3729,15 +3726,10 @@ function SelectEditor({
   "use no memo";
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : { label: o.value, ...o }));
   const checked = items.findIndex((o) => o.value === value);
-  const [open, setOpen] = useState(false);
   return (
     <div ref={boxRef} onFocus={onFocus} onBlur={onBlur} className={CELL_CONTROL}>
-      <MenuShield open={open} />
       <DropdownMenu
-        onOpenChange={(next) => {
-          setOpen(next);
-          hold.onOpenChange(next);
-        }}
+        onOpenChange={hold.onOpenChange}
       >
         <DropdownTrigger
           render={
@@ -4445,7 +4437,6 @@ function DataTableFilters<TData>({
     // The tooltip's trigger is a wrapper, so the button stays the menu's.
     <Tooltip content={label} forceOpen={open ? false : undefined}>
       <span data-slot="data-table-filters" className={cn("inline-flex", className)}>
-        <MenuShield open={open} />
         <DropdownMenu
           size={size}
           open={open}
@@ -4864,7 +4855,6 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
     );
     control = (
       <>
-      <MenuShield open={open} />
       <DropdownMenu size={size} open={open} onOpenChange={setOpen}>
         <DropdownTrigger
           render={
@@ -5010,11 +5000,9 @@ function OpMenu({
   size?: SizeVariant;
   onPick: (op: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
     <>
-    <MenuShield open={open} />
-    <DropdownMenu size={size} onOpenChange={setOpen}>
+    <DropdownMenu size={size}>
       <DropdownTrigger
         render={
           <button
@@ -5227,7 +5215,6 @@ function DataTableViewOptions<TData>({
     // wrapper from it.
     <Tooltip content={label} forceOpen={open ? false : undefined}>
       <span className={cn("inline-flex", className)}>
-        <MenuShield open={open} />
         <DropdownMenu size={size} open={open} onOpenChange={setOpen}>
           <DropdownTrigger
             render={
@@ -5311,11 +5298,9 @@ function DataTableRowActions({ children, label = "Row actions" }: DataTableRowAc
   // button moves 4px out to stay under them (18px at the default step, with
   // rowActionsColumn's padding).
   const compact = useSize().variant === "compact";
-  const [open, setOpen] = useState(false);
   return (
     <span className={cn("flex h-[1lh] items-center justify-end", compact && "-mr-1")}>
-      <MenuShield open={open} />
-      <DropdownMenu onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownTrigger
           render={
             // Its ring drawn inside: flush with the cell's edge in compact,

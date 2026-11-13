@@ -30,6 +30,7 @@ import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -215,6 +216,7 @@ function Select({
       >
         {children}
       </SelectPrimitive.Root>
+      <PopupShield open={open} />
     </SelectContext.Provider>
   );
 
@@ -240,9 +242,10 @@ const triggerVariants = cva(
     variants: {
       variant: {
         bordered:
-          "border border-border bg-transparent text-foreground hover:bg-hover",
+          // Held while its list is open: the pointer has left for the list.
+          "border border-border bg-transparent text-foreground hover:bg-hover data-[popup-open]:bg-active",
         borderless:
-          "border border-transparent bg-transparent text-foreground hover:bg-hover",
+          "border border-transparent bg-transparent text-foreground hover:bg-hover data-[popup-open]:bg-active",
       },
     },
     defaultVariants: {
