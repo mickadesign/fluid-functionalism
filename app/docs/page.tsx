@@ -31,14 +31,14 @@ export default function DocsIndex() {
         <div className="flex items-center gap-1 shrink-0">
           {/* Prev and next share one gliding tooltip. */}
           <TooltipGroup>
-            <Tooltip content={<span>Showcase &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
+            <Tooltip content="Showcase" shortcut="←">
               <Link href="/" aria-label="Previous: Showcase" className="outline-none" tabIndex={-1}>
                 <Button variant="ghost" size={iconSize}>
                   <ArrowRight className="rotate-180" />
                 </Button>
               </Link>
             </Tooltip>
-            <Tooltip content={<span>Changelog &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+            <Tooltip content="Changelog" shortcut="→">
               <Link href="/changelog" aria-label="Next: Changelog" className="outline-none" tabIndex={-1}>
                 <Button variant="ghost" size={iconSize}>
                   <ArrowRight />

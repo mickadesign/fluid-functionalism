@@ -1585,6 +1585,8 @@ import { Field, FieldLabel } from "@/components/ui/field";
       "How the glide is built, to keep when changing it: every tooltip keeps its own primitive popup, so placement, collision, Escape and `aria-describedby` stay per trigger. Only the dark shape and the label are handed over: the opening bubble waits one frame for the primitive to place it, reads the outgoing shape's client rect (mid-flight included, so a fast sweep stays continuous), hides the outgoing one at once, and springs its own shape from that rect by animating `left/right/top/bottom` insets to 0. Insets, not a scale (corners would bend) and never width `auto` (the popup keeps its natural size for the positioner); rect deltas are divided by the ancestor scale. Under reduced motion the shape snaps to the new trigger, the entrance loses its slide, and the fades stay.",
       "`followCursor=\"x\" | \"y\"` tracks the pointer along one axis for tall or wide triggers (the Sidebar rail) where a centered tooltip sits far from the pointer; the other axis stays anchored by `side`. The offset is a framer motion value, so per-move updates skip React re-renders; a force-opened follow tooltip rests centered until a real pointer takes over.",
       "The bubble is an inverted surface (`bg-foreground text-background`), 12px at regular weight (`fontVariationSettings`); `text-box: trim-both cap alphabetic` recenters the label, with the padding bump applied only where text-box is supported so overall height stays ~24px on untrimmed browsers.",
+      "Every one-line tooltip is the same height, with a keystroke or without. Pass the keystroke as `shortcut` (`<Tooltip content=\"Collapse\" shortcut=\"Esc\">`, a combo like `\"⇧⌘O\"` draws one cap per key), never a hand-built row in `content`: a flex row escapes the bubble's text-box trim and comes out about 7px taller, which also makes it flip sides sooner than its neighbors. The prop trims the label again and draws the caps 8px after it with `-my-[5px]`, so they add no height. A tooltip with its own layout (the Sidebar rail's two lines) uses `TooltipShortcut` for the caps and trims each label itself.",
+      "A keystroke looks the same everywhere, in a tooltip, a menu row, a button, a field or a sentence: `KeyCap` from `@/lib/key-cap`, an 18px filled cap with no outline (2px corners, `bg-foreground/8` under muted text, mono 11px, 4px side padding; glyph keys like ⌘ and ← in the sans face, which draws them at letter size). On a dark surface (tooltip, toast, primary button) it is `tone=\"inverted\"`: `bg-background/15` under `text-background`. `KeyCaps` splits a combo into one cap per key, 2px apart. Nothing else draws a `<kbd>` (tests/key-cap fails one), and a shortcut is never bare text.",
       "`contentClassName` exists because Radix copies the content's z-index onto its popper wrapper: pass a z utility there to lift the whole tooltip above other fixed layers (default: the `--z-tooltip` step, 70); on Base UI the same prop lands on the Positioner instead. `className` styles the bubble itself.",
       "`forceOpen` pins the tooltip open (or closed) over the hover/focus behavior \u2014 `onOpenChange` still reports the internal state before forceOpen is applied.",
     ],
@@ -1598,6 +1600,11 @@ import { Field, FieldLabel } from "@/components/ui/field";
   <button>Right</button>
 </Tooltip>
 
+// A keystroke as a key cap, at the same height as any other tooltip.
+<Tooltip content="Collapse" shortcut="Esc">
+  <button aria-label="Collapse">…</button>
+</Tooltip>
+
 // A row of icon buttons: one bubble glides from trigger to trigger.
 import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
 
@@ -1608,6 +1615,7 @@ import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
     props: [
       "content: ReactNode. The content displayed inside the tooltip.",
       "children: ReactElement. The trigger element. Must accept a ref.",
+      "shortcut: string | string[]. A keystroke shown after the label, one key cap per key. The tooltip keeps the height of one without it.",
       "side: \"top\" | \"right\" | \"bottom\" | \"left\" (default \"top\"). Preferred side of the trigger to render the tooltip.",
       "sideOffset: number (default 8). Distance in pixels between the tooltip and the trigger.",
       "delayDuration: number (default 200). Milliseconds to wait before showing the tooltip on hover.",

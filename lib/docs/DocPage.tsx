@@ -94,7 +94,7 @@ export function DocPage({
               {/* Prev and next share one gliding tooltip. */}
               <TooltipGroup>
                 {prev ? (
-                  <Tooltip content={<span>{prev.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
+                  <Tooltip content={prev.name} shortcut="←">
                     <Button asChild variant="ghost" size={iconSize}>
                       <Link href={prev.href} aria-label={`Previous: ${prev.name}`}>
                         <ArrowRight className="rotate-180" />
@@ -107,7 +107,7 @@ export function DocPage({
                   </Button>
                 )}
                 {next ? (
-                  <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+                  <Tooltip content={next.name} shortcut="→">
                     <Button asChild variant="ghost" size={iconSize}>
                       <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
                         <ArrowRight />

@@ -679,6 +679,26 @@
       ]
     },
     {
+      "name": "key-cap",
+      "type": "registry:lib",
+      "title": "Key Cap",
+      "description": "The one look for a keystroke: an 18px filled cap with no outline, in a default and an inverted tone. KeyCaps splits a combo into one cap per key.",
+      "files": [
+        {
+          "path": "registry/default/lib/key-cap.tsx",
+          "type": "registry:lib"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "lib"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/type-scale.json"
+      ]
+    },
+    {
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
@@ -1050,7 +1070,8 @@
         "https://www.fluidfunctionalism.com/r/button.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -1832,7 +1853,8 @@
         "https://www.fluidfunctionalism.com/r/button.json",
         "https://www.fluidfunctionalism.com/r/tooltip.json",
         "https://www.fluidfunctionalism.com/r/tokens.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -2400,7 +2422,8 @@
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/icon-context.json",
         "https://www.fluidfunctionalism.com/r/sidebar.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -2443,7 +2466,8 @@
         "https://www.fluidfunctionalism.com/r/sidebar-user-footer.json",
         "https://www.fluidfunctionalism.com/r/sidebar-search-field.json",
         "https://www.fluidfunctionalism.com/r/sidebar-inset-topbar.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -3288,7 +3312,8 @@
         "https://www.fluidfunctionalism.com/r/dialog.json",
         "https://www.fluidfunctionalism.com/r/tabs.json",
         "https://www.fluidfunctionalism.com/r/tokens.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -3441,7 +3466,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/type-scale.json",
-        "https://www.fluidfunctionalism.com/r/tokens.json"
+        "https://www.fluidfunctionalism.com/r/tokens.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -3471,7 +3497,8 @@
         "https://www.fluidfunctionalism.com/r/font-weight.json",
         "https://www.fluidfunctionalism.com/r/shape-context.json",
         "https://www.fluidfunctionalism.com/r/type-scale.json",
-        "https://www.fluidfunctionalism.com/r/tokens.json"
+        "https://www.fluidfunctionalism.com/r/tokens.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
