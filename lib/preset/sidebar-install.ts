@@ -225,7 +225,11 @@ function appSidebarFile(p: SidebarPreset): string {
   l.push(`  ${parts.join(",\n  ")},`);
   l.push(`  type SidebarProps,`);
   l.push(`} from "@/components/ui/sidebar";`);
-  if (needsTooltip) l.push(`import { Tooltip } from "@/components/ui/tooltip";`);
+  const needsTooltipGroup =
+    (headerHorizontal && p.headerActions > 0) || (p.footerStack === "horizontal" && p.footerActions > 1);
+  if (needsTooltip)
+    l.push(`import { Tooltip${needsTooltipGroup ? ", TooltipGroup" : ""} } from "@/components/ui/tooltip";`);
+  if (!headerHorizontal && p.headerActions > 0) l.push(`import { KeyCaps } from "@/lib/key-cap";`);
   if (needsDropdown) {
     l.push(
       `import { DropdownMenu, DropdownTrigger, DropdownContent } from "@/components/ui/dropdown";`
@@ -350,25 +354,29 @@ function appSidebarFile(p: SidebarPreset): string {
       l.push(...brand(`            `));
       l.push(`          </div>`);
     }
-    l.push(`          <Tooltip content="Search ${SEARCH_SHORTCUT}" side="bottom">`);
-    l.push(`            <button type="button" aria-label="Search"`);
-    l.push(`              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
-    l.push(`                outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
-    l.push(`                focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
-    l.push(`              <SearchIcon size={16} strokeWidth={1.5} />`);
-    l.push(`            </button>`);
-    l.push(`          </Tooltip>`);
+    const headerGrouped = p.headerActions > 0;
+    const hi = headerGrouped ? `            ` : `          `;
+    if (headerGrouped) l.push(`          <TooltipGroup>`);
+    l.push(`${hi}<Tooltip content="Search" shortcut="${SEARCH_SHORTCUT}" side="bottom">`);
+    l.push(`${hi}  <button type="button" aria-label="Search"`);
+    l.push(`${hi}    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
+    l.push(`${hi}      outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
+    l.push(`${hi}      focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
+    l.push(`${hi}    <SearchIcon size={16} strokeWidth={1.5} />`);
+    l.push(`${hi}  </button>`);
+    l.push(`${hi}</Tooltip>`);
     for (const a of HEADER_ACTION_SET.slice(0, p.headerActions)) {
       const Icon = a.icon === "plus" ? "PlusIcon" : "UsersIcon";
-      l.push(`          <Tooltip content="${a.label} ${a.shortcut}" side="bottom">`);
-      l.push(`            <button type="button" aria-label="${a.label}"`);
-      l.push(`              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
-      l.push(`                outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
-      l.push(`                focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
-      l.push(`              <${Icon} size={16} strokeWidth={1.5} />`);
-      l.push(`            </button>`);
-      l.push(`          </Tooltip>`);
+      l.push(`${hi}<Tooltip content="${a.label}" shortcut="${a.shortcut}" side="bottom">`);
+      l.push(`${hi}  <button type="button" aria-label="${a.label}"`);
+      l.push(`${hi}    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
+      l.push(`${hi}      outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
+      l.push(`${hi}      focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
+      l.push(`${hi}    <${Icon} size={16} strokeWidth={1.5} />`);
+      l.push(`${hi}  </button>`);
+      l.push(`${hi}</Tooltip>`);
     }
+    if (headerGrouped) l.push(`          </TooltipGroup>`);
     l.push(`        </div>`);
   } else {
     l.push(...brand(`        `));
@@ -385,7 +393,7 @@ function appSidebarFile(p: SidebarPreset): string {
         l.push(`                {/* shortcut chip, revealed on row hover */}`);
         l.push(`                <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80`);
         l.push(`                  group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">`);
-        l.push(`                  <kbd className="font-sans text-[11px] text-muted-foreground">${a.shortcut}</kbd>`);
+        l.push(`                  <KeyCaps keys="${a.shortcut}" />`);
         l.push(`                </span>`);
         l.push(`              </SidebarMenuButton>`);
         l.push(`            </SidebarMenuItem>`);
@@ -542,17 +550,21 @@ function appSidebarFile(p: SidebarPreset): string {
       if (p.footerPrimary === "dropdown" || p.footerActions > 0) {
         l.push(`        <div className="flex items-center gap-1 pr-1.5">`);
         if (p.footerPrimary === "dropdown") l.push(...userRow(true, `          `));
+        const footerGrouped = p.footerActions > 1;
+        const fi = footerGrouped ? `            ` : `          `;
+        if (footerGrouped) l.push(`          <TooltipGroup>`);
         for (const a of FOOTER_ACTION_SET.slice(0, p.footerActions)) {
           const Icon = a.icon === "settings" ? "FooterSettingsIcon" : "MoonIcon";
-          l.push(`          <Tooltip content="${a.label}" side="top">`);
-          l.push(`            <button type="button" aria-label="${a.label}"`);
-          l.push(`              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
-          l.push(`                outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
-          l.push(`                focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
-          l.push(`              <${Icon} size={16} strokeWidth={1.5} />`);
-          l.push(`            </button>`);
-          l.push(`          </Tooltip>`);
+          l.push(`${fi}<Tooltip content="${a.label}" side="top">`);
+          l.push(`${fi}  <button type="button" aria-label="${a.label}"`);
+          l.push(`${fi}    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
+          l.push(`${fi}      outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
+          l.push(`${fi}      focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
+          l.push(`${fi}    <${Icon} size={16} strokeWidth={1.5} />`);
+          l.push(`${fi}  </button>`);
+          l.push(`${fi}</Tooltip>`);
         }
+        if (footerGrouped) l.push(`          </TooltipGroup>`);
         l.push(`        </div>`);
       }
     } else {
@@ -726,7 +738,7 @@ export function generateSidebarPresetFiles(p: SidebarPreset): PresetFile[] {
 /** Registry dependencies the generated files need, as plain names — the
  *  route flavors them with the same helpers postbuild uses. */
 export function presetRegistryDeps(p: SidebarPreset): string[] {
-  const deps = new Set<string>(["utils", "icon-context", "size-context", "sidebar", "tooltip", "sidebar-inset-topbar"]);
+  const deps = new Set<string>(["utils", "icon-context", "size-context", "sidebar", "tooltip", "key-cap", "sidebar-inset-topbar"]);
   if (p.headerPrimary !== "none") deps.add("sidebar-workspace-header");
   if (p.footerPrimary === "dropdown") deps.add("sidebar-user-footer");
   if (p.headerStack === "vertical") deps.add("sidebar-search-field");

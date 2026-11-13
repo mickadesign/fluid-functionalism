@@ -214,7 +214,11 @@ export function ComponentPreview({
           )}
           {/* Expand last, at the far right, after the replay. */}
           {expand && (
-            <Tooltip content={expand.expanded ? "Collapse (Esc)" : "Expand"} side="top">
+            <Tooltip
+              content={expand.expanded ? "Collapse" : "Expand"}
+              shortcut={expand.expanded ? "Esc" : undefined}
+              side="top"
+            >
               <button
                 type="button"
                 onClick={expand.toggle}

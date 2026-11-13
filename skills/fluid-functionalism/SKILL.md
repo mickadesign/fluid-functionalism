@@ -315,6 +315,12 @@ system:
   reopen over the menu. A tooltip whose trigger is a component must reach a
   DOM node: the component forwards its ref and spreads the props, or the
   tooltip wraps a span around it.
+- **A keystroke is always the same cap.** Draw every shortcut with `KeyCap`
+  or `KeyCaps` from `@/lib/key-cap` (installed with `tooltip`): an 18px
+  filled cap with no outline, `tone="inverted"` on dark surfaces. Never a
+  hand-built `<kbd>`, a bordered cap, or bare shortcut text. In a tooltip,
+  pass `shortcut="Esc"` to `Tooltip`: it stays the height of a tooltip
+  without one.
 - **Rows of controls share edges.** In a toolbar, table and footer, left
   content starts on one line (DataTable: 8px in) and the right-side icon
   buttons share one center line. Status badges inside table rows are

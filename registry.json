@@ -682,6 +682,26 @@
       ]
     },
     {
+      "name": "key-cap",
+      "type": "registry:lib",
+      "title": "Key Cap",
+      "description": "The one look for a keystroke: an 18px filled cap with no outline, in a default and an inverted tone. KeyCaps splits a combo into one cap per key.",
+      "files": [
+        {
+          "path": "registry/default/lib/key-cap.tsx",
+          "type": "registry:lib"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "lib"
+      ],
+      "registryDependencies": [
+        "utils",
+        "type-scale"
+      ]
+    },
+    {
       "name": "shape-context",
       "type": "registry:lib",
       "title": "Shape Context",
@@ -1053,7 +1073,8 @@
         "button",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1835,7 +1856,8 @@
         "button",
         "tooltip",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -2403,7 +2425,8 @@
         "size-context",
         "icon-context",
         "sidebar",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -2446,7 +2469,8 @@
         "sidebar-user-footer",
         "sidebar-search-field",
         "sidebar-inset-topbar",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -3291,7 +3315,8 @@
         "dialog",
         "tabs",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -3444,7 +3469,8 @@
         "font-weight",
         "shape-context",
         "type-scale",
-        "tokens"
+        "tokens",
+        "key-cap"
       ],
       "files": [
         {
@@ -3474,7 +3500,8 @@
         "font-weight",
         "shape-context",
         "type-scale",
-        "tokens"
+        "tokens",
+        "key-cap"
       ],
       "files": [
         {

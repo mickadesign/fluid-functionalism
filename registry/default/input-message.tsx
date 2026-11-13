@@ -18,6 +18,7 @@ import {
 } from "react";
 import { AnimatePresence, motion, Reorder, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { KeyCap } from "@/lib/key-cap";
 import { fontWeights } from "@/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { omit } from "@/lib/omit";
@@ -29,7 +30,7 @@ import { SurfaceProvider } from "@/lib/surface-context";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { FileThumbnail } from "@/registry/default/file-thumbnail";
 import { Button } from "@/registry/radix/button";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 const useIsoLayoutEffect =
@@ -1124,17 +1125,20 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                 className="overflow-hidden"
               >
                 <div ref={filesRegionRef} className="flex flex-wrap gap-2 pb-1">
-                  <AnimatePresence initial={false} mode="popLayout">
-                    {filesArr.map((file, i) => (
-                      <FilePreviewTile
-                        key={`${file.name}-${file.size}-${file.lastModified}`}
-                        file={file}
-                        onRemove={() => removeFile(i)}
-                        size={filePreviewSize}
-                        isTouch={isTouch}
-                      />
-                    ))}
-                  </AnimatePresence>
+                  {/* One "Remove" bubble glides from tile to tile. */}
+                  <TooltipGroup>
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {filesArr.map((file, i) => (
+                        <FilePreviewTile
+                          key={`${file.name}-${file.size}-${file.lastModified}`}
+                          file={file}
+                          onRemove={() => removeFile(i)}
+                          size={filePreviewSize}
+                          isTouch={isTouch}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </TooltipGroup>
                 </div>
               </motion.div>
             )}
@@ -1265,14 +1269,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                     and the Tab chip never gets cut. */}
                 <span className="flex max-w-full items-center gap-1.5">
                   <span className="min-w-0 truncate">{placeholderSuggestion}</span>
-                  <kbd
-                    className={cn(
-                      "inline-flex shrink-0 -translate-y-px items-center rounded-[5px] border border-border bg-background px-1 font-sans text-muted-foreground",
-                      compactStep ? "h-4 text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)]" : "h-[18px] text-[length:var(--fs-micro,11px)] leading-[var(--lh-micro,14px)]"
-                    )}
-                  >
-                    Tab
-                  </kbd>
+                  <KeyCap className="-translate-y-px">Tab</KeyCap>
                 </span>
               </div>
             )}

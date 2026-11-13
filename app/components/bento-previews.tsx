@@ -160,6 +160,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { BentoTileContext } from "@/app/components/bento-card";
 import { usePreviewPlayback } from "@/lib/docs/preview-playback";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { useShape } from "@/lib/shape-context";
 import { Slider } from "@/registry/radix/slider";
 import { Switch } from "@/registry/radix/switch";
@@ -185,7 +186,7 @@ import {
   ThinkingStepSources,
   ThinkingStepSource,
 } from "@/components/flavored/thinking-steps";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import {
   AskUserQuestions,
   type AskUserQuestion,
@@ -717,8 +718,10 @@ function DataTablePreview() {
   return (
     <div className="flex w-full max-w-[640px] flex-col gap-3">
       <div className="flex items-center gap-2">
-        <DataTableSearch table={table} column="name" placeholder="Search components…" />
-        <DataTableViewOptions table={table} className="ml-auto" />
+        <TooltipGroup>
+          <DataTableSearch table={table} column="name" placeholder="Search components…" />
+          <DataTableViewOptions table={table} className="ml-auto" />
+        </TooltipGroup>
       </div>
       <DataTable
         table={table}
@@ -1031,9 +1034,10 @@ function SidebarPreview() {
                     aria-label="Search threads"
                     className="pl-8 pr-11"
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-sans text-site-caption text-muted-foreground opacity-0 transition-opacity duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100">
-                    ⌘K
-                  </kbd>
+                  <KeyCaps
+                    keys="⌘K"
+                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100"
+                  />
                 </div>
 
                 <SidebarMenu size="compact" aria-label="Create">
@@ -1041,7 +1045,7 @@ function SidebarPreview() {
                     <SidebarMenuButton icon={icons.plus}>
                       New thread
                       <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80 group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">
-                        <kbd className="font-sans text-site-caption text-muted-foreground">⌘N</kbd>
+                        <KeyCaps keys="⌘N" />
                       </span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

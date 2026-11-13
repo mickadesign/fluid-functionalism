@@ -17,6 +17,7 @@ import { Shuffle } from "lucide-react";
 import { animate } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
 import { cn } from "@/lib/utils";
+import { KeyCap } from "@/lib/key-cap";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { RailHairline, useRightRailNode } from "@/lib/right-rail";
 import { Tooltip } from "@/registry/radix/tooltip";
@@ -237,13 +238,13 @@ export function PlaygroundPanel({
             )}
           >
             {/* The settings' key chip; hidden on touch, where there is no X. */}
-            <kbd
+            <KeyCap
               ref={keyRef}
               aria-hidden
-              className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-mono text-site-micro leading-none text-muted-foreground rounded-[2px] pointer-coarse:hidden"
+              className="pointer-coarse:hidden"
             >
               X
-            </kbd>
+            </KeyCap>
             <Shuffle size={16} strokeWidth={1.5} />
           </button>
         </Tooltip>
