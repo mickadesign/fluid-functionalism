@@ -51,7 +51,7 @@ export const searchProps: PropDef[] = [
 ];
 
 export const undoableRowsProps: PropDef[] = [
-  { name: "useUndoableRows(initial, { getId, limit? })", type: "hook", description: "Rows you change through it, each change a step. `limit` keeps the last 100 by default." },
+  { name: "useUndoableRows(initial, { getId, limit? })", type: "hook", description: "Rows you change through it, each change a step. `limit` keeps the last 100 by default. `reset(rows)` swaps in new data and forgets the steps." },
   { name: "→ rows", type: "T[]", description: "Pass to useDataTable's `data`." },
   { name: "→ edit(id, change, label?)", type: "function", description: "Merges `change` into a row. One cell typed in a burst (within 1s) is one step, so ⌘Z takes back the word." },
   { name: "→ remove(ids, label?) / insert(items, index?, label?)", type: "function", description: "Deletes or adds rows as one step, labelled \"Deleted 3 rows\" by default." },

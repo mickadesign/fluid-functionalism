@@ -892,6 +892,9 @@ function DataTable<TData>({
     height: number;
     /** The row under the highlight when the layout was read. */
     lit: string | null;
+    /** A column let go of after a drag: where its ghost was, so it lands
+     *  from there and not from the slot it left. */
+    dropped?: { id: string; left: number };
   } | null>(null);
   const captureLayout = () => {
     const wrap = wrapRef.current;
@@ -1047,7 +1050,10 @@ function DataTable<TData>({
       .querySelectorAll<HTMLElement>("th[data-column-id], td[data-column-id]")
       .forEach((el) => {
         const id = el.dataset.columnId!;
-        const old = before.lefts.get(id);
+        // A dropped column's header lands from where it was let go; its
+        // cells never left their slot, so they travel from there.
+        const dropped = before.dropped?.id === id;
+        const old = dropped && el.tagName === "TH" ? before.dropped!.left : before.lefts.get(id);
         if (old === undefined) {
           animate(el, { opacity: [0, 1] }, spring.moderate).then(() => {
             el.style.opacity = "";
@@ -1057,7 +1063,12 @@ function DataTable<TData>({
         const th = wrap.querySelector<HTMLElement>(`thead th[data-column-id="${CSS.escape(id)}"]`);
         const dx = th ? old - th.offsetLeft : 0;
         if (!dx) return;
-        animate(el, { x: [dx, 0] }, spring.moderate).then(() => {
+        // A drop settles on the fast tier: the header was carried most of
+        // the way, and the neighbors step aside one column's width. The
+        // dropped column's cells cross the distance it was dragged, which
+        // the moderate tier is for.
+        const quick = before.dropped && !(dropped && el.tagName === "TD");
+        animate(el, { x: [dx, 0] }, quick ? spring.fast : spring.moderate).then(() => {
           el.style.transform = "";
         });
       });
@@ -1141,10 +1152,12 @@ function DataTable<TData>({
     let moved = false;
     let target: ReturnType<typeof dropTarget> | null = null;
     let lastX = startX;
+    let lastDx = 0;
     let frame = 0;
     const viewport = wrapRef.current?.querySelector<HTMLElement>(
       "[data-slot=scroll-area-viewport]"
     );
+    const scrolledAtStart = viewport?.scrollLeft ?? 0;
     // Places the ghost for a pointer x and finds where it would land.
     const place = (clientX: number) => {
       // The ghost stays within the table's visible box: it stops at the left
@@ -1152,6 +1165,7 @@ function DataTable<TData>({
       const box = wrapRef.current?.getBoundingClientRect();
       let dx = clientX - startX;
       if (box) dx = Math.min(Math.max(dx, box.left - rect.left), box.right - rect.right);
+      lastDx = dx;
       if (ghostRef.current) ghostRef.current.style.transform = `translateX(${dx}px)`;
       const next = dropTarget(startX + dx, id);
       if (!target || next.refId !== target.refId || next.place !== target.place) setDrag(next);
@@ -1208,6 +1222,13 @@ function DataTable<TData>({
       setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
       if (target) {
         captureLayout();
+        // The column lands from where its ghost was let go (in the table's
+        // own coordinates: the table may have scrolled under the drag),
+        // not from the slot it left on the far side of the table.
+        const read = snapshot.current;
+        const from = read?.lefts.get(id);
+        if (read && from !== undefined)
+          read.dropped = { id, left: from + lastDx + ((viewport?.scrollLeft ?? 0) - scrolledAtStart) };
         moveColumn(table, target.id, target.refId, target.place);
       }
     };
@@ -5655,10 +5676,16 @@ function useUndoableRows<T>(initial: T[] | (() => T[]), { getId, limit = 100 }: 
     []
   );
 
+  // Other rows altogether (another source, a reload): nothing of the old
+  // ones is left to go back to.
+  const reset = useCallback((rows: T[]) => setState({ rows, past: [], future: [], dropped: 0 }), []);
+
   return {
     rows: state.rows,
     /** Any change, as one step: `change` gets the rows and returns new ones. */
     apply,
+    /** Replaces the rows and forgets the steps: for new data, not a change. */
+    reset,
     edit,
     remove,
     insert,

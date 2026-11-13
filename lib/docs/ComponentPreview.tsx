@@ -75,6 +75,10 @@ interface ComponentPreviewProps {
   hideHeader?: boolean;
   /** Centered label rendered under the frame — the gallery rows' captions. */
   caption?: string;
+  /** Tabs of the preview's own, in place of Preview / Code: what the demo
+   *  shows (a playground's sample data). There is no Code tab then: the
+   *  playground hands its code out its own way (Get code). */
+  tabs?: { labels: readonly string[]; selected: number; onSelect: (index: number) => void };
   children: ReactNode;
 }
 
@@ -91,6 +95,7 @@ export function ComponentPreview({
   inspectRulers = true,
   hideHeader = false,
   caption,
+  tabs,
   children,
 }: ComponentPreviewProps) {
   const [tab, setTab] = useState(0);
@@ -128,7 +133,8 @@ export function ComponentPreview({
 
   // Shiki (its grammars and regex engine) loads only for a reader who goes
   // for the code, never with the page: most visitors only use the Preview.
-  const codeNeeded = !!code && (codeWanted || tab === 1);
+  // Never with tabs of the preview's own: there is no code view to open.
+  const codeNeeded = !!code && !tabs && (codeWanted || tab === 1);
   useEffect(() => {
     if (!codeNeeded || !code) return;
     let cancelled = false;
@@ -193,10 +199,18 @@ export function ComponentPreview({
             {title}
           </span>
         )}
-        <Tabs selectedIndex={tab} onSelect={setTab}>
-          <TabsItem index={0} label="Preview" />
-          <TabsItem index={1} label="Code" />
-        </Tabs>
+        {tabs ? (
+          <Tabs selectedIndex={tabs.selected} onSelect={tabs.onSelect}>
+            {tabs.labels.map((label, index) => (
+              <TabsItem key={label} index={index} label={label} />
+            ))}
+          </Tabs>
+        ) : (
+          <Tabs selectedIndex={tab} onSelect={setTab}>
+            <TabsItem index={0} label="Preview" />
+            <TabsItem index={1} label="Code" />
+          </Tabs>
+        )}
         <div className="ml-auto flex items-center gap-1">
           {/* The header's icons (the playground pen, replay, expand) share
               one tooltip bubble that glides between them. */}

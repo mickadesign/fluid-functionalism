@@ -30,6 +30,9 @@ export interface PlaygroundParts {
    *  /demo stage's scaling (e.g. Banner's "Show banner" once dismissed).
    *  Hosts render it through PlaygroundOverlay. */
   overlay?: ReactNode;
+  /** Tabs for the preview's header, in place of Preview / Code: what the
+   *  playground shows (DataTable's sample tables). */
+  tabs?: { labels: readonly string[]; selected: number; onSelect: (index: number) => void };
   /** For an expandable doc playground: hears the preview expand and settle
    *  back, so the module can use the extra room. */
   onExpandedChange?: (expanded: boolean) => void;

@@ -31,7 +31,7 @@ export interface DataTablePlayState {
   selection: boolean;
   rowActions: boolean;
   pagination: boolean;
-  pageSize: "10" | "5" | "20";
+  pageSize: "10" | "5" | "20" | "100";
   resize: boolean;
   reorder: boolean;
   /** "wrap" wraps every text column; anything else is off: names and
@@ -159,7 +159,8 @@ export const DATA_TABLE_PRESET_FIELDS_D: readonly PresetField[] = [
   { key: "selection", values: [true, false], bits: 1 },
   { key: "rowActions", values: [true, false], bits: 1 },
   { key: "pagination", values: [true, false], bits: 1 },
-  { key: "pageSize", values: ["10", "5", "20"], bits: 2 },
+  // "100" took the fourth slot the 2 bits always had: older codes read as before.
+  { key: "pageSize", values: ["10", "5", "20", "100"], bits: 2 },
   { key: "resize", values: [true, false], bits: 1 },
   { key: "reorder", values: [true, false], bits: 1 },
   { key: "lines", values: ["2", "wrap"], bits: 1 },
