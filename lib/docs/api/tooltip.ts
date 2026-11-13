@@ -56,7 +56,7 @@ export const tooltipGroupProps: PropDef[] = [
   {
     name: "children",
     type: "ReactNode",
-    description: "The row of triggers, each in its own Tooltip. They share one bubble.",
+    description: "The row of triggers, each in its own Tooltip, all on the same side. They share one bubble.",
   },
   {
     name: "delayDuration",
