@@ -468,8 +468,8 @@ function tipHelperLines(): string[] {
     `const tipWithShortcut = (label: string, shortcut: string) => (`,
     `  <span className="flex items-center gap-2">`,
     `    <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>`,
-    `    <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border`,
-    `      border-background/30 px-1 font-sans text-[10px] text-background">{shortcut}</kbd>`,
+    `    <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px]`,
+    `      bg-background/15 px-1 font-sans text-[10px] text-background">{shortcut}</kbd>`,
     `  </span>`,
     `);`,
   ];
@@ -1085,7 +1085,7 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
           re-applies it and the chip pulls its box back with -my-1 — together
           they keep this the same height as a tooltip without a shortcut. */}
       <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
-      <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[10px] text-background">
+      <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[10px] text-background">
         {shortcut}
       </kbd>
     </span>

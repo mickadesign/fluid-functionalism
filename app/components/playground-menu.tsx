@@ -162,10 +162,47 @@ export function PlaygroundMenu({
     };
   }, [open]);
 
+  // "/" opens the preview header's menu with the cursor in its search (the
+  // panel focuses it as it mounts). Only the header's pen: a page of demo
+  // cards has a pen each. Guarded like the settings' single keys; and
+  // where a panel's search is already on show (the rail), the key is its.
+  useEffect(() => {
+    if (!large || open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.defaultPrevented) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // From inside the preview too: these are its own controls. A field
+      // in it keeps the character (below).
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+      if (target?.closest('[role="listbox"], [role="menu"], [role="dialog"], [role="combobox"], [role="option"]')) return;
+      const shown = [...document.querySelectorAll<HTMLElement>("[data-play-search]")].some((el) => el.offsetParent);
+      if (shown) return;
+      e.preventDefault();
+      setOpen(true);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [large, open]);
+
   return (
     <>
-      <div ref={buttonRef}>
-        <Tooltip content="Playground" side="top">
+      <div ref={buttonRef} className="relative">
+        <Tooltip
+          content={
+            large ? (
+              <span className="flex items-center gap-2">
+                Change playground variant
+                <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background pointer-coarse:hidden">
+                  /
+                </kbd>
+              </span>
+            ) : (
+              "Change playground variant"
+            )
+          }
+          side="top"
+        >
           <Button
             variant="ghost"
             size={large ? "icon" : "icon-compact"}
@@ -179,6 +216,15 @@ export function PlaygroundMenu({
             <PencilIcon />
           </Button>
         </Tooltip>
+        {/* Always on: the pen is where the demo changes, and easy to miss
+            among the header's other icons. */}
+        <span
+          aria-hidden
+          className={
+            "pointer-events-none absolute size-1.5 rounded-full bg-[var(--fluid-accent,#6B97FF)] " +
+            (large ? "right-1.5 top-1.5" : "right-0.5 top-0.5")
+          }
+        />
       </div>
       {typeof document !== "undefined" &&
         createPortal(

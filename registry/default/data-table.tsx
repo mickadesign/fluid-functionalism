@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Children,
   Fragment,
   createContext,
   forwardRef,
@@ -14,6 +13,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  startTransition,
   type CSSProperties,
   type HTMLAttributes,
   type FocusEvent,
@@ -106,7 +106,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePicker, formatDateLabel } from "@/components/ui/date-picker";
 import {
   CommandMenu,
   CommandMenuDialog,
@@ -890,6 +890,8 @@ function DataTable<TData>({
     lefts: Map<string, number>;
     tops: Map<string, number>;
     height: number;
+    /** The row under the highlight when the layout was read. */
+    lit: string | null;
   } | null>(null);
   const captureLayout = () => {
     const wrap = wrapRef.current;
@@ -902,7 +904,8 @@ function DataTable<TData>({
     wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
       tops.set(tr.dataset.rowId!, tr.offsetTop);
     });
-    snapshot.current = { lefts, tops, height: wrap.offsetHeight };
+    const lit = wrap.querySelector<HTMLElement>("tbody tr.is-active[data-row-id]")?.dataset.rowId ?? null;
+    snapshot.current = { lefts, tops, height: wrap.offsetHeight, lit };
   };
   // Parts outside the table (the Columns menu) reach it through the table.
   // Undo keys from the page too: a row menu, the selection bar or a toast
@@ -1070,8 +1073,44 @@ function DataTable<TData>({
       }
       const dy = old - tr.offsetTop;
       if (!dy) return;
-      animate(tr, { y: [dy, 0] }, spring.moderate).then(() => {
+      const slide = animate(tr, { y: [dy, 0] }, spring.moderate);
+      slide.then(() => {
         tr.style.transform = "";
+      });
+      // The highlight travels with its row. Left to its own spring it set
+      // off a frame or two after the row and on a faster one, so the fill
+      // ran ahead of the content it was under. For the slide it is held on
+      // the row instead, frame by frame, with an offset (`translate`, apart
+      // from the transform its own animation writes), and what follows the
+      // highlight (the scroll fade's hover band, the frozen columns' fill)
+      // takes the same offset.
+      if (tr.dataset.rowId !== before.lit) return;
+      let frame = 0;
+      const riders = () => {
+        const fills = [...wrap.querySelectorAll<HTMLElement>("[data-slot=fluid-hover-highlight]")];
+        // The rows' fill is the table's width; a header's is one cell's.
+        const fill = fills.sort((a, b) => b.offsetWidth - a.offsetWidth)[0];
+        return { fill, rest: [hoverFadeRef.current, pinHoverRef.current] };
+      };
+      const hold = () => {
+        const { fill, rest } = riders();
+        if (fill) {
+          // Under a scaled ancestor a rect is in screen pixels and the
+          // offset in layout ones.
+          const scale = tr.offsetHeight ? tr.getBoundingClientRect().height / tr.offsetHeight || 1 : 1;
+          const now = parseFloat(fill.style.translate.split(" ")[1] ?? "") || 0;
+          const home = fill.getBoundingClientRect().top / scale - now;
+          const offset = `0px ${tr.getBoundingClientRect().top / scale - home}px`;
+          fill.style.translate = offset;
+          rest.forEach((el) => el && (el.style.translate = offset));
+        }
+        frame = requestAnimationFrame(hold);
+      };
+      hold();
+      slide.then(() => {
+        cancelAnimationFrame(frame);
+        const { fill, rest } = riders();
+        [fill, ...rest].forEach((el) => el && (el.style.translate = ""));
       });
     });
     const height = wrap.offsetHeight;
@@ -1416,8 +1455,8 @@ function DataTable<TData>({
       { l: 0, r: 0 }
     );
   // Where the table sits in its sideways scroll, on the root, for the
-  // pinned cells: opaque (with copies of the row fills) and edged with a
-  // hairline only while content passes under them.
+  // pinned cells: edged with a hairline only while content passes under
+  // them (where scroll-driven animations are missing).
   useEffect(() => {
     const root = wrapRef.current;
     const viewport = root?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
@@ -1460,6 +1499,11 @@ function DataTable<TData>({
   const hoverFadeRef = useRef<HTMLDivElement>(null);
   // And the highlight's own copy over the frozen columns (see its portal).
   const pinHoverRef = useRef<HTMLDivElement>(null);
+  // The selection over the frozen columns: Table draws a live copy of its
+  // fills into each of these, one per frozen side (see the overlay below).
+  const [mirrorLeft, setMirrorLeft] = useState<HTMLDivElement | null>(null);
+  const [mirrorRight, setMirrorRight] = useState<HTMLDivElement | null>(null);
+  const selectionMirrors = useMemo(() => [mirrorLeft, mirrorRight], [mirrorLeft, mirrorRight]);
   const fadeBase = useRef(0);
   const placeHoverFade = useCallback((box: { y: number; height: number; opacity: number }) => {
     for (const band of [hoverFadeRef.current, pinHoverRef.current]) {
@@ -1489,6 +1533,24 @@ function DataTable<TData>({
       const rights = Array.from(wrap.querySelectorAll<HTMLElement>("thead th.ff-pin-r")).pop()?.getBoundingClientRect();
       wrap.style.setProperty("--ff-inset-l", `${lefts ? Math.max(0, lefts.left - box.left) : 0}px`);
       wrap.style.setProperty("--ff-inset-r", `${rights ? Math.max(0, box.right - rights.right) : 0}px`);
+      // The selection's copies over the frozen columns. Each sits where
+      // the table's own box does when its side is at rest: the left one as
+      // if the table weren't scrolled, the right one as if it were scrolled
+      // to its end, so a fill's rounded end stays at the box's edge. Cut
+      // off at the header's bottom, which the rows scroll under.
+      const head = wrap.querySelector("thead")?.getBoundingClientRect();
+      wrap.style.setProperty("--ff-head", `${head ? Math.max(0, head.bottom - box.top) : 0}px`);
+      if (container && viewport) {
+        const at = container.getBoundingClientRect();
+        const rest = at.left + viewport.scrollLeft;
+        const end = rest - Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+        wrap.querySelectorAll<HTMLElement>("[data-pin-mirror]").forEach((mirror) => {
+          const clip = mirror.parentElement!.getBoundingClientRect();
+          const x = (mirror.dataset.pinMirror === "left" ? rest : end) - clip.left;
+          mirror.style.transform = `translate(${x}px, ${at.top - clip.top}px)`;
+          mirror.style.width = `${(container as HTMLElement).offsetWidth}px`;
+        });
+      }
     }
     const picked = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-state=selected]"));
     const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
@@ -2204,6 +2266,7 @@ function DataTable<TData>({
       // The handles' and the boxes' columns, leading: one grip and one
       // empty box ride the highlight.
       onHighlightFrame={placeHoverFade}
+      selectionMirrors={selectionMirrors}
       hoverMarker={
         !loading && (reorderShown || boxAt >= 0)
           ? (i) => {
@@ -2465,8 +2528,6 @@ function DataTable<TData>({
               row={row}
               i={i}
               selected={row.getIsSelected()}
-              runStart={row.getIsSelected() && !rows[i - 1]?.getIsSelected()}
-              runEnd={row.getIsSelected() && !rows[i + 1]?.getIsSelected()}
               pins={pins}
               menuOpen={menuOpen && menuRowId === row.id}
               someSelected={row.getIsSomeSelected()}
@@ -2602,6 +2663,17 @@ function DataTable<TData>({
           // height and opacity each frame, and shows only while its side
           // is frozen over content (the pin's own 2px scroll range).
           <div aria-hidden className="pointer-events-none absolute inset-0 z-[11] overflow-hidden">
+            {/* The selection, under the hover as it is behind the table:
+                Table's own fills again, so a row selected between two
+                others merges into them here as it does in the columns
+                that scroll, and a run's rounded ends are the same ones.
+                (A fill per frozen cell could only switch on.) */}
+            <div className="ff-pinhover-l absolute bottom-0 left-(--ff-inset-l,0px) top-(--ff-head,0px) w-[calc(var(--pin-l,0px)-var(--ff-inset-l,0px))] overflow-hidden">
+              <div ref={setMirrorLeft} data-pin-mirror="left" className="absolute left-0 top-0 h-0" />
+            </div>
+            <div className="ff-pinhover-r absolute bottom-0 right-(--ff-inset-r,0px) top-(--ff-head,0px) w-[calc(var(--pin-r,0px)-var(--ff-inset-r,0px))] overflow-hidden">
+              <div ref={setMirrorRight} data-pin-mirror="right" className="absolute left-0 top-0 h-0" />
+            </div>
             <div ref={pinHoverRef} className="absolute inset-x-0 top-0 opacity-0">
               <div
                 className={cn(
@@ -3049,10 +3121,10 @@ function selectRange<TData>(table: TanStackTable<TData>, fromId: string, toId: s
  *  negative margins and puts it back as its own, so the row keeps its size.
  *  `group/field` lets the box darken its border while the area is hovered,
  *  as it does inside a Field. */
-// A key cap in a tooltip's inverted colors, as the Sidebar's tooltips draw
-// theirs.
+// A key cap in a tooltip's inverted colors: the same filled chip as
+// CommandMenuShortcut's, as the Sidebar's tooltips draw theirs.
 const TOOLTIP_CAP =
-  "-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background";
+  "-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background";
 
 interface SelectHitProps extends HTMLAttributes<HTMLSpanElement> {
   disabled?: boolean;
@@ -3174,6 +3246,8 @@ function RowHandle() {
   const cap = TOOLTIP_CAP;
   return (
     <Tooltip
+      // Over the row above: the pointer passes through to it.
+      hoverable={false}
       side="top"
       content={
         <span className="flex items-center gap-2">
@@ -3277,7 +3351,7 @@ function selectColumn<TData>(): ColumnDef<TData> {
         // The tooltip names what the next click does: a dash selects the
         // rest, a check clears it. Its trigger is the hit area, not the
         // box, so it works whichever primitive the box is built on.
-        <Tooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top">
+        <Tooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top" hoverable={false}>
           <SelectHit className={SELECT_REVEAL} onToggle={() => selectAllRows(table, !all)}>
             <Checkbox
               aria-label="Select all rows"
@@ -3292,6 +3366,8 @@ function selectColumn<TData>(): ColumnDef<TData> {
     cell: ({ row, table }) => (
       // Names the next click, with the key that does the same from the row.
       <Tooltip
+        // Over the row above: the pointer passes through to it.
+        hoverable={false}
         side="top"
         content={
           <span className="flex items-center gap-2">
@@ -3339,11 +3415,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
 // ── Sub-rows ─────────────────────────────────────────────
 
 // A row whose right-click menu is open holds the hover fill in its own
-// cells, rounded at its ends like the highlight.
+// cells, rounded at its ends like the highlight. A frozen cell's own page
+// color covers its fill, so its backdrop draws the fill instead, over the
+// page color.
+const MENU_PIN = "[&_[data-pin-bg]]:bg-[image:linear-gradient(var(--hover),var(--hover))]";
 const MENU_ROW = {
-  rounded: "[&>td]:bg-hover [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg",
-  pill: "[&>td]:bg-hover [&>td:first-child]:rounded-l-[20px] [&>td:last-child]:rounded-r-[20px]",
-  sharp: "[&>td]:bg-hover [&>td:first-child]:rounded-l-[1px] [&>td:last-child]:rounded-r-[1px]",
+  rounded: `[&>td]:bg-hover [&>td:first-child]:rounded-l-lg [&>td:last-child]:rounded-r-lg ${MENU_PIN}`,
+  pill: `[&>td]:bg-hover [&>td:first-child]:rounded-l-[20px] [&>td:last-child]:rounded-r-[20px] ${MENU_PIN}`,
+  sharp: `[&>td]:bg-hover [&>td:first-child]:rounded-l-[1px] [&>td:last-child]:rounded-r-[1px] ${MENU_PIN}`,
 } as const;
 
 interface PinInfo {
@@ -3368,11 +3447,15 @@ const PIN_RADIUS = {
   br: { rounded: "rounded-br-lg", pill: "rounded-br-[20px]", sharp: "rounded-br-[1px]" },
 } as const;
 
-/** A pinned cell's classes and offset. It sticks always (a no-op until
- *  the table scrolls), and its layers (PinLayers) show only while content
- *  passes under it: `--ff-pin` turns 1 then. A scroll-driven animation sets
- *  it (PIN_CSS), in the same frame as the scroll; without one (Firefox),
- *  the root's data-x-start / data-x-end do, a frame late. */
+/** A pinned cell's classes and offset. It sticks always and is always
+ *  opaque (PinLayers), scrolled or not: the row's fills are drawn over the
+ *  frozen columns instead of showing through them. A cell that turned
+ *  opaque only once the table scrolled did so a frame or two after the
+ *  scroll itself, which runs on the compositor, and the fill doubled or
+ *  the text showed through in between. Only the edge's hairline follows
+ *  the scroll: `--ff-pin` turns 1 while content passes under (a
+ *  scroll-driven animation, PIN_CSS; in Firefox the root's data-x-start /
+ *  data-x-end). */
 function pinProps(pin: PinInfo | undefined) {
   if (!pin) return { className: undefined, style: undefined };
   const left = pin.side === "left";
@@ -3385,12 +3468,12 @@ function pinProps(pin: PinInfo | undefined) {
       "sticky z-[2] [--ff-pin:0]",
       // The cell's own bottom rule sits in its border, outside the layers
       // below (and out of reach where the cell clips), so the rules of the
-      // cells scrolling under showed through it. While pinned, a 1px strip
-      // of the cell's own background covers that border: the page color,
-      // under the row's fill where there is one (--pin-strip), and the
-      // cell's own rule still draws over it.
-      "bg-no-repeat [background-origin:border-box] [background-position:bottom] [background-size:100%_calc(var(--ff-pin)*1px)]",
-      "[background-image:linear-gradient(var(--pin-strip,transparent),var(--pin-strip,transparent)),linear-gradient(var(--background),var(--background))]",
+      // cells scrolling under showed through it. A 1px strip
+      // of the page color covers that border, and the cell's own rule
+      // still draws over it. (A row's fill is drawn over the frozen
+      // columns as a whole, strip included.)
+      "bg-no-repeat [background-origin:border-box] [background-position:bottom] [background-size:100%_1px]",
+      "[background-image:linear-gradient(var(--background),var(--background))]",
       left ? "ff-pin-l group-data-x-start/pin:[--ff-pin:1]" : "ff-pin-r group-data-x-end/pin:[--ff-pin:1]"
     ),
     style: left ? { left: pin.offset } : { right: pin.offset },
@@ -3399,22 +3482,19 @@ function pinProps(pin: PinInfo | undefined) {
 
 // The scroll-driven half of pinning: a pinned cell's `--ff-pin` flips to 1
 // once the table has scrolled 1px past its side, read from the scroll box's
-// own timeline, so the cell turns opaque in the frame the content moves
-// (a scroll event lands a frame later, and the content shows through).
+// own timeline, and shows the hairline at the frozen edge. Nothing a cell
+// needs to hide what scrolls under it depends on this (see pinProps).
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
 @keyframes ff-fade-on { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
-[data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; }
-.ff-fade-l, .ff-fade-r, .ff-pinhover-l, .ff-pinhover-r { opacity: 0; }
-[data-ff-table][data-x-start] .ff-pinhover-l, [data-ff-table][data-x-end] .ff-pinhover-r { opacity: 1; }
+[data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
+.ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
   [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x; }
   [data-ff-table] [data-slot=scroll-area-viewport] { scroll-timeline: --ff-table-x inline; }
   .ff-fade-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0 var(--ff-fade, 48px); }
   .ff-fade-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - var(--ff-fade, 48px)) 100%; }
-  .ff-pinhover-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0px 2px; }
-  .ff-pinhover-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - 2px) 100%; }
 }
 @keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
 @keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
@@ -3423,14 +3503,13 @@ const PIN_CSS = `
   .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
 }`;
 
-/** A pinned cell's own surface while content passes under it: the page
- *  background, what the row's fills (drawn behind the table) would show
- *  through it, and the hairline at the pinned columns' edge. All of it
- *  fades with `--ff-pin`; none of it glides (the row's own fill does that
- *  under them, at rest). */
+/** A pinned cell's own surface: the page background, always there, and
+ *  the hairline at the pinned columns' edge, which fades with `--ff-pin`
+ *  (only while content passes under). The row's fills are drawn over the
+ *  frozen columns as a whole (see the overlay in DataTable). */
 function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
   return (
-    <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1] opacity-(--ff-pin)">
+    <span aria-hidden className="pointer-events-none absolute inset-0 -z-[1]">
       {/* 1px past its far side (and the table's clipped left edge): at a
           fractional position each cell's fill snaps to the pixel grid on
           its own, which left a hairline between two pinned cells where
@@ -3438,9 +3517,13 @@ function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
           cell, which paints later: reaching back over the previous one
           cut a 1px line of page color through its hover and selection. */}
       <span
+        data-pin-bg=""
         className={cn(
           "absolute inset-y-0 left-0 right-0 bg-background",
-          !(pin.side === "left" && pin.edge) && "-right-px",
+          // Not the table's last column either: nothing follows it, and a
+          // pixel past the table's end is a pixel of sideways scroll, which
+          // read as "content under the frozen column" on a table that fits.
+          !(pin.side === "left" && pin.edge) && !(pin.side === "right" && pin.outer) && "-right-px",
           pin.side === "left" && pin.outer && "-left-px"
         )}
       />
@@ -3450,48 +3533,9 @@ function PinLayers({ pin, children }: { pin: PinInfo; children?: ReactNode }) {
         // the text color, not the rows' (opaque, light) rule color: that
         // one vanished over a selected or hovered row's fill, where this
         // darkens whatever is under it.
-        <span className={cn("absolute inset-y-0 w-px bg-foreground/[0.08]", pin.side === "left" ? "right-0" : "left-0")} />
+        <span className={cn("absolute inset-y-0 w-px bg-foreground/[0.08] opacity-(--ff-pin)", pin.side === "left" ? "right-0" : "left-0")} />
       )}
     </span>
-  );
-}
-
-/** A pinned body cell's layers: the selection. (The hover is one fill over
- *  all the frozen cells, gliding with the row highlight: see DataTable.) */
-function PinFills({
-  pin,
-  selected,
-  runStart,
-  runEnd,
-  shapeVariant,
-  tall = false,
-}: {
-  pin: PinInfo;
-  /** The fills also cover the cell's bottom border (the selection
-   *  column, which doesn't clip): its rounded fills can't be a strip. */
-  tall?: boolean;
-  selected: boolean;
-  runStart: boolean;
-  runEnd: boolean;
-  shapeVariant: keyof typeof SKELETON_BAR_RADIUS;
-}) {
-  const left = pin.side === "left";
-  // A left cell with a pinned cell after it runs 1px under that one, whose
-  // opaque layer covers the overlap: no seam at a fractional position.
-  const reach = cn(left && !pin.edge && "-right-px", tall && "-bottom-px");
-  return (
-    <PinLayers pin={pin}>
-      {selected && (
-        <span
-          className={cn(
-            "absolute inset-0 bg-active",
-            reach,
-            pin.outer && runStart && PIN_RADIUS[left ? "tl" : "tr"][shapeVariant],
-            pin.outer && runEnd && PIN_RADIUS[left ? "bl" : "br"][shapeVariant]
-          )}
-        />
-      )}
-    </PinLayers>
   );
 }
 
@@ -3573,7 +3617,7 @@ function ExpandToggle({
   const Chevron = icons["chevron-right"];
   const action = expanded ? "Collapse" : "Expand";
   return (
-    <Tooltip content={`${action} ${count}`} side="top">
+    <Tooltip content={`${action} ${count}`} side="top" hoverable={false}>
     <button
       type="button"
       tabIndex={-1}
@@ -3619,8 +3663,6 @@ interface DataTableBodyRowProps<TData> {
   i: number;
   selected: boolean;
   /** Selected, and the first (or last) of its run: its pinned fills round. */
-  runStart: boolean;
-  runEnd: boolean;
   /** The pinned columns, by id. Stable until a pin or its width changes. */
   pins: Record<string, PinInfo>;
   /** Its right-click menu is open: it stays lit while the pointer is on
@@ -3686,9 +3728,9 @@ type DataTableRowCellsProps = Pick<
   DataTableBodyRowProps<unknown>,
   | "table"
   | "row"
+  // Not read in the cells: it re-renders them when the row's selection
+  // changes, which the box in the selection column draws from the row.
   | "selected"
-  | "runStart"
-  | "runEnd"
   | "pins"
   | "someSelected"
   | "expanded"
@@ -3718,9 +3760,6 @@ const DataTableRowCells = memo(
   function DataTableRowCells({
     table,
     row,
-    selected,
-    runStart,
-    runEnd,
     pins,
     expanded,
     grouped,
@@ -3823,11 +3862,6 @@ const DataTableRowCells = memo(
               // their fills reach over the border themselves (`tall`
               // below), and a tinted strip under a fill drew the tint
               // twice, as a line between rows.
-              pins[cell.column.id] &&
-                !LEADING_COLUMNS.includes(cell.column.id) &&
-                selected &&
-                (!pins[cell.column.id].outer || !runEnd) &&
-                "[--pin-strip:var(--active)]",
               alignTop && "align-top",
               // A narrowed column cuts its text short instead of
               // wrapping it onto a second line.
@@ -3856,14 +3890,10 @@ const DataTableRowCells = memo(
             style={pinProps(pins[cell.column.id]).style}
           >
             {pins[cell.column.id] && (
-              <PinFills
-                pin={pins[cell.column.id]}
-                selected={selected}
-                runStart={runStart}
-                runEnd={runEnd}
-                shapeVariant={shapeVariant}
-                tall={LEADING_COLUMNS.includes(cell.column.id)}
-              />
+              // The cell's own surface while frozen over content. The
+              // row's fills (hover, selection) are drawn over the frozen
+              // columns as a whole: see the overlay in DataTable.
+              <PinLayers pin={pins[cell.column.id]} />
             )}
             {cell.column.id === expanderId && <SubRowGuides row={row} expanded={expanded} grouped={grouped} alignTop={alignTop} />}
             {swapping && (
@@ -3914,8 +3944,6 @@ const DataTableRowCells = memo(
   (a, b) =>
     sameRecord(a.row, b.row) &&
     a.selected === b.selected &&
-    a.runStart === b.runStart &&
-    a.runEnd === b.runEnd &&
     a.pins === b.pins &&
     a.someSelected === b.someSelected &&
     a.expanded === b.expanded &&
@@ -3940,8 +3968,6 @@ const DataTableBodyRow = memo(
       row,
       i,
       selected,
-      runStart,
-      runEnd,
       pins,
       menuOpen,
       someSelected,
@@ -4038,8 +4064,6 @@ const DataTableBodyRow = memo(
         table={table}
         row={row}
         selected={selected}
-        runStart={runStart}
-        runEnd={runEnd}
         pins={pins}
         someSelected={someSelected}
         expanded={expanded}
@@ -4067,8 +4091,6 @@ const DataTableBodyRow = memo(
     a.row === b.row &&
     a.i === b.i &&
     a.selected === b.selected &&
-    a.runStart === b.runStart &&
-    a.runEnd === b.runEnd &&
     a.pins === b.pins &&
     a.menuOpen === b.menuOpen &&
     a.someSelected === b.someSelected &&
@@ -4134,6 +4156,8 @@ function useEditHold(ctx: EditContextValue, ref: RefObject<HTMLDivElement | null
     []
   );
   return {
+    /** Focus inside, or a popup open. */
+    busy: () => active.current || open.current,
     onFocus: enter,
     onBlur: check,
     onOpenChange: (next: boolean) => {
@@ -4188,6 +4212,11 @@ const CELL_CONTROL =
 const BARE_FIELD =
   "ring-transparent hover:ring-transparent hover:bg-transparent focus-within:ring-transparent focus-within:bg-transparent cursor-text";
 
+// A select's trigger: the row's full height, so a click anywhere in the
+// cell opens it.
+const SELECT_TRIGGER =
+  "flex h-[calc(1lh+2*var(--table-cell-py))] w-full min-w-0 cursor-pointer items-center text-left outline-none";
+
 const CELL_REACH = {
   // Combobox field: 10px in (8px compact).
   number: { default: "-mx-2.5", compact: "-mx-2" },
@@ -4201,14 +4230,18 @@ const CELL_REACH = {
  *  was written as it was typed), and nothing else hears the key (the
  *  selection, the page's own Escape). An editor whose popup is open (a
  *  list, a calendar, a menu) closes it first, and keys that come up from
- *  the popup itself are left to it. */
+ *  the popup itself are left to it. Focus goes to the editor's row, where
+ *  rows take it, so the arrows and Tab carry on from there; left on the
+ *  page, the next key started from nowhere. */
 function blurOnEscape(e: KeyboardEvent<HTMLElement>) {
   if (e.key !== "Escape" || e.defaultPrevented) return;
   const target = e.target as HTMLElement;
   if (!e.currentTarget.contains(target) || target.getAttribute("aria-expanded") === "true") return;
   e.preventDefault();
   e.stopPropagation();
-  target.blur();
+  const row = target.closest<HTMLElement>("tr[tabindex]");
+  if (row) row.focus();
+  else target.blur();
 }
 
 /** An editor taking focus brings its whole cell into the table's visible
@@ -4216,6 +4249,10 @@ function blurOnEscape(e: KeyboardEvent<HTMLElement>) {
  *  out of view never opens its menu or calendar beside the table, past the
  *  edge of whatever holds it. */
 function revealCell(e: FocusEvent<HTMLElement> | PointerEvent<HTMLElement>) {
+  // Not for a chip's ✕: the scroll would slide it from under the pointer
+  // before the press lifts, and the click would miss it (or land on the
+  // next chip's).
+  if ((e.target as HTMLElement).closest('[data-rest-remove], [aria-label^="Remove "]')) return;
   const td = (e.target as HTMLElement).closest("td");
   const viewport = td?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
   if (!td || !viewport) return;
@@ -4265,13 +4302,25 @@ function pressCellEditor(e: React.MouseEvent<HTMLElement>) {
     own.click();
     return;
   }
-  let field: HTMLElement | null = null;
-  for (const selector of CELL_EDITOR_TARGETS) {
-    field = e.currentTarget.querySelector<HTMLElement>(selector);
-    if (field) break;
-  }
+  const field = firstEditorTarget(e.currentTarget);
   if (!field) return;
   e.preventDefault();
+  pressField(field);
+}
+
+/** The control a cell's editor is worked through: its field, else its
+ *  trigger. */
+function firstEditorTarget(root: Element | null) {
+  if (!root) return null;
+  for (const selector of CELL_EDITOR_TARGETS) {
+    const field = root.querySelector<HTMLElement>(selector);
+    if (field) return field;
+  }
+  return null;
+}
+
+/** Presses an editor's control as a real click on it would. */
+function pressField(field: HTMLElement) {
   // Checked inline (not through a const) so TypeScript narrows `field`.
   if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
     field.focus();
@@ -4296,7 +4345,9 @@ function EditableCell<TData>(props: Parameters<typeof EditorBody<TData>>[0]) {
     // and to bring the cell into view as one takes focus.
     <div
       className="contents"
-      onKeyDown={blurOnEscape}
+      // Before the editor hears it: a Combobox field takes Esc on a closed
+      // list as "clear", and a number just confirmed was wiped.
+      onKeyDownCapture={blurOnEscape}
       onFocus={revealCell}
       // Safari doesn't focus a button on click: the press brings it in too.
       onPointerDownCapture={revealCell}
@@ -4346,7 +4397,150 @@ function EditorBody<TData>({
     hold.onFocus();
     setBoundary(boxRef.current?.closest("[data-slot=scroll-area]") ?? null);
   };
-  const onBlur = hold.onBlur;
+
+  // The editors that carry a whole control (a menu, a combobox, a date
+  // picker) are live only while they can be used. At rest the cell shows
+  // a stand-in: the same pixels, a handful of plain elements, no state.
+  // The pointer entering the row wakes the row's editors, well before a
+  // click can land; focus on a stand-in (Tab) or a press on one (touch, a
+  // script) wakes its own and hands the focus or the press on. An editor
+  // goes back to sleep once the pointer has left its row and it holds
+  // neither focus nor an open popup, so the live ones never add up to
+  // more than a row or two. A table of always-live editors paid for
+  // every one of them on first paint and again for each page, sort and
+  // opened parent. The page's first date stays live: it carries the
+  // label sizer the others read.
+  const lazy = type === "select" || type === "number" || type === "tags" || (type === "date" && !lead);
+  const [live, setLive] = useState(false);
+  const restRef = useRef<HTMLDivElement>(null);
+  const wake = useRef<{ how: "focus" | "press"; pick?: (box: Element) => HTMLElement | null } | null>(null);
+  const over = useRef(false);
+  const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const sleep = () => {
+    clearTimeout(idle.current);
+    // After the hold's own check (60ms), which settles whether focus left.
+    idle.current = setTimeout(() => {
+      if (over.current || hold.busy() || boxRef.current?.contains(document.activeElement)) return;
+      startTransition(() => setLive(false));
+    }, 120);
+  };
+  const onBlur = () => {
+    hold.onBlur();
+    if (lazy) sleep();
+  };
+  useEffect(() => {
+    if (!lazy) return;
+    const tr = (restRef.current ?? boxRef.current)?.closest("tr");
+    if (!tr) return;
+    // Not urgent: rows passing under the pointer (a sweep, a scroll) wake
+    // without holding anything up, and one the pointer has already left
+    // by the time React gets to it never mounts at all.
+    // Only the editors typed into in place (number, tags) wake under the
+    // pointer. A select and a date are pop-ups behind a trigger the
+    // stand-in already is: they wait for the press.
+    const hover = type === "number" || type === "tags";
+    const enter = () => {
+      over.current = true;
+      clearTimeout(idle.current);
+      if (hover) startTransition(() => setLive(true));
+    };
+    const leave = () => {
+      over.current = false;
+      sleep();
+    };
+    // A press wakes at once. One that lands on this cell's stand-in (a
+    // click the instant the pointer enters the row, a touch) is handed to
+    // the editor as it mounts: the element under the press is gone by the
+    // time it lifts, so no click would follow. On a chip's ✕, that ✕ is
+    // pressed rather than the field. Read here, in the capture phase: the
+    // editor is in place before the event reaches the stand-in.
+    const down = (e: globalThis.PointerEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      // Its own cell's press only (the padding included: the cell's click
+      // then presses the editor, awake by then).
+      const rest = restRef.current;
+      if (!rest || !target || !rest.closest("td")?.contains(target)) return;
+      if (e.button === 0 && rest.contains(target)) {
+        const tag = target.closest<HTMLElement>("[data-rest-remove]")?.dataset.restRemove;
+        wake.current = {
+          how: "press",
+          pick:
+            tag === undefined
+              ? undefined
+              : (box) => box.querySelector<HTMLElement>(`[aria-label="Remove ${CSS.escape(tag)}"]`),
+        };
+        // The press's own mousedown follows, aimed at whatever is left
+        // where the stand-in was (an ancestor, as far out as the page),
+        // and would take the focus the editor was just given, by default
+        // or through that ancestor's own handler. Nothing else hears it.
+        // (Only the real one: the press handed to the editor sends its own.)
+        const keep = (down: Event) => {
+          if (!down.isTrusted) return;
+          document.removeEventListener("mousedown", keep, true);
+          down.preventDefault();
+          down.stopPropagation();
+        };
+        const done = (up: Event) => {
+          if (!up.isTrusted) return;
+          document.removeEventListener("mousedown", keep, true);
+          document.removeEventListener("pointerup", done, true);
+        };
+        document.addEventListener("mousedown", keep, true);
+        document.addEventListener("pointerup", done, true);
+      }
+      setLive(true);
+    };
+    tr.addEventListener("pointerenter", enter);
+    tr.addEventListener("pointerleave", leave);
+    tr.addEventListener("pointerdown", down, true);
+    return () => {
+      clearTimeout(idle.current);
+      tr.removeEventListener("pointerenter", enter);
+      tr.removeEventListener("pointerleave", leave);
+      tr.removeEventListener("pointerdown", down, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the row is the cell's for its life
+  }, [lazy, type]);
+  useLayoutEffect(() => {
+    // Focus moves in the same commit, so it is never seen anywhere else.
+    const box = boxRef.current;
+    if (!live || wake.current?.how !== "focus" || !box) return;
+    wake.current = null;
+    firstEditorTarget(box)?.focus();
+  }, [live]);
+  useEffect(() => {
+    // A press waits for the control's own effects: a part pressed before
+    // them (a chip's ✕) didn't answer yet.
+    const woken = wake.current;
+    const box = boxRef.current;
+    if (!live || woken?.how !== "press" || !box) return;
+    wake.current = null;
+    const pick = woken.pick;
+    if (!pick) {
+      const field = firstEditorTarget(box);
+      if (field) pressField(field);
+      return;
+    }
+    // A part of a list (a chip) knows its own place only a render after
+    // it mounts: pressed sooner, its ✕ removes nothing.
+    const frame = requestAnimationFrame(() => {
+      const part = pick(box);
+      if (part) pressField(part);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [live]);
+  // The stand-in's tab stop: focus or a click on it wakes the editor and
+  // goes on to the real control.
+  const rest = {
+    onFocus: () => {
+      wake.current ??= { how: "focus" };
+      setLive(true);
+    },
+    onClick: () => {
+      wake.current ??= { how: "press" };
+      setLive(true);
+    },
+  };
 
   // A link keeps its own field (the text follows the link) at any lines.
   if (type === "text" && !options.link && (lines === 2 || lines === "wrap")) {
@@ -4401,6 +4595,22 @@ function EditorBody<TData>({
   }
 
   if (type === "select") {
+    const text = value == null ? "" : String(value);
+    if (!live)
+      return (
+        <div ref={restRef} className={CELL_CONTROL}>
+          <button
+            type="button"
+            aria-label={`${label}: ${text}`}
+            aria-haspopup="menu"
+            aria-expanded={false}
+            {...rest}
+            className={SELECT_TRIGGER}
+          >
+            {display ?? text}
+          </button>
+        </div>
+      );
     return (
       <SelectEditor
         boxRef={boxRef}
@@ -4418,6 +4628,31 @@ function EditorBody<TData>({
   }
 
   if (type === "number") {
+    if (!live)
+      return (
+        <div ref={restRef} className={cn(CELL_CONTROL, CELL_REACH.number[step])}>
+          <RestField compact={step === "compact"} className="tabular-nums">
+            <span
+              role="combobox"
+              tabIndex={0}
+              aria-label={label}
+              aria-expanded={false}
+              aria-haspopup="listbox"
+              {...rest}
+              // No width of its own, like the field it stands for: the
+              // column's width comes from its header.
+              className={cn(
+                "w-0 min-w-0 flex-1 overflow-hidden whitespace-nowrap outline-none",
+                sizeClasses.field,
+                step === "compact" ? "leading-5" : "leading-6",
+                typeof value !== "number" && "text-muted-foreground"
+              )}
+            >
+              {typeof value === "number" ? String(value) : options.placeholder}
+            </span>
+          </RestField>
+        </div>
+      );
     return (
       <NumberEditor
         boundary={boundary}
@@ -4436,6 +4671,45 @@ function EditorBody<TData>({
 
   if (type === "date") {
     const date = toDate(value);
+    if (lazy && !live) {
+      const text = date ? formatDateLabel(date) : (options.placeholder ?? "Pick a date");
+      return (
+        <div
+          ref={restRef}
+         
+          className={cn(
+            CELL_CONTROL,
+            CELL_REACH.date[step],
+            "[&_[data-slot=date-picker-trigger]>span]:min-w-(--ff-date-w)"
+          )}
+        >
+          <div
+            data-slot="date-picker"
+            className={cn("relative inline-flex min-w-0 items-center", sizeClasses.control, sizeClasses.text)}
+          >
+            <span className="inline-flex h-full items-center">
+              <button
+                type="button"
+                data-slot="date-picker-trigger"
+                aria-label={`${label}: ${text}`}
+                aria-haspopup="dialog"
+                aria-expanded={false}
+                {...rest}
+                className={cn(
+                  "relative z-[1] inline-flex h-full cursor-pointer items-center whitespace-nowrap outline-none",
+                  step === "compact" ? "px-1.5" : "px-2",
+                  date ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                <span className="inline-grid text-left tabular-nums">
+                  <span className="col-start-1 row-start-1 [text-box:trim-both_cap_alphabetic]">{text}</span>
+                </span>
+              </button>
+            </span>
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         ref={boxRef}
@@ -4475,6 +4749,20 @@ function EditorBody<TData>({
     );
   }
 
+  if (!live) {
+    const tags = Array.isArray(value) ? (value as string[]) : [];
+    return (
+      <div ref={restRef} className={cn(CELL_CONTROL, CELL_REACH.tags[step], tagsFit(lines === "wrap"))}>
+        <RestTags
+          tags={tags}
+          label={label}
+          placeholder={options.placeholder}
+          compact={step === "compact"}
+          rest={rest}
+        />
+      </div>
+    );
+  }
   return (
     <TagsEditor
       boundary={boundary}
@@ -4805,8 +5093,7 @@ function SelectEditor({
             <button
               type="button"
               aria-label={`${label}: ${value}`}
-              // The row's full height, so a click anywhere in the cell opens it.
-              className="flex h-[calc(1lh+2*var(--table-cell-py))] w-full min-w-0 cursor-pointer items-center text-left outline-none"
+              className={SELECT_TRIGGER}
             >
               {display ?? value}
             </button>
@@ -4923,6 +5210,106 @@ function NumberEditor({
   );
 }
 
+/** How a tags cell fits its chips, for the editor and its stand-in. */
+function tagsFit(wrap: boolean) {
+  return cn(
+    // One line of chips, as tall as the row: the chip row scrolls
+    // sideways instead of wrapping (the field follows its caret). In a
+    // column that wraps its text (`lines: "wrap"`), the chips wrap too
+    // and the row grows with them, like its text.
+    !wrap && "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+    // On one line, a chip cut at the cell's edge fades out over its last
+    // 16px, as truncated text ends in an ellipsis.
+    !wrap && "[&_.flex-wrap]:[mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]",
+    "[&_[aria-label=Open]]:hidden"
+  );
+}
+
+/** A stand-in's field: the borderless Combobox field's box (its height,
+ *  its inset), with nothing in it but what shows at rest. */
+function RestField({ compact, className, children }: { compact: boolean; className?: string; children: ReactNode }) {
+  const sizeClasses = useSize();
+  return (
+    <div className={cn("flex w-full min-w-0 cursor-text items-center", sizeClasses.control, compact ? "px-2" : "px-2.5", className)}>
+      {children}
+    </div>
+  );
+}
+
+const REST_CHIP_RADIUS = { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" };
+
+/** The tags editor at rest, drawn plainly: each chip with its ✕ (a glyph
+ *  until the editor wakes, which the pointer does on its way in) and the
+ *  field's tab stop after them. */
+function RestTags({
+  tags,
+  label,
+  placeholder,
+  compact,
+  rest,
+}: {
+  tags: string[];
+  label: string;
+  placeholder?: string;
+  compact: boolean;
+  rest: { onFocus: () => void; onClick: () => void };
+}) {
+  const shape = useShape();
+  const sizeClasses = useSize();
+  const XIcon = useIcons().x;
+  return (
+    <div
+      className={cn(
+        "flex w-full min-w-0 cursor-text !items-start",
+        compact ? "min-h-7 px-2 py-1" : "min-h-9 px-2.5 py-1.5"
+      )}
+    >
+      <div className={cn("relative flex min-w-0 flex-1 flex-wrap items-center gap-1", tags.length > 0 && "-ml-1")}>
+        {tags.map((tag) => (
+          <span key={tag} className="inline-flex max-w-full shrink-0">
+            <span
+              className={cn(
+                "inline-flex max-w-full shrink-0 items-center gap-0.5 bg-hover pl-2 pr-0.5 text-foreground",
+                REST_CHIP_RADIUS[shape.variant],
+                compact ? "h-5" : "h-6",
+                typeClass("caption", compact ? "compact" : "default")
+              )}
+            >
+              <span className="truncate">{tag}</span>
+              <span
+                aria-hidden
+                // A press here before the editor is awake removes this tag.
+                data-rest-remove={tag}
+                className={cn(
+                  "flex shrink-0 items-center justify-center text-muted-foreground",
+                  compact ? "size-4" : "size-5"
+                )}
+              >
+                <XIcon size={compact ? 10 : 12} strokeWidth={2} />
+              </span>
+            </span>
+          </span>
+        ))}
+        <span
+          role="combobox"
+          tabIndex={0}
+          aria-label={label}
+          aria-expanded={false}
+          aria-haspopup="listbox"
+          {...rest}
+          className={cn(
+            "flex min-w-6 flex-auto overflow-hidden whitespace-nowrap text-muted-foreground outline-none",
+            sizeClasses.field,
+            compact ? "h-5 leading-5" : "h-6 leading-6"
+          )}
+        >
+          {tags.length === 0 ? placeholder : null}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function TagsEditor({
   boundary,
   wrap,
@@ -4960,19 +5347,7 @@ function TagsEditor({
       ref={boxRef}
       onFocus={onFocus}
       onBlur={onBlur}
-      className={cn(
-        CELL_CONTROL,
-        reach,
-        // One line of chips, as tall as the row: the chip row scrolls
-        // sideways instead of wrapping (the field follows its caret). In a
-        // column that wraps its text (`lines: "wrap"`), the chips wrap too
-        // and the row grows with them, like its text.
-        !wrap && "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
-        // On one line, a chip cut at the cell's edge fades out over its last
-        // 16px, as truncated text ends in an ellipsis.
-        !wrap && "[&_.flex-wrap]:[mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]",
-        "[&_[aria-label=Open]]:hidden"
-      )}
+      className={cn(CELL_CONTROL, reach, tagsFit(wrap))}
     >
       <Combobox
         multiple
@@ -5620,9 +5995,10 @@ function DataTableFilterChips<TData>({
   children,
 }: DataTableFiltersProps<TData> & {
   /** Actions about the table's state (a Save view button), right after
-   *  the + that adds a filter. They show the row on their own too, so a
-   *  change with no filter (a hidden or moved column) can still be saved;
-   *  pass nothing (or false) and the row waits for a filter. */
+   *  the + that adds a filter. They ride the row and never bring it: with
+   *  no filter set the row stays away, whatever else changed (a moved or
+   *  hidden column, a sort), so reordering a column doesn't push the table
+   *  down under a lone + and a button. */
   children?: ReactNode;
 }) {
   "use no memo";
@@ -5645,7 +6021,7 @@ function DataTableFilterChips<TData>({
   const gutter = leadingGutter(table);
 
   return (
-    <RowReveal show={active.length > 0 || Children.toArray(children).length > 0}>
+    <RowReveal show={active.length > 0}>
       <div
         data-slot="data-table-filter-chips"
         // Past a selection column the chips start where the first data

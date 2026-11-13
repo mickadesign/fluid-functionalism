@@ -898,7 +898,7 @@ export function RightPanel() {
                   <span className="[text-box:trim-both_cap_alphabetic]">
                     Expand properties panel
                   </span>
-                  <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[10px] text-background">
+                  <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[10px] text-background">
                     ]
                   </kbd>
                 </span>

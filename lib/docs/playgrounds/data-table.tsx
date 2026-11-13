@@ -44,6 +44,8 @@ import {
 } from "@/lib/dual-flavor-slugs.mjs";
 import { useIcons } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { useShape } from "@/lib/shape-context";
+import { useSize, typeClass } from "@/lib/size-context";
 import type { PlaygroundProps } from "./types";
 import { ViewTabs } from "./view-tabs";
 import {
@@ -183,6 +185,43 @@ const PRIMITIVE_OPTIONS = (Object.keys(PRIMITIVE_COLOR) as Primitives[]).map((va
   color: PRIMITIVE_COLOR[value],
 }));
 
+const CHIP_RADIUS = { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" };
+
+/** A row's tags as chips that only read: the tags editor's chips, less the
+ *  ✕. They sit where the editor's do, so switching editing on moves none. */
+function TagChips({ tags, wrap }: { tags: string[]; wrap: boolean }) {
+  const shape = useShape();
+  const compact = useSize().variant === "compact";
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-1",
+        wrap
+          ? // Wrapped, the chips stack; 2px back so the first sits where the
+            // editor's does in its taller field.
+            "-my-0.5 flex-wrap"
+          : // One line: the 24px chips overhang the line box, and one cut at
+            // the cell's edge fades out, as the editor's do.
+            "h-[1lh] overflow-x-clip [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]"
+      )}
+    >
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className={cn(
+            "inline-flex shrink-0 items-center bg-hover px-2 text-foreground",
+            CHIP_RADIUS[shape.variant],
+            compact ? "h-5" : "h-6",
+            typeClass("caption", compact ? "compact" : "default")
+          )}
+        >
+          {tag}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 const INSTALL_URL = "https://www.fluidfunctionalism.com/r";
 
 type Lines = DataTableLines;
@@ -261,29 +300,31 @@ function buildColumns(o: {
         editor: o.editable ? "date" : undefined,
       },
     },
-    ...(o.editable
-      ? [
-          {
-            accessorKey: "tags",
-            header: "Tags",
-            enableSorting: false,
-            meta: {
-              label: "Tags",
-              className: "min-w-56",
-              icon: icon("tag"),
-              // Text wrap wraps the chips too, so none is cut at the edge.
-              lines: wrap ? "wrap" : undefined,
-              editor: { type: "tags", options: DATA_TABLE_TAG_OPTIONS, creatable: true },
-            },
-          } satisfies ColumnDef<ComponentRow>,
-        ]
-      : []),
+    {
+      accessorKey: "tags",
+      header: "Tags",
+      enableSorting: false,
+      // Read only, the same chips without their ✕. Editing swaps in the
+      // tags editor, which draws its own.
+      cell: ({ row }) => <TagChips tags={row.original.tags} wrap={wrap} />,
+      meta: {
+        label: "Tags",
+        className: "min-w-56",
+        icon: icon("tag"),
+        // Text wrap wraps the chips too, so none is cut at the edge.
+        lines: wrap ? "wrap" : undefined,
+        editor: o.editable ? { type: "tags", options: DATA_TABLE_TAG_OPTIONS, creatable: true } : undefined,
+      },
+    },
     {
       accessorKey: "website",
       header: "Website",
       cell: ({ row }) => (
         <a
           href={`/docs/${row.original.slug.split("/")[0]}`}
+          // A new tab: the table keeps its state (selection, filters, edits).
+          target="_blank"
+          rel="noreferrer"
           className="underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground"
         >
           {row.original.website}
@@ -439,7 +480,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
     ...(grouped ? [`import { TooltipGroup } from "./components";`] : []),
     ...(o.headerIcons
-      ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
+      ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, Tag, Link, File } from "lucide-react";`]
       : []),
     ``,
     `const columns: ColumnDef<ComponentRow>[] = [`,
@@ -481,16 +522,13 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       ? [`    meta: { ${[o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`]
       : []),
     `  },`,
-    ...(o.editable
-      ? [
-          `  {`,
-          `    accessorKey: "tags",`,
-          `    header: "Tags",`,
-          `    enableSorting: false,`,
-          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}${o.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
-          `  },`,
-        ]
-      : []),
+    `  {`,
+    `    accessorKey: "tags",`,
+    `    header: "Tags",`,
+    `    enableSorting: false,`,
+    `    cell: ({ row }) => <TagChips tags={row.original.tags} />,`,
+    `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}${o.lines === "wrap" ? ', lines: "wrap"' : ""}${o.editable ? `, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true }` : ""} },`,
+    `  },`,
     `  {`,
     `    accessorKey: "website",`,
     `    header: "Website",`,
@@ -861,11 +899,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     }
     if (!next.selection) table.resetRowSelection();
     if (!next.viewMenu) table.resetColumnVisibility();
-    // The Tags column comes and goes with editing: the widths are read
-    // again, so it starts at its own width rather than none.
     // Header icons widen the headers: the widths are read again too.
     // Sub-rows widen the first column to fit their names: read again too.
-    if (!next.resize || next.editable !== prev.editable || next.headerIcons !== prev.headerIcons || next.expandable !== prev.expandable)
+    if (!next.resize || next.headerIcons !== prev.headerIcons || next.expandable !== prev.expandable)
       table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
@@ -1079,8 +1115,8 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       {state.title && <RowReveal show={tabsShown}>{viewTabs}</RowReveal>}
       {state.filters && (
         // Save view after the chips' + Add filter, once the table differs
-        // from the open view: a filter, a sort, a hidden or moved column.
-        // It brings the row along when no filter is set.
+        // from the open view. The row is the filters': with none set it
+        // stays away, and a moved column alone doesn't bring it.
         <DataTableFilterChips table={table}>
           {showViews && viewChanged && (
             <Button variant="ghost" size="compact" onClick={saveView}>

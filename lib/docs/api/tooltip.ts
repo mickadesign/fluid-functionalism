@@ -41,6 +41,12 @@ export const tooltipProps: PropDef[] = [
     description: "Track the cursor along one axis while hovering the trigger; the other axis stays anchored by side. Used by the Sidebar rail.",
   },
   {
+    name: "hoverable",
+    type: "boolean",
+    default: "true",
+    description: "Whether the pointer can move onto the bubble and keep it open. Pass false where the bubble covers something else to reach, as over the next row of a list: the pointer passes through and the tooltip closes with its trigger.",
+  },
+  {
     name: "className",
     type: "string",
     description: "Additional classes applied to the tooltip content container.",

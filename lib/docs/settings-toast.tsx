@@ -120,9 +120,10 @@ function UndoToast({ message, onUndo }: { message: string; onUndo: () => void })
             <kbd
               key={key}
               className={cn(
-                "inline-flex h-[18px] min-w-[18px] items-center justify-center bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
-                key === "⌘" && "font-sans",
-                shapeClasses.bg
+                // The one key cap: a filled 5px-radius chip that keeps its
+                // shape under every Radius setting (a pill here read as a
+                // second kind of key).
+                "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[11px] leading-none text-background"
               )}
             >
               {key}
@@ -210,8 +211,7 @@ function ShortcutToast({
       <kbd
         aria-hidden
         className={cn(
-          "inline-flex h-[18px] min-w-[18px] items-center justify-center bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
-          shapeClasses.bg
+          "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[11px] leading-none text-background"
         )}
       >
         {keyLabel}

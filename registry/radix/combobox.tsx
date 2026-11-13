@@ -779,7 +779,10 @@ function useChipRowHeight(padY: number) {
         if (height.get() === "auto") height.set(target);
         else if (height.get() !== target) animate(height, target, spring.fast);
       };
-      measure();
+      // The observer reports the row once on observing, before the next
+      // paint: the first measure rides that. Read here instead, in the
+      // ref, each field forced a layout of its own as it mounted (a table
+      // of tag cells, one per row).
       const ro = new ResizeObserver(measure);
       ro.observe(el);
       roRef.current = ro;

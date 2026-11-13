@@ -16,6 +16,7 @@ import {
   type TdHTMLAttributes,
   type ThHTMLAttributes,
 } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
 import { SizeProvider, useSize, type SizeVariant } from "@/lib/size-context";
@@ -82,6 +83,11 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
    *  `height` from the table's top, and its opacity), to draw along with
    *  it. Write to the DOM in it; don't set state. */
   onHighlightFrame?: (box: { y: number; height: number; opacity: number }) => void;
+  /** Elements that get a live copy of the selection fills, in the table's
+   *  own coordinates (place each one over the table's top left corner):
+   *  for drawing the selection again where something opaque covers it,
+   *  with the same merges and splits, frame for frame. */
+  selectionMirrors?: readonly (HTMLElement | null)[];
 }
 
 const NO_SELECTION: readonly number[] = [];
@@ -90,7 +96,7 @@ const NO_SELECTION: readonly number[] = [];
 const TABLE_HIGHLIGHT_EVENT = "fluid-table-highlight";
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, hoverMarker, onHighlightFrame, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, hoverMarker, onHighlightFrame, selectionMirrors, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
@@ -336,6 +342,11 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           {/* Keyed by the snap, so a block that leaves in a snap goes at
               once instead of fading from where the rows no longer are. */}
           <SelectionBackgrounds key={String(snap.key ?? "")} blocks={blocks} />
+          {selectionMirrors?.map(
+            (el, i) =>
+              el &&
+              createPortal(<SelectionBackgrounds key={String(snap.key ?? "")} blocks={blocks} />, el, `mirror-${i}`)
+          )}
 
           {/* Hover background, rounded by the shape setting like the
               selection under it. */}

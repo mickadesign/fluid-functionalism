@@ -31,7 +31,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     if (!parts) return "";
     const sub = parts.map(
       ([name, props]) =>
-        `{ slug: ${JSON.stringify(`${r.slug}/${name}`)}, name: ${JSON.stringify(name)}, summary: ${JSON.stringify(`Part of ${r.name}.`)}, primitives: ${JSON.stringify(r.primitives)}, props: ${props}, added: ${JSON.stringify(r.added)}${p.editable ? ", tags: []" : ""} }`
+        `{ slug: ${JSON.stringify(`${r.slug}/${name}`)}, name: ${JSON.stringify(name)}, summary: ${JSON.stringify(`Part of ${r.name}.`)}, primitives: ${JSON.stringify(r.primitives)}, props: ${props}, added: ${JSON.stringify(r.added)}, tags: [] }`
     );
     return `, subRows: [${sub.join(", ")}]`;
   };
@@ -86,7 +86,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   }
   if (icons) {
     l.push(
-      `import { Calendar, File, Folder, Link, SlidersHorizontal, SquareLibrary } from "lucide-react";`
+      `import { Calendar, File, Folder, Link, SlidersHorizontal, SquareLibrary, Tag } from "lucide-react";`
     );
   }
   l.push(``);
@@ -97,7 +97,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  primitives: string;`);
   l.push(`  props: number;`);
   l.push(`  added: string;`);
-  if (edit) l.push(`  tags: string[];`);
+  l.push(`  tags: string[];`);
   if (tree) l.push(`  subRows?: Row[];`);
   l.push(`};`);
   l.push(``);
@@ -105,7 +105,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`const ROWS: Row[] = [`);
   for (const r of DATA_TABLE_SAMPLE_ROWS) {
     l.push(
-      `  { slug: ${JSON.stringify(r.slug)}, name: ${JSON.stringify(r.name)}, summary: ${JSON.stringify(r.summary)}, primitives: ${JSON.stringify(r.primitives)}, props: ${r.props}, added: ${JSON.stringify(r.added)}${edit ? `, tags: ${JSON.stringify(dataTableTagsFor(r.slug))}` : ""}${partsOf(r)} },`
+      `  { slug: ${JSON.stringify(r.slug)}, name: ${JSON.stringify(r.name)}, summary: ${JSON.stringify(r.summary)}, primitives: ${JSON.stringify(r.primitives)}, props: ${r.props}, added: ${JSON.stringify(r.added)}, tags: ${JSON.stringify(dataTableTagsFor(r.slug))}${partsOf(r)} },`
     );
   }
   l.push(`];`);
@@ -153,22 +153,32 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,`);
   l.push(`    meta: { label: "Added", className: "tabular-nums whitespace-nowrap"${icon("Calendar")}${edit ? `, editor: "date"` : ""} },`);
   l.push(`  },`);
-  if (edit) {
-    l.push(`  {`);
-    l.push(`    accessorKey: "tags",`);
-    l.push(`    header: "Tags",`);
-    l.push(`    enableSorting: false,`);
-    l.push(
-      `    meta: { label: "Tags", className: "min-w-56"${p.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true } },`
-    );
-    l.push(`  },`);
-  }
+  l.push(`  {`);
+  l.push(`    accessorKey: "tags",`);
+  l.push(`    header: "Tags",`);
+  l.push(`    enableSorting: false,`);
+  l.push(`    // Read only, the tags as plain chips${edit ? "; the editor draws its own, each with a ✕" : ""}.`);
+  l.push(`    cell: ({ row }) => (`);
+  l.push(`      <span className="flex ${p.lines === "wrap" ? "-my-0.5 flex-wrap" : "h-[1lh]"} items-center gap-1">`);
+  l.push(`        {row.original.tags.map((tag) => (`);
+  l.push(`          <span key={tag} className="inline-flex h-6 shrink-0 items-center rounded-md bg-hover px-2 text-[12px]">`);
+  l.push(`            {tag}`);
+  l.push(`          </span>`);
+  l.push(`        ))}`);
+  l.push(`      </span>`);
+  l.push(`    ),`);
+  l.push(
+    `    meta: { label: "Tags", className: "min-w-56"${icon("Tag")}${p.lines === "wrap" ? ', lines: "wrap"' : ""}${edit ? `, editor: { type: "tags", options: ${JSON.stringify(DATA_TABLE_TAG_OPTIONS).replace(/,/g, ", ")}, creatable: true }` : ""} },`
+  );
+  l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "slug",`);
   l.push(`    header: "Website",`);
   l.push(`    cell: ({ row }) => (`);
   l.push(`      <a`);
   l.push(`        href={\`/docs/\${row.original.slug}\`}`);
+  l.push(`        target="_blank"`);
+  l.push(`        rel="noreferrer"`);
   l.push(`        className="underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground"`);
   l.push(`      >`);
   l.push(`        {\`/docs/\${row.original.slug}\`}`);

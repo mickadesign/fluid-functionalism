@@ -113,6 +113,11 @@ interface TooltipProps {
   followCursor?: "x" | "y";
   /** Called when the tooltip's internal open state changes (before forceOpen is applied). */
   onOpenChange?: (open: boolean) => void;
+  /** Whether the pointer can move onto the bubble and keep it open
+   *  (default). Pass false where the bubble covers something else to reach,
+   *  as over the next row of a list: the pointer then passes through it and
+   *  the tooltip closes with its trigger. */
+  hoverable?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -541,6 +546,7 @@ function Tooltip({
   className,
   contentClassName,
   forceOpen,
+  hoverable = true,
   onOpenChange: onOpenChangeProp,
   followCursor,
 }: TooltipProps) {
@@ -558,6 +564,8 @@ function Tooltip({
   // In a group every bubble sits on the side the group is on: the one a
   // neighbor was placed on, flipped or not, over this tooltip's own.
   const side = groupStore?.side() ?? sideProp;
+  // In a group, or asked not to catch the pointer.
+  const passThrough = !!groupStore || !hoverable;
   const exitMs = exitFallbackMs(spring.fast) + (groupStore ? GROUP_HOLD_MS : 0);
   const openedRef = useRef(open);
   useEffect(() => {
@@ -601,7 +609,7 @@ function Tooltip({
       actionsRef={actionsRef}
       // A hoverable bubble keeps the triggers in the pointer's path from
       // opening theirs, so in a group it closes with its trigger.
-      disableHoverablePopup={groupStore ? true : undefined}
+      disableHoverablePopup={passThrough ? true : undefined}
     >
       {/* An explicit delayDuration overrides the ambient provider's delay;
           left undefined, the trigger inherits it from the provider. */}
@@ -616,7 +624,7 @@ function Tooltip({
           sideOffset={sideOffset}
           className={cn(
             "z-[var(--z-tooltip,70)]",
-            groupStore && "pointer-events-none",
+            passThrough && "pointer-events-none",
             contentClassName
           )}
         >
