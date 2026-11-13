@@ -20,7 +20,7 @@ export const tooltipProps: PropDef[] = [
   {
     name: "shortcut",
     type: "string | string[]",
-    description: "A keystroke shown after the label, one key cap per key. The tooltip keeps the height of one without it.",
+    description: "A keystroke shown after the label, one key cap per key. The tooltip keeps the height of one without it. A key with a space in its name goes in an array: [\"Page Up\"].",
   },
   {
     name: "side",

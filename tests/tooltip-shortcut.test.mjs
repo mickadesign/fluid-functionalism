@@ -35,12 +35,15 @@ function openingTag(source, start) {
   return source.slice(start);
 }
 
-/** Lines of the Tooltips whose opening tag holds a <kbd>. */
+/** Lines of the Tooltips whose opening tag holds a hand-placed cap: a
+ *  <kbd>, or a <KeyCap>/<KeyCaps> without the shortcut row's trim.
+ *  <TooltipShortcut> is the one sanctioned way to place caps by hand. */
+const HAND_BUILT = /<kbd|<KeyCaps?[\s>/]/;
 export function handBuiltCaps(source) {
   const lines = [];
   const tooltip = /<Tooltip[\s>]/g;
   for (let match; (match = tooltip.exec(source)); ) {
-    if (openingTag(source, match.index).includes("<kbd")) {
+    if (HAND_BUILT.test(openingTag(source, match.index))) {
       lines.push(source.slice(0, match.index).split("\n").length);
     }
   }
@@ -54,6 +57,14 @@ describe("handBuiltCaps", () => {
       <Tooltip content={<span>Close <kbd>Esc</kbd></span>}><button /></Tooltip>
       <Tooltip content="Close" shortcut="Esc"><button><kbd>k</kbd></button></Tooltip>`;
     expect(handBuiltCaps(source)).toEqual([3]);
+  });
+
+  it("finds a KeyCap or KeyCaps written into content, not TooltipShortcut", () => {
+    const source = `
+      <Tooltip content={<span>Close <KeyCap>Esc</KeyCap></span>}><button /></Tooltip>
+      <Tooltip content={<span>New <KeyCaps keys="⇧⌘O" /></span>}><button /></Tooltip>
+      <Tooltip content={<span>Drag <TooltipShortcut>[</TooltipShortcut></span>}><button /></Tooltip>`;
+    expect(handBuiltCaps(source)).toEqual([2, 3]);
   });
 });
 

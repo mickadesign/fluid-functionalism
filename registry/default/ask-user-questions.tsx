@@ -1579,7 +1579,8 @@ AskUserQuestions.displayName = "AskUserQuestions";
 // sits on the dark primary button; the default reads on quiet ghost buttons.
 // suppressHydrationWarning: the ⌘/⌃ glyph is platform-detected in a lazy
 // initializer (see isMac), so the server always renders ⌃ while a Mac client
-// renders ⌘ — a benign one-character text mismatch on hydration.
+// renders ⌘ — a benign one-character text mismatch on hydration. KeyCaps
+// passes the flag down to each cap, where the differing text lives.
 function ShortcutChip({
   children,
   tone = "default",

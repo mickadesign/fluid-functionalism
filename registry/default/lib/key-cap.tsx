@@ -16,9 +16,11 @@ const tones = {
 const isGlyph = (key: ReactNode) =>
   typeof key === "string" && !/[a-z0-9]/i.test(key);
 
-/** "⇧⌘O" → ["⇧", "⌘", "O"], "Ctrl+K" → ["Ctrl", "K"], "Esc" → ["Esc"]. */
+/** "⇧⌘O" → ["⇧", "⌘", "O"], "Ctrl+K" → ["Ctrl", "K"], "Esc" → ["Esc"].
+ *  Spaces separate keys, so a key with a space in its name ("Page Up")
+ *  goes in an array: ["Page Up"]. An empty string is no keys. */
 export function splitKeys(combo: string): string[] {
-  return combo.match(/[⌘⇧⌥⌃]|[^⌘⇧⌥⌃+\s]+|\+$/g) ?? [combo];
+  return combo.match(/[⌘⇧⌥⌃]|[^⌘⇧⌥⌃+\s]+|\+$/g) ?? [];
 }
 
 export interface KeyCapProps extends HTMLAttributes<HTMLElement> {
@@ -40,21 +42,24 @@ const KeyCap = forwardRef<HTMLElement, KeyCapProps>(
 KeyCap.displayName = "KeyCap";
 
 export interface KeyCapsProps extends HTMLAttributes<HTMLElement> {
-  /** A combo ("⇧⌘O", "Ctrl+K") split into one cap per key, or the keys. */
+  /** A combo ("⇧⌘O", "Ctrl+K") split into one cap per key, or the keys
+   *  as an array (the form for a key with a space: ["Page Up"]). */
   keys: string | readonly string[];
   tone?: keyof typeof tones;
 }
 
 /** A combo, one cap per key, 2px apart. */
 const KeyCaps = forwardRef<HTMLElement, KeyCapsProps>(
-  ({ keys, tone, className, ...props }, ref) => (
+  ({ keys, tone, className, suppressHydrationWarning, ...props }, ref) => (
     <span
       ref={ref}
       className={cn("inline-flex shrink-0 items-center gap-0.5", className)}
       {...props}
     >
       {(typeof keys === "string" ? splitKeys(keys) : keys).map((key, i) => (
-        <KeyCap key={`${key}-${i}`} tone={tone}>
+        // React silences a text mismatch only on the element that holds the
+        // text, so the flag goes on each cap, not on the wrapper.
+        <KeyCap key={`${key}-${i}`} tone={tone} suppressHydrationWarning={suppressHydrationWarning}>
           {key}
         </KeyCap>
       ))}

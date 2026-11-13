@@ -104,7 +104,8 @@ interface TooltipProps {
   content: ReactNode;
   /** A keystroke shown after the label as a key cap, e.g. "Esc". The bubble
    *  keeps the height of a tooltip without one. A combo ("⇧⌘O") draws one
-   *  cap per key. */
+   *  cap per key; a key with a space in its name goes in an array
+   *  (["Page Up"]). Empty means no cap. */
   shortcut?: string | readonly string[];
   children: React.ReactElement;
   side?: TooltipSide;
@@ -563,7 +564,7 @@ function Tooltip({
   // A flex row escapes the bubble's text-box trim, so the label takes it
   // again: with a key cap or without, the bubble is the same height.
   const content =
-    shortcut == null ? (
+    shortcut == null || shortcut.length === 0 ? (
       label
     ) : (
       <span className="flex items-center gap-2">
