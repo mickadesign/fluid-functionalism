@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 
 import {
   createContext,
@@ -183,22 +183,10 @@ export function SiteCommandMenuTrigger() {
         <SidebarMenuButton icon={icons.search} onClick={() => setOpen(true)}>
           Search
         </SidebarMenuButton>
-        {/* The right panel's key chips, one per key: 18px on a 2px-round
-            tint, 1px down to stay centered where the 20px badge sat. */}
-        <SidebarMenuBadge className="mt-px gap-0.5 px-0 font-mono text-site-micro leading-none [@media(hover:none)]:hidden">
-          {(mac ? ["⌘", "K"] : ["Ctrl", "K"]).map((key) => (
-            <kbd
-              key={key}
-              className={cn(
-                "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[2px] bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-[inherit]",
-                // The mono face draws ⌘ smaller than its letters; Inter's
-                // ⌘ sits at their size.
-                key === "⌘" && "font-sans"
-              )}
-            >
-              {key}
-            </kbd>
-          ))}
+        {/* The site's key caps, one per key, 1px down to stay centered
+            where the 20px badge sat. */}
+        <SidebarMenuBadge className="mt-px px-0 [@media(hover:none)]:hidden">
+          <KeyCaps keys={mac ? ["⌘", "K"] : ["Ctrl", "K"]} />
         </SidebarMenuBadge>
       </SidebarMenuItem>
     </SidebarMenu>

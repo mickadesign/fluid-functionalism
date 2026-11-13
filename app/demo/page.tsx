@@ -262,7 +262,7 @@ function DemoPageInner() {
           <div className="flex items-center gap-1 shrink-0">
             {/* Prev and next share one gliding tooltip. */}
             <TooltipGroup>
-              <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
+              <Tooltip content={prevSlide ? prevSlide.name : "No previous"} shortcut={prevSlide ? "←" : undefined}>
                 <Button
                   variant="ghost"
                   size={iconSize}
@@ -273,7 +273,7 @@ function DemoPageInner() {
                   <ArrowRight className="rotate-180" />
                 </Button>
               </Tooltip>
-              <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
+              <Tooltip content={nextSlide ? nextSlide.name : "No next"} shortcut={nextSlide ? "→" : undefined}>
                 <Button
                   variant="ghost"
                   size={iconSize}

@@ -39,14 +39,26 @@ import { fontWeights } from "@/lib/font-weight";
 
 <Tooltip
   content={
-    <div className="flex flex-col gap-1">
-      <span style={{ fontVariationSettings: fontWeights.semibold }}>Keyboard shortcut</span>
-      <span className="text-muted-foreground">⌘ + S</span>
+    <div className="flex flex-col">
+      <span style={{ fontVariationSettings: fontWeights.semibold }}>Save changes</span>
+      <span className="text-muted-foreground">Updates the draft on every device</span>
     </div>
   }
 >
   <button>Save</button>
 </Tooltip>`;
+
+const shortcutCode = `// The shortcut prop adds key caps after the label. The bubble keeps the
+// height of a plain tooltip, so it glides in a group like any other.
+
+<TooltipGroup>
+  <Tooltip content="Save" shortcut="⌘S">
+    <Button>Save</Button>
+  </Tooltip>
+  <Tooltip content="Close" shortcut="Esc">
+    <Button variant="secondary">Close</Button>
+  </Tooltip>
+</TooltipGroup>`;
 
 const groupCode = `// One bubble for the whole row: after the first tooltip opens, it glides
 // from trigger to trigger and changes label instead of closing and reopening.
@@ -142,16 +154,33 @@ export default function TooltipDoc() {
         <ComponentPreview code={richCode}>
           <Tooltip
             content={
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col">
                 <span style={{ fontVariationSettings: fontWeights.semibold }}>
-                  Keyboard shortcut
+                  Save changes
                 </span>
-                <span className="text-muted-foreground">⌘ + S</span>
+                <span className="text-muted-foreground">
+                  Updates the draft on every device
+                </span>
               </div>
             }
           >
             <Button>Save</Button>
           </Tooltip>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Keyboard shortcut">
+        <ComponentPreview code={shortcutCode}>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <TooltipGroup>
+              <Tooltip content="Save" shortcut="⌘S">
+                <Button>Save</Button>
+              </Tooltip>
+              <Tooltip content="Close" shortcut="Esc">
+                <Button variant="secondary">Close</Button>
+              </Tooltip>
+            </TooltipGroup>
+          </div>
         </ComponentPreview>
       </DocSection>
 

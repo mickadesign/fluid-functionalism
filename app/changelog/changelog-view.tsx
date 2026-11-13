@@ -97,7 +97,7 @@ export function ChangelogView({ releases }: { releases: ReleaseView[] }) {
             <div className="flex items-center gap-1 shrink-0 -my-2">
               {/* Prev and next share one gliding tooltip. */}
               <TooltipGroup>
-                <Tooltip content={<span>Introduction &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
+                <Tooltip content="Introduction" shortcut="←">
                   <Button asChild variant="ghost" size={iconSize}>
                     <Link href="/docs" aria-label="Previous: Introduction">
                       <ArrowRight className="rotate-180" />
@@ -105,7 +105,7 @@ export function ChangelogView({ releases }: { releases: ReleaseView[] }) {
                   </Button>
                 </Tooltip>
                 {next && (
-                  <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+                  <Tooltip content={next.name} shortcut="→">
                     <Button asChild variant="ghost" size={iconSize}>
                       <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
                         <ArrowRight />
