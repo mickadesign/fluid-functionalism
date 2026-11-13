@@ -159,22 +159,38 @@ interface GroupEntry {
   content: () => ReactNode;
   isOpen: () => boolean;
   release: () => void;
+  leave: () => void;
 }
 
 interface GroupStore {
   get: () => GroupEntry | null;
   set: (entry: GroupEntry | null) => void;
+  /** The side the group's bubbles sit on, once one has been placed. */
+  side: () => TooltipSide | null;
+  setSide: (side: TooltipSide | null) => void;
 }
 
 function createGroupStore(): GroupStore {
   let shown: GroupEntry | null = null;
+  let side: TooltipSide | null = null;
   return {
     get: () => shown,
     set: (entry) => {
       shown = entry;
     },
+    side: () => side,
+    setSide: (next) => {
+      side = next;
+    },
   };
 }
+
+// Where the primitive put a bubble, which is not always the side it was
+// asked for: one that doesn't fit flips to the opposite side.
+const placedSide = (el: HTMLElement) =>
+  (el.closest<HTMLElement>("[data-side]")?.dataset.side as
+    | TooltipSide
+    | undefined) ?? null;
 
 const TooltipGroupStoreContext = createContext<GroupStore | null>(null);
 
@@ -273,6 +289,11 @@ function GroupBubble({
         mv.opacity.set(0);
         latest.current.onExited();
       },
+      // The next bubble opened on another side: fade out now, no hold.
+      leave: () => {
+        settle();
+        exit();
+      },
     });
 
     // The tooltip's own entrance: fade in, 4px toward the trigger.
@@ -338,7 +359,11 @@ function GroupBubble({
       if (!shown) {
         enter();
         store.set(me);
-        return;
+        // Placed a microtask after the commit: the group's side from here on.
+        const frame = requestAnimationFrame(() => {
+          store.setSide(placedSide(box));
+        });
+        return () => cancelAnimationFrame(frame);
       }
       if (shown === me) {
         // Reopened during its own hold: it never left.
@@ -351,10 +376,18 @@ function GroupBubble({
       mv.opacity.set(0);
       const frame = requestAnimationFrame(() => {
         const from = store.get();
+        const placed = placedSide(box);
         store.set(me);
-        if (from && from !== me && !from.isOpen() && from.shape.isConnected) {
+        store.setSide(placed);
+        if (!from || from === me || from.isOpen() || !from.shape.isConnected) {
+          enter();
+        } else if (placedSide(from.shape) === placed) {
           glide(from);
         } else {
+          // This one flipped to the other side of its trigger. A glide from
+          // there would cross the button, so the two swap with a fade, and
+          // the group stays on this side.
+          from.leave();
           enter();
         }
       });
@@ -446,13 +479,24 @@ const inDescriptionCopy = (el: HTMLElement) => {
 /** One fluid tooltip for a row of triggers: the first opens after the delay,
  *  then the bubble glides from trigger to trigger, changing width and label,
  *  instead of closing and reopening. Wrap the row; the Tooltips inside are
- *  written as usual. */
+ *  written as usual. The bubble keeps one side for the whole group: a glide
+ *  from above a trigger to below the next would cross the buttons. */
 function TooltipGroup({
   children,
   delayDuration = DEFAULT_DELAY,
   skipDelayDuration = 300,
 }: TooltipGroupProps) {
   const [store] = useState(createGroupStore);
+  // A side taken because a bubble had no room holds until the room changes.
+  useEffect(() => {
+    const reset = () => store.setSide(null);
+    window.addEventListener("scroll", reset, { capture: true, passive: true });
+    window.addEventListener("resize", reset);
+    return () => {
+      window.removeEventListener("scroll", reset, { capture: true });
+      window.removeEventListener("resize", reset);
+    };
+  }, [store]);
   return (
     <TooltipGroupStoreContext.Provider value={store}>
       {/* A hoverable bubble keeps the triggers in the pointer's path from
@@ -475,7 +519,7 @@ function TooltipGroup({
 function Tooltip({
   content,
   children,
-  side = "top",
+  side: sideProp = "top",
   sideOffset = 8,
   delayDuration,
   className,
@@ -491,6 +535,9 @@ function Tooltip({
   const portalContainer = useContext(TooltipPortalContainerContext);
   const hasAmbientProvider = useContext(TooltipGroupContext);
   const groupStore = useContext(TooltipGroupStoreContext);
+  // In a group every bubble sits on the side the group is on: the one a
+  // neighbor was placed on, flipped or not, over this tooltip's own.
+  const side = groupStore?.side() ?? sideProp;
 
   // Set during the render that opens it, so the portal mounts in the same
   // commit as `open` rather than one after.
