@@ -348,6 +348,9 @@ function DropdownMenu({
   // The same fact for rendering: a hover-opened menu gets no shield, since
   // the pointer leaving it is what closes it.
   const [openedByHover, setOpenedByHover] = useState(false);
+  // Closed by any route, a parent's own `open` included: the next open
+  // starts as a clicked one until Base UI reports a hover.
+  if (!open && openedByHover) setOpenedByHover(false);
   const handleOpenChange = (
     next: boolean,
     details: { preventUnmountOnClose: () => void; reason?: string }

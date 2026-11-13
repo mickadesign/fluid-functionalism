@@ -331,10 +331,25 @@ function DropdownMenu({
   // closes it. The hover timer opens through the first setter, everything
   // else (a click, the keyboard) through the primitive's.
   const [openedByHover, setOpenedByHover] = useState(false);
-  const hover = useHoverControl(open, (next) => {
+  const hoverControl = useHoverControl(open, (next) => {
     if (next) setOpenedByHover(true);
     handleOpenChange(next);
   });
+  // A click that pins a hover-opened menu makes it a clicked-open one.
+  const hover = useMemo<HoverControl>(
+    () => ({
+      ...hoverControl,
+      pin: () => {
+        const pinned = hoverControl.pin();
+        if (pinned) setOpenedByHover(false);
+        return pinned;
+      },
+    }),
+    [hoverControl]
+  );
+  // Closed by any route, a parent's own `open` included: the next open
+  // starts as a clicked one until the hover timer says otherwise.
+  if (!open && openedByHover) setOpenedByHover(false);
 
   const ctx = useMemo(
     () => ({ open, disabled, sub: false, hover }),

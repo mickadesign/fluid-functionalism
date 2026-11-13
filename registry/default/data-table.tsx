@@ -631,22 +631,6 @@ function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number |
 // text wraps or cuts short rather than crowd the columns beside it.
 const NATURAL_CAP = 240;
 
-/** A clear layer laid over the page, just under an open menu: the pointer
- *  lights nothing else (no row, header or toolbar button) until the menu
- *  closes, and a press on it is a press outside the menu, which closes it. */
-function MenuShield({ open, onClose }: { open: boolean; onClose?: () => void }) {
-  if (!open || typeof document === "undefined") return null;
-  return createPortal(
-    <div
-      aria-hidden
-      data-slot="data-table-menu-shield"
-      className="fixed inset-0 z-[calc(var(--z-popover,60)-1)]"
-      onPointerDown={onClose}
-    />,
-    document.body
-  );
-}
-
 /** What a header's menu acts on: the table, and whether its columns move. */
 const HeaderMenuContext = createContext<{
   table: TanStackTable<unknown>;
@@ -2230,10 +2214,6 @@ function DataTableColumnHeader<TData, TValue>({
   return (
     <>
       {button}
-      {/* While the menu is open, a clear layer under it takes the pointer:
-          nothing else on the page lights up, and a click on it closes the
-          menu. */}
-      <MenuShield open={menuOpen} onClose={() => setMenuOpen(false)} />
       {/* The menu opens from the whole header cell: a hidden trigger over
           it that never takes the pointer, so a press can still start a
           column drag and only a click opens the menu. */}
