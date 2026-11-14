@@ -5488,11 +5488,14 @@ function NumberEditor({
 /** How a tags cell fits its chips, for the editor and its stand-in. */
 function tagsFit(wrap: boolean) {
   return cn(
-    // One line of chips, as tall as the row: the chip row scrolls
-    // sideways instead of wrapping (the field follows its caret). In a
-    // column that wraps its text (`lines: "wrap"`), the chips wrap too
-    // and the row grows with them, like its text.
-    !wrap && "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-auto [&_.flex-wrap]:[scrollbar-width:none]",
+    // One line of chips, as tall as the row: chips past the cell's edge
+    // are cut, not wrapped, and the row can't be scrolled by hand (a
+    // cell that scrolls inside a table that scrolls caught the wheel).
+    // Hidden, not clipped: the field still brings its caret into view
+    // while it is typed in. In a column that wraps its text
+    // (`lines: "wrap"`), the chips wrap too and the row grows with them,
+    // like its text.
+    !wrap && "[&_.flex-wrap]:flex-nowrap [&_.flex-wrap]:overflow-x-hidden",
     // On one line, a chip cut at the cell's edge fades out over its last
     // 16px, as truncated text ends in an ellipsis.
     !wrap && "[&_.flex-wrap]:[mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]",
