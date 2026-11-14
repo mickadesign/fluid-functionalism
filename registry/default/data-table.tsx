@@ -380,6 +380,26 @@ function useDataTable<TData>({
     const last = Math.max(0, table.getPageCount() - 1);
     if (pageIndex > last) table.setPageIndex(last);
   });
+  // A saved column order names every column there was when it was made.
+  // One that came later (the row handles or the boxes turned on, a column
+  // added) would follow TanStack's rule and land after all of them: the
+  // handles at the far end, where they don't show. The control columns
+  // hold their ends whatever the saved order says, and a new data column
+  // goes before the row menus.
+  const savedOrder = state.columnOrder;
+  const leafIds = table.getAllLeafColumns().map((c) => c.id).join();
+  useLayoutEffect(() => {
+    if (savedOrder.length === 0) return;
+    const all = leafIds.split(",");
+    const data = (id: string) => !UTILITY_COLUMNS.has(id);
+    const next = [
+      ...LEADING_COLUMNS.filter((id) => all.includes(id)),
+      ...savedOrder.filter(data),
+      ...all.filter((id) => data(id) && !savedOrder.includes(id)),
+      ...(all.includes("actions") ? ["actions"] : []),
+    ];
+    if (next.join() !== savedOrder.join()) table.setColumnOrder(next);
+  }, [table, savedOrder, leafIds]);
   // A fresh view of the same table on every state change (its methods are
   // closures, so the prototype chain serves them unchanged). A parent built
   // with the React Compiler then re-renders the parts it passes it to.
