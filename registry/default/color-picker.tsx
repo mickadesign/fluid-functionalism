@@ -1113,12 +1113,9 @@ function FormatDropdown({
                   )}
                 </AnimatePresence>
 
-                {/* Hover background: each hover session fades in on the
-                    checked row (from), then glides to the row under the
-                    pointer. */}
+                {/* Hover background */}
                 <FluidHoverHighlight
                   hover={hover}
-                  from={checkedRect}
                   className={menuShape.bg}
                 />
 
