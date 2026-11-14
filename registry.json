@@ -1278,7 +1278,8 @@
         "popup",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1331,7 +1332,8 @@
         "popup",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {

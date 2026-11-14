@@ -3409,6 +3409,7 @@ function DataTableColumnHeader<TData, TValue>({
 }: DataTableColumnHeaderProps<TData, TValue>) {
   "use no memo";
   const icons = useIcons();
+  const alt = useIsMac() ? "\u2325" : "Alt";
   const shape = useShape();
   const Arrow = icons["arrow-up"];
   const ctx = useContext(HeaderMenuContext);
@@ -3475,7 +3476,7 @@ function DataTableColumnHeader<TData, TValue>({
     table.setColumnPinning((old) => ({ ...old, left: ids.slice(0, ids.indexOf(column.id) + 1) }));
   };
 
-  const items: { label: string; icon?: IconComponent; onSelect: () => void; disabled?: boolean }[] = [];
+  const items: { label: string; icon?: IconComponent; onSelect: () => void; disabled?: boolean; shortcut?: string[] }[] = [];
   if (canSort) {
     items.push(
       { label: "Sort ascending", icon: icons["arrow-up"], onSelect: () => column.toggleSorting(false) },
@@ -3486,8 +3487,9 @@ function DataTableColumnHeader<TData, TValue>({
   if (canFilter) items.push({ label: "Filter", icon: icons.filter, onSelect: () => (table as Partial<DataTableExtras>).openFilter?.(column.id) });
   if (movable) {
     items.push(
-      { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0 },
-      { label: "Move right", icon: icons["arrow-right"], onSelect: () => move("after"), disabled: at === -1 || at >= order.length - 1 }
+      // The keys that do the same from the focused header.
+      { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0, shortcut: [alt, "\u2190"] },
+      { label: "Move right", icon: icons["arrow-right"], onSelect: () => move("after"), disabled: at === -1 || at >= order.length - 1, shortcut: [alt, "\u2192"] }
     );
   }
   if (canPin) items.push({ label: frozenHere ? "Unfreeze columns" : "Freeze up to here", icon: icons["panel-left"], onSelect: freeze });
@@ -3580,6 +3582,7 @@ function DataTableColumnHeader<TData, TValue>({
               label={item.label}
               disabled={item.disabled}
               onSelect={item.onSelect}
+              shortcut={item.shortcut}
             />
           ))}
         </DropdownContent>
