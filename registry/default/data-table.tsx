@@ -3881,6 +3881,7 @@ const PIN_CSS = `
 @keyframes ff-ride { from { transform: translateY(0) } to { transform: translateY(calc(-1 * var(--ff-scroll-y, 0px))) } }
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
+[data-ff-table] [data-slot=scroll-area-viewport][data-scroll-held] { overflow: hidden !important; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
   [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x, --ff-table-y; }
@@ -5230,6 +5231,17 @@ function CellTextEditor({
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
     measure(el);
+  }, []);
+  // While the field is open the table holds still, both ways: the field
+  // hangs from its cell, and scrolled, it slid under the frozen columns
+  // and the header with the text still being typed. A mark the table's
+  // styles read (PIN_CSS), not an inline style: the scroll box rewrites
+  // its own on every render.
+  useEffect(() => {
+    const box = ref.current?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!box) return;
+    box.setAttribute("data-scroll-held", "");
+    return () => box.removeAttribute("data-scroll-held");
   }, []);
   // The raised field's height follows its wrapped text.
   useLayoutEffect(() => {
