@@ -55,7 +55,8 @@ const sortOnlyColumns: ColumnDef<Payment>[] = [
 /** Sorting alone: no toolbar, no pagination, every row on one page. */
 export function SortableTable() {
   const [data] = useState(() => PAYMENTS.slice(0, 5));
-  const table = useDataTable({ data, columns: sortOnlyColumns });
+  // Opens sorted, so the arrow and the order show.
+  const table = useDataTable({ data, columns: sortOnlyColumns, initialState: { sorting: [{ id: "amount", desc: true }] } });
   // Skeleton rows until the fonts are in: see useFontsReady.
   const ready = useFontsReady();
   return <DataTable table={table} loading={!ready} loadingRows={5} />;
@@ -63,8 +64,9 @@ export function SortableTable() {
 
 /** A search over every column, and an empty state when nothing matches. */
 export function SearchTable() {
-  const [data] = useState(() => PAYMENTS.slice(0, 4));
-  const table = useDataTable({ data, columns: sortOnlyColumns });
+  const [data] = useState(() => PAYMENTS.slice(0, 6));
+  // Opens on a search, so the field is open and the rows it leaves show.
+  const table = useDataTable({ data, columns: sortOnlyColumns, initialState: { globalFilter: "success" } });
   const ready = useFontsReady();
   return (
     <div className="flex w-full flex-col gap-3">
@@ -74,7 +76,8 @@ export function SearchTable() {
       <DataTable
         table={table}
         loading={!ready}
-        loadingRows={4}
+        // As many as the search it opens on leaves.
+        loadingRows={3}
         empty={{ title: "No payments match", description: "Try an email, a status, or an amount." }}
       />
     </div>

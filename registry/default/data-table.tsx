@@ -7254,8 +7254,23 @@ function DataTableSelectionBar<TData>({
   // The portal needs document.body: false on the server and in hydration,
   // true once in the browser.
   const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
+  // The bar is the table's: it shows while the table is on screen (64px of
+  // it at least, the bar's own room). A selection made earlier, or one the
+  // page starts with, otherwise left a bar floating at the window's bottom
+  // for a table scrolled out of sight.
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const root = count > 0 ? getRoot?.() : null;
+    if (!root) return;
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      rootMargin: "0px 0px -64px 0px",
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [count > 0, getRoot]); // eslint-disable-line react-hooks/exhaustive-deps -- watched while rows are selected
+  const up = count > 0 && inView;
   useLayoutEffect(() => {
-    if (count === 0) return;
+    if (!up) return;
     let frame = 0;
     const place = () => {
       frame = 0;
@@ -7296,7 +7311,7 @@ function DataTableSelectionBar<TData>({
       window.removeEventListener("resize", schedule);
       ro?.disconnect();
     };
-  }, [count > 0, getRoot]); // eslint-disable-line react-hooks/exhaustive-deps -- placed while up
+  }, [up, getRoot]);
 
   const clear = () => {
     setMenuOpen(false);
@@ -7307,7 +7322,7 @@ function DataTableSelectionBar<TData>({
 
   const bar = (
     <AnimatePresence>
-      {count > 0 && (
+      {up && (
         <motion.div
           key="bar"
           ref={barRef}

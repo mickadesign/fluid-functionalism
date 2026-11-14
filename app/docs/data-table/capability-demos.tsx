@@ -130,7 +130,15 @@ export function TeamTable() {
     )),
   ];
 
-  const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
+  const table = useDataTable({
+    data: members,
+    columns,
+    pageSize: 8,
+    getRowId: (m) => m.id,
+    // The section opens on what it shows: three people already selected,
+    // so the fill that merges touching rows and the actions bar are there.
+    initialState: { rowSelection: { "2": true, "3": true, "5": true } },
+  });
   // Skeleton rows until the fonts are in: see useFontsReady.
   const ready = useFontsReady();
 
@@ -220,7 +228,14 @@ const columns: ColumnDef<Member>[] = [
   )),
 ];
 
-const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
+const table = useDataTable({
+  data: members,
+  columns,
+  pageSize: 8,
+  getRowId: (m) => m.id,
+  // Start with a few rows selected (or none: leave this out).
+  initialState: { rowSelection: { "2": true, "3": true, "5": true } },
+});
 
 <div className="flex flex-col gap-2">
   {/* The title, then the tools at the right end, on one row. */}
@@ -451,7 +466,8 @@ export function FilesTable() {
     columns: fileColumns,
     getRowId: (f) => f.id,
     getSubRows: (f) => f.children,
-    initialState: { expanded: { brand: true } },
+    // Two levels open, so the indent and the guides show.
+    initialState: { expanded: { brand: true, "brand/type": true } },
   });
   return (
     <div className="flex w-full flex-col gap-2">
@@ -483,7 +499,7 @@ const table = useDataTable({
   getRowId: (f) => f.id,
   // The first column gets a chevron and an indent per level.
   getSubRows: (f) => f.children,
-  initialState: { expanded: { brand: true } },
+  initialState: { expanded: { brand: true, "brand/type": true } },
 });
 
 <div className="flex justify-end">
@@ -589,13 +605,41 @@ const VIEWS: View[] = [
       globalFilter: "",
     },
   },
+  {
+    id: 2,
+    name: "Admins",
+    state: {
+      columnFilters: [{ id: "role", value: { kind: "options", values: ["Owner", "Admin"] } }],
+      sorting: [{ id: "name", desc: false }],
+      columnVisibility: {},
+      globalFilter: "",
+    },
+  },
+  {
+    id: 3,
+    name: "Recently active",
+    state: {
+      columnFilters: [{ id: "status", value: { kind: "options", values: ["Active"] } }],
+      sorting: [{ id: "lastActive", desc: true }],
+      columnVisibility: { role: false },
+      globalFilter: "",
+    },
+  },
 ];
+// The section opens on a saved view: its tab picked, its filter set.
+const OPEN_VIEW = 2;
 
 export function ViewsTable() {
-  const table = useDataTable({ data: MEMBERS, columns: viewColumns, pageSize: 6, getRowId: (m) => m.id });
+  const table = useDataTable({
+    data: MEMBERS,
+    columns: viewColumns,
+    pageSize: 6,
+    getRowId: (m) => m.id,
+    initialState: VIEWS[OPEN_VIEW - 1].state,
+  });
   const [views, setViews] = useState(VIEWS);
   // The open tab: 0 is Everyone, a saved view is its index + 1.
-  const [open, setOpen] = useState(0);
+  const [open, setOpen] = useState(OPEN_VIEW);
   // A view just saved opens for naming in its tab.
   const [nameNext, setNameNext] = useState<number | null>(null);
   const show = (state: View["state"]) =>
@@ -678,7 +722,7 @@ export function ViewsTable() {
           </Button>
         )}
       </DataTableFilterChips>
-      <DataTable table={table} loading={!ready} loadingRows={6} />
+      <DataTable table={table} loading={!ready} loadingRows={3} />
     </div>
   );
 }
@@ -736,7 +780,13 @@ export function ReorderTable() {
     { accessorKey: "owner", header: "Owner", enableSorting: false },
     { accessorKey: "when", header: "When", enableSorting: false },
   ];
-  const table = useDataTable({ data: history.rows, columns, getRowId: (s) => s.id });
+  const table = useDataTable({
+    data: history.rows,
+    columns,
+    getRowId: (s) => s.id,
+    // Two steps already selected: drag either and both move.
+    initialState: { rowSelection: { "3": true, "4": true } },
+  });
   return (
     <div className="w-full">
       <DataTable
