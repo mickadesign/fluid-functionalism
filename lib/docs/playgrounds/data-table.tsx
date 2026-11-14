@@ -342,7 +342,10 @@ function buildColumns(o: {
           cell: ({ row }) => formatDay(String(row.original[c.id] ?? "")),
           meta: {
             label: c.label,
-            className: "tabular-nums whitespace-nowrap",
+            // A floor of 112px: short of room a column gives up width
+            // down to its header, and "Added" is narrower than a date,
+            // which was then cut to "Nov 4, …".
+            className: "min-w-28 tabular-nums whitespace-nowrap",
             icon: icon(c.icon),
             editor: o.editable ? "date" : undefined,
           },
@@ -586,9 +589,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  {`,
     `    accessorKey: "added",`,
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,`,
-    ...(o.headerIcons || o.editable
-      ? [`    meta: { ${[o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`]
-      : []),
+    // min-w-28: the column never gets narrower than a whole date.
+    `    meta: { ${[`className: "min-w-28 tabular-nums whitespace-nowrap"`, o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`,
     `  },`,
     `  {`,
     `    accessorKey: "tags",`,

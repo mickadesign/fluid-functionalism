@@ -346,7 +346,7 @@ function useDataTable<TData>({
     // Every column filters the way DataTableFilters sets it, unless it
     // brings its own filterFn; DataTableSearch has the global filter.
     // A column shown after the widths were read (from the Columns menu)
-    // takes this default: 240px (TanStack's is 150), so a header and
+    // takes this default: TanStack's 150px plus 16, so a short header and
     // its sort arrow have room.
     defaultColumn: { filterFn: dataTableFilterFn, size: ADDED_COLUMN_WIDTH, ...options.defaultColumn },
     globalFilterFn: options.globalFilterFn ?? dataTableSearchFn,
@@ -742,7 +742,7 @@ function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number |
 const NATURAL_CAP = 240;
 
 /** The width a column gets when it is shown after the others were sized. */
-const ADDED_COLUMN_WIDTH = 240;
+const ADDED_COLUMN_WIDTH = 166;
 
 /** What a header's menu acts on: the table, and whether its columns move. */
 const HeaderMenuContext = createContext<{

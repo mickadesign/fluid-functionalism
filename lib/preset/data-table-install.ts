@@ -152,7 +152,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  {`);
   l.push(`    accessorKey: "added",`);
   l.push(`    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,`);
-  l.push(`    meta: { label: "Added", className: "tabular-nums whitespace-nowrap"${icon("Calendar")}${edit ? `, editor: "date"` : ""} },`);
+  l.push(`    meta: { label: "Added", className: "min-w-28 tabular-nums whitespace-nowrap"${icon("Calendar")}${edit ? `, editor: "date"` : ""} },`);
   l.push(`  },`);
   l.push(`  {`);
   l.push(`    accessorKey: "tags",`);
