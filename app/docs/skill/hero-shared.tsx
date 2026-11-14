@@ -27,11 +27,37 @@ export function usePlayback() {
   const playback = usePreviewPlayback();
   const [pointerInside, setPointerInside] = useState(false);
   const [keyboardInside, setKeyboardInside] = useState(false);
+  // What an example opens in a portal (a menu and the layer under it, a
+  // drag's ghost) can cover the whole page, and a pointer anywhere over it
+  // bubbles here too, through the React tree. Taken as a visitor inside,
+  // with no leave to follow, it stopped the script for good. So a pointer
+  // over a portal counts by where it is: inside while over the example's
+  // box, outside once past it, unless it came there from the example
+  // itself (the visitor's own menu, which they are still using).
+  const cameFromRoot = useRef(false);
+  const seen = (e: SyntheticEvent) => {
+    if (!fromVisitor(e)) return;
+    const root = rootRef.current;
+    if (!root) return;
+    if (root.contains(e.target as Node)) {
+      cameFromRoot.current = true;
+      setPointerInside(true);
+      return;
+    }
+    const { clientX: x, clientY: y } = e.nativeEvent as MouseEvent;
+    const box = root.getBoundingClientRect();
+    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) setPointerInside(true);
+    else if (!cameFromRoot.current) setPointerInside(false);
+  };
   const bind = {
-    onMouseEnter: (e: SyntheticEvent) => fromVisitor(e) && setPointerInside(true),
-    onMouseMove: (e: SyntheticEvent) => fromVisitor(e) && setPointerInside(true),
-    onPointerDown: (e: SyntheticEvent) => fromVisitor(e) && setPointerInside(true),
-    onMouseLeave: (e: SyntheticEvent) => fromVisitor(e) && setPointerInside(false),
+    onMouseEnter: seen,
+    onMouseMove: seen,
+    onPointerDown: seen,
+    onMouseLeave: (e: SyntheticEvent) => {
+      if (!fromVisitor(e)) return;
+      cameFromRoot.current = false;
+      setPointerInside(false);
+    },
     onFocus: (e: FocusEvent) => setKeyboardInside(e.target.matches(":focus-visible")),
     onBlur: (e: FocusEvent) => {
       if (!rootRef.current?.contains(e.relatedTarget)) setKeyboardInside(false);
@@ -171,6 +197,8 @@ export function useScriptCursor(
   // A press being held (a scripted drag): each move goes to the window as
   // a pointermove, where a drag listens once it has started.
   const held = useRef(false);
+  // While a press is held, what keeps the visitor's own pointer out of it.
+  const shield = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const fire = (target: Element, type: string, related: Element | null, at: { x: number; y: number }) => {
@@ -230,15 +258,21 @@ export function useScriptCursor(
     };
     const offX = x.on("change", schedule);
     const offY = y.on("change", schedule);
+    // The cursor sits on the page and scrolls with it: what is under its
+    // tip is the same, but at another place in the window, and hover that
+    // remembers where the pointer was (a table's, which follows a scroll)
+    // must hear the new one.
+    window.addEventListener("scroll", schedule, { capture: true, passive: true });
     return () => {
       offX();
       offY();
+      window.removeEventListener("scroll", schedule, { capture: true });
       hoverTo(null, tip());
     };
   }, [playing, rootRef, x, y, reach]);
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const cursor = {
       x,
       y,
       scale,
@@ -285,6 +319,19 @@ export function useScriptCursor(
         if (!hit || !root.contains(hit)) return;
         held.current = true;
         animate(scale, 0.8, { duration: 0.1 });
+        // A drag listens on the window, where the visitor's own pointer
+        // is heard too: moving it anywhere on the page would carry what
+        // the script holds. Its moves stop here while the press is held
+        // (hover runs on mouse events, and still follows it); a real
+        // press is the visitor's turn, and the script lets go.
+        const block = (e: PointerEvent) => {
+          if (!e.isTrusted) return;
+          if (e.type === "pointerdown") cursor.release(true);
+          else e.stopPropagation();
+        };
+        const types = ["pointerdown", "pointermove", "pointerup", "pointercancel"] as const;
+        types.forEach((type) => window.addEventListener(type, block, true));
+        shield.current = () => types.forEach((type) => window.removeEventListener(type, block, true));
         firePointer(hit, "pointerdown", at, 1);
       },
       /** Lets go: the drop. `cancel` abandons the drag instead (a visitor
@@ -292,14 +339,16 @@ export function useScriptCursor(
       release(cancel = false) {
         if (!held.current) return;
         held.current = false;
+        shield.current?.();
+        shield.current = null;
         animate(scale, 1, { duration: 0.1 });
         const box = rootRef.current?.getBoundingClientRect();
         const at = box ? { x: box.left + x.get(), y: box.top + y.get() } : { x: 0, y: 0 };
         firePointer(document.documentElement, cancel ? "pointercancel" : "pointerup", at, 0);
       },
-    }),
-    [rootRef, x, y, scale, opacity]
-  );
+    };
+    return cursor;
+  }, [rootRef, x, y, scale, opacity]);
 }
 
 /** One scripted glide: to the target, then a rest of `restMs` on it before

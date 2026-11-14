@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type FocusEvent, type RefObject, type SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
-import { animate } from "motion/react";
 import { FakeCursor, type Cursor } from "@/app/docs/skill/hero-shared";
 
 // The scripted cursor for this page's demos, as the skill page plays its
@@ -84,6 +83,29 @@ export function dragSteps(
 
 type Step = { ms: number; run: () => void };
 
+/** How long after a key press a focus-taking script stays out. */
+const KEY_QUIET_MS = 6000;
+
+/** What a script changes, kept apart from the demo's own rows: the table
+ *  shows `rows` (the script's version while there is one), and the
+ *  visitor's undo history never holds the script's steps. `change` edits
+ *  the script's version, and drops it once it matches the real rows again
+ *  (`same`); `clear` drops it when a visitor takes over, so they act on
+ *  the rows they can undo. */
+export function useScriptRows<T>(real: T[], same: (a: T[], b: T[]) => boolean) {
+  const [layer, setLayer] = useState<T[] | null>(null);
+  return {
+    rows: layer ?? real,
+    change(fn: (rows: T[]) => T[]) {
+      setLayer((old) => {
+        const next = fn(old ?? real);
+        return same(next, real) ? null : next;
+      });
+    },
+    clear: () => setLayer(null),
+  };
+}
+
 /** For a script that has to move focus (a cell's editor and a menu only
  *  exist focused). It takes focus only when nobody holds it (`free`: focus
  *  on the page itself), marks its own focus so playback doesn't read it as
@@ -94,7 +116,32 @@ export function useScriptFocus<B extends { onFocus: (e: FocusEvent) => void; onP
   bind: B
 ) {
   const scripting = useRef(false);
+  // The keyboard is the visitor's. A key pressed while the script holds
+  // focus would land in the script's field or menu (Space to scroll the
+  // page would type, or pick an item): that one press is dropped, and the
+  // script stands down (`paused`, for the demo's play condition) until
+  // the keys have been quiet a while.
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.isTrusted) return;
+      if (scripting.current) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+      setPaused(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setPaused(false), KEY_QUIET_MS);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      clearTimeout(timer);
+    };
+  }, []);
   return {
+    paused,
     bind: {
       ...bind,
       onFocus: (e: FocusEvent) => {
@@ -160,25 +207,6 @@ export function retypeSteps(
   }));
 }
 
-/** A scripted drag for what listens to the mouse rather than the pointer
- *  (a column's resize edge): press `target`, and the cursor's own
- *  mousemoves carry it until `mouseUp`. */
-export function mouseDown(cursor: Cursor, target: Element | null | undefined) {
-  if (!target) return false;
-  const at = cursor.tip();
-  animate(cursor.scale, 0.8, { duration: 0.1 });
-  target.dispatchEvent(
-    new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0, buttons: 1, clientX: at.x, clientY: at.y })
-  );
-  return true;
-}
-
-export function mouseUp(cursor: Cursor) {
-  const at = cursor.tip();
-  animate(cursor.scale, 1, { duration: 0.1 });
-  document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0, clientX: at.x, clientY: at.y }));
-}
-
 /** Keeps a demo as tall as it has ever been, so one that grows and
  *  shrinks as it plays (a row opening, text wrapping onto more lines)
  *  doesn't move the page under whoever is reading below it. */
@@ -195,6 +223,19 @@ export function useHoldHeight(ref: RefObject<HTMLElement | null>) {
       box.style.minHeight = `${h}px`;
     });
     observer.observe(box);
-    return () => observer.disconnect();
+    // A window of another width lays the demo out afresh: what was its
+    // tallest no longer is, and it starts over.
+    let width = window.innerWidth;
+    const onResize = () => {
+      if (window.innerWidth === width) return;
+      width = window.innerWidth;
+      tallest = 0;
+      box.style.minHeight = "";
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
   }, [ref]);
 }

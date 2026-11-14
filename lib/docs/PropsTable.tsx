@@ -38,9 +38,13 @@ function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean })
       <td className="px-3 py-2 text-foreground font-mono text-site-caption">
         <div className={/\s/.test(prop.name) ? "w-max max-w-40" : "whitespace-nowrap"}>
           {/* A signature may break after its "(". */}
-          {prop.name.split(/(?<=\()/).map((part, i) => (
+          {prop.name.split("(").map((part, i) => (
             <Fragment key={i}>
-              {i > 0 && <wbr />}
+              {i > 0 && (
+                <>
+                  (<wbr />
+                </>
+              )}
               {part}
             </Fragment>
           ))}

@@ -31,7 +31,7 @@ import { showUndoToast } from "@/lib/docs/settings-toast";
 import { useFontsReady } from "@/lib/docs/use-fonts-ready";
 import { animate } from "motion/react";
 import { clickStep, firePointer, useLoop, usePlayback, useScriptCursor } from "@/app/docs/skill/hero-shared";
-import { CursorLayer, GLIDE, dragSteps, mouseDown, mouseUp, retypeSteps, useHoldHeight, useScriptFocus } from "./scripted";
+import { CursorLayer, GLIDE, dragSteps, retypeSteps, useHoldHeight, useScriptFocus, useScriptRows } from "./scripted";
 import { Badge, type BadgeColor } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
 
@@ -334,7 +334,9 @@ const TASK_RENAMED = "Draft the onboarding guide";
 export function TasksTable() {
   // Each edit is a step ⌘Z takes back, as in the playground.
   const history = useUndoableRows(TASKS, { getId: (t) => t.id });
-  const tasks = history.rows;
+  // The script's rename stays out of that history: see useScriptRows.
+  const script = useScriptRows(history.rows, (a, b) => a.every((t, i) => t.title === b[i]?.title));
+  const tasks = script.rows;
   const ready = useFontsReady();
   const table = useDataTable({
     data: tasks,
@@ -346,8 +348,8 @@ export function TasksTable() {
   // exists focused, so the script takes focus, and only while nobody else
   // holds it; it hands it back to the page after each edit.
   const { rootRef, playing, bind } = usePlayback();
-  const on = playing && ready;
   const focus = useScriptFocus(rootRef, bind);
+  const on = playing && ready && !focus.paused;
   const cursor = useScriptCursor(rootRef, on);
   const nameCell = 'tbody tr[data-row-id="t1"] td[data-column-id=title]';
   const editor = () => {
@@ -382,7 +384,11 @@ export function TasksTable() {
   useLoop(
     on,
     [...edit(TASKS[0].title, TASK_RENAMED, 1600), ...edit(TASK_RENAMED, TASKS[0].title, 2200)],
-    closeEditor
+    () => {
+      closeEditor();
+      // A visitor took over: they find their own rows.
+      script.clear();
+    }
   );
   return (
     <div ref={rootRef} className="flex w-full flex-col gap-2" {...focus.bind}>
@@ -397,14 +403,17 @@ export function TasksTable() {
         resizeColumns
         loading={!ready}
         loadingRows={6}
-        onCellEdit={({ row, columnId, value }) =>
-          history.apply(
-            `Edited ${row.original.title}`,
-            (old) => old.map((t) => (t.id === row.original.id ? { ...t, [columnId]: value } : t)),
-            // A burst of typing in one cell is one step.
-            `${row.original.id}:${columnId}`
-          )
-        }
+        onCellEdit={({ row, columnId, value }) => {
+          const change = (old: Task[]) => old.map((t) => (t.id === row.original.id ? { ...t, [columnId]: value } : t));
+          if (focus.scripting.current) script.change(change);
+          else
+            history.apply(
+              `Edited ${row.original.title}`,
+              change,
+              // A burst of typing in one cell is one step.
+              `${row.original.id}:${columnId}`
+            );
+        }}
         onUndo={history.undo}
         onRedo={history.redo}
       />
@@ -624,19 +633,49 @@ export function ChangelogTable() {
   const cursor = useScriptCursor(rootRef, on);
   useHoldHeight(rootRef);
   const edge = "thead th[data-column-id=summary] [data-resize-handle]";
-  const dragging = useRef(false);
-  const drop = () => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    mouseUp(cursor);
+  // The script sets the width itself as its cursor carries the edge. A
+  // real resize listens to the mouse on the whole document, where the
+  // visitor's own would be heard too and take the column with it.
+  const drag = useRef<{ stop: () => void } | null>(null);
+  // Summary's size as the table first fitted it, to end each loop on.
+  const fitted = useRef<number | undefined>(undefined);
+  const grab = () => {
+    const handle = rootRef.current?.querySelector<HTMLElement>(edge);
+    const th = handle?.closest("th");
+    if (!handle || !th || drag.current) return;
+    if (fitted.current === undefined) fitted.current = table.getState().columnSizing.summary;
+    // From the width it shows: it takes the room left over, wider than
+    // the size it holds.
+    const from = th.getBoundingClientRect().width;
+    const startX = cursor.x.get();
+    handle.setAttribute("data-resizing", "");
+    animate(cursor.scale, 0.8, { duration: 0.1 });
+    const off = cursor.x.on("change", (x) =>
+      table.setColumnSizing((old) => ({ ...old, summary: Math.round(from + x - startX) }))
+    );
+    drag.current = {
+      stop: () => {
+        off();
+        handle.removeAttribute("data-resizing");
+        animate(cursor.scale, 1, { duration: 0.1 });
+      },
+    };
   };
-  const drag = (by: number, holdMs: number) => [
+  const drop = (rest = false) => {
+    if (!drag.current) return;
+    drag.current.stop();
+    drag.current = null;
+    // Back where it began (or a visitor took over): the fitted size again.
+    const size = fitted.current;
+    if (rest && size !== undefined) table.setColumnSizing((old) => ({ ...old, summary: size }));
+  };
+  const dragBy = (by: number, holdMs: number, rest: boolean) => [
     { ms: GLIDE + 450, run: () => cursor.goto(edge) },
-    { ms: 250, run: () => { dragging.current = mouseDown(cursor, rootRef.current?.querySelector(edge)); } },
+    { ms: 250, run: grab },
     { ms: GLIDE + 350, run: () => cursor.goto(edge, 0, { x: by }) },
-    { ms: holdMs, run: drop },
+    { ms: holdMs, run: () => drop(rest) },
   ];
-  useLoop(on, [...drag(-SUMMARY_DRAG, 1800), ...drag(SUMMARY_DRAG, 2200)], drop);
+  useLoop(on, [...dragBy(-SUMMARY_DRAG, 1800, false), ...dragBy(SUMMARY_DRAG, 2200, true)], () => drop());
   return (
     <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
       <CursorLayer rootRef={rootRef} cursor={cursor} playing={on} />
@@ -1198,8 +1237,10 @@ export function ReorderTable() {
     { accessorKey: "owner", header: "Owner", enableSorting: false },
     { accessorKey: "when", header: "When", enableSorting: false },
   ];
+  // The script's moves stay out of that history: see useScriptRows.
+  const script = useScriptRows(history.rows, (a, b) => a.every((s, i) => s.id === b[i]?.id));
   const table = useDataTable({
-    data: history.rows,
+    data: script.rows,
     columns,
     getRowId: (s) => s.id,
     // Two steps already selected: drag either and both move.
@@ -1219,7 +1260,11 @@ export function ReorderTable() {
       ...dragSteps(cursor, handleOf("3"), handleOf("6"), { y: 10 }, 1600),
       ...dragSteps(cursor, handleOf("3"), handleOf("2"), { y: 10 }, 2000),
     ],
-    () => cursor.release(true)
+    () => {
+      cursor.release(true);
+      // A visitor took over: they find their own rows.
+      script.clear();
+    }
   );
   return (
     <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
@@ -1227,9 +1272,11 @@ export function ReorderTable() {
       <CursorLayer rootRef={rootRef} cursor={cursor} playing={playing} />
       <DataTable
         table={table}
-        onRowReorder={(move) =>
-          history.apply(move.rows.length === 1 ? "Moved a row" : `Moved ${move.rows.length} rows`, (rows) => moveRows(rows, move))
-        }
+        onRowReorder={(move) => {
+          // Only the script drops while it plays: a visitor's press stops it.
+          if (playing) script.change((rows) => moveRows(rows, move));
+          else history.apply(move.rows.length === 1 ? "Moved a row" : `Moved ${move.rows.length} rows`, (rows) => moveRows(rows, move));
+        }}
         onUndo={history.undo}
         onRedo={history.redo}
       />

@@ -738,6 +738,9 @@ function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number |
 // text wraps or cuts short rather than crowd the columns beside it.
 const NATURAL_CAP = 240;
 
+/** The width a column gets when it is shown after the others were sized. */
+const ADDED_COLUMN_WIDTH = 166;
+
 /** What a header's menu acts on: the table, and whether its columns move. */
 const HeaderMenuContext = createContext<{
   table: TanStackTable<unknown>;
@@ -3475,9 +3478,6 @@ const SELECT_SNAP =
 // `:hover` only once the pointer moves again, which left the box and the
 // handle on the row that had scrolled away. The header row has no
 // highlight of its own, so its box still follows `:hover`.
-/** The width a column gets when it is shown after the others were sized. */
-const ADDED_COLUMN_WIDTH = 166;
-
 /** One block of rows in the drag's copy: the page background under the
  *  rows and the --active fill over them. */
 const GHOST_BLOCK =
@@ -7345,7 +7345,13 @@ function DataTableSelectionBar<TData>({
       rootMargin: "0px 0px -64px 0px",
     });
     observer.observe(root);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      // Unknown again until the next selection's observer reports: the
+      // table may have left the screen meanwhile, and the old answer
+      // would flash the bar for it.
+      setInView(false);
+    };
   }, [count > 0, getRoot]); // eslint-disable-line react-hooks/exhaustive-deps -- watched while rows are selected
   const up = count > 0 && inView;
   useLayoutEffect(() => {

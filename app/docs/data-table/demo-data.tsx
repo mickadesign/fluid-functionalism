@@ -68,12 +68,14 @@ export function SortableTable() {
   // script only opens one while nobody else holds focus, and hands focus
   // back to the page after each pick.
   const { rootRef, playing, bind } = usePlayback();
-  const on = playing && ready;
   const focus = useScriptFocus(rootRef, bind);
+  const on = playing && ready && !focus.paused;
   // The menu renders in a portal: the cursor hovers it too.
   const cursor = useScriptCursor(rootRef, on, "[role=menu]");
-  const menuItem = (n: number) =>
-    focus.scripting.current ? document.querySelectorAll<HTMLElement>("[role=menu] [role^=menuitem]")[n] : undefined;
+  // The script's own menu is the one holding focus (a menu takes it on
+  // opening): never another that happens to be open on the page.
+  const menu = () => (focus.scripting.current ? document.activeElement?.closest("[role=menu]") : null);
+  const menuItem = (n: number) => menu()?.querySelectorAll<HTMLElement>("[role^=menuitem]")[n];
   const pick = (column: string, item: number, holdMs: number) => {
     const header = `thead th[data-column-id=${column}] button[aria-haspopup]`;
     return [
@@ -112,9 +114,7 @@ export function SortableTable() {
     if (!focus.scripting.current) return;
     // A visitor took over with the script's menu open: close it, then
     // hand focus back once the menu has returned it.
-    document
-      .querySelector("[role=menu]")
-      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    menu()?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
     settle.current = setTimeout(focus.giveBack, 100);
   });
   return (
