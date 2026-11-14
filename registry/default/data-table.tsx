@@ -781,18 +781,22 @@ function setOrderKeepingFrozen<TData>(table: TanStackTable<TData>, order: string
   table.setColumnOrder(order);
   const pin = table.getState().columnPinning;
   const left = pin.left ?? [];
-  const isData = (id: string) => table.getColumn(id)?.accessorFn !== undefined;
+  // Looked up here, not with table.getColumn: the pin list names the
+  // select and drag columns whether or not the table has them, and
+  // getColumn logs an error for an id that is not there.
+  const byId = new Map(table.getAllLeafColumns().map((c) => [c.id, c]));
+  const isData = (id: string) => byId.get(id)?.accessorFn !== undefined;
   // Counted among the visible ones, like the places below: a frozen
   // column that is hidden would otherwise freeze one more visible column.
-  const frozen = left.filter((id) => isData(id) && table.getColumn(id)?.getIsVisible()).length;
+  const frozen = left.filter((id) => isData(id) && byId.get(id)?.getIsVisible()).length;
   if (frozen === 0) return;
   const right = new Set(pin.right ?? []);
   // Only columns that may be frozen take a frozen place.
   const first = order
-    .filter((id) => isData(id) && !right.has(id) && table.getColumn(id)?.getIsVisible() && table.getColumn(id)?.getCanPin())
+    .filter((id) => isData(id) && !right.has(id) && byId.get(id)?.getIsVisible() && byId.get(id)?.getCanPin())
     .slice(0, frozen);
   // Hidden frozen columns keep their pin for when they are shown again.
-  const hidden = left.filter((id) => isData(id) && !table.getColumn(id)?.getIsVisible());
+  const hidden = left.filter((id) => isData(id) && !byId.get(id)?.getIsVisible());
   const next = [...left.filter((id) => !isData(id)), ...first, ...hidden];
   if (next.join() !== left.join()) table.setColumnPinning((old) => ({ ...old, left: next }));
 }
