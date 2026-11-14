@@ -1014,12 +1014,23 @@ function DataTable<TData>({
     const root = wrapRef.current;
     const viewport = root?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
     if (!fill || !root || !viewport) return;
-    const mark = () => root.toggleAttribute("data-scrolled", viewport.scrollTop > 0);
+    const mark = () => {
+      root.toggleAttribute("data-scrolled", viewport.scrollTop > 0);
+      // More rows under the box's bottom edge: its fade and hairline show.
+      root.toggleAttribute("data-more-below", viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop > 0.5);
+    };
     mark();
     viewport.addEventListener("scroll", mark, { passive: true });
+    // The rows or the box changing height moves the end too.
+    const observer = new ResizeObserver(mark);
+    observer.observe(viewport);
+    const tableNode = viewport.querySelector("table");
+    if (tableNode) observer.observe(tableNode);
     return () => {
       viewport.removeEventListener("scroll", mark);
+      observer.disconnect();
       root.removeAttribute("data-scrolled");
+      root.removeAttribute("data-more-below");
     };
   }, [fill, wrapEl]);
 
@@ -1315,6 +1326,9 @@ function DataTable<TData>({
   // there; without, they follow the box as it resizes.
   const sizing = table.getState().columnSizing;
   const seeded = Object.keys(sizing).length > 0;
+  // The sizing was seeded by this component from a first load's skeleton
+  // bars, so the rows that land size the columns again.
+  const seededFromSkeleton = useRef(false);
   const restId = resizeColumns
     ? flexId
     : (visible.find((c) => /(^|\s)w-full(\s|$)/.test(c.columnDef.meta?.className ?? ""))?.id ??
@@ -1381,7 +1395,10 @@ function DataTable<TData>({
     // Seeded widths are the reader's from then on, unless they were read
     // from a first load's skeletons: the rows that land size the columns
     // for good (a name column stayed as narrow as its skeleton bar).
-    const guessed = seeded && !loading && !naturalFromRows.current;
+    // Only widths this effect itself read off skeletons are a guess:
+    // sizing the reader saved (initialState or controlled columnSizing) is
+    // theirs from the first render, loading or not.
+    const guessed = seeded && !loading && seededFromSkeleton.current;
     if (resizeColumns && seeded && !guessed) return;
     const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
     const ths = headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]");
@@ -1470,7 +1487,10 @@ function DataTable<TData>({
     }
     if (resizeColumns) {
       const widths = fit();
-      if (widths) table.setColumnSizing((old) => (guessed ? widths : { ...widths, ...old }));
+      if (widths) {
+        seededFromSkeleton.current = loading;
+        table.setColumnSizing((old) => (guessed ? widths : { ...widths, ...old }));
+      }
       return;
     }
     // Without resizing, the widths follow the box. The observer reports
@@ -1646,7 +1666,11 @@ function DataTable<TData>({
       // if the table weren't scrolled, the right one as if it were scrolled
       // to its end, so a fill's rounded end stays at the box's edge. Cut
       // off at the header's bottom, which the rows scroll under.
-      const head = wrap.querySelector("thead")?.getBoundingClientRect();
+      // A header cell, not the thead: filled, the cells stick while the
+      // thead scrolls away with the rows, and read from it the cut-off
+      // rose with the scroll until the frozen columns' fills drew over the
+      // header.
+      const head = wrap.querySelector("thead th")?.getBoundingClientRect();
       wrap.style.setProperty("--ff-head", `${head ? Math.max(0, head.bottom - box.top) : 0}px`);
       if (container && viewport) {
         const at = container.getBoundingClientRect();
@@ -1660,7 +1684,7 @@ function DataTable<TData>({
         });
       }
     }
-    const picked = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-state=selected]"));
+    const picked = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-state=selected]:not([data-row-dragging])"));
     const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
     const container = wrap.querySelector("table")?.parentElement;
     if (!picked.length || !viewport || !container) {
@@ -2118,11 +2142,20 @@ function DataTable<TData>({
     width: number;
     height: number;
     count: number;
+    /** More rows are carried than the copy has room to show. */
+    cut: boolean;
+    /** The carried rows: while they ride in the copy, the ones left in
+     *  place drop their selection fill (the copy keeps it, checks and all). */
+    ids: readonly string[];
   } | null>(null);
   const rowGhostRef = useRef<HTMLDivElement>(null);
   const dropLineRef = useRef<HTMLDivElement>(null);
   const draggedRow = useRef<HTMLTableRowElement | null>(null);
+  // Every row the drag carries and where it sits in the copy, from the
+  // copy's top.
+  const draggedRows = useRef<{ el: HTMLElement; top: number; height: number }[]>([]);
   const ghostUp = rowGhost !== null;
+  const ghostShape = shape.bg;
   useLayoutEffect(() => {
     const host = rowGhostRef.current;
     const tr = draggedRow.current;
@@ -2136,35 +2169,68 @@ function DataTable<TData>({
     // (the cell padding, the chevron's inset, how opaque a frozen cell is),
     // since the copy lives outside it.
     const rowCss = getComputedStyle(tr);
-    const copy = document.createElement("table");
-    copy.className = source.className;
-    copy.style.cssText = `table-layout:fixed;min-width:0;width:${tr.offsetWidth}px;--table-cell-py:${rowCss.getPropertyValue("--table-cell-py")}`;
-    const body = document.createElement("tbody");
-    const row = tr.cloneNode(true) as HTMLElement;
-    row.removeAttribute("data-row-id");
-    row.removeAttribute("data-row-dragging");
-    row.classList.remove("is-active");
-    Array.from(row.children).forEach((cell, i) => {
-      const from = tr.children[i] as HTMLElement;
-      const css = getComputedStyle(from);
-      // Held to its width from both sides: a column's own min or max
-      // width would otherwise size the copy's cell differently.
-      const w = from.getBoundingClientRect().width;
-      // Frozen cells stay sticky: the copy scrolls sideways as far as the
-      // table has, so they sit where the row's do, over what passed under.
-      (cell as HTMLElement).style.cssText +=
-        `;box-sizing:border-box;width:${w}px;min-width:${w}px;max-width:${w}px;--ff-pin:${css.getPropertyValue("--ff-pin") || 0};--expander-pl:${css.getPropertyValue("--expander-pl")}`;
+    const scrollLeft = wrapRef.current?.querySelector("[data-slot=scroll-area-viewport]")?.scrollLeft ?? 0;
+    const carried = draggedRows.current.length
+      ? draggedRows.current
+      : [{ el: tr as HTMLElement, top: 0, height: tr.offsetHeight }];
+    // Rows that touch share a block; rows apart keep the gap between them,
+    // so the copy reads as the selection it is, where it is.
+    const runs: (typeof carried)[] = [];
+    for (const item of carried) {
+      const run = runs[runs.length - 1];
+      const last = run?.[run.length - 1];
+      if (last && Math.abs(last.top + last.height - item.top) < 1) run.push(item);
+      else runs.push([item]);
+    }
+    const blocks = runs.map((run) => {
+      const block = document.createElement("div");
+      // Each block is lifted like a dragged header: the --active fill over
+      // the page background. The fill lies over the copy, so frozen cells
+      // (opaque) take it with the rest.
+      block.className = cn(GHOST_BLOCK, ghostShape);
+      block.style.top = `${run[0].top}px`;
+      block.style.height = `${run.reduce((sum, item) => sum + item.height, 0)}px`;
+      const copy = document.createElement("table");
+      copy.className = source.className;
+      copy.style.cssText = `table-layout:fixed;min-width:0;width:${tr.offsetWidth}px;--table-cell-py:${rowCss.getPropertyValue("--table-cell-py")}`;
+      const body = document.createElement("tbody");
+      for (const { el: from } of run) {
+        const row = from.cloneNode(true) as HTMLElement;
+        row.removeAttribute("data-row-id");
+        row.removeAttribute("data-row-dragging");
+        row.classList.remove("is-active");
+        Array.from(row.children).forEach((cell, i) => {
+          const origin = from.children[i] as HTMLElement;
+          const css = getComputedStyle(origin);
+          // Held to its width from both sides: a column's own min or max
+          // width would otherwise size the copy's cell differently.
+          const w = origin.getBoundingClientRect().width;
+          // Frozen cells stay sticky: the copy scrolls sideways as far as
+          // the table has, so they sit where the row's do, over what
+          // passed under.
+          (cell as HTMLElement).style.cssText +=
+            `;box-sizing:border-box;width:${w}px;min-width:${w}px;max-width:${w}px;--ff-pin:${css.getPropertyValue("--ff-pin") || 0};--expander-pl:${css.getPropertyValue("--expander-pl")}`;
+        });
+        // The handle shows on the row that was grabbed, and each row's
+        // box, as they do on the row under the pointer (there, the
+        // highlight carries them).
+        row.querySelectorAll<HTMLElement>("[data-row-handle], [data-select-hit]").forEach((el) => {
+          if (el.matches("[data-row-handle]")) {
+            if (from !== tr) return;
+            el.style.display = "flex";
+          }
+          el.style.setProperty("opacity", "1", "important");
+        });
+        body.append(row);
+      }
+      copy.append(body);
+      block.append(copy);
+      return block;
     });
-    // The handle and the box show on the carried row, as they do on the
-    // row under the pointer (there, the highlight carries them).
-    row.querySelectorAll<HTMLElement>("[data-row-handle], [data-select-hit]").forEach((el) => {
-      el.style.setProperty("opacity", "1", "important");
-      if (el.matches("[data-row-handle]")) el.style.display = "flex";
-    });
-    body.append(row);
-    copy.append(body);
-    slot.replaceChildren(copy);
-    slot.scrollLeft = wrapRef.current?.querySelector("[data-slot=scroll-area-viewport]")?.scrollLeft ?? 0;
+    slot.replaceChildren(...blocks);
+    for (const block of blocks) block.scrollLeft = scrollLeft;
+    // The shape is read when the drag starts; it can't change during one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ghostUp]);
 
   /** Where a set of top-level rows would land for a pointer at `y`: the
@@ -2282,21 +2348,48 @@ function DataTable<TData>({
         moved = true;
         draggedRow.current = tr;
         const box = wrap.getBoundingClientRect();
-        // The copy is as wide as the table's visible box, the row inside
-        // it scrolled sideways as far as the table is.
-        flushSync(() =>
-          setRowGhost({
-            top: rect.top,
-            left: box.left,
-            width: box.width,
-            height: rect.height,
-            count: moving.length,
-          })
-        );
         body.querySelectorAll<HTMLElement>(":scope > tr[data-row-id]").forEach((el) => {
           if (ids.has(el.dataset.rowId!)) marked.push(...groupOf(el));
         });
+        // The copy shows every carried row where it is: rows apart keep
+        // the gap between them, and the grabbed one stays under the
+        // pointer. A selection spread past 60% of the window is stacked
+        // instead (the grabbed row first, so it always shows), cut short,
+        // and says how many rows it carries.
+        const boxes = marked.map((el) => el.getBoundingClientRect());
+        const first = boxes[0]?.top ?? rect.top;
+        const span = boxes.length ? boxes[boxes.length - 1].bottom - first : rect.height;
+        const room = Math.max(rect.height, window.innerHeight * 0.6);
+        const cut = span > room;
+        if (cut) {
+          const order = [tr, ...marked.filter((el) => el !== tr)];
+          let at = 0;
+          draggedRows.current = order.map((el) => {
+            const height = el.getBoundingClientRect().height;
+            const item = { el, top: at, height };
+            at += height;
+            return item;
+          });
+        } else {
+          draggedRows.current = marked.map((el, i) => ({ el, top: boxes[i].top - first, height: boxes[i].height }));
+        }
+        // Marked before the copy renders: what draws the rows' fills reads
+        // the mark in that same render.
         marked.forEach((el) => el.setAttribute("data-row-dragging", ""));
+        // As wide as the table's visible box, the rows inside it scrolled
+        // sideways as far as the table is.
+        flushSync(() =>
+          setRowGhost({
+            top: cut ? rect.top : first,
+            left: box.left,
+            width: box.width,
+            height: Math.min(span, room),
+            count: moving.length,
+            cut,
+            ids: [...ids],
+          })
+        );
+
         frame = requestAnimationFrame(edgeScroll);
       }
       lastY = ev.clientY;
@@ -2310,6 +2403,7 @@ function DataTable<TData>({
       window.removeEventListener("keydown", onKey, true);
       marked.forEach((el) => el.removeAttribute("data-row-dragging"));
       draggedRow.current = null;
+      draggedRows.current = [];
       dragCleanup.current = null;
       setRowGhost(null);
     };
@@ -2381,7 +2475,9 @@ function DataTable<TData>({
     <Table
       size={size}
       // Selected rows on this page get CheckboxGroup's merged fill.
-      selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() ? [i] : []))}
+      // Rows riding in the drag's copy leave no fill behind: the copy
+      // carries it.
+      selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() && !rowGhost?.ids.includes(row.id) ? [i] : []))}
       snapKey={expandTick}
       hideHeadHighlight={!!drag}
       // The handles' and the boxes' columns, leading: one grip and one
@@ -2795,6 +2891,16 @@ function DataTable<TData>({
           // height and opacity each frame, and shows only while its side
           // is frozen over content (the pin's own 2px scroll range).
           <div aria-hidden className="pointer-events-none absolute inset-0 z-[11] overflow-hidden">
+            {fill && (
+              // Filled, the rows scroll inside the box: while there are more
+              // under its bottom edge they fade into the page there, over a
+              // hairline in the rows' rule color, as the header's shows
+              // once rows have passed under it. Over the frozen columns too.
+              <div className="absolute inset-x-0 bottom-0 h-(--ff-fade,48px) opacity-0 transition-opacity duration-80 group-data-more-below/scroll:opacity-100">
+                <div className="absolute inset-0 bg-linear-to-t from-background to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-px bg-accent/40" />
+              </div>
+            )}
             {/* The selection, under the hover as it is behind the table:
                 Table's own fills again, so a row selected between two
                 others merges into them here as it does in the columns
@@ -2874,21 +2980,18 @@ function DataTable<TData>({
               ref={rowGhostRef}
               aria-hidden
               inert
-              className={cn(
-                // The carried row, lifted like a dragged header: the
-                // --active fill over the page background, at 80%. The fill
-                // lies over the copy, so frozen cells (opaque once the
-                // table scrolls) take it with the rest.
-                "pointer-events-none fixed z-[var(--z-popover,60)] overflow-hidden bg-background opacity-80 after:absolute after:inset-0 after:z-10 after:bg-active",
-                shape.bg
-              )}
+              // The carried rows at 80%; each block of them draws its own
+              // lifted surface (GHOST_BLOCK), so a gap between rows apart
+              // stays clear.
+              className="pointer-events-none fixed z-[var(--z-popover,60)] overflow-hidden opacity-80"
               style={{ top: rowGhost.top, left: rowGhost.left, width: rowGhost.width, height: rowGhost.height }}
             >
-              <div data-row-ghost-row="" className="overflow-hidden" />
-              {rowGhost.count > 1 && (
+              <div data-row-ghost-row="" className="absolute inset-0" />
+              {rowGhost.cut && (
+                // Only where the copy can't show them all.
                 <span
                   className={cn(
-                    "absolute top-1/2 right-2 z-20 -translate-y-1/2 bg-foreground px-1.5 text-background tabular-nums",
+                    "absolute right-2 bottom-2 z-20 bg-foreground px-1.5 text-background tabular-nums",
                     sizeClasses.type.caption,
                     shape.variant === "sharp" ? "rounded-[1px]" : "rounded-full"
                   )}
@@ -3306,6 +3409,11 @@ const SELECT_SNAP =
 // `:hover` only once the pointer moves again, which left the box and the
 // handle on the row that had scrolled away. The header row has no
 // highlight of its own, so its box still follows `:hover`.
+/** One block of rows in the drag's copy: the page background under the
+ *  rows and the --active fill over them. */
+const GHOST_BLOCK =
+  "absolute inset-x-0 overflow-hidden bg-background after:pointer-events-none after:absolute after:inset-0 after:z-10 after:bg-active";
+
 /** A selection box shows only where it's wanted: on the row under the
  *  pointer or holding focus, on a checked (or, in the header, partly
  *  checked) box, and always on touch screens, which have no hover. A

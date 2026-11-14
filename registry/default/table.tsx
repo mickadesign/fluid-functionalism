@@ -101,7 +101,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
-    const hover = useFluidHover(containerRef);
+    // Rows are lit by hover only (focus is the row's own), so the highlight
+    // follows the pointer when the rows scroll under it.
+    const hover = useFluidHover(containerRef, { followScroll: true });
     // Header cells that act (sort, move) share a second scope: one fill
     // glides along the header row the way the row highlight runs down the
     // body. Only the cell under the pointer lights.
@@ -198,7 +200,12 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       const container = containerRef.current;
       if (!container) return;
       container.setAttribute("data-snap-rules", "");
-      const frame = requestAnimationFrame(() => container.removeAttribute("data-snap-rules"));
+      // Two frames: the next frame's callbacks run before that frame's
+      // styles are computed, so a mark removed there may never have been
+      // seen (nothing between here and then need read layout).
+      let frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => container.removeAttribute("data-snap-rules"));
+      });
       return () => cancelAnimationFrame(frame);
     }, [selectedKey]);
 

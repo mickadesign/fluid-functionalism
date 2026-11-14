@@ -167,11 +167,13 @@ page (`app/docs/fluid-hover/page.tsx`, served at `/docs/fluid-hover`; demos in
 
 Rules the hook enforces, worth knowing when you consume it:
 
-- **Hover follows the pointer, not the item** (2026-11-13 user call). When the
-  items scroll under a pointer at rest, the highlight goes to the item now
-  under it, as `:hover` does, and glides there, so on screen it stays at the
-  pointer. A highlight set from the keyboard or focus is left alone by a
-  scroll until the pointer moves.
+- **Hover follows the pointer, not the item** (2026-11-13 user call), where
+  the highlight is hover only: a table's rows (`followScroll: true`). When
+  the items scroll under a pointer at rest, the highlight goes to the item
+  now under it, as `:hover` does, and glides there, so on screen it stays at
+  the pointer. A highlight set from the keyboard or focus is left alone by a
+  scroll until the pointer moves. Off in menus, selects and list boxes, where
+  the highlight is also the focus, and on touch screens.
 - **The item under the pointer lights; empty space lights nothing** (default,
   2026-10-27 user call). The highlight glides between touching items and fades
   in fresh on the next item after empty space. With `nearest: true`, a
