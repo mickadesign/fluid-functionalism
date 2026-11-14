@@ -544,8 +544,11 @@ describe("fluid hover highlight", () => {
   // highlight is never born on the selected item to slide out of it, and the
   // selected fill never dims while another item is hovered.
   it("no hover starts from, or dims, the selected item", () => {
-    const FROM_SELECTED = /\bfrom=\{[^}]*(checked|selected|active)\w*Rect[^}]*\}/i;
-    const DIMS_ON_HOVER = /opacity:\s*isHover\w*\s*\?/;
+    // Heuristics, not proof: `from` fed by anything named after a selection
+    // (the calendar's `pickStart` range preview is the allowed kind), and an
+    // opacity that drops to a fraction on a hover-named condition.
+    const FROM_SELECTED = /\bfrom=\{[^}]*(checked|selected|active|open)[^}]*\}/i;
+    const DIMS_ON_HOVER = /opacity:[^,\n]*hover[^,\n]*\?\s*0?\.\d/i;
     for (const rel of registrySources(join(ROOT, "registry"))) {
       const source = readFileSync(join(ROOT, rel), "utf-8");
       expect(FROM_SELECTED.test(source), `${rel} starts the hover on its selected item`).toBe(false);

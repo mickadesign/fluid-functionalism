@@ -126,14 +126,22 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
     const focusRect = focusedIndex !== null ? tabRects[focusedIndex] : null;
     const isHoveringSelected = hoveredIndex === selectedIndex;
     // The hover pill never travels out of, or across, the selected tab: a
-    // hover that starts from nothing or from the selected tab gets a new
-    // pill, which fades in on the tab under the pointer. Between two
-    // unselected tabs the same pill glides.
+    // hover that starts from nothing or from the selected tab, or that
+    // lands on the far side of it (a fast pointer can skip the selected tab
+    // without ever hovering it), gets a new pill, which fades in on the tab
+    // under the pointer. Between two unselected tabs on the same side the
+    // same pill glides.
     const [lastHovered, setLastHovered] = useState(hoveredIndex);
     const [hoverRun, setHoverRun] = useState(0);
     if (lastHovered !== hoveredIndex) {
       setLastHovered(hoveredIndex);
-      if (lastHovered === null || lastHovered === selectedIndex) setHoverRun((run) => run + 1);
+      const crossesSelected =
+        lastHovered !== null &&
+        hoveredIndex !== null &&
+        Math.min(lastHovered, hoveredIndex) < selectedIndex &&
+        selectedIndex < Math.max(lastHovered, hoveredIndex);
+      if (lastHovered === null || lastHovered === selectedIndex || crossesSelected)
+        setHoverRun((run) => run + 1);
     }
 
     const root = (
