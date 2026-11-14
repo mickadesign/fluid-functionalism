@@ -1033,8 +1033,13 @@ export function DataTablePlayground({
     if (next.lines !== prev.lines)
       for (const c of COLUMNS)
         if (c.kind === "title" || c.kind === "link" || c.kind === "text") table.setColumnLines(c.id, undefined, animate);
-    table.setPageSize(next.pagination ? Number(next.pageSize) : EVERY_ROW);
-    table.setPageIndex(0);
+    // Only a change to the paging starts over on the first page: a switch
+    // flipped from the table's own menu (Wrap text) must not send the
+    // reader back there from page 3.
+    if (next.pagination !== prev.pagination || next.pageSize !== prev.pageSize) {
+      table.setPageSize(next.pagination ? Number(next.pageSize) : EVERY_ROW);
+      table.setPageIndex(0);
+    }
     setState(next);
   };
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>

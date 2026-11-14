@@ -38,6 +38,8 @@ export function usePlayback({ stopOnUse = false }: { /** Once a visitor has used
   // box, outside once past it, unless it came there from the example
   // itself (the visitor's own menu, which they are still using).
   const cameFromRoot = useRef(false);
+  // A finger down in the example, not yet known to be a tap or a scroll.
+  const touching = useRef(false);
   /** Notes where a visitor's pointer is; true when it is in the example
    *  (or in something they opened from it). */
   const seen = (e: SyntheticEvent) => {
@@ -65,7 +67,19 @@ export function usePlayback({ stopOnUse = false }: { /** Once a visitor has used
       // A real press in the example, or in a menu opened from it. (Code's
       // own presses, an editor waking its field, are nobody's; a press
       // elsewhere on the page, over a layer the script opened, isn't use.)
-      if (seen(e) && stopOnUse && e.nativeEvent.isTrusted) setUsed(true);
+      if (!seen(e) || !stopOnUse || !e.nativeEvent.isTrusted) return;
+      // A finger landing may be the start of a page scroll: it counts
+      // once it lifts as a tap or a drag, not if the browser takes it for
+      // scrolling (pointercancel).
+      if ((e.nativeEvent as PointerEvent).pointerType === "touch") touching.current = true;
+      else setUsed(true);
+    },
+    onPointerUp: () => {
+      if (touching.current) setUsed(true);
+      touching.current = false;
+    },
+    onPointerCancel: () => {
+      touching.current = false;
     },
     // A real key, typed in it. Tab alone only passes through, as a hover does.
     onKeyDown: (e: SyntheticEvent) => {

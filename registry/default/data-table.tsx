@@ -782,14 +782,18 @@ function setOrderKeepingFrozen<TData>(table: TanStackTable<TData>, order: string
   const pin = table.getState().columnPinning;
   const left = pin.left ?? [];
   const isData = (id: string) => table.getColumn(id)?.accessorFn !== undefined;
-  const frozen = left.filter(isData).length;
+  // Counted among the visible ones, like the places below: a frozen
+  // column that is hidden would otherwise freeze one more visible column.
+  const frozen = left.filter((id) => isData(id) && table.getColumn(id)?.getIsVisible()).length;
   if (frozen === 0) return;
   const right = new Set(pin.right ?? []);
   // Only columns that may be frozen take a frozen place.
   const first = order
     .filter((id) => isData(id) && !right.has(id) && table.getColumn(id)?.getIsVisible() && table.getColumn(id)?.getCanPin())
     .slice(0, frozen);
-  const next = [...left.filter((id) => !isData(id)), ...first];
+  // Hidden frozen columns keep their pin for when they are shown again.
+  const hidden = left.filter((id) => isData(id) && !table.getColumn(id)?.getIsVisible());
+  const next = [...left.filter((id) => !isData(id)), ...first, ...hidden];
   if (next.join() !== left.join()) table.setColumnPinning((old) => ({ ...old, left: next }));
 }
 
@@ -1102,7 +1106,13 @@ function DataTable<TData>({
     /** A copy of the rows a close removes, and where they were. */
     ghost: HTMLElement | null;
   } | null>(null);
+  // The copy still on the page from the last close, if its 120ms aren't up.
+  const liveGhost = useRef<HTMLElement | null>(null);
   const toggleExpanded = (row: Row<TData>, open?: boolean) => {
+    // A second toggle inside those 120ms: the old copy goes now, or it
+    // would fade over the rows about to be uncovered in its place.
+    liveGhost.current?.remove();
+    liveGhost.current = null;
     const wrap = wrapRef.current;
     const tableNode = wrap?.querySelector<HTMLTableElement>("table");
     if (wrap && tableNode && !reduceMotion) {
@@ -1123,7 +1133,8 @@ function DataTable<TData>({
         if (going.length && host) {
           const copy = tableNode.cloneNode(false) as HTMLTableElement;
           copy.removeAttribute("id");
-          copy.setAttribute("aria-hidden", "true");
+          // Out of the tab order and the accessibility tree, ids and all.
+          copy.inert = true;
           copy.style.cssText = `position:absolute;left:0;top:${going[0].getBoundingClientRect().top - host.getBoundingClientRect().top}px;width:${tableNode.offsetWidth}px;table-layout:fixed;pointer-events:none;margin:0`;
           // The copy has no header row to take its columns' widths from:
           // a col per cell holds each to the width it has in the table.
@@ -1164,6 +1175,9 @@ function DataTable<TData>({
     let shift = 0;
     let boundary = Infinity;
     const fresh: HTMLElement[] = [];
+    // Read every row first, then write: an animation started between two
+    // reads makes the next read lay the table out again, once per row.
+    const moved: { tr: HTMLElement; dy: number }[] = [];
     wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
       const old = from.tops.get(tr.dataset.rowId!);
       if (old === undefined) {
@@ -1174,19 +1188,27 @@ function DataTable<TData>({
       if (!dy) return;
       shift = dy;
       boundary = Math.min(boundary, tr.getBoundingClientRect().top);
-      tr.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], slide);
+      moved.push({ tr, dy });
     });
+    const reveal = fresh.map((tr) => ({ tr, top: tr.offsetTop, height: tr.offsetHeight }));
+    const fills = shift
+      ? Array.from(wrap.querySelectorAll<HTMLElement>("[data-slot=selection-fill]")).filter(
+          (el) => el.getBoundingClientRect().top >= boundary - 1
+        )
+      : [];
+    for (const { tr, dy } of moved) tr.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], slide);
     // The rows that appear are uncovered by the rows sliding down off
     // them, never under them: each is cut at the sliding rows' top edge,
     // on the slide's own clock (the keyframes are placed where that edge
     // reaches the row, and the easing is the slide's). Faded in under the
     // sliding rows instead, two rows' text showed through each other.
-    if (fresh.length) {
-      const top = fresh[0].offsetTop;
-      const span = fresh[fresh.length - 1].offsetTop + fresh[fresh.length - 1].offsetHeight - top;
-      for (const tr of fresh) {
-        const start = Math.min(1, Math.max(0, (tr.offsetTop - top) / span));
-        const end = Math.min(1, Math.max(start, (tr.offsetTop + tr.offsetHeight - top) / span));
+    if (reveal.length) {
+      const top = reveal[0].top;
+      const last = reveal[reveal.length - 1];
+      const span = last.top + last.height - top;
+      for (const row of reveal) {
+        const start = Math.min(1, Math.max(0, (row.top - top) / span));
+        const end = Math.min(1, Math.max(start, (row.top + row.height - top) / span));
         const frames = [
           { clipPath: "inset(0 0 100% 0)", opacity: 0, offset: 0 },
           ...(start > 0 ? [{ clipPath: "inset(0 0 100% 0)", opacity: 0, offset: start }] : []),
@@ -1194,20 +1216,17 @@ function DataTable<TData>({
           { clipPath: "inset(0 0 0 0)", opacity: 1, offset: 1 },
         ];
         // On the cells: a table row takes no clip of its own.
-        Array.from(tr.children).forEach((cell) => cell.animate(frames, slide));
+        Array.from(row.tr.children).forEach((cell) => cell.animate(frames, slide));
       }
     }
-    if (shift)
-      // The selection's fills (and their copies over the frozen columns)
-      // under the rows that moved.
-      wrap.querySelectorAll<HTMLElement>("[data-slot=selection-fill]").forEach((el) => {
-        if (el.getBoundingClientRect().top >= boundary - 1)
-          el.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], slide);
-      });
+    // The selection's fills (and their copies over the frozen columns)
+    // under the rows that moved.
+    for (const el of fills) el.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], slide);
     const host = wrap.querySelector("table")?.parentElement;
     if (from.ghost && host) {
       const ghost = from.ghost;
       host.append(ghost);
+      liveGhost.current = ghost;
       // Covered from the bottom up by the rows sliding over it, the same
       // way: cut at their top edge as it fades, so its text never shows
       // through theirs.
@@ -1218,7 +1237,11 @@ function DataTable<TData>({
         ],
         { ...slide, fill: "forwards" }
       );
-      gone.finished.then(() => ghost.remove(), () => ghost.remove());
+      const done = () => {
+        ghost.remove();
+        if (liveGhost.current === ghost) liveGhost.current = null;
+      };
+      gone.finished.then(done, done);
     }
     // A filled box's height is its parent's; a free one follows the rows,
     // so what sits under the table (the pagination) glides with them.
@@ -3996,7 +4019,7 @@ const PIN_CSS = `
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
 [data-ff-table] [data-slot=scroll-area-viewport][data-scroll-held] { overflow: hidden !important; }
-[data-ff-table][data-text-editing] [data-slot=fluid-hover-highlight], [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-text-editing] .table-row-highlight, [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
 [data-ff-table][data-text-editing] tbody td[data-column-id=select] [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {

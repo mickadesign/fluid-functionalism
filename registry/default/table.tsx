@@ -383,7 +383,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             // the fill under the pointer left and faded back in: a flicker
             // on the row whose sub-rows were opened or closed.
             hover={snap.on ? { ...hover, isMeasured: true } : hover}
-            className={shape.bg}
+            // Named, so a table can tell the rows' fill from the header's
+            // (DataTable hides this one while a cell's text is edited).
+            className={cn(shape.bg, "table-row-highlight")}
             transition={repeating || snap.on ? false : undefined}
             onFrame={onHighlightBox}
           >
