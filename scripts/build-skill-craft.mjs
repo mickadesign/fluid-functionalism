@@ -40,6 +40,7 @@ export const COMPONENTS = [
   ["chat-message", "ChatMessage"],
   ["checkbox", "Checkbox"],
   ["checkbox-group", "CheckboxGroup"],
+  ["code-block", "CodeBlock"],
   ["color-picker", "ColorPicker"],
   ["combobox", "Combobox"],
   ["command-menu", "CommandMenu"],

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "confirmation",
+  "title": "Confirmation",
+  "description": "A yes or no question asked before something runs, such as an agent's tool call. Built on the Banner: its neutral fill, grid and actions, with Deny and Approve giving way to the answer in the same slot.",
+  "dependencies": [
+    "motion",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "utils",
+    "https://www.fluidfunctionalism.com/r/springs.json",
+    "https://www.fluidfunctionalism.com/r/size-context.json",
+    "https://www.fluidfunctionalism.com/r/icon-context.json",
+    "https://www.fluidfunctionalism.com/r/banner.json",
+    "https://www.fluidfunctionalism.com/r/button.json",
+    "https://www.fluidfunctionalism.com/r/type-scale.json",
+    "https://www.fluidfunctionalism.com/r/tokens.json"
+  ],
+  "files": [
+    {
+      "path": "registry/default/confirmation.tsx",
+      "content": "\"use client\";\n\nimport { forwardRef, useId, type ReactNode } from \"react\";\nimport { motion } from \"motion/react\";\nimport { cn } from \"@/lib/utils\";\nimport { spring } from \"@/lib/springs\";\nimport { useSize, typeClass, type SizeVariant } from \"@/lib/size-context\";\nimport { useIcons, type IconName } from \"@/lib/icon-context\";\nimport {\n  Banner,\n  BannerAction,\n  BannerActions,\n  BannerDescription,\n  BannerTitle,\n  type BannerProps,\n} from \"@/registry/default/banner\";\n\n// ---------------------------------------------------------------------------\n// Confirmation asks for a yes or a no before something runs: an agent's tool\n// call, a command, a send. It is a Banner: the neutral low-contrast fill, the\n// Banner's grid, and its actions, so a question in a transcript reads like\n// every other message the app raises. Once answered, the buttons give way to\n// the answer in the same slot, and the row keeps its height.\n// ---------------------------------------------------------------------------\n\ntype ConfirmationState = \"requested\" | \"approved\" | \"denied\";\n\n// Every other Banner prop passes through: `status`, `contrast`, `className`.\ninterface ConfirmationProps\n  extends Omit<BannerProps, \"title\" | \"icon\" | \"children\" | \"role\"> {\n  /** The question, phrased so Approve and Deny answer it: \"Run pnpm build?\". */\n  title: ReactNode;\n  /** What approving does, or why it is being asked. */\n  description?: ReactNode;\n  /** Icon naming the action, in place of the Banner's info icon. */\n  icon?: IconName;\n  /** `requested` shows the buttons; `approved` and `denied` show the answer. */\n  state?: ConfirmationState;\n  onApprove?: () => void;\n  onDeny?: () => void;\n  approveLabel?: string;\n  denyLabel?: string;\n  /** Text shown in place of the buttons once approved. */\n  approvedLabel?: string;\n  /** Text shown in place of the buttons once denied. */\n  deniedLabel?: string;\n  /** Step on the size ladder. Wins over the surrounding SizeProvider. */\n  size?: SizeVariant;\n}\n\nconst Confirmation = forwardRef<HTMLDivElement, ConfirmationProps>(\n  (\n    {\n      title,\n      description,\n      icon,\n      state = \"requested\",\n      onApprove,\n      onDeny,\n      approveLabel = \"Approve\",\n      denyLabel = \"Deny\",\n      approvedLabel = \"Approved\",\n      deniedLabel = \"Denied\",\n      size,\n      ...props\n    },\n    ref\n  ) => {\n    const compact = useSize(size).variant === \"compact\";\n    const icons = useIcons();\n    const Check = icons.check;\n    const X = icons.x;\n    const titleId = useId();\n    const descriptionId = useId();\n\n    return (\n      <Banner\n        ref={ref}\n        // A question to answer, not a status to announce: the answer below is\n        // the part that is announced.\n        role=\"group\"\n        aria-labelledby={titleId}\n        aria-describedby={description != null ? descriptionId : undefined}\n        icon={icon ? icons[icon] : undefined}\n        size={size}\n        {...props}\n      >\n        <BannerTitle id={titleId}>{title}</BannerTitle>\n        {description != null && (\n          <BannerDescription id={descriptionId}>{description}</BannerDescription>\n        )}\n        <BannerActions>\n          {state === \"requested\" ? (\n            <>\n              {/* Primary first in the markup, for tab order; the Banner\n                  places each by variant. */}\n              <BannerAction variant=\"primary\" onClick={onApprove}>\n                {approveLabel}\n              </BannerAction>\n              <BannerAction variant=\"ghost\" onClick={onDeny}>\n                {denyLabel}\n              </BannerAction>\n            </>\n          ) : (\n            // As tall as the buttons it replaces (28px), so the banner does\n            // not change height when the answer lands.\n            <motion.span\n              key={state}\n              role=\"status\"\n              className={cn(\n                \"flex h-7 items-center gap-1.5 text-foreground\",\n                typeClass(\"body\", compact ? \"compact\" : \"default\")\n              )}\n              initial={{ opacity: 0, scale: 0.96 }}\n              animate={{ opacity: 1, scale: 1 }}\n              transition={spring.fast}\n            >\n              {state === \"approved\" ? (\n                <Check size={14} strokeWidth={1.5} />\n              ) : (\n                <X size={14} strokeWidth={1.5} />\n              )}\n              {state === \"approved\" ? approvedLabel : deniedLabel}\n            </motion.span>\n          )}\n        </BannerActions>\n      </Banner>\n    );\n  }\n);\nConfirmation.displayName = \"Confirmation\";\n\nexport { Confirmation };\nexport type { ConfirmationProps, ConfirmationState };\nexport default Confirmation;\n",
+      "type": "registry:ui"
+    }
+  ],
+  "docs": "Docs & live demo: https://www.fluidfunctionalism.com/docs/banner. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#banner.",
+  "categories": [
+    "components"
+  ],
+  "type": "registry:ui"
+}

@@ -691,6 +691,109 @@ function AnimatedPreview({
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
+const traceCode = `import {
+  ThinkingSteps, ThinkingStepsHeader, ThinkingStepsContent, ThinkingStep,
+} from "./components";
+
+// Reasoning: open while it runs, closed after, until the reader toggles it.
+<ThinkingSteps running={streaming}>
+  <ThinkingStepsHeader meta={streaming ? undefined : "12s"}>
+    {streaming ? "Thinking" : "Thought"}
+  </ThinkingStepsHeader>
+  <ThinkingStepsContent>{reasoningText}</ThinkingStepsContent>
+</ThinkingSteps>
+
+// Tool calls and sources: the label says the state, meta carries the detail.
+<ThinkingSteps>
+  <ThinkingStepsHeader meta="3 steps">Worked</ThinkingStepsHeader>
+  <ThinkingStepsContent>
+    <ThinkingStep icon="search" label="Searched the docs" meta="0.4s" />
+    <ThinkingStep icon="globe" label="Read the Image component docs" href="https://nextjs.org/docs" />
+    <ThinkingStep icon="circle-alert" label="Failed to run pnpm lint" status="error" isLast />
+  </ThinkingStepsContent>
+</ThinkingSteps>
+
+// A plan known ahead: upcoming steps show, muted.
+<ThinkingSteps>
+  <ThinkingStepsHeader meta="1 of 3 done">Plan</ThinkingStepsHeader>
+  <ThinkingStepsContent>
+    <ThinkingStep icon="check" label="Replace the imports" />
+    <ThinkingStep icon="loader" label="Renaming the props" status="active" />
+    <ThinkingStep icon="circle" label="Run the type checker" status="upcoming" isLast />
+  </ThinkingStepsContent>
+</ThinkingSteps>`;
+
+/** Reasoning, a tool trace and a plan, side by side. The button replays the
+ *  reasoning run: open while it thinks, closed when it is done. */
+function TraceDemo() {
+  const [streaming, setStreaming] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    []
+  );
+  const run = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setStreaming(true);
+    timerRef.current = setTimeout(() => setStreaming(false), 2400);
+  };
+  return (
+    <div className="flex w-full max-w-[360px] flex-col gap-4">
+      <div className="flex flex-col items-start gap-1">
+        <ThinkingSteps running={streaming}>
+          <ThinkingStepsHeader meta={streaming ? undefined : "12s"}>
+            {streaming ? "Thinking" : "Thought"}
+          </ThinkingStepsHeader>
+          <ThinkingStepsContent>
+            The build is slow because image optimization runs on every deploy:
+            its cache key includes the commit hash, so nothing is ever reused.
+          </ThinkingStepsContent>
+        </ThinkingSteps>
+        <button
+          type="button"
+          onClick={run}
+          disabled={streaming}
+          className="ml-3 cursor-pointer text-site-caption text-muted-foreground underline underline-offset-2 outline-none hover:text-foreground disabled:cursor-default disabled:opacity-50 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
+        >
+          Think again
+        </button>
+      </div>
+      <ThinkingSteps>
+        <ThinkingStepsHeader meta="3 steps">Worked</ThinkingStepsHeader>
+        <ThinkingStepsContent>
+          <ThinkingStep icon="search" label="Searched the docs" meta="0.4s" />
+          <ThinkingStep
+            icon="globe"
+            label="Read the Image component docs"
+            href="https://nextjs.org/docs/app/api-reference/components/image"
+          />
+          <ThinkingStep
+            icon="circle-alert"
+            label="Failed to run pnpm lint"
+            status="error"
+            isLast
+          />
+        </ThinkingStepsContent>
+      </ThinkingSteps>
+      <ThinkingSteps>
+        <ThinkingStepsHeader meta="1 of 3 done">Plan</ThinkingStepsHeader>
+        <ThinkingStepsContent>
+          <ThinkingStep icon="check" label="Replace the imports" />
+          <ThinkingStep icon="loader" label="Renaming the props" status="active" />
+          <ThinkingStep
+            icon="circle"
+            label="Run the type checker"
+            status="upcoming"
+            isLast
+          />
+        </ThinkingStepsContent>
+      </ThinkingSteps>
+    </div>
+  );
+}
+
 export default function ThinkingStepsDoc() {
   return (
     <DocPage
@@ -778,6 +881,18 @@ export default function ThinkingStepsDoc() {
         <AnimatedPreview code={fullCode}>
           {(props) => <FullDemo {...props} />}
         </AnimatedPreview>
+      </DocSection>
+
+      <DocSection title="Reasoning, tools and plans">
+        <p className="text-site-body text-muted-foreground mb-3">
+          The same parts cover an agent&apos;s whole trace. <code>running</code> keeps
+          a list open while the work goes on, <code>meta</code> adds a duration
+          or a count, <code>href</code> links a source, and steps can fail or
+          wait their turn.
+        </p>
+        <ComponentPreview code={traceCode}>
+          <TraceDemo />
+        </ComponentPreview>
       </DocSection>
 
       <DocSection title="API Reference">

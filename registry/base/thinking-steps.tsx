@@ -37,9 +37,15 @@ import type { BadgeColor } from "@/registry/default/badge";
 
 /** Open state of the nearest ThinkingSteps root, for the header trigger/panel. */
 const ThinkingStepsOpenContext = createContext(false);
+/** Whether the nearest ThinkingSteps root is still running: its header shimmers. */
+const ThinkingStepsRunningContext = createContext(false);
 
 interface TriggerRowProps extends HTMLAttributes<HTMLButtonElement> {
   open: boolean;
+  /** Shimmer the label: the work behind this row is still going. */
+  running?: boolean;
+  /** Muted text after the label: a duration, a count. */
+  meta?: ReactNode;
   children: ReactNode;
 }
 
@@ -49,7 +55,7 @@ interface TriggerRowProps extends HTMLAttributes<HTMLButtonElement> {
  * library's accordion trigger styling.
  */
 const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
-  ({ open, children, className, ...props }, ref) => {
+  ({ open, running = false, meta, children, className, ...props }, ref) => {
     const icons = useIcons();
     const ChevronRight = icons["chevron-right"];
     const shape = useShape();
@@ -97,7 +103,8 @@ const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
             <span
               className={cn(
                 "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
-                highlighted ? "text-foreground" : "text-muted-foreground"
+                highlighted ? "text-foreground" : "text-muted-foreground",
+                running && "shimmer-text"
               )}
               style={{
                 fontVariationSettings: open
@@ -108,6 +115,17 @@ const TriggerRow = forwardRef<HTMLButtonElement, TriggerRowProps>(
               {children}
             </span>
           </span>
+
+          {meta != null && (
+            <span
+              className={cn(
+                "shrink-0 tabular-nums text-muted-foreground",
+                sizeClasses.text
+              )}
+            >
+              {meta}
+            </span>
+          )}
 
           {/* Chevron — right when collapsed, rotates 90° down when expanded */}
           <motion.span
@@ -257,15 +275,24 @@ interface ThinkingStepsProps extends HTMLAttributes<HTMLDivElement> {
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** The work is still going. The header shimmers, and the list is open
+   *  while it runs and closes when it ends, until the reader opens or closes
+   *  it by hand: their choice then holds. Leave undefined for a list that
+   *  only follows `defaultOpen`. */
+  running?: boolean;
   children: ReactNode;
 }
 
 const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
-  ({ size, defaultOpen = true, open, onOpenChange, children, className, ...props }, ref) => {
+  ({ size, defaultOpen = true, open, onOpenChange, running, children, className, ...props }, ref) => {
     // Always drive Base UI as controlled so the header/panel can read the
     // open state (chevron rotation, framer enter/exit) from context.
-    const [internalOpen, setInternalOpen] = useState(defaultOpen);
-    const isOpen = open ?? internalOpen;
+    // With `running`, the open state follows it until the reader toggles:
+    // null means "no choice made yet".
+    const [internalOpen, setInternalOpen] = useState<boolean | null>(
+      running === undefined ? defaultOpen : null
+    );
+    const isOpen = open ?? internalOpen ?? running ?? defaultOpen;
 
     const root = (
       <Collapsible.Root
@@ -279,7 +306,9 @@ const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
         {...props}
       >
         <ThinkingStepsOpenContext.Provider value={isOpen}>
-          {children}
+          <ThinkingStepsRunningContext.Provider value={running ?? false}>
+            {children}
+          </ThinkingStepsRunningContext.Provider>
         </ThinkingStepsOpenContext.Provider>
       </Collapsible.Root>
     );
@@ -294,15 +323,25 @@ ThinkingSteps.displayName = "ThinkingSteps";
 
 interface ThinkingStepsHeaderProps extends HTMLAttributes<HTMLButtonElement> {
   children?: ReactNode;
+  /** Muted text after the label: how long it took, how many steps. */
+  meta?: ReactNode;
 }
 
 const ThinkingStepsHeader = forwardRef<
   HTMLButtonElement,
   ThinkingStepsHeaderProps
->(({ children = "Thinking", className, ...props }, ref) => {
+>(({ children = "Thinking", meta, className, ...props }, ref) => {
   const isOpen = useContext(ThinkingStepsOpenContext);
+  const running = useContext(ThinkingStepsRunningContext);
   return (
-    <TriggerRow ref={ref} open={isOpen} className={className} {...props}>
+    <TriggerRow
+      ref={ref}
+      open={isOpen}
+      running={running}
+      meta={meta}
+      className={className}
+      {...props}
+    >
       {children}
     </TriggerRow>
   );
@@ -336,13 +375,17 @@ ThinkingStepsContent.displayName = "ThinkingStepsContent";
 
 // ─── ThinkingStep ───────────────────────────────────────────────────────────
 
-type StepStatus = "complete" | "active" | "pending";
+type StepStatus = "complete" | "active" | "pending" | "upcoming" | "error";
 
 interface ThinkingStepProps {
   icon?: IconName;
   showIcon?: boolean;
   label: string;
   description?: string;
+  /** Muted text after the label: a duration, a count, a diff stat. */
+  meta?: ReactNode;
+  /** Turns the label into a link that opens in a new tab. */
+  href?: string;
   status?: StepStatus;
   delay?: number;
   isLast?: boolean;
@@ -379,6 +422,8 @@ function ThinkingStep({
   showIcon = true,
   label,
   description,
+  meta,
+  href,
   status = "complete",
   delay = 0.08,
   isLast = false,
@@ -394,6 +439,23 @@ function ThinkingStep({
     if (status === "pending") return null;
 
     const isActive = status === "active";
+    const isError = status === "error";
+    // Planned, not started: shown, but quiet.
+    const isUpcoming = status === "upcoming";
+    const labelClass = cn(
+      sizeClasses.type.body,
+      isError
+        ? "text-destructive"
+        : isUpcoming
+          ? "text-muted-foreground"
+          : "text-foreground",
+      isActive && "shimmer-text"
+    );
+    const labelStyle = {
+      fontVariationSettings: isUpcoming
+        ? fontWeights.normal
+        : fontWeights.semibold,
+    };
 
     return (
       /* Outer: animates height to create space smoothly */
@@ -420,7 +482,13 @@ function ThinkingStep({
                   <Icon
                     size={sizeClasses.variant === "compact" ? 12 : 14}
                     strokeWidth={1.5}
-                    className="text-muted-foreground"
+                    className={cn(
+                      isError
+                        ? "text-destructive"
+                        : isUpcoming
+                          ? "text-muted-foreground opacity-60"
+                          : "text-muted-foreground"
+                    )}
                   />
                 ) : (
                   <div className="w-[14px] h-[14px] flex items-center justify-center">
@@ -436,16 +504,38 @@ function ThinkingStep({
 
             {/* Text content */}
             <div className="flex-1 flex flex-col gap-1 min-w-0">
-              <span
-                className={cn(
-                  sizeClasses.type.body,
-                  "text-foreground",
-                  isActive && "shimmer-text"
+              <span className="flex items-baseline gap-2">
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      labelClass,
+                      "min-w-0 rounded-sm underline-offset-2 outline-none hover:underline",
+                      "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]"
+                    )}
+                    style={labelStyle}
+                  >
+                    {label}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
+                ) : (
+                  <span className={cn(labelClass, "min-w-0")} style={labelStyle}>
+                    {label}
+                    {isActive && "…"}
+                  </span>
                 )}
-                style={{ fontVariationSettings: fontWeights.semibold }}
-              >
-                {label}
-                {isActive && "…"}
+                {meta != null && (
+                  <span
+                    className={cn(
+                      sizeClasses.type.body,
+                      "shrink-0 tabular-nums text-muted-foreground"
+                    )}
+                  >
+                    {meta}
+                  </span>
+                )}
               </span>
               {description && (
                 <span className={cn(sizeClasses.type.body, "text-muted-foreground")}>

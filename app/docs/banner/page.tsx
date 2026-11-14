@@ -15,7 +15,13 @@ import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { PlaygroundLayout, PlaygroundOverlay } from "@/lib/docs/playground";
 import { BannerPlayground, MockPage } from "@/lib/docs/playgrounds/banner";
-import { bannerProps, partProps, actionProps } from "@/lib/docs/api/banner";
+import { bannerProps, partProps, actionProps, confirmationProps } from "@/lib/docs/api/banner";
+import { Confirmation } from "@/registry/default/confirmation";
+import {
+  ConfirmationDemo,
+  confirmationAiSdkCode,
+  confirmationCode,
+} from "./confirmation-demo";
 
 const STATUSES: BannerStatus[] = ["default", "info", "success", "warning", "error"];
 
@@ -230,6 +236,35 @@ export default function BannerDoc() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Confirmation">
+        <p className="text-site-body text-muted-foreground">
+          A banner that asks a yes or no question before something runs, such
+          as an agent&apos;s tool call. Approve or deny: the buttons give way to
+          the answer in the same slot, and the banner keeps its height. It
+          installs as <code>confirmation</code>.
+        </p>
+        <ComponentPreview code={confirmationCode}>
+          <ConfirmationDemo />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Confirmation with the AI SDK">
+        <p className="text-site-body text-muted-foreground">
+          A tool part in <code>approval-requested</code> is the question.
+          Answer it with <code>addToolApprovalResponse</code>; once the tool
+          runs, show it as a ThinkingSteps row.
+        </p>
+        <ComponentPreview code={confirmationAiSdkCode}>
+          <div className="w-full max-w-[480px]">
+            <Confirmation
+              icon="search"
+              title="Run searchDocs?"
+              description="Searches the project documentation."
+            />
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
       <DocSection title="API Reference: Banner">
         <PropsTable props={bannerProps} />
       </DocSection>
@@ -240,6 +275,10 @@ export default function BannerDoc() {
 
       <DocSection title="API Reference: BannerAction">
         <PropsTable props={actionProps} />
+      </DocSection>
+
+      <DocSection title="API Reference: Confirmation">
+        <PropsTable props={confirmationProps} />
       </DocSection>
     </DocPage>
   );

@@ -412,6 +412,12 @@ const questions: AskUserQuestion[] = [
       "Appear and dismiss start from wherever the banner is: re-opening mid-dismiss continues the scale and fade instead of snapping, and a dismiss mid-appear fades from the current opacity and never lets the banner outgrow the closing row.",
       "A banner that is mostly faded (under 50%) takes no clicks, so one appearing can't catch clicks meant for what's under it and one leaving can't be clicked twice. When a banner closes with keyboard focus inside, focus moves to the next focusable element after it (else the one before), not back to the top of the page.",
       "Errors and warnings get `role=\"alert\"` and interrupt a screen reader; the rest get `role=\"status\"`. Uncontrolled, the \u2715 hides the banner on its own; pass `open` to bring a dismissed banner back.",
+      "Confirmation (`@/components/ui/confirmation`, installs as `confirmation`) is a Banner that asks a yes or no question, not a new surface: the neutral low-contrast fill, the 4-column grid, BannerTitle, BannerDescription and BannerAction. A question in a transcript reads like every other message the app raises, and it inherits the layout rules: actions trail a title-only question and drop under the text when there is a description or the column is under 24rem.",
+      "A confirmation is a question, so it sits in the transcript as its own row and never as a step inside a list. The title is phrased so the buttons answer it (\"Run pnpm build?\"), and the description says what approving does.",
+      "Approve is the Banner's primary action and Deny its ghost: the Banner places them by variant (primary at the trailing edge on one line, first when the actions drop under the text). Approve comes first in the markup, so it is first in tab order.",
+      "Once answered, the buttons give way to the answer in the same BannerActions slot: a check or an x plus \"Approved\" or \"Denied\", entering on spring.fast (opacity, scale 0.96). The answer is 28px tall like the buttons it replaces, so the banner keeps its height and the transcript below never jumps.",
+      "The banner's role is `group`, labelled by its title and described by its description: it is a question to answer, not a status to announce. The answer is the `role=\"status\"`, so it is announced once.",
+      "The Banner's other props pass through: `status=\"warning\"` with `contrast=\"high\"` for a destructive command. After the answer, a tool that then runs is a ThinkingSteps row, not this one.",
     ],
     usage: `import {
   Banner,
@@ -440,6 +446,7 @@ const questions: AskUserQuestion[] = [
       "size: \"default\" | \"compact\" (default from SizeProvider). Step on the size ladder.",
       "motion: BannerMotionConfig (default bannerMotion). Overrides the appear and dismiss values for this banner; the exported `bannerMotion` holds the token-derived defaults.",
       "BannerAction: the library Button at its compact size (takes Button props). variant: \"primary\" | \"secondary\" | \"ghost\" (default \"secondary\"), laid out by variant; href renders a link; external opens it in a new tab.",
+      "Confirmation: title, description, icon, state (\"requested\" | \"approved\" | \"denied\"), onApprove, onDeny, approveLabel, denyLabel, approvedLabel, deniedLabel. A Banner that asks a yes or no question; other Banner props pass through.",
     ],
   },
   breadcrumb: {
@@ -650,6 +657,7 @@ const [slide, setSlide] = useState(0);
       "`text-pretty` is applied only to user bubbles and deliberately left off assistant replies: `text-wrap: pretty` re-balances the last lines on every content change, so a word-by-word stream would visibly reflow earlier words onto new lines; normal wrapping appends left-to-right and stays put.",
       "The meta row (timestamp + icon actions) is always rendered so it reserves its height and the gap between bubbles never shifts; it fades in over 150ms on hover or focus-within, and stays permanently visible on touch where hover is unreachable.",
       "Timestamps are a user-message-only affordance \u2014 `time` is ignored on assistant replies, which show their actions alone; the timestamp renders tabular-nums.",
+      "`files` takes Files and `{ url, mediaType, filename? }` objects in one list: a File is read locally (object URL, PDF first page), a remote image is shown from its URL, and any other remote type gets the document glyph because its bytes are not there to render.",
       "Messages cap at max-w-[80%]; attachments render as square thumbnails (default 64px) in a row above the bubble, justified toward the message's own side, and an attachment-only message (no children) drops the text bubble entirely. Each thumbnail gets a 1px inset pure-black/pure-white 10% outline so bright edge pixels do not disappear into the page.",
     ],
     usage: `import { AnimatePresence } from "motion/react";
@@ -674,7 +682,7 @@ const actions = <button aria-label="Copy"><Copy size={13} /></button>;
       "children: ReactNode. Message body. Omit for an attachment-only message.",
       "time: ReactNode. Pre-formatted timestamp in the hover-revealed meta row. User messages only.",
       "actions: ReactNode. Icon-only action buttons next to the timestamp. Row height is always reserved, so nothing shifts.",
-      "files: File[]. Optional attachments rendered as square thumbnails above the bubble. Images and PDFs supported.",
+      "files: (File | { url, mediaType, filename? })[]. Attachments as square thumbnails above the bubble: Files (images, PDFs) or files at a URL, the AI SDK file part shape.",
       "thumbnailSize: number (default 64). Side length in px of each attachment thumbnail.",
       "className: string. Merged onto the outer motion wrapper, e.g. to tweak max-width.",
     ],
@@ -1202,11 +1210,18 @@ const [value, setValue] = useState("");
       "File drop only reacts to drags whose dataTransfer types include \"Files\" (text/HTML drags don't trigger), sets dropEffect \"copy\", swaps the placeholder to \"Drop files here to add to chat\", and ignores dragLeave into children; drops are filtered by accept and deduped by a name+size+lastModified fingerprint.",
       "Attachment thumbnails use a 1px inset image outline (pure black at 10% in light mode, pure white at 10% in dark) instead of an outside border, so light image/PDF edges stay legible without shrinking the preview or changing its box. Their radius is the composer's outer radius minus its real 8px padding, not the popup-specific 4px shape pair.",
       "The three collapsible regions (attachments, queue, suggestions) spring to a self-measured PIXEL height, never `height:\"auto\"`, because framer resolves auto from the element's visual (transformed) size \u2014 under a scaled ancestor the region would balloon to scale\u00d7 and snap back. The suggestions region exits height-only (no opacity fade) because a simultaneous fade \"read as a height glitch\".",
-      "Send button morphs by state: Stop (streaming + empty draft) \u21c4 arrow-up; Send and Queue intentionally share the arrow glyph so only the Stop\u21c4arrow swap animates. While streaming, a submit enqueues the draft (text + attached files snapshot) instead of sending; on the streaming\u2192idle edge the queue head auto-dispatches through onSend with meta.queuedId, and an sr-only aria-live=\"polite\" region announces \"Message sent. N still queued.\".",
+      "Send button morphs by state: Stop (streaming + empty draft) \u21c4 arrow-up; Send and Queue intentionally share the arrow glyph so only the Stop\u21c4arrow swap animates. While streaming, a submit enqueues the draft (text + attached files snapshot) instead of sending; when the reply ends (`status` back to idle or ready; submitted counts as busy, and error holds the queue so a failed reply never sends the next message) the queue head auto-dispatches through onSend with meta.queuedId, and an sr-only aria-live=\"polite\" region announces \"Message sent. N still queued.\".",
       "Queued rows are fully keyboard-operable: Enter/F2 edits the row back into the composer, Delete/Backspace removes, Alt+\u2191/\u2193 reorders (drag via Reorder also works); the \u00d7 is hover-revealed on pointer devices but persistent on touch, detected via `(hover: none)`.",
       "History recall is readline-style: plain ArrowUp only when the caret is on the first line, ArrowDown on the last, so multi-line editing still works; the in-progress draft is stashed and restored when walking past the newest entry, and real typing exits history mode.",
       "The placeholder suggestion is a real overlay, not the native placeholder, so a Tab keycap can render inline after the text; its typography mirrors the textarea's step exactly \"so it sits where typed text will\", long suggestions truncate on one flex line so the chip is never cut, and an sr-only hint joins the textarea's aria-describedby. Tab fills without sending; Shift+Tab still moves focus back.",
       "Suggestions are a listbox that never steals focus: \u2193 enters/descends, \u2191 walks back up and out, Enter or click fills the composer; the highlighted row is tracked via aria-activedescendant and shares the same sliding fluid-hover overlay as the pointer. While nothing is highlighted the first row shows a \u2193 keycap hint in the slot where the active row shows \u21b5.",
+      "MessageScroller ships with the composer (`@/components/ui/message-scroller`) and owns the scroll position of the transcript above it, nothing else: no messages, no chat state, no transport. Rows are whatever you render (ChatMessage, ThinkingSteps, Confirmation), each wrapped in a MessageScrollerItem.",
+      "Follow: while the reader is within 24px of the end, the view stays at the end as a reply streams in, written directly on resize with no animation, because a spring chasing a growing target lags behind the text. Any scroll the component did not make itself lets go; the button, or a new anchored row, picks it back up.",
+      "Anchor: a row marked `anchor` (a user turn) glides to the top of the view when it arrives, leaving `peek` (16px) of the previous message visible, and the reply grows under it without moving it. A spacer under the content makes that position reachable while the reply is short, shrinks as the reply grows, and at 0 plain following takes over. Rows present at mount are history: no glide, no spacer, the view opens at the end.",
+      "The glide runs on spring.slow with bounce 0 (a scroll that overshoots reads as a mistake) and reads its target every frame, so a reply that grows mid-flight is still caught. Wheel, touch, pointer down or a key stops it where it is: the reader always wins. Under reduced motion it jumps.",
+      "Positions come from offsetTop and offsetHeight, never client rects, so a scaled ancestor does not skew them. The scrolling element sets `layoutScroll`, so rows with layout motion (ChatMessage) never read a scroll as a move, and `overflow-anchor: none`, so the browser's own anchoring does not fight the spacer.",
+      "MessageScrollerButton is mounted only while the view is away from the end: it enters on spring.moderate (opacity, scale 0.9, 4px rise) and leaves on the quicker exit, so there is never a dead button to tab to. The scrolling region itself is focusable and labelled, and the content is a `role=\"log\"`.",
+      "With the AI SDK's `useChat`: map `message.parts`. A `text` part is a ChatMessage; a `file` part goes straight into ChatMessage `files`; a `reasoning` part is a ThinkingSteps with `running={part.state === \"streaming\"}`; a tool part in `approval-requested` is a Confirmation answering with `addToolApprovalResponse`. `status` passes straight to InputMessage and `stop` to `onStop`; show ThinkingIndicator while status is `submitted`. `sendMessage` takes a FileList, not File[]: convert the composer's files through a DataTransfer.",
     ],
     usage: `import { useState } from "react";
 import { InputMessage } from "@/components/ui/input-message";
@@ -1228,9 +1243,12 @@ const [value, setValue] = useState("");
       'size: "default" | "compact" (default from SizeProvider). Step on the size ladder.',
       "leftSlot / rightSlot: ReactNode | (ctx) => ReactNode. Content in the bottom action areas; render-fn receives { openFilePicker, files }.",
       "files / onFilesChange: File[] / (files: File[]) => void. Controlled attachments; enables drag-and-drop and the file picker.",
-      'status: "idle" | "streaming". While streaming, the send button becomes Stop (empty draft) or Queue (non-empty draft).',
+      'status: "idle" | "streaming" | "submitted" | "ready" | "error". While busy (streaming, submitted), the send button becomes Stop (empty draft) or Queue (non-empty draft). The AI SDK useChat status passes straight through.',
       "suggestions: string[]. Suggested prompts listed under the action bar while the draft is empty.",
       "disabled: boolean (default false). Disables the textarea, send button, and drag-and-drop.",
+      "MessageScroller: autoScroll (default true), peek (default 16), viewportClassName, label. The transcript scroller; give it a height.",
+      "MessageScrollerItem.anchor: boolean (default false). Marks the start of a turn: the row glides to the top when it arrives.",
+      "MessageScrollerButton / useMessageScroller(): the button back to the latest message, and { atEnd, scrollToEnd } from anywhere inside.",
     ],
   },
   "radio-group": {
@@ -1542,7 +1560,9 @@ import { Field, FieldLabel } from "@/components/ui/field";
   "thinking-steps": {
     craft: [
       "Each step enters in two phases: an outer wrapper opens height on spring.slow (to a measured pixel height, never \"auto\") while the inner content fades in after a default 0.08s delay \u2014 space opens first, then content appears. Pixel targets are used because framer resolves an \"auto\" height from the element's visual (transformed) size, so under a scaled ancestor the whole list would overshoot and snap back.",
-      "Steps with `status=\"pending\"` render nothing at all; flipping them to active/complete is what streams the list in. The active step's label gets `.shimmer-text` plus an appended \"\u2026\".",
+      "Steps with `status=\"pending\"` render nothing at all; flipping them to active/complete is what streams the list in. The active step's label gets `.shimmer-text` plus an appended \"\u2026\". `upcoming` is the visible kind of not-started, for a plan known ahead: muted label at normal weight. `error` turns the icon and label red, and the label must also say it failed, because color alone is not a status.",
+      "`running` on the root ties the list to the work: the header shimmers and the list is open while it runs, then closes. The open state is `open ?? the reader's last toggle ?? running`, so a reader who opened or closed it by hand is never overridden when the stream ends.",
+      "The same parts cover an agent's whole trace: reasoning is a root with `running` and a header `meta` for the duration (\"Thought\", \"12s\"); a tool call is a step whose label changes tense with its state (Running, Ran, Failed to run) with its output in ThinkingStepDetails; sources are steps with `href`; a plan is `upcoming` steps under a header whose `meta` counts the done ones.",
       "The header trigger stacks an invisible semibold label layer to reserve bold width, animates weight normal\u2192semibold when open, recolors muted\u2192foreground on hover/open, thickens the chevron stroke 1.5\u21922, and rotates the chevron 0\u219290\u00b0 on spring.fast.",
       "The collapse panel keeps content force-mounted: Radix/Base UI would apply `hidden` (display:none) the moment it closes, freezing the exit mid-flight, so the component applies `hidden` itself only after the framer exit completes, preserving the trigger\u2194panel aria-controls contract.",
       "A panel that is already open at mount SNAPs (duration 0) to its first measured pixel target instead of springing \u2014 the auto\u2192pixel hand-off would otherwise animate on load; later opens spring normally with `bounce: 0` because \"pure height looks better without overshoot\".",
@@ -1572,7 +1592,10 @@ import { Field, FieldLabel } from "@/components/ui/field";
       "ThinkingStepsHeader.children: ReactNode (default \"Thinking\"). Header label text.",
       "ThinkingStep.label: string. Step label text.",
       "ThinkingStep.icon: IconName (default \"dot\"). Icon name from the icon library.",
-      "ThinkingStep.status: \"complete\" | \"active\" | \"pending\" (default \"complete\"). Pending steps are hidden; active steps show shimmer text.",
+      "ThinkingStep.status: \"complete\" | \"active\" | \"pending\" | \"upcoming\" | \"error\" (default \"complete\"). Pending steps are hidden; upcoming steps show muted; active steps shimmer; error steps turn red.",
+      "ThinkingStep.meta / href: ReactNode / string. Muted text after the label (a duration, a count), and a link target that opens in a new tab.",
+      "running: boolean. The header shimmers and the list stays open while true, then closes; a manual toggle wins from then on.",
+      "ThinkingStepsHeader.meta: ReactNode. Muted text after the header label, such as \"12s\".",
       "ThinkingStep.isLast: boolean (default false). Hides the connector line below this step.",
       "ThinkingStepDetails.summary / details: string / string[]. Collapsed label and the detail lines rendered inside the nested accordion.",
     ],
@@ -1628,6 +1651,42 @@ import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
       "TooltipGroup.children: ReactNode. The row of triggers, each in its own Tooltip, all on the same side. They share one bubble.",
       "TooltipGroup.delayDuration: number (default 200). Milliseconds to wait before the first tooltip of the group opens.",
       "TooltipGroup.skipDelayDuration: number (default 300). After a tooltip closes, the others in the group open without the delay for this many milliseconds.",
+    ],
+  },
+  "code-block": {
+    craft: [
+      "It is made of the library's own parts, so it behaves like everything around it: the copy control is the ghost icon Button (24px) in a Tooltip, and the body scrolls in the ScrollArea, with its thin thumb that widens on hover and native scrolling on touch.",
+      "It ships no highlighter, so installing it adds no parser to the bundle. `code` is always the plain string: rendered as is when there are no children, and what the button copies when highlighted markup (Shiki, a markdown renderer's code output) is passed as children.",
+      "The copy icon swaps the way every icon swap does: two glyphs in one 14px cell crossfading with scale 0.6 and blur 4px, the arriving one on the fast tier's duration and the leaving one on its exit, so the slot never resizes. The check then draws itself (pathLength 0 to 1 in 0.08s); a failed copy draws a red x in the same cell. The result holds 2000ms and the tooltip reads Copied; copying again inside that window replays the draw.",
+      "The button's accessible name stays \"Copy code\"; the result is announced once from a visually hidden `aria-live=\"polite\"` region.",
+      "It is the markdown code block of the typeset sheet (`.typeset pre`) with a header and a copy button added, so a fenced block in a reply and a CodeBlock beside it are one design: a 7% tint of the text color with no border, the mono face in the caption role (12px on 16px, 11px on 14px compact), 0.75em of padding above and below and 1em at the sides. Change one and change the other.",
+      "The tint is see-through, so the block holds on the page and inside a dialog without a hard-coded background. Corners are the shape system's inner radius (8px rounded, 20px pill), the typeset's 8px in the default shape.",
+      "Long lines scroll sideways by default, because wrapped code misreads, and `scroll-fade-x` dissolves the edge that has more. `wrap` is for output and logs. `maxHeight` caps the body and switches the fade to the vertical `scroll-fade`. The ScrollArea viewport takes keyboard focus, so the code scrolls without a pointer.",
+      "The header is 36px (32px compact) with the language or a `title` in the caption role, on the same tint as the code with no divider under it. `hideHeader` drops it: the button floats in the top right corner and the body keeps 40px of right padding, so no line runs under it and the button needs no fill of its own.",
+      "Line numbers are `aria-hidden` and `select-none`, so a selection or a screen reader gets the code alone. They apply to plain code only: highlighted children own their line markup.",
+    ],
+    usage: `import { CodeBlock } from "@/components/ui/code-block";
+
+// Plain code, with a language label and a copy button.
+<CodeBlock language="bash" code="npx shadcn@latest add @fluid/code-block" />
+
+// Highlighted markup as children; code stays what gets copied.
+<CodeBlock language="tsx" code={source} lineNumbers={false}>
+  <div dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+</CodeBlock>
+
+// Command output: wrapped, capped, no header.
+<CodeBlock code={stdout} wrap maxHeight={240} hideHeader />`,
+    props: [
+      "code: string. The plain code. Rendered when there are no children, and always what the copy button copies.",
+      "language: string. Language label in the header.",
+      "title: ReactNode. Header text in place of the language: a file name, a command.",
+      "children: ReactNode. Highlighted markup rendered in place of the plain code.",
+      "lineNumbers: boolean (default false). Number the lines of plain code.",
+      "wrap: boolean (default false). Wrap long lines instead of scrolling sideways.",
+      "maxHeight: number. Cap the body's height in px; taller code scrolls.",
+      "hideHeader: boolean (default false). Drop the header; the copy button floats top right.",
+      "onCopy: () => void. Called after a successful copy.",
     ],
   },
   "context-menu": {

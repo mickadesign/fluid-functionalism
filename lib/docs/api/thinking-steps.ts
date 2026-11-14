@@ -9,11 +9,13 @@ export const rootProps: PropDef[] = [
   { name: "defaultOpen", type: "boolean", default: "true", description: "Whether the accordion starts expanded (uncontrolled)." },
   { name: "open", type: "boolean", description: "Controlled open state. Use with onOpenChange." },
   { name: "onOpenChange", type: "(open: boolean) => void", description: "Callback when the open state changes." },
+  { name: "running", type: "boolean", description: "The work is still going: the header shimmers, and the list is open while it runs and closes when it ends. Once the reader opens or closes it by hand, their choice holds. Leave undefined for a list that only follows defaultOpen." },
   { name: "className", type: "string", description: "Additional CSS classes for the root container." },
 ];
 
 export const headerProps: PropDef[] = [
   { name: "children", type: "ReactNode", default: '"Thinking"', description: "Header label text." },
+  { name: "meta", type: "ReactNode", description: "Muted text after the label: how long it took (\"12s\"), how many steps (\"2 of 5 done\")." },
 ];
 
 export const stepProps: PropDef[] = [
@@ -21,7 +23,9 @@ export const stepProps: PropDef[] = [
   { name: "showIcon", type: "boolean", default: "true", description: "Show the icon. When false, displays a small dot instead." },
   { name: "label", type: "string", description: "Step label text." },
   { name: "description", type: "string", description: "Optional secondary text below the label." },
-  { name: "status", type: '"complete" | "active" | "pending"', default: '"complete"', description: "Step state. Pending steps are hidden; active steps show shimmer text." },
+  { name: "meta", type: "ReactNode", description: "Muted text after the label: a duration, a count, a diff stat." },
+  { name: "href", type: "string", description: "Turns the label into a link that opens in a new tab, announced as such to screen readers." },
+  { name: "status", type: '"complete" | "active" | "pending" | "upcoming" | "error"', default: '"complete"', description: "Step state. Pending steps are hidden until they start; upcoming steps show, muted, for a plan known ahead; active steps shimmer; error steps turn red." },
   { name: "delay", type: "number", default: "0.08", description: "Content fade-in delay in seconds, after the step's height starts expanding." },
   { name: "isLast", type: "boolean", default: "false", description: "Hides the connector line below this step." },
 ];

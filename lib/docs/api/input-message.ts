@@ -21,7 +21,7 @@ export const inputMessageProps: PropDef[] = [
   { name: "maxFiles", type: "number", description: "Maximum number of attached files. Extra files beyond this limit are dropped." },
   { name: "filePreviewSize", type: "number", default: "80", description: "Side length (in pixels) of each preview tile. Images use object-cover; PDFs render the first page via pdfjs; other types fall back to a centered icon. A theme-aware inset outline keeps light media edges visible. The pdf.js worker loads from jsDelivr; on a strict CSP, host it yourself and call `setPdfWorkerSrc(\"/pdf.worker.min.mjs\")` from `@/components/ui/file-thumbnail`." },
   { name: "textareaProps", type: "TextareaHTMLAttributes", description: "Extra props forwarded to the underlying textarea (value, onChange, onKeyDown, disabled and placeholder are controlled by the component)." },
-  { name: "status", type: '"idle" | "streaming"', description: "Assistant response state. When \"streaming\", the send button becomes a Stop control (empty draft) or a Queue action (non-empty draft). On the streaming→idle edge the next queued message auto-dispatches via onSend. Leave undefined for the legacy send-immediately behavior." },
+  { name: "status", type: '"idle" | "streaming" | "submitted" | "ready" | "error"', description: "Assistant response state. While it is busy (\"streaming\" or \"submitted\"), the send button becomes a Stop control (empty draft) or a Queue action (non-empty draft). When it returns to \"idle\" or \"ready\" the next queued message auto-dispatches via onSend; \"error\" holds the queue. The 4 values of the AI SDK's useChat status pass straight through. Leave undefined for the legacy send-immediately behavior." },
   { name: "onStop", type: "() => void", description: "Fires when the Stop control is pressed (streaming + empty draft). Halt the current response and set status to \"idle\" — that edge immediately dispatches the next queued message." },
   { name: "queue", type: "QueuedMessage[]", description: "Controlled queue of pending messages, rendered as reorderable rows above the textarea. Double-click (or Enter/F2) edits a row back into the composer; the × (or Delete) removes it; drag — or Alt+↑/↓ — reorders. Requires status to be controlled." },
   { name: "onQueueChange", type: "(queue: QueuedMessage[]) => void", description: "Called whenever the queue changes — enqueue, edit, delete, reorder, or auto-dispatch. Each QueuedMessage is { id, text, files }." },
@@ -31,7 +31,36 @@ export const inputMessageProps: PropDef[] = [
   { name: "suggestions", type: "string[]", description: "Suggested prompts listed under the action bar while the draft is empty. ArrowDown moves a highlight into the list (focus stays in the textarea, tracked via aria-activedescendant), ArrowUp walks back up and out, Enter or click fills the highlighted prompt into the composer. Escape drops the highlight; typing collapses the list. While nothing is highlighted the first row shows a ↓ hint in the slot where the highlighted row shows ↵." },
 ];
 
+// MessageScroller ships with the composer: the scroll position of the
+// transcript above it.
+export const scrollerProps: PropDef[] = [
+  { name: "autoScroll", type: "boolean", default: "true", description: "Keep the end in view while content grows and the reader is at the end. Scrolling away by hand lets go; the button or a new anchored row picks it back up." },
+  { name: "peek", type: "number", default: "16", description: "Pixels of the previous message left visible above an anchored row." },
+  { name: "viewportClassName", type: "string", description: "Classes for the scrolling element: padding, or `scroll-fade` for edge fades." },
+  { name: "label", type: "string", default: '"Conversation"', description: "Accessible name of the scrolling region." },
+  { name: "className", type: "string", description: "Classes for the outer frame. Give it a height: the scroller fills it. MessageScrollerContent, the column of rows inside, takes a className too (a gap) and renders with `role=\"log\"`." },
+];
+
+export const scrollerItemProps: PropDef[] = [
+  { name: "anchor", type: "boolean", default: "false", description: "Marks the start of a turn, usually a user message. When the row arrives it glides to the top of the view and the reply grows under it. Rows present at mount never glide." },
+  { name: "className", type: "string", description: "Classes for the row wrapper." },
+];
+
+export const scrollerButtonProps: PropDef[] = [
+  { name: "label", type: "string", default: '"Scroll to latest"', description: "Accessible name. The button is mounted only while the view is away from the end." },
+  { name: "className", type: "string", description: "Classes for the round button." },
+];
+
+export const scrollerHookProps: PropDef[] = [
+  { name: "atEnd", type: "boolean", description: "Whether the view is within 24px of the end." },
+  { name: "scrollToEnd", type: "() => void", description: "Glide to the end and follow new output again." },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "InputMessage", props: inputMessageProps },
+  { title: "MessageScroller", props: scrollerProps },
+  { title: "MessageScrollerItem", props: scrollerItemProps },
+  { title: "MessageScrollerButton", props: scrollerButtonProps },
+  { title: "useMessageScroller", props: scrollerHookProps },
 ];
