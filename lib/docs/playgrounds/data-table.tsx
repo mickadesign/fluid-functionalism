@@ -1,8 +1,6 @@
 "use client";
 
-import { useShape } from "@/lib/shape-context";
-import { useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
@@ -18,13 +16,12 @@ import {
   DataTableSelectionBar,
   selectColumn,
   rowActionsColumn,
+  rowHandleColumn,
   useUndoableRows,
   type ColumnDef,
 } from "@/registry/default/data-table";
 import type { Row, TableState } from "@tanstack/react-table";
-import { Tabs, TabsItem } from "@/components/ui/tabs";
-import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
-import { fieldTouchClass, typeClass } from "@/lib/size-context";
+import { TooltipGroup } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { MenuItem } from "@/registry/default/menu-item";
 import { showUndoToast } from "@/lib/docs/settings-toast";
@@ -47,9 +44,14 @@ import {
 } from "@/lib/dual-flavor-slugs.mjs";
 import { useIcons } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { useShape } from "@/lib/shape-context";
+import { useSize, typeClass } from "@/lib/size-context";
 import type { PlaygroundProps } from "./types";
+import { ViewTabs } from "./view-tabs";
 import {
   DATA_TABLE_DEFAULT_CODE,
+  DATA_TABLE_PAGE_SIZES,
+  DEFAULT_DATA_TABLE_PRESET,
   DATA_TABLE_PROPS_OPTIONS,
   DATA_TABLE_TAG_OPTIONS,
   dataTableTagsFor,
@@ -64,6 +66,7 @@ import {
 import { GetCodeDialog, usePresetGlobals, usePresetUrlSync } from "@/lib/docs/preset-ui";
 import { PRESET_GLOBAL_KEYS } from "@/lib/preset/sidebar-options";
 import { omit } from "@/lib/omit";
+import type { BadgeColor } from "@/registry/default/badge";
 
 // ── DataTable playground ─────────────────────────────────
 // The library describing itself: one row per component, with its props
@@ -110,7 +113,7 @@ const ADDED: Record<string, string> = {
   tooltip: "2026-03-06",
 };
 
-type Primitives = "Radix + Base UI" | "Built on both" | "None";
+type Primitives = "Radix + Base UI" | "None";
 
 export type ComponentRow = {
   slug: string;
@@ -127,6 +130,8 @@ export type ComponentRow = {
 };
 
 const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
+// Built on both primitives through other parts: the same tag as a
+// component with a file per flavor.
 const flavoredSingle = new Set<string>(FLAVORED_SINGLE_SOURCE_SLUGS);
 const fluid = new Set<string>(FLUID_HOVER_SLUGS);
 
@@ -136,7 +141,7 @@ export function buildRows(): ComponentRow[] {
     name,
     summary: description,
     website: `fluidfunctionalism.com/docs/${slug}`,
-    primitives: dual.has(slug) ? "Radix + Base UI" : flavoredSingle.has(slug) ? "Built on both" : "None",
+    primitives: dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None",
     props: (API_REFERENCE[slug] ?? []).reduce((sum, table) => sum + table.props.length, 0),
     fluidHover: fluid.has(slug),
     added: ADDED[slug] ?? "",
@@ -151,7 +156,7 @@ function partsOf(slug: string, name: string): ComponentRow[] | undefined {
   const tables = API_REFERENCE[slug] ?? [];
   if (tables.length < 2) return undefined;
   const fluidHover = fluid.has(slug);
-  const primitives: Primitives = dual.has(slug) ? "Radix + Base UI" : flavoredSingle.has(slug) ? "Built on both" : "None";
+  const primitives: Primitives = dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None";
   return tables.map((t) => ({
     slug: `${slug}/${t.title}`,
     name: t.title,
@@ -174,14 +179,44 @@ export function formatDay(iso: string) {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", "Built on both": "purple", None: "gray" } as const;
+export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", None: "gray" } as const;
 
-// The select editor's options carry the badge colors, so its menu shows
-// each option's dot.
-const PRIMITIVE_OPTIONS = (Object.keys(PRIMITIVE_COLOR) as Primitives[]).map((value) => ({
-  value,
-  color: PRIMITIVE_COLOR[value],
-}));
+const CHIP_RADIUS = { pill: "rounded-full", rounded: "rounded-md", sharp: "rounded-[1px]" };
+
+/** A row's tags as chips that only read: the tags editor's chips, less the
+ *  ✕. They sit where the editor's do, so switching editing on moves none. */
+function TagChips({ tags, wrap }: { tags: string[]; wrap: boolean }) {
+  const shape = useShape();
+  const compact = useSize().variant === "compact";
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-1",
+        wrap
+          ? // Wrapped, the chips stack; 2px back so the first sits where the
+            // editor's does in its taller field.
+            "-my-0.5 flex-wrap"
+          : // One line: the 24px chips overhang the line box, and one cut at
+            // the cell's edge fades out, as the editor's do.
+            "h-[1lh] overflow-x-clip [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]"
+      )}
+    >
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className={cn(
+            "inline-flex shrink-0 items-center bg-hover px-2 text-foreground",
+            CHIP_RADIUS[shape.variant],
+            compact ? "h-5" : "h-6",
+            typeClass("caption", compact ? "compact" : "default")
+          )}
+        >
+          {tag}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 const INSTALL_URL = "https://www.fluidfunctionalism.com/r";
 
@@ -189,7 +224,48 @@ type Lines = DataTableLines;
 
 type Icons = ReturnType<typeof useIcons>;
 
+/** A row as the table reads it: its id (`slug`), its main text (`name`),
+ *  and whatever its columns hold. */
+type SampleRow = {
+  slug: string;
+  name: string;
+  subRows?: SampleRow[];
+} & Record<string, unknown>;
+
+/** One column of the table, by what it holds. */
+type SampleColumn =
+  /** The row's main text: sorts, never hides, edits as text. */
+  | { id: "name"; kind: "title"; label: string; icon: string }
+  /** One of a few, as a badge: sorts, filters, edits from a menu. */
+  | { id: string; kind: "badge"; label: string; icon: string; options: Record<string, BadgeColor> }
+  | { id: string; kind: "bool"; label: string; icon: string }
+  /** A number: sorts, edits from a list or by typing. */
+  | { id: string; kind: "number"; label: string; icon: string; options: readonly number[] }
+  | { id: string; kind: "date"; label: string; icon: string }
+  | { id: string; kind: "tags"; label: string; icon: string; options: readonly string[] }
+  /** A docs path shown as a link; beside the text, the cell edits. */
+  | { id: string; kind: "link"; label: string; icon: string }
+  /** Plain text. `grow` takes the width that is left (the last column). */
+  | { id: string; kind: "text"; label: string; icon: string; grow?: boolean };
+
+/** The playground's table: the library describing itself. */
+const COLUMNS: readonly SampleColumn[] = [
+  { id: "name", kind: "title", label: "Component", icon: "square-library" },
+  { id: "primitives", kind: "badge", label: "Primitives", icon: "folder", options: PRIMITIVE_COLOR },
+  { id: "fluidHover", kind: "bool", label: "Fluid hover", icon: "star" },
+  { id: "props", kind: "number", label: "Props", icon: "sliders-horizontal", options: DATA_TABLE_PROPS_OPTIONS },
+  { id: "added", kind: "date", label: "Added", icon: "calendar" },
+  { id: "tags", kind: "tags", label: "Tags", icon: "tag", options: DATA_TABLE_TAG_OPTIONS },
+  { id: "website", kind: "link", label: "Website", icon: "link" },
+  { id: "summary", kind: "text", label: "Summary", icon: "file", grow: true },
+];
+/** How it starts: newest first, the Fluid hover column in the Columns menu. */
+const START_SORT = { id: "added", desc: true };
+const START_HIDDEN: Record<string, boolean> = { fluidHover: false };
+
 function buildColumns(o: {
+  /** Drag handles, left of the boxes. */
+  rowReorder: boolean;
   selection: boolean;
   rowActions: boolean;
   lines: Lines;
@@ -197,121 +273,157 @@ function buildColumns(o: {
   icons: Icons | null;
   editable: boolean;
   /** Deletes a row (and its parts), as an undoable step. */
-  onDelete: (row: ComponentRow) => void;
-}): ColumnDef<ComponentRow>[] {
-  const icon = (name: keyof Icons) => (o.icons ? o.icons[name] : undefined);
-  // Text wrap on wraps every text column; off, names and links keep one
-  // line and the Summary two.
+  onDelete: (row: SampleRow) => void;
+}): ColumnDef<SampleRow>[] {
+  const icon = (name: string) => (o.icons ? o.icons[name as keyof Icons] : undefined);
+  // Text wrap on wraps every text column; off, they keep one line.
   const wrap = o.lines === "wrap";
   const lines = wrap ? "wrap" : 1;
+  const data = COLUMNS.map((c): ColumnDef<SampleRow> => {
+    const sortable: ColumnDef<SampleRow>["header"] = ({ column }) => (
+      <DataTableColumnHeader column={column} title={c.label} />
+    );
+    switch (c.kind) {
+      case "title":
+        return {
+          accessorKey: c.id,
+          header: sortable,
+          meta: { label: c.label, lines, icon: icon(c.icon), editor: o.editable ? "text" : undefined },
+          enableHiding: false,
+        };
+      case "badge": {
+        // The select editor's options carry the badge colors, so its menu
+        // (and the filter's) shows each option's dot.
+        const options = Object.entries(c.options).map(([value, color]) => ({ value, color }));
+        return {
+          accessorKey: c.id,
+          header: sortable,
+          cell: ({ row }) => {
+            const value = String(row.original[c.id] ?? "");
+            return (
+              // The 24px badge overhangs the line box instead of growing the row.
+              <span className="flex h-[1lh] min-w-0 items-center">
+                <Badge variant="ghost" color={c.options[value] ?? "gray"}>
+                  {value}
+                </Badge>
+              </span>
+            );
+          },
+          meta: {
+            label: c.label,
+            icon: icon(c.icon),
+            editor: o.editable ? { type: "select", options } : undefined,
+            filter: { type: "options", options },
+          },
+        };
+      }
+      case "bool":
+        return {
+          accessorKey: c.id,
+          header: c.label,
+          cell: ({ row }) => (row.original[c.id] ? "Yes" : "No"),
+          meta: { label: c.label, icon: icon(c.icon) },
+        };
+      case "number":
+        return {
+          accessorKey: c.id,
+          header: sortable,
+          meta: {
+            label: c.label,
+            className: "tabular-nums",
+            icon: icon(c.icon),
+            editor: o.editable ? { type: "number", options: c.options } : undefined,
+          },
+        };
+      case "date":
+        return {
+          accessorKey: c.id,
+          header: sortable,
+          cell: ({ row }) => formatDay(String(row.original[c.id] ?? "")),
+          meta: {
+            label: c.label,
+            className: "tabular-nums whitespace-nowrap",
+            icon: icon(c.icon),
+            editor: o.editable ? "date" : undefined,
+          },
+        };
+      case "tags":
+        return {
+          accessorKey: c.id,
+          header: c.label,
+          enableSorting: false,
+          // Read only, the same chips without their ✕. Editing swaps in the
+          // tags editor, which draws its own.
+          cell: ({ row }) => <TagChips tags={(row.original[c.id] as string[] | undefined) ?? []} wrap={wrap} />,
+          meta: {
+            label: c.label,
+            className: "min-w-56",
+            icon: icon(c.icon),
+            // Text wrap wraps the chips too, so none is cut at the edge.
+            lines: wrap ? "wrap" : undefined,
+            editor: o.editable ? { type: "tags", options: c.options, creatable: true } : undefined,
+          },
+        };
+      case "link":
+        return {
+          accessorKey: c.id,
+          header: c.label,
+          cell: ({ row }) => {
+            const text = String(row.original[c.id] ?? "");
+            return (
+              <a
+                // The path after the domain: every link stays in the docs.
+                // Text edited into something with no path goes to the docs' front.
+                href={text.includes("/") ? `/${text.replace(/^[^/]*\//, "")}` : "/docs"}
+                // A new tab: the table keeps its state (selection, filters, edits).
+                target="_blank"
+                rel="noreferrer"
+                className={cn(
+                  "underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground",
+                  // The cell cuts what runs past it, a focus ring included:
+                  // the link cuts its own text short (so its box ends where
+                  // the cell does) and draws its ring inside that box.
+                  "focus-visible:outline-offset-[-1px]",
+                  !wrap && "inline-block max-w-full truncate align-bottom"
+                )}
+              >
+                {text}
+              </a>
+            );
+          },
+          // Room for most of the URL before it cuts short.
+          meta: {
+            label: c.label,
+            lines,
+            className: "min-w-60",
+            icon: icon(c.icon),
+            // The text follows the link; beside it, the cell edits.
+            editor: o.editable ? { type: "text", link: true } : undefined,
+          },
+        };
+      case "text":
+        return {
+          accessorKey: c.id,
+          header: c.label,
+          meta: {
+            label: c.label,
+            // The last of the data columns takes whatever width is left,
+            // and at least 256px of it: past that the table scrolls sideways.
+            className: c.grow ? "w-full min-w-64" : undefined,
+            lines,
+            icon: icon(c.icon),
+            editor: o.editable ? "text" : undefined,
+          },
+        };
+    }
+  });
   return [
-    ...(o.selection ? [selectColumn<ComponentRow>()] : []),
-    {
-      accessorKey: "name",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,
-      meta: { label: "Component", lines, icon: icon("square-library"), editor: o.editable ? "text" : undefined },
-      enableHiding: false,
-    },
-    {
-      accessorKey: "primitives",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Primitives" />,
-      cell: ({ row }) => (
-        // The 24px badge overhangs the line box instead of growing the row.
-        <span className="flex h-[1lh] min-w-0 items-center">
-          <Badge variant="ghost" color={PRIMITIVE_COLOR[row.original.primitives]}>
-            {row.original.primitives}
-          </Badge>
-        </span>
-      ),
-      meta: {
-        label: "Primitives",
-        icon: icon("folder"),
-        editor: o.editable ? { type: "select", options: PRIMITIVE_OPTIONS } : undefined,
-        // The filter lists them with their badge's dot.
-        filter: { type: "options", options: PRIMITIVE_OPTIONS },
-      },
-    },
-    {
-      accessorKey: "fluidHover",
-      header: "Fluid hover",
-      cell: ({ row }) => (row.original.fluidHover ? "Yes" : "No"),
-      meta: { label: "Fluid hover", icon: icon("star") },
-    },
-    {
-      accessorKey: "props",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Props" />,
-      meta: {
-        label: "Props",
-        className: "tabular-nums",
-        icon: icon("sliders-horizontal"),
-        editor: o.editable ? { type: "number", options: DATA_TABLE_PROPS_OPTIONS } : undefined,
-      },
-    },
-    {
-      accessorKey: "added",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,
-      cell: ({ row }) => formatDay(row.original.added),
-      meta: {
-        label: "Added",
-        className: "tabular-nums whitespace-nowrap",
-        icon: icon("calendar"),
-        editor: o.editable ? "date" : undefined,
-      },
-    },
-    ...(o.editable
-      ? [
-          {
-            accessorKey: "tags",
-            header: "Tags",
-            enableSorting: false,
-            meta: {
-              label: "Tags",
-              className: "min-w-56",
-              icon: icon("tag"),
-              // Text wrap wraps the chips too, so none is cut at the edge.
-              lines: wrap ? "wrap" : undefined,
-              editor: { type: "tags", options: DATA_TABLE_TAG_OPTIONS, creatable: true },
-            },
-          } satisfies ColumnDef<ComponentRow>,
-        ]
-      : []),
-    {
-      accessorKey: "website",
-      header: "Website",
-      cell: ({ row }) => (
-        <a
-          href={`/docs/${row.original.slug.split("/")[0]}`}
-          className="underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground"
-        >
-          {row.original.website}
-        </a>
-      ),
-      // Room for most of the URL before it cuts short.
-      meta: {
-        label: "Website",
-        lines,
-        className: "min-w-60",
-        icon: icon("link"),
-        // The text follows the link; beside it, the cell edits.
-        editor: o.editable ? { type: "text", link: true } : undefined,
-      },
-    },
-    {
-      accessorKey: "summary",
-      header: "Summary",
-      // Last of the data columns, so it takes whatever width is left, and
-      // at least 256px of it: past that the table scrolls sideways.
-      meta: {
-        label: "Summary",
-        className: "w-full min-w-64",
-        lines: wrap ? "wrap" : 1,
-        icon: icon("file"),
-        editor: o.editable ? "text" : undefined,
-      },
-    },
+    ...(o.rowReorder ? [rowHandleColumn<SampleRow>()] : []),
+    ...(o.selection ? [selectColumn<SampleRow>()] : []),
+    ...data,
     ...(o.rowActions
       ? [
-          rowActionsColumn<ComponentRow>((row) => (
+          rowActionsColumn<SampleRow>((row) => (
             <>
               <MenuItem
                 index={0}
@@ -337,13 +449,30 @@ function buildColumns(o: {
 
 /** Writes one edit into the rows, a sub-row's into its parent's parts. */
 /** The rows without these slugs, at any depth. */
-function removeRows(list: ComponentRow[], slugs: readonly string[]): ComponentRow[] {
+function removeRows(list: SampleRow[], slugs: readonly string[]): SampleRow[] {
   return list
     .filter((r) => !slugs.includes(r.slug))
     .map((r) => (r.subRows ? { ...r, subRows: removeRows(r.subRows, slugs) } : r));
 }
 
-function updateRow(list: ComponentRow[], slug: string, key: string, value: unknown): ComponentRow[] {
+/** The top-level rows with these slugs moved before or after another. By
+ *  slug: with sub-rows off the table holds copies of the rows. */
+function moveBySlug(list: SampleRow[], slugs: readonly string[], target: string, place: "before" | "after"): SampleRow[] {
+  const moved = list.filter((r) => slugs.includes(r.slug));
+  const rest = list.filter((r) => !slugs.includes(r.slug));
+  const at = rest.findIndex((r) => r.slug === target);
+  if (at < 0) return list;
+  const index = place === "before" ? at : at + 1;
+  return [...rest.slice(0, index), ...moved, ...rest.slice(index)];
+}
+
+/** The leading columns' gutter: the tabs start where the first data
+ *  column's text does, past the handles and the boxes. */
+function gutterClass(o: { rowReorder: boolean; selection: boolean }) {
+  return o.rowReorder && o.selection ? "pl-12" : o.selection ? "pl-7" : o.rowReorder ? "pl-5" : undefined;
+}
+
+function updateRow(list: SampleRow[], slug: string, key: string, value: unknown): SampleRow[] {
   return list.map((r) =>
     r.slug === slug
       ? { ...r, [key]: value }
@@ -367,8 +496,8 @@ function pick<T>(options: readonly T[]): T {
 
 /** The pins a one-sided setting keeps, as code: the boxes and the first
  *  column on the left, the row menus on the right. */
-export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selection" | "rowActions">) {
-  const left = o.pinning ? [...(o.selection ? [`"select"`] : []), `"name"`] : [];
+export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selection" | "rowActions" | "rowReorder">) {
+  const left = o.pinning ? [...(o.rowReorder ? [`"drag"`] : []), ...(o.selection ? [`"select"`] : []), `"name"`] : [];
   const right = o.pinRight && o.rowActions ? [`"actions"`] : [];
   return `{ left: [${left.join(", ")}], right: [${right.join(", ")}] }`;
 }
@@ -386,10 +515,24 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.pagination ? ["DataTablePagination"] : []),
     ...(o.selection ? ["DataTableSelectionBar"] : []),
     ...(o.selection ? ["selectColumn"] : []),
+    ...(o.rowReorder ? ["rowHandleColumn", "moveRows"] : []),
     "type ColumnDef",
   ];
   // Saved views come with filters: they save what the filters set.
   const views = o.views && o.filters;
+  // Rows that change (edits, moves) live in state.
+  const held = o.editable || o.rowReorder;
+  // Rows moved by hand start unsorted: under a sort, a move first asks to
+  // remove it.
+  const sorting = o.rowReorder ? "[]" : `[{ id: "added", desc: true }]`;
+  const gutter = gutterClass(o);
+  const viewTabsCode = [
+    `    <Tabs selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
+    `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
+    `        <TabsItem key={name} index={i} label={name} />`,
+    `      ))}`,
+    `    </Tabs>`,
+  ];
   const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views;
   // Two icons or more on the row share one gliding tooltip bubble.
   const grouped = [o.filters, o.viewMenu, o.filter !== "none"].filter(Boolean).length > 1;
@@ -405,10 +548,11 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
     ...(grouped ? [`import { TooltipGroup } from "./components";`] : []),
     ...(o.headerIcons
-      ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, ${o.editable ? "Tag, " : ""}Link, File } from "lucide-react";`]
+      ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, Tag, Link, File } from "lucide-react";`]
       : []),
     ``,
     `const columns: ColumnDef<ComponentRow>[] = [`,
+    ...(o.rowReorder ? [`  rowHandleColumn<ComponentRow>(),`] : []),
     ...(o.selection ? [`  selectColumn<ComponentRow>(),`] : []),
     `  {`,
     `    accessorKey: "name",`,
@@ -425,7 +569,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(o.headerIcons || o.editable
       ? [
           `    meta: { ${[o.headerIcons && "icon: Folder", o.editable &&
-              `editor: { type: "select", options: [{ value: "Radix + Base UI", color: "blue" }, { value: "Built on both", color: "purple" }, { value: "None", color: "gray" }] }`].filter(Boolean).join(", ")} },`,
+              `editor: { type: "select", options: [{ value: "Radix + Base UI", color: "blue" }, { value: "None", color: "gray" }] }`].filter(Boolean).join(", ")} },`,
         ]
       : []),
     `  },`,
@@ -446,16 +590,13 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       ? [`    meta: { ${[o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`]
       : []),
     `  },`,
-    ...(o.editable
-      ? [
-          `  {`,
-          `    accessorKey: "tags",`,
-          `    header: "Tags",`,
-          `    enableSorting: false,`,
-          `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}${o.lines === "wrap" ? ', lines: "wrap"' : ""}, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true } },`,
-          `  },`,
-        ]
-      : []),
+    `  {`,
+    `    accessorKey: "tags",`,
+    `    header: "Tags",`,
+    `    enableSorting: false,`,
+    `    cell: ({ row }) => <TagChips tags={row.original.tags} />,`,
+    `    meta: { className: "min-w-56"${o.headerIcons ? ", icon: Tag" : ""}${o.lines === "wrap" ? ', lines: "wrap"' : ""}${o.editable ? `, editor: { type: "tags", options: [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}], creatable: true }` : ""} },`,
+    `  },`,
     `  {`,
     `    accessorKey: "website",`,
     `    header: "Website",`,
@@ -479,9 +620,9 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       : []),
     `];`,
     ``,
-    ...(o.editable ? [`const [rows, setRows] = useState(components);`, ``] : []),
+    ...(held ? [`const [rows, setRows] = useState(components);`, ``] : []),
     `const table = useDataTable({`,
-    `  data: ${o.editable ? "rows" : "components"},`,
+    `  data: ${held ? "rows" : "components"},`,
     `  columns,`,
     `  pageSize: ${o.pagination ? o.pageSize : "components.length"},`,
     ...(o.expandable ? [`  // A row with parts opens into them.`, `  getSubRows: (row) => row.subRows,`] : []),
@@ -489,7 +630,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       ? [`  // No sticky left columns, and no Freeze item in the header menus.`, `  enableColumnPinning: false,`]
       : []),
     `  initialState: {`,
-    `    sorting: [{ id: "added", desc: true }],`,
+    ...(o.rowReorder ? [] : [`    sorting: ${sorting},`]),
     `    columnVisibility: { fluidHover: false },`,
     ...(o.pinning !== o.pinRight ? [`    // Sticky on one side only.`, `    columnPinning: ${pinningCode(o)},`] : []),
     `  },`,
@@ -500,7 +641,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `// Saved views: the table's state, named (filters, search, sort, columns).`,
           `const [views, setViews] = useState<{ name: string; state: Partial<TableState> }[]>([]);`,
           `const [viewIndex, setViewIndex] = useState(0);`,
-          `const allView = { columnFilters: [], globalFilter: "", sorting: [{ id: "added", desc: true }], columnOrder: [], columnVisibility: { fluidHover: false } };`,
+          `const allView = { columnFilters: [], globalFilter: "", sorting: ${sorting}, columnOrder: [], columnVisibility: { fluidHover: false } };`,
           `const openView = (i: number) => {`,
           `  const view = i === 0 ? allView : views[i - 1].state;`,
           `  table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));`,
@@ -523,7 +664,16 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       ? [
           `  <div className="${o.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`,
           ...(o.title ? [`    <DataTableTitle table={table}>Components</DataTableTitle>`] : []),
-          `    <span className="ml-auto" />`,
+          // Without a title the saved views share the tools' row.
+          ...(views && !o.title
+            ? [
+                `    <div className="min-w-0 flex-1${gutter ? ` ${gutter}` : ""}">`,
+                `      {views.length > 0 && (`,
+                ...viewTabsCode.map((line) => `    ${line}`),
+                `      )}`,
+                `    </div>`,
+              ]
+            : [`    <span className="ml-auto" />`]),
           ...(grouped ? [`    <TooltipGroup>`] : []),
           ...[
             ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
@@ -534,18 +684,12 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  </div>`,
         ]
       : []),
-    ...(views
+    ...(views && o.title
       ? [
           `  {views.length > 0 && (`,
-          ...(o.selection ? [`    <div className="pl-7">`] : []),
-          ...[
-            `    <Tabs size="compact" selectedIndex={viewIndex} onSelect={openView} aria-label="Views">`,
-            `      {["All", ...views.map((v) => v.name)].map((name, i) => (`,
-            `        <TabsItem key={name} index={i} label={name} />`,
-            `      ))}`,
-            `    </Tabs>`,
-          ].map((line) => (o.selection ? `  ${line}` : line)),
-          ...(o.selection ? [`    </div>`] : []),
+          ...(gutter ? [`    <div className="${gutter}">`] : []),
+          ...viewTabsCode.map((line) => (gutter ? `  ${line}` : line)),
+          ...(gutter ? [`    </div>`] : []),
           `  )}`,
         ]
       : []),
@@ -554,25 +698,35 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
         ? [
             `  {/* Save view after the chips' + Add filter, with the first filter. */}`,
             `  <DataTableFilterChips table={table}>`,
-            `    {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`,
+            `    {changed && <Button variant="ghost" onClick={saveView}>Save view</Button>}`,
             `  </DataTableFilterChips>`,
           ]
         : [`  <DataTableFilterChips table={table} />`]
       : []),
-    ...(o.editable
+    ...(held
       ? [
           `  <DataTable`,
           `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}`,
-          `    // Each edit writes back to your data; the table shows what it holds.`,
-          `    onCellEdit={({ row, columnId, value }) =>`,
-          `      setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`,
-          `    }`,
+          ...(o.editable
+            ? [
+                `    // Each edit writes back to your data; the table shows what it holds.`,
+                `    onCellEdit={({ row, columnId, value }) =>`,
+                `      setRows((old) => old.map((r) => (r.slug === row.original.slug ? { ...r, [columnId]: value } : r)))`,
+                `    }`,
+              ]
+            : []),
+          ...(o.rowReorder
+            ? [
+                `    // Drag a handle, or Alt + ↑ / ↓ on a row. Under a sort, the table asks to remove it first.`,
+                `    onRowReorder={(move) => setRows((old) => moveRows(old, move))}`,
+              ]
+            : []),
           `  />`,
         ]
       : [
           `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
         ]),
-    ...(o.pagination ? [`  <DataTablePagination table={table} />`] : []),
+    ...(o.pagination ? [`  <DataTablePagination table={table} pageSizes={[${DATA_TABLE_PAGE_SIZES.join(", ")}]} />`] : []),
     ...(o.selection
       ? [
           `  <DataTableSelectionBar`,
@@ -588,8 +742,12 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   ].join("\n");
 }
 
-/** The selection bar's actions, for the selected components. */
-function selectionActions(rows: Row<ComponentRow>[], icons: Icons, onDelete: (rows: Row<ComponentRow>[]) => void) {
+/** The selection bar's actions, for the selected rows. */
+function selectionActions(
+  rows: Row<SampleRow>[],
+  icons: Icons,
+  onDelete: (rows: Row<SampleRow>[]) => void
+) {
   return [
     {
       value: "delete",
@@ -640,13 +798,22 @@ function stableJson(value: unknown): string {
 const visibleOnly = (visibility: Record<string, boolean> | undefined) =>
   Object.keys(visibility ?? {}).filter((id) => visibility?.[id] === false).sort();
 
-/** The "All" view: the table as it starts. */
-const ALL_VIEW: SavedView["state"] = {
+
+/** The rows-per-page choices, as the footer's select takes them. */
+const PAGE_SIZES: number[] = [...DATA_TABLE_PAGE_SIZES];
+
+/** The page size with pagination off: more rows than the table has. Not
+ *  the row count, which this render's handlers read stale (the rail is
+ *  memoized). */
+const EVERY_ROW = 10_000;
+
+/** The "All" view: how the table starts. */
+const START_VIEW: SavedView["state"] = {
   columnFilters: [],
   globalFilter: "",
-  sorting: [{ id: "added", desc: true }],
+  sorting: [START_SORT],
   columnOrder: [],
-  columnVisibility: { fluidHover: false },
+  columnVisibility: START_HIDDEN,
 };
 
 // ── Playground ───────────────────────────────────────────
@@ -707,18 +874,45 @@ function RowRevealPart({ children }: { children: ReactNode }) {
   return <div ref={ref}>{children}</div>;
 }
 
-export function DataTablePlayground({ children }: PlaygroundProps) {
-  const shape = useShape();
-  const [state, setState] = useState<PlayState>(DEFAULT_STATE);
+export function DataTablePlayground({
+  children,
+  initial,
+}: PlaygroundProps & {
+  /** Settings the playground starts from, over the defaults: the docs page
+   *  opens every table at 100 rows a page, where the /demo card keeps 10. */
+  initial?: Partial<PlayState>;
+}) {
+  // What "as it starts" means here, for the first render, for each table's
+  // tab and for the link that carries no preset.
+  const [base] = useState<PlayState>(() => ({ ...DEFAULT_STATE, ...initial }));
+  const [state, setState] = useState<PlayState>(base);
   // The settings as of the latest change, for callbacks that outlive the
   // render they were made in.
   const stateRef = useRef(state);
   // Loading: held by the switch, or played as a 1.5s fetch by the preview's
   // reload button, so the skeleton-to-data hand-over can be watched.
-  const [loading, setLoading] = useState(false);
+  // The page itself opens on the skeleton: the server can't know the
+  // fonts or the box the columns will be measured in, so rows it sent
+  // would shift once measured. They land when the fonts have, in a
+  // transition that never blocks a frame.
+  const [loading, setLoading] = useState(true);
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Loading held on by its switch, as opposed to a load that will end.
+  const loadingHeld = useRef(false);
+  useEffect(() => {
+    let live = true;
+    const land = () => {
+      if (live && !loadingHeld.current && !reloadTimer.current) startTransition(() => setLoading(false));
+    };
+    if (document.fonts) document.fonts.ready.then(land, land);
+    else land();
+    return () => {
+      live = false;
+    };
+  }, []);
   const reload = () => {
     if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    loadingHeld.current = false;
     setLoading(true);
     reloadTimer.current = setTimeout(() => setLoading(false), 1500);
   };
@@ -727,27 +921,46 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const [expanded, setExpanded] = useState(false);
   // Edits and deletes are undoable steps (⌘Z / ⇧⌘Z in the table). Nothing
   // is saved: a refresh brings every row back.
-  const history = useUndoableRows(buildRows, { getId: (r) => r.slug });
+  const history = useUndoableRows<SampleRow>(() => buildRows(), { getId: (r) => r.slug });
   const data = history.rows;
   const { apply: applyStep, undoTo, stepCount } = history;
   // A delete says what went, with its way back to before it.
+  // Read through a ref: the step count changes with every edit, and as a
+  // dependency it rebuilt this, then the columns (their Delete item calls
+  // it), then every cell of the table, on each one.
+  const stepCountRef = useRef(stepCount);
+  useEffect(() => {
+    stepCountRef.current = stepCount;
+  });
   const deleteRows = useCallback(
     (slugs: string[], label: string) => {
+      const before = stepCountRef.current;
       applyStep(label, (old) => removeRows(old, slugs));
-      showUndoToast(label, () => undoTo(stepCount));
+      showUndoToast(label, () => undoTo(before));
     },
-    [applyStep, undoTo, stepCount]
+    [applyStep, undoTo]
   );
   // Sub-rows on, the rows carry their parts; off, they're left out (a new
   // array, so the table builds its rows again).
+  // One copy per row, kept: a new copy of every row on every edit would
+  // tell the table every record had changed, and it would render them all.
+  const flatRows = useRef(new WeakMap<SampleRow, SampleRow>());
   const tableData = useMemo(
-    () => (state.expandable ? data : data.map((r) => ({ ...r, subRows: undefined }))),
+    () =>
+      state.expandable
+        ? data
+        : data.map((r) => {
+            let flat = flatRows.current.get(r);
+            if (!flat) flatRows.current.set(r, (flat = { ...r, subRows: undefined }));
+            return flat;
+          }),
     [data, state.expandable]
   );
   const icons = useIcons();
   const columns = useMemo(
     () =>
       buildColumns({
+        rowReorder: state.rowReorder,
         selection: state.selection,
         rowActions: state.rowActions,
         lines: state.lines,
@@ -755,13 +968,13 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         editable: state.editable,
         onDelete: (row) => deleteRows([row.slug], `Deleted ${row.name}`),
       }),
-    [state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
+    [state.rowReorder, state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
   );
 
   const table = useDataTable({
     data: tableData,
     columns,
-    pageSize: Number(DEFAULT_STATE.pageSize),
+    pageSize: Number(base.pageSize),
     getRowId: (row) => row.slug,
     getSubRows: (row) => row.subRows,
     // Off with the sticky left columns: the header menus drop Freeze.
@@ -771,7 +984,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       columnVisibility: { fluidHover: false },
       // Set by hand rather than left to useDataTable, which pins nothing
       // when the table starts with pinning off.
-      columnPinning: { left: ["select", "name"], right: ["actions"] },
+      columnPinning: { left: ["drag", "select", "name"], right: ["actions"] },
     },
   });
 
@@ -795,14 +1008,16 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     }
     if (!next.selection) table.resetRowSelection();
     if (!next.viewMenu) table.resetColumnVisibility();
-    // The Tags column comes and goes with editing: the widths are read
-    // again, so it starts at its own width rather than none.
     // Header icons widen the headers: the widths are read again too.
     // Sub-rows widen the first column to fit their names: read again too.
-    if (!next.resize || next.editable !== prev.editable || next.headerIcons !== prev.headerIcons || next.expandable !== prev.expandable)
+    if (!next.resize || next.headerIcons !== prev.headerIcons || next.expandable !== prev.expandable)
       table.resetColumnSizing();
     if (!next.expandable) table.resetExpanded();
     if (!next.reorder) table.resetColumnOrder();
+    // Rows moved by hand start unsorted (under a sort, a move first asks
+    // to remove it);
+    // off, the starting sort comes back.
+    if (next.rowReorder !== prev.rowReorder) table.setSorting(next.rowReorder ? [] : [START_SORT]);
     if (!next.filters) table.resetColumnFilters();
     // Each side sticks on its own: the left the boxes and the first
     // column, the right the row menus (useDataTable's own pins).
@@ -814,18 +1029,35 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     // The Text wrap switch sets the columns' own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
     if (next.lines !== prev.lines)
-      for (const id of ["name", "website", "summary"]) table.setColumnLines(id, undefined);
-    table.setPageSize(next.pagination ? Number(next.pageSize) : data.length);
+      for (const c of COLUMNS)
+        if (c.kind === "title" || c.kind === "link" || c.kind === "text") table.setColumnLines(c.id, undefined, animate);
+    table.setPageSize(next.pagination ? Number(next.pageSize) : EVERY_ROW);
     table.setPageIndex(0);
     setState(next);
   };
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
     apply({ ...stateRef.current, [key]: value });
+  // The footer's own Rows per page is the same setting as the rail's: a
+  // size picked there shows in the rail (and in the code and the preset),
+  // and the next rail change doesn't put the old size back.
+  const tablePageSize = table.getState().pagination.pageSize;
+  useEffect(() => {
+    const now = stateRef.current;
+    const size = String(tablePageSize) as PlayState["pageSize"];
+    if (!now.pagination || size === now.pageSize || !PAGE_SIZES.includes(tablePageSize)) return;
+    const next = { ...now, pageSize: size };
+    stateRef.current = next;
+    setState(next);
+  }, [tablePageSize]);
 
   // ── Get code (presets) ─────────────────────────────────
   const globals = usePresetGlobals();
   const presetCode = encodeDataTablePreset({ ...state, ...globals });
-  usePresetUrlSync(presetCode, DATA_TABLE_DEFAULT_CODE, (raw) => {
+  // No ?preset= while the settings are the ones this page starts from.
+  const [startCode] = useState(() =>
+    initial ? encodeDataTablePreset({ ...DEFAULT_DATA_TABLE_PRESET, ...initial }) : DATA_TABLE_DEFAULT_CODE
+  );
+  usePresetUrlSync(presetCode, startCode, (raw) => {
     const res = decodeDataTablePreset(raw);
     // The globals stay with the site settings; the rail takes the rest.
     if (res.ok) apply(omit(res.preset, PRESET_GLOBAL_KEYS) as PlayState, { animate: false });
@@ -851,6 +1083,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
       pinRight: Math.random() > 0.3,
       title: Math.random() > 0.3,
       views: Math.random() > 0.3,
+      rowReorder: Math.random() > 0.7,
     });
 
   // ── Saved views ────────────────────────────────────────
@@ -859,85 +1092,18 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // memory: a refresh starts over.
   const [views, setViews] = useState<SavedView[]>([]);
   const [viewIndex, setViewIndex] = useState(0);
+  // "All" is unsorted while rows move by hand.
+  const allView = state.rowReorder ? { ...START_VIEW, sorting: [] } : START_VIEW;
   const openView = (i: number) => {
-    const view = i === 0 ? ALL_VIEW : views[i - 1]?.state;
+    const view = i === 0 ? allView : views[i - 1]?.state;
     if (!view) return;
     table.captureLayout();
     table.setState((old) => ({ ...old, ...view, pagination: { ...old.pagination, pageIndex: 0 } }));
     setViewIndex(i);
   };
-  // Naming a view happens inline, in its tab: the tab's own label becomes
-  // the draft, so the tab grows as you type and pushes the ones after it,
-  // and a bare field sits on that label (the tab's fill shows through, no
-  // box or shadow of its own), with a × fading in at the tab's end. Saving
-  // opens it on the new tab; clicking the open tab again opens it to
-  // rename. Enter or a click away keeps the name, Esc keeps the old one, and
-  // the × deletes the view.
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [naming, setNaming] = useState<{ at: number; draft: string } | null>(null);
-  const nameView = (i: number, name: string) => setNaming({ at: i - 1, draft: name });
-  // Where the field and its × sit, read from the tab after each keystroke
-  // has resized it: the label's left edge and type, the tab's right end.
-  const [nameBox, setNameBox] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    weight: string;
-  } | null>(null);
-  useLayoutEffect(() => {
-    if (!naming) {
-      setNameBox(null);
-      return;
-    }
-    const box = tabsRef.current;
-    const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[naming.at + 1];
-    const label = tab?.querySelector<HTMLElement>("span > span:not([aria-hidden])");
-    if (!box || !tab || !label) return;
-    const b = box.getBoundingClientRect();
-    const t = tab.getBoundingClientRect();
-    const l = label.getBoundingClientRect();
-    const next = {
-      left: l.left - b.left,
-      top: t.top - b.top,
-      width: t.right - l.left,
-      height: t.height,
-      weight: getComputedStyle(label).fontVariationSettings,
-    };
-    setNameBox((old) => (old && JSON.stringify(old) === JSON.stringify(next) ? old : next));
-  }, [naming]);
-  // A view saved this render gets its field once its tab is there.
+  // A view just saved opens for naming in its tab (ViewTabs).
   const [nameNext, setNameNext] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    if (nameNext === null) return;
-    nameView(nameNext, views[nameNext - 1]?.name ?? "");
-    setNameNext(null);
-    // nameView reads the tabs just rendered; it runs once per request.
-  }, [nameNext]);
-  // The field takes focus with its name selected, once per opening.
-  const nameRef = useRef<HTMLInputElement>(null);
-  // (The field mounts once its place is read, a render after naming starts.)
-  const namingAt = naming?.at ?? null;
-  const fieldPlaced = nameBox !== null;
-  useLayoutEffect(() => {
-    if (namingAt === null || !fieldPlaced) return;
-    nameRef.current?.focus({ preventScroll: true });
-    nameRef.current?.select();
-  }, [namingAt, fieldPlaced]);
-  const commitName = () => {
-    if (!naming) return;
-    const name = naming.draft.trim();
-    if (name) setViews((old) => old.map((v, i) => (i === naming.at ? { ...v, name } : v)));
-    setNaming(null);
-  };
-  // (The tabs fire no change for the tab already open: its own click does.)
-  const renameView = (i: number) => {
-    if (i !== viewIndex || i === 0) return;
-    nameView(i, views[i - 1]?.name ?? "");
-  };
-  const deleteView = () => {
-    setNaming(null);
-    const at = viewIndex - 1;
+  const deleteView = (at: number) => {
     const view = views[at];
     if (!view) return;
     setViews((old) => old.filter((_, i) => i !== at));
@@ -964,7 +1130,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   // Save view shows once the table differs from the open view: there's
   // nothing new to save before.
   const viewChanged = (() => {
-    const open = viewIndex === 0 ? ALL_VIEW : views[viewIndex - 1]?.state;
+    const open = viewIndex === 0 ? allView : views[viewIndex - 1]?.state;
     if (!open) return true;
     const now = table.getState();
     const same = (a: unknown, b: unknown) => stableJson(a) === stableJson(b);
@@ -977,116 +1143,42 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     );
   })();
 
-  // Saved tabs reorder the way the table's column headers do ("All" stays
-  // first): past 4px a press lifts a copy of the tab that follows the
-  // pointer (80%, the pressed fill, held inside the row), its slot empties,
-  // a 2px accent bar marks where it lands, and it moves on release, the
-  // other tabs sliding to their new places. The click the drag ends with is
-  // swallowed, so it doesn't rename. Alt + ← / → moves a focused tab.
-  const dragged = useRef(false);
-  const tabGhostRef = useRef<HTMLDivElement>(null);
-  const [tabGhost, setTabGhost] = useState<{ label: string; top: number; left: number; width: number; height: number } | null>(null);
-  const [tabDrag, setTabDrag] = useState<{ from: number; bar: number | null } | null>(null);
-  // Tab lefts before a move, by view id, so the next commit slides them.
-  const tabLefts = useRef<Map<number, number> | null>(null);
-  const tabEls = () => [...(tabsRef.current?.querySelectorAll<HTMLElement>("[role=tab]") ?? [])];
-  const moveViewTab = (from: number, to: number) => {
-    if (to === from || to < 1 || from < 1) return;
-    tabLefts.current = new Map(tabEls().map((t) => [Number(t.dataset.viewId), t.getBoundingClientRect().left]));
+  // A tab dragged (or Alt + ← / →) to another place: its view moves, and
+  // the open view stays open wherever it lands.
+  const moveView = (from: number, to: number) => {
     setViews((old) => {
       const next = [...old];
       const [moved] = next.splice(from - 1, 1);
       next.splice(to - 1, 0, moved);
       return next;
     });
-    // The open view stays open wherever it lands.
     setViewIndex((cur) =>
       cur === from ? to : cur > Math.min(from, to) && cur <= Math.max(from, to) ? cur + (from < to ? -1 : 1) : cur
     );
   };
-  useLayoutEffect(() => {
-    const before = tabLefts.current;
-    if (!before) return;
-    tabLefts.current = null;
-    for (const t of tabEls()) {
-      const was = before.get(Number(t.dataset.viewId));
-      const dx = was === undefined ? 0 : was - t.getBoundingClientRect().left;
-      if (dx) animate(t, { x: [dx, 0] }, spring.moderate);
-    }
-  }, [views]);
-  const onTabsPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || naming) return;
-    const box = tabsRef.current;
-    const from = tabEls().findIndex((t) => t.contains(e.target as Node));
-    if (!box || from < 1) return;
-    const tab = tabEls()[from];
-    const rect = tab.getBoundingClientRect();
-    const startX = e.clientX;
-    let moved = false;
-    let to = from;
-    // Where the dragged tab would land for a pointer x: before the first
-    // saved tab whose middle is past it, or last.
-    const land = (x: number) => {
-      const els = tabEls();
-      const i = els.findIndex((t, k) => k >= 1 && x < t.getBoundingClientRect().left + t.getBoundingClientRect().width / 2);
-      const slot = i === -1 ? els.length : i;
-      // A slot right before or after itself is no move.
-      const target = slot > from ? slot - 1 : slot;
-      const b = box.getBoundingClientRect();
-      const barX = i === -1 ? els[els.length - 1].getBoundingClientRect().right - b.left + 1 : els[i].getBoundingClientRect().left - b.left - 3;
-      return { target: Math.max(1, target), bar: target === from ? null : barX };
-    };
-    const move = (ev: PointerEvent) => {
-      if (!moved && Math.abs(ev.clientX - startX) < 4) return;
-      if (!moved) {
-        moved = true;
-        dragged.current = true;
-        setTabGhost({ label: tab.textContent?.slice(0, (tab.textContent?.length ?? 0) / 2) ?? "", top: rect.top, left: rect.left, width: rect.width, height: rect.height });
-      }
-      // The ghost stays within the row of tabs.
-      const b = box.getBoundingClientRect();
-      const dx = Math.min(Math.max(ev.clientX - startX, b.left - rect.left), b.right - rect.right);
-      if (tabGhostRef.current) tabGhostRef.current.style.transform = `translateX(${dx}px)`;
-      const next = land(startX + dx);
-      to = next.target;
-      setTabDrag({ from, bar: next.bar });
-    };
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-      setTabGhost(null);
-      setTabDrag(null);
-      if (!moved) return;
-      // The release's click would rename the tab: swallowed for this one
-      // gesture (a drop off the tab fires none, so the guard comes off on
-      // the next tick).
-      const swallow = (ev: Event) => ev.stopPropagation();
-      window.addEventListener("click", swallow, { capture: true, once: true });
-      setTimeout(() => {
-        window.removeEventListener("click", swallow, { capture: true });
-        dragged.current = false;
-      }, 0);
-      moveViewTab(from, to);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-  };
-  const onTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-    const from = tabEls().findIndex((t) => t === document.activeElement);
-    if (from < 1) return;
-    const to = from + (e.key === "ArrowLeft" ? -1 : 1);
-    if (to < 1 || to > views.length) return;
-    e.preventDefault();
-    e.stopPropagation();
-    moveViewTab(from, to);
-  };
+  // The views as subtle tabs. A lone "All" tab says nothing, so they wait
+  // for the first saved view. Past a selection column they start where the
+  // first data column does, 28px in, like the title and the chips: the edge
+  // they share with the table when there are no boxes.
+  const tabsShown = showViews && views.length > 0;
+  const viewTabs = (
+    <ViewTabs
+      first="All"
+      views={views}
+      selected={viewIndex}
+      onSelect={openView}
+      onRename={(at, name) => setViews((old) => old.map((v, i) => (i === at ? { ...v, name } : v)))}
+      onDelete={deleteView}
+      onMove={moveView}
+      nameRequest={nameNext}
+      onNameRequested={() => setNameNext(null)}
+      className={gutterClass(state)}
+    />
+  );
   const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
-  // One row: the title on the left; the Filter button, the Columns button
-  // and the search at the right end. Added filters sit on their own row
-  // under it, above the table.
+  // One row: the title on the left (or, without one, the saved views); the
+  // Filter button, the Columns button and the search at the right end.
+  // Added filters sit on their own row under it, above the table.
   const toolbar = (state.title || tools) && (
     // 12px under the title (the stack's 8px plus 4): the heading stands a
     // step off the table, while the tabs, chips and table keep 8px between
@@ -1099,14 +1191,37 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           Components
         </DataTableTitle>
       )}
-      <span className="ml-auto" />
+      {state.title ? (
+        <span className="ml-auto" />
+      ) : (
+        // No title: the views share the row with the tools, tabs from the
+        // left edge and the icons at the right end. They fade in with the
+        // first saved view (the row is already there, so nothing moves),
+        // and scroll sideways inside their share once they outgrow it.
+        <div className="min-w-0 flex-1">
+          <AnimatePresence initial={false}>
+            {tabsShown && (
+              <motion.div
+                key="views"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: spring.fast.exit }}
+                transition={spring.fast}
+              >
+                {viewTabs}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
       {/* The icons share one tooltip bubble that glides between them. */}
       <TooltipGroup>
         {state.filters && <DataTableFilters table={table} />}
         {state.viewMenu && <DataTableViewOptions table={table} />}
         {state.filter !== "none" && (
           <DataTableSearch
-            // Remounts the field when the mode flips, so it starts empty.
+            // Remounts the field when the mode (or the table) flips, so it
+            // starts empty.
             key={state.filter}
             table={table}
             column={state.filter === "column" ? "name" : undefined}
@@ -1122,123 +1237,16 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
   const body = (
     <div className={cn("flex w-full flex-col gap-2", expanded && "h-full")}>
       {toolbar}
-      {/* The views as subtle tabs, stepped in with the title past a
-          selection column. A lone "All" tab says nothing, so the row
-          waits for the first saved view. */}
-      <RowReveal show={showViews && views.length > 0}>
-        {/* Past a selection column the tabs start where the first data
-            column does, 28px in, like the title and the chips: the edge they
-            share with the table when there are no boxes. */}
-        <div ref={tabsRef} className={cn("relative flex items-center gap-1", state.selection && "pl-7")}>
-          <Tabs
-            size="compact"
-            selectedIndex={viewIndex}
-            onSelect={(i) => !dragged.current && openView(i)}
-            onPointerDownCapture={onTabsPointerDown}
-            onKeyDownCapture={onTabsKeyDown}
-            aria-label="Views"
-          >
-            {[{ id: 0, name: "All" }, ...views].map(({ id, name }, i) => {
-              const editing = naming !== null && naming.at === i - 1;
-              return (
-                <TabsItem
-                  key={id}
-                  index={i}
-                  // Being named, the tab sizes to the draft (spaces kept, so a
-                  // trailing one widens it too), its own text hidden under the
-                  // field, with room at its end for the ×.
-                  label={editing ? naming.draft.replace(/ /g, "\u00a0") || "\u00a0" : name}
-                  data-view-id={id}
-                  // The dragged tab's slot shows empty; its copy rides the pointer.
-                  className={cn(
-                    i > 0 && "touch-none select-none",
-                    tabDrag?.from === i && "invisible",
-                    editing && "pr-8 [&_span]:!text-transparent"
-                  )}
-                  onClick={() => renameView(i)}
-                />
-              );
-            })}
-          </Tabs>
-          {tabDrag?.bar != null && (
-            // Where the tab lands: the column drag's 2px accent bar.
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-y-1 w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
-              style={{ left: tabDrag.bar }}
-            />
-          )}
-          {tabGhost &&
-            createPortal(
-              // The lifted tab: the pressed fill over the page background,
-              // at 80%, following the pointer.
-              <div
-                ref={tabGhostRef}
-                aria-hidden
-                // The dragged tab's own corners and type.
-                className={cn(
-                  "pointer-events-none fixed z-[var(--z-popover,60)] flex items-center justify-center whitespace-nowrap bg-background bg-[linear-gradient(var(--active),var(--active))] px-3 text-foreground opacity-80",
-                  typeClass("body", "compact"),
-                  shape.item
-                )}
-                style={{ top: tabGhost.top, left: tabGhost.left, width: tabGhost.width, height: tabGhost.height }}
-              >
-                {tabGhost.label}
-              </div>,
-              document.body
-            )}
-          {naming && nameBox && (
-            // The bare field on the tab's label, in the label's own type and
-            // weight, so the name doesn't move or change size as it turns
-            // editable; the tab's fill behind it is the only surface.
-            <span
-              className={cn("absolute z-10 flex items-center", typeClass("body", "compact"))}
-              style={{ left: nameBox.left, top: nameBox.top, width: nameBox.width, height: nameBox.height }}
-            >
-              <input
-                ref={nameRef}
-                aria-label="View name"
-                value={naming.draft}
-                onChange={(e) => setNaming({ ...naming, draft: e.target.value })}
-                onBlur={(e) => {
-                  // Leaving for the field's own ×: that click decides.
-                  if (e.relatedTarget?.closest("[data-view-delete]")) return;
-                  commitName();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitName();
-                  if (e.key === "Escape") setNaming(null);
-                }}
-                style={{ fontVariationSettings: nameBox.weight }}
-                // 16px on touch screens, so iOS doesn't zoom into the field.
-                className={cn("h-full min-w-0 flex-1 bg-transparent p-0 text-foreground outline-none", fieldTouchClass)}
-              />
-              <Tooltip content="Delete view">
-                <motion.button
-                  type="button"
-                  data-view-delete=""
-                  aria-label="Delete view"
-                  onClick={deleteView}
-                  // Fades in as the tab turns editable.
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={spring.fast}
-                  className={cn("mr-0.5 grid size-6 shrink-0 cursor-pointer place-items-center text-muted-foreground outline-none hover:bg-hover hover:text-destructive", shape.item)}
-                >
-                  <icons.x size={14} strokeWidth={1.5} />
-                </motion.button>
-              </Tooltip>
-            </span>
-          )}
-        </div>
-      </RowReveal>
+      {/* Under a title the views get a row of their own; without one they
+          sit on the tools' row (see the toolbar). */}
+      {state.title && <RowReveal show={tabsShown}>{viewTabs}</RowReveal>}
       {state.filters && (
         // Save view after the chips' + Add filter, once the table differs
-        // from the open view: a filter, a sort, a hidden or moved column.
-        // It brings the row along when no filter is set.
+        // from the open view. The row is the filters': with none set it
+        // stays away, and a moved column alone doesn't bring it.
         <DataTableFilterChips table={table}>
           {showViews && viewChanged && (
-            <Button variant="ghost" size="compact" onClick={saveView}>
+            <Button variant="ghost" onClick={saveView}>
               Save view
             </Button>
           )}
@@ -1251,6 +1259,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
         cellAlign={state.align}
         fill={expanded}
         loading={loading}
+        // A screenful of skeletons, not one per row of a long page: a
+        // hundred of them took as long to draw as the rows they stand for.
+        loadingRows={Math.min(Number(state.pageSize), 20)}
         // With filters set, the table's own default says to remove one and
         // offers Clear filter(s); a search alone gets a different word.
         // Every row deleted reads as that, with its way back; a search or
@@ -1280,21 +1291,34 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
                 )
             : undefined
         }
+        onRowReorder={
+          state.rowReorder
+            ? (move) =>
+                history.apply(
+                  move.rows.length === 1 ? `Moved ${move.rows[0].original.name}` : `Moved ${move.rows.length} rows`,
+                  (old) => moveBySlug(old, move.rows.map((r) => r.original.slug), move.target.original.slug, move.place)
+                )
+            : undefined
+        }
         onUndo={history.undo}
         onRedo={history.redo}
       />
-      {state.pagination && <DataTablePagination table={table} />}
+      {state.pagination && <DataTablePagination table={table} pageSizes={PAGE_SIZES} />}
       {state.selection && (
         <DataTableSelectionBar
           table={table}
           actions={(rows) =>
-            selectionActions(rows, icons, (picked) => {
-              deleteRows(
-                picked.map((r) => r.original.slug),
-                picked.length === 1 ? `Deleted ${picked[0].original.name}` : `Deleted ${picked.length} rows`
-              );
-              table.resetRowSelection();
-            })
+            selectionActions(
+              rows,
+              icons,
+              (picked) => {
+                deleteRows(
+                  picked.map((r) => r.original.slug),
+                  picked.length === 1 ? `Deleted ${picked[0].original.name}` : `Deleted ${picked.length} rows`
+                );
+                table.resetRowSelection();
+              }
+            )
           }
         />
       )}
@@ -1392,6 +1416,12 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           className={PLAY_SWITCH}
         />
         <Switch
+          label="Reorder rows"
+          checked={state.rowReorder}
+          onToggle={() => set("rowReorder", !state.rowReorder)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
           label="Sub-rows"
           checked={state.expandable}
           onToggle={() => set("expandable", !state.expandable)}
@@ -1430,11 +1460,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           <PlaySelect
             value={state.pageSize}
             onChange={(v) => set("pageSize", v as PlayState["pageSize"])}
-            options={[
-              { value: "5", label: "5" },
-              { value: "10", label: "10" },
-              { value: "20", label: "20" },
-            ]}
+            options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
           />
         </PlayField>
         <Switch
@@ -1442,6 +1468,7 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
           checked={loading}
           onToggle={() => {
             if (reloadTimer.current) clearTimeout(reloadTimer.current);
+            loadingHeld.current = !loading;
             setLoading(!loading);
           }}
           className={PLAY_SWITCH}
@@ -1455,20 +1482,9 @@ export function DataTablePlayground({ children }: PlaygroundProps) {
     [state, loading, presetCode]
   );
 
-  // Expanded, the table has the window's height to fill: 20 rows a page,
-  // the size before restored once it settles back on the page.
-  const sizeBeforeExpand = useRef<PlayState["pageSize"] | null>(null);
-  const onExpandedChange = (next: boolean) => {
-    setExpanded(next);
-    const latest = stateRef.current;
-    if (next) {
-      sizeBeforeExpand.current = latest.pageSize;
-      apply({ ...latest, pagination: true, pageSize: "20" }, { animate: false });
-    } else if (sizeBeforeExpand.current) {
-      apply({ ...latest, pageSize: sizeBeforeExpand.current }, { animate: false });
-      sizeBeforeExpand.current = null;
-    }
-  };
+  // Expanded, the table fills the layer's height. Its rows per page stay
+  // as set: the reader's choice holds on the page and in the larger view.
+  const onExpandedChange = (next: boolean) => setExpanded(next);
 
   return children({
     onExpandedChange,

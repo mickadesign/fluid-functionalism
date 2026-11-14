@@ -6,6 +6,7 @@ import {
   useReducedMotion,
   type Transition,
 } from "motion/react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/springs";
 import type { ItemRect, UseFluidHoverReturn } from "@/hooks/use-fluid-hover";
@@ -73,6 +74,10 @@ export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) &
    *  itself rather than its target, like dividers that hide only once it
    *  covers them. */
   onFrame?: (box: { y: number; height: number; opacity: number }) => void;
+  /** Rides the fill: positioned against it, moved and faded with it. For a
+   *  mark that belongs to the lit item and should glide there with the
+   *  fill instead of blinking from item to item (DataTable's row box). */
+  children?: ReactNode;
 };
 
 const fade: Transition = { duration: 0.08 };
@@ -114,7 +119,7 @@ export function resolveHighlightSource(
 }
 
 export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
-  const { from, fadeIn = true, className, transition, onFrame } = props;
+  const { from, fadeIn = true, className, transition, onFrame, children } = props;
   const { rect, session } = resolveHighlightSource(props);
   // Reads the OS media query directly, so an installed copy honours reduced
   // motion without the app wrapping its tree in MotionConfig. A wrapped app
@@ -152,7 +157,9 @@ export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
                 }
               : undefined
           }
-        />
+        >
+          {children}
+        </motion.div>
       )}
     </AnimatePresence>
   );

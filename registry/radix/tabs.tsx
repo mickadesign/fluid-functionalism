@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Children,
   useRef,
   useState,
   useCallback,
@@ -69,32 +70,41 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       measureItems: measureTabs,
     } = useFluidHover(containerRef, { axis: "x" });
 
-    // Track tab elements locally so we can observe their individual resizes
+    // Each tab button is watched for resize (a label expanding or
+    // collapsing in activeLabel mode) by one observer that lives as long as
+    // the tabs do: tabs join and leave it as they mount and unmount. Keyed
+    // on `children` instead, it was torn down and rebuilt, and every tab
+    // measured again, on every render of whatever holds the tabs.
     const tabElementsRef = useRef(new Map<number, HTMLElement>());
+    const measureTabsRef = useRef(measureTabs);
+    useEffect(() => {
+      measureTabsRef.current = measureTabs;
+    });
+    const tabObserverRef = useRef<ResizeObserver | null>(null);
     const registerTab = useCallback(
       (index: number, element: HTMLElement | null) => {
         registerItem(index, element);
+        if (tabObserverRef.current === null && typeof ResizeObserver !== "undefined")
+          tabObserverRef.current = new ResizeObserver(() => measureTabsRef.current());
+        const previous = tabElementsRef.current.get(index);
+        if (previous && previous !== element) tabObserverRef.current?.unobserve(previous);
         if (element) {
           tabElementsRef.current.set(index, element);
+          tabObserverRef.current?.observe(element);
         } else {
           tabElementsRef.current.delete(index);
         }
       },
       [registerItem]
     );
+    useEffect(() => () => tabObserverRef.current?.disconnect(), []);
 
+    // Measured again when tabs are added or removed; a tab that changes
+    // size reports itself above.
+    const tabCount = Children.count(children);
     useEffect(() => {
       measureTabs();
-    }, [measureTabs, children]);
-
-    // Observe individual tab buttons for resize (label expand/collapse in activeLabel mode)
-    useEffect(() => {
-      const elements = tabElementsRef.current;
-      if (elements.size === 0) return;
-      const ro = new ResizeObserver(() => measureTabs());
-      elements.forEach((el) => ro.observe(el));
-      return () => ro.disconnect();
-    }, [measureTabs, children]);
+    }, [measureTabs, tabCount]);
 
     // Wrap handlers to track isMouseInside
     const handleMouseMove = useCallback(

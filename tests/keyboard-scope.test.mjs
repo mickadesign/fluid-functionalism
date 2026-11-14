@@ -41,6 +41,11 @@ const EXEMPT = {
   // Capture-phase timestamp for the chip press above, acts on nothing.
   "app/components/right-panel.tsx::SettingRow::onKeyCapture":
     "records when the key went down, acts on nothing",
+  // Not a shortcut: while a docs demo's script holds focus (its own field
+  // or menu), a visitor's key press is dropped rather than typed into it,
+  // and the script stands down. It must hear keys inside previews too.
+  "app/docs/data-table/scripted.tsx::useScriptFocus::onKey":
+    "keeps a visitor's keys out of a scripted demo's field, runs no shortcut",
 };
 // Not listed: lib/starter/install.ts writes a `d` theme hotkey into users'
 // apps. It lives in a template literal, so the scan never sees it as code.

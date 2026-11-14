@@ -67,6 +67,14 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
         }}
         className={cn(
           "relative inline-block shrink-0 cursor-pointer border-[1.5px] border-solid border-border bg-transparent p-0 outline-none",
+          // Base UI's hidden form input is `position: fixed`, and every
+          // fixed element is a layer of its own that splits what paints
+          // around it into more: a box per row cut a 34-row table into 230
+          // layers (440MB) that painted a few at a time. Absolute, it is
+          // as hidden and costs nothing. Its fixed offsets go too, so it
+          // stays where it is in the flow: at the top left of a far
+          // ancestor, a label click that focuses it scrolled the page there.
+          "[&+input]:absolute! [&+input]:inset-auto!",
           "transition-[border-color] duration-80",
           // Hovering the box, or the Field row it sits in, darkens the
           // border; a checked box keeps it clear at rest and brings it back

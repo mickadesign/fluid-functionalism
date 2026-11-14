@@ -114,7 +114,16 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"ti8ovp"`);
+    expect(code).toMatchInlineSnapshot(`"tjHcUr"`);
+  });
+
+  // Version "i" codes were published before row reordering (off by default).
+  it("a version-i code still decodes, with row reordering off", () => {
+    const back = decodeDataTablePreset("ti8ovp");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("i");
+    expect(back.preset.lines).toBe("wrap");
+    expect(back.preset.rowReorder).toBe(false);
   });
 
   // Version "g" codes were published before saved views (on by default).
@@ -257,6 +266,12 @@ const MATRIX = [
   { editable: true, headerIcons: false, selection: false, rowActions: false, pagination: false },
   { expandable: true },
   { expandable: true, editable: true, selection: false },
+  { title: false },
+  { title: false, selection: false, rowReorder: true },
+  { rowReorder: true },
+  { rowReorder: true, editable: true, expandable: true },
+  { rowReorder: true, selection: false, pinRight: false },
+  { rowReorder: true, pinning: false, filters: false },
 ];
 
 describe("data table preset install generator", () => {
