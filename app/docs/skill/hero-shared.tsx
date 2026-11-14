@@ -42,6 +42,22 @@ export function usePlayback() {
 
 export type Side = "generic" | "skill";
 
+/** A scripted pointer event, marked as the script's own. */
+function firePointer(target: EventTarget, type: string, at: { x: number; y: number }, buttons: number) {
+  const event = new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    buttons,
+    clientX: at.x,
+    clientY: at.y,
+    pointerType: "mouse",
+    isPrimary: true,
+  });
+  scriptedEvents.add(event);
+  target.dispatchEvent(event);
+}
+
 /** A beat before the first step, so an example doesn't start mid-glance. */
 const FIRST_STEP_MS = 400;
 
@@ -77,22 +93,26 @@ export function useLoop(playing: boolean, steps: Array<{ ms: number; run: () => 
 
 /** The scripted pointer: an arrow whose tip sits at (x, y), shrinking on a
  *  click. Shared by every example so they all point the same way. */
-function FakeCursor({
+export function FakeCursor({
   x,
   y,
   scale,
   opacity,
+  className,
 }: {
   x: MotionValue<number>;
   y: MotionValue<number>;
   scale: MotionValue<number>;
   opacity: MotionValue<number>;
+  /** A z-index, where the example lifts something over the page (a drag's
+   *  ghost) that the cursor must stay above. */
+  className?: string;
 }) {
   return (
     <motion.span
       aria-hidden
       // The arrow's tip sits 3px in from the SVG's corner.
-      className="pointer-events-none absolute -left-[3px] -top-[3px] z-30 origin-top-left"
+      className={cn("pointer-events-none absolute -left-[3px] -top-[3px] z-30 origin-top-left", className)}
       style={{ x, y, scale, opacity }}
     >
       <svg width="18" height="18" viewBox="0 0 24 24">
@@ -137,6 +157,9 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
   const opacity = useMotionValue(0);
   const placed = useRef(false);
   const hovered = useRef<Element | null>(null);
+  // A press being held (a scripted drag): each move goes to the window as
+  // a pointermove, where a drag listens once it has started.
+  const held = useRef(false);
 
   useEffect(() => {
     const fire = (target: Element, type: string, related: Element | null, at: { x: number; y: number }) => {
@@ -184,6 +207,10 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       const next = hit && hit !== root && root.contains(hit) ? hit : null;
       hoverTo(next, at);
       if (next) fire(next, "mousemove", null, at);
+      // On the document's root, as a real pointer's would be (never on the
+      // window itself: listeners read the target as a Node), from where it
+      // bubbles to the window listeners a drag has set up.
+      if (held.current) firePointer(document.documentElement, "pointermove", at, 1);
     };
     const schedule = () => {
       if (queued) return;
@@ -205,14 +232,16 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       y,
       scale,
       opacity,
-      goto(selector: string, index = 0) {
+      /** `offset` moves the target off the element's center, in px: which
+       *  half of a row or a header a carried thing is dropped on. */
+      goto(selector: string, index = 0, offset?: { x?: number; y?: number }) {
         const root = rootRef.current;
         const target = root?.querySelectorAll<HTMLElement>(selector)[index];
         if (!root || !target) return;
         const box = root.getBoundingClientRect();
         const to = target.getBoundingClientRect();
-        const tx = to.left - box.left + to.width / 2;
-        const ty = to.top - box.top + to.height / 2;
+        const tx = to.left - box.left + to.width / 2 + (offset?.x ?? 0);
+        const ty = to.top - box.top + to.height / 2 + (offset?.y ?? 0);
         // The first time, drift in from just below and right of the target.
         if (!placed.current) {
           x.set(tx + 24);
@@ -226,6 +255,29 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       },
       click() {
         animate(scale, [1, 0.8, 1], { duration: 0.2 });
+      },
+      /** Presses and holds on whatever is under the tip: the start of a
+       *  drag. The glides that follow carry it; `release` drops it. */
+      press() {
+        const root = rootRef.current;
+        const box = root?.getBoundingClientRect();
+        if (!root || !box || !placed.current) return;
+        const at = { x: box.left + x.get(), y: box.top + y.get() };
+        const hit = document.elementFromPoint(at.x, at.y);
+        if (!hit || !root.contains(hit)) return;
+        held.current = true;
+        animate(scale, 0.8, { duration: 0.1 });
+        firePointer(hit, "pointerdown", at, 1);
+      },
+      /** Lets go: the drop. `cancel` abandons the drag instead (a visitor
+       *  took over mid-carry), so nothing is left held. */
+      release(cancel = false) {
+        if (!held.current) return;
+        held.current = false;
+        animate(scale, 1, { duration: 0.1 });
+        const box = rootRef.current?.getBoundingClientRect();
+        const at = box ? { x: box.left + x.get(), y: box.top + y.get() } : { x: 0, y: 0 };
+        firePointer(document.documentElement, cancel ? "pointercancel" : "pointerup", at, 0);
       },
     }),
     [rootRef, x, y, scale, opacity]

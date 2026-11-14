@@ -29,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { ViewTabs } from "@/lib/docs/playgrounds/view-tabs";
 import { showUndoToast } from "@/lib/docs/settings-toast";
 import { useFontsReady } from "@/lib/docs/use-fonts-ready";
+import { useLoop, usePlayback, useScriptCursor } from "@/app/docs/skill/hero-shared";
+import { CursorLayer, dragSteps } from "./scripted";
 import { Badge, type BadgeColor } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
 
@@ -989,11 +991,13 @@ const table = useDataTable({
 
 // ── Resizing and reordering columns ──────────────────────
 
+// `meta.label` names a column where its header is a component: in the
+// Columns menu, and on the header's copy while it is dragged.
 const layoutColumns: ColumnDef<Member>[] = [
-  { accessorKey: "name", header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />, enableHiding: false },
-  { accessorKey: "email", header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />, meta: { lines: 1 } },
-  { accessorKey: "role", header: ({ column }) => <DataTableColumnHeader column={column} title="Role" /> },
-  { accessorKey: "status", header: ({ column }) => <DataTableColumnHeader column={column} title="Status" /> },
+  { accessorKey: "name", header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />, enableHiding: false, meta: { label: "Name" } },
+  { accessorKey: "email", header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />, meta: { label: "Email", lines: 1 } },
+  { accessorKey: "role", header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />, meta: { label: "Role" } },
+  { accessorKey: "status", header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />, meta: { label: "Status" } },
   {
     accessorKey: "lastActive",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Last active" />,
@@ -1014,13 +1018,28 @@ export function ColumnsTable() {
     initialState: { columnOrder: ["name", "status", "email", "role", "lastActive"] },
   });
   const ready = useFontsReady();
+  // Left alone, the section plays itself: a cursor drags Status past
+  // Email, then back beside the name. A visitor's pointer (or keyboard
+  // focus) inside takes over, and the script lets go of whatever it held.
+  const { rootRef, playing, bind } = usePlayback();
+  const on = playing && ready;
+  const cursor = useScriptCursor(rootRef, on);
+  useLoop(
+    on,
+    [
+      ...dragSteps(cursor, "thead th[data-column-id=status]", "thead th[data-column-id=email]", { x: 24 }, 1600),
+      ...dragSteps(cursor, "thead th[data-column-id=status]", "thead th[data-column-id=name]", { x: 24 }, 2000),
+    ],
+    () => cursor.release(true)
+  );
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
       <div className="mb-1 flex flex-wrap items-center gap-1">
         <DataTableTitle as="h3" table={table} className="font-heading-display">Members</DataTableTitle>
         <DataTableViewOptions table={table} className="ml-auto" />
       </div>
       <DataTable table={table} resizeColumns reorderColumns loading={!ready} loadingRows={6} />
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={on} />
     </div>
   );
 }
@@ -1075,9 +1094,26 @@ export function ReorderTable() {
     // Two steps already selected: drag either and both move.
     initialState: { rowSelection: { "3": true, "4": true } },
   });
+  // Left alone, the section plays itself: a cursor carries the two
+  // selected steps down the list by one's handle, then back. Rows are named
+  // by id, so a pass cut short (a visitor took over) still ends in order.
+  const { rootRef, playing, bind } = usePlayback();
+  const cursor = useScriptCursor(rootRef, playing);
+  const handleOf = (id: string) => `tbody tr[data-row-id="${id}"] td[data-column-id=drag]`;
+  useLoop(
+    playing,
+    [
+      // Carried straight down the handles' column, and dropped on the
+      // lower half of a row: after it.
+      ...dragSteps(cursor, handleOf("3"), handleOf("6"), { y: 10 }, 1600),
+      ...dragSteps(cursor, handleOf("3"), handleOf("2"), { y: 10 }, 2000),
+    ],
+    () => cursor.release(true)
+  );
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
       <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Launch checklist</DataTableTitle>
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={playing} />
       <DataTable
         table={table}
         onRowReorder={(move) =>
