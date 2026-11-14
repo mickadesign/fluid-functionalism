@@ -213,7 +213,6 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           {/* Hover background */}
           <FluidHoverHighlight
             hover={hover}
-            from={checkedRect}
             className={shape.bg}
           />
 
@@ -535,28 +534,16 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const multiple = checkedIndices != null;
     const checkedRect =
       !multiple && checkedIndex != null ? itemRects[checkedIndex] : null;
-    // What lights the highlight: the open itself (its first-row focus), the
-    // pointer, or the keyboard. A highlight that appears from nothing fades
-    // in at `from` and glides to its row. That suits the pointer entering the
-    // list (it rises from the checked row toward the cursor), not a row lit
-    // by the open or by arrowing in from the search field: those would slide
-    // over from the checked row, so they fade in where they are.
-    // The handlers read the ref: a key press updates it before the focus it
-    // moves arrives, in the same event. The render reads the state, which
-    // the highlight's `from` depends on. Each open starts over as "open".
+    // What lit the highlight: the open itself (its first-row focus), the
+    // pointer, or the keyboard. The handlers read it as a ref: a key press
+    // updates it before the focus it moves arrives, in the same event.
+    // Each open starts over as "open".
     const litByRef = useRef<LitBy>("open");
-    const [litBy, setLitBy] = useState<LitBy>("open");
-    const [litByOpen, setLitByOpen] = useState(open);
-    if (litByOpen !== open) {
-      setLitByOpen(open);
-      if (open) setLitBy("open");
-    }
     useEffect(() => {
       if (open) litByRef.current = "open";
     }, [open]);
     const markLitBy = (by: LitBy) => {
       litByRef.current = by;
-      setLitBy(by);
     };
     // Multiple: one merged block per contiguous run of checked rows.
     const runs = useSelectionRuns(checkedIndices ?? []);
@@ -788,7 +775,6 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                 {/* Hover background */}
                 <FluidHoverHighlight
                   hover={hover}
-                  from={litBy === "pointer" ? checkedRect : null}
                   className={shape.bg}
                 />
 

@@ -55,8 +55,10 @@ interface HighlightFromRect {
 }
 
 export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) & {
-  /** Where a fresh session fades in from. A dropdown passes its checked row,
-   *  a nav menu its active route. Defaults to the rect itself. */
+  /** Where a fresh session fades in from. Defaults to the rect itself, and
+   *  that is right for a list with a selected item: the highlight appears on
+   *  the item under the pointer, it does not slide out of the selected one.
+   *  For a fill the hover extends (the calendar's range start). */
   from?: ItemRect | null;
   /** `false` starts a fresh session opaque instead of fading in: for a
    *  `from` under a filled item (the calendar's range start), so the
