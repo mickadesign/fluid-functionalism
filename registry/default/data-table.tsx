@@ -2610,11 +2610,17 @@ function DataTable<TData>({
                     "group/th relative text-muted-foreground",
                     pinProps(pins[column.id]).className,
                     // Filled, the header stays put while the rows scroll,
-                    // and once they do, a hairline in the rows' rule color
-                    // (accent/40) separates it from the rows passing under.
+                    // and once they do, a hairline separates it from the rows
+                    // passing under: the frozen columns' edge color (an 8%
+                    // tint of the text color), so every line that marks
+                    // content passing under something is the same one.
                     fill && [
-                      "sticky top-0 bg-background transition-shadow duration-80",
-                      "group-data-scrolled/scroll:shadow-[inset_0_-1px_0_color-mix(in_oklab,var(--accent)_40%,transparent)]",
+                      "sticky top-0 bg-background",
+                      // The cell's own bottom border takes the color (the
+                      // row fades it over 80ms), under the boxes' column
+                      // too, which has no rule at rest. A shadow inside the
+                      // cell sat on top of that border: two lines, 2px.
+                      "group-data-scrolled/scroll:border-b-foreground/[0.08]!",
                     ],
                     movable && "touch-none select-none",
                     // The dragged header's label lifts out into the ghost, so
@@ -2906,11 +2912,11 @@ function DataTable<TData>({
             {fill && (
               // Filled, the rows scroll inside the box: while there are more
               // under its bottom edge they fade into the page there, over a
-              // hairline in the rows' rule color, as the header's shows
+              // hairline in the frozen edge's color, as the header's shows
               // once rows have passed under it. Over the frozen columns too.
               <div className="absolute inset-x-0 bottom-0 h-(--ff-fade,48px) opacity-0 transition-opacity duration-80 group-data-more-below/scroll:opacity-100">
                 <div className="absolute inset-0 bg-linear-to-t from-background to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 h-px bg-accent/40" />
+                <div className="absolute inset-x-0 bottom-0 h-px bg-foreground/[0.08]" />
               </div>
             )}
             {/* The selection, under the hover as it is behind the table:
