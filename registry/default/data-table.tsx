@@ -3293,7 +3293,10 @@ function DataTableColumnHeader<TData, TValue>({
             />
           }
         />
-        <DropdownContent align="start" sideOffset={2} className="w-52">
+        {/* 208px whatever the column's width: a menu is as wide as its
+            trigger at least, and this one's trigger is the whole header
+            cell, so a wide column stretched it across the table. */}
+        <DropdownContent align="start" sideOffset={2} className="w-52 min-w-0">
           {items.map((item, i) => (
             <MenuItem
               key={item.label}
