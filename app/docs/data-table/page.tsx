@@ -20,6 +20,12 @@ import {
   changelogCode,
   ReorderTable,
   reorderCode,
+  FrozenTable,
+  frozenCode,
+  FiltersTable,
+  filtersCode,
+  ColumnsTable,
+  columnsCode,
 } from "./capability-demos";
 import { SortableTable, SearchTable, LoadingTable } from "./demo-data";
 
@@ -121,6 +127,16 @@ export default function DataTableDoc() {
         </ComponentPreview>
       </DocSection>
 
+      <DocSection title="Filters">
+        <p className="text-site-body text-muted-foreground">
+          4 kinds of filter, one per kind of column: text, a few values, a number range, a range of
+          days. Each filter is a chip above the table: click a part to change it, or the × to remove it.
+        </p>
+        <ComponentPreview code={filtersCode}>
+          <FiltersTable />
+        </ComponentPreview>
+      </DocSection>
+
       <DocSection title="Saved views">
         <p className="text-site-body text-muted-foreground">
           A view is the table&apos;s state, named: filters, sort and visible columns. Save one, then
@@ -138,6 +154,28 @@ export default function DataTableDoc() {
         </p>
         <ComponentPreview code={tasksCode}>
           <TasksTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Frozen columns">
+        <p className="text-site-body text-muted-foreground">
+          Scroll sideways: the boxes and the first column stay on the left, the row menus on the
+          right. A hairline marks each frozen edge while content passes under it. Open a header&apos;s
+          menu to freeze the columns up to it.
+        </p>
+        <ComponentPreview code={frozenCode}>
+          <FrozenTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Resizing and reordering columns">
+        <p className="text-site-body text-muted-foreground">
+          Drag a column&apos;s right edge to resize it, and drag a header to move it. From the keyboard:
+          ← / → on a focused edge steps its width by 16px, Alt + ← / → on a focused header moves its
+          column.
+        </p>
+        <ComponentPreview code={columnsCode}>
+          <ColumnsTable />
         </ComponentPreview>
       </DocSection>
 
@@ -176,9 +214,7 @@ export default function DataTableDoc() {
           over instead of swapping.
         </p>
         <ComponentPreview code={sortCode}>
-          <div className="w-full">
-            <SortableTable />
-          </div>
+          <SortableTable />
         </ComponentPreview>
       </DocSection>
 
@@ -196,7 +232,8 @@ export default function DataTableDoc() {
         <p className="text-site-body text-muted-foreground">
           While a request runs, each cell holds a skeleton the size of its text. When the data lands,
           every skeleton fades out as its cell fades in, so nothing jumps and no cell sits empty.
-          Requests that finish within 160ms never show one.
+          Requests that finish within 160ms never show one. This table is held in loading: press
+          Finish loading to land its rows.
         </p>
         <ComponentPreview code={loadingCode}>
           <LoadingTable />

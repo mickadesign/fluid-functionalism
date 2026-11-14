@@ -1657,6 +1657,16 @@ function DataTable<TData>({
       const rights = Array.from(wrap.querySelectorAll<HTMLElement>("thead th.ff-pin-r")).pop()?.getBoundingClientRect();
       wrap.style.setProperty("--ff-inset-l", `${lefts ? Math.max(0, lefts.left - box.left) : 0}px`);
       wrap.style.setProperty("--ff-inset-r", `${rights ? Math.max(0, box.right - rights.right) : 0}px`);
+      // How far the frozen columns reach in, as they are drawn. The widths
+      // the columns were fitted to (the root's own --pin-l / --pin-r) fall
+      // short for a frozen column that takes the room left over (`w-full`):
+      // it is wider than its fitted width, and the fills over the frozen
+      // columns stopped partway across it, leaving a blank stretch in a
+      // selected or hovered row.
+      const lastLeft = Array.from(wrap.querySelectorAll<HTMLElement>("thead th.ff-pin-l")).pop()?.getBoundingClientRect();
+      const firstRight = wrap.querySelector<HTMLElement>("thead th.ff-pin-r")?.getBoundingClientRect();
+      if (lastLeft) wrap.style.setProperty("--pin-l", `${Math.max(0, lastLeft.right - box.left)}px`);
+      if (firstRight) wrap.style.setProperty("--pin-r", `${Math.max(0, box.right - firstRight.left)}px`);
       // The selection's copies over the frozen columns. Each sits where
       // the table's own box does when its side is at rest: the left one as
       // if the table weren't scrolled, the right one as if it were scrolled
@@ -3103,11 +3113,16 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
         e.stopPropagation();
         onStep(e.key === "ArrowLeft" ? -RESIZE_STEP : RESIZE_STEP, e.currentTarget);
       }}
-      className="group/resize absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none select-none outline-none"
+      // Centered on the column's right edge, 4px to each side. The last
+      // column's stays inside it, its line at the very edge: hanging 4px
+      // past the table, it gave a table that fits its box 4px of sideways
+      // scroll.
+      className="group/resize absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize touch-none select-none outline-none in-[th:last-child]:right-0"
     >
       <span
         className={cn(
           "absolute inset-y-1.5 left-1/2 w-px -translate-x-1/2 transition-colors duration-80",
+          "in-[th:last-child]:left-auto in-[th:last-child]:right-0 in-[th:last-child]:translate-x-0",
           "bg-transparent group-hover/resize:bg-foreground/40 group-focus-visible/resize:bg-[var(--focus-ring,#6B97FF)] group-data-resizing/resize:bg-foreground/60"
         )}
       />

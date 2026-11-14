@@ -3,7 +3,7 @@
 // The DataTable page's capability sections: each one a table built for the
 // thing it shows, on data that suits it, with the code it runs.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useDataTable,
   DataTable,
@@ -471,7 +471,9 @@ export function FilesTable() {
   });
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex justify-end">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table} className="font-heading-display">Files</DataTableTitle>
+        <span className="ml-auto" />
         <DataTableSearch table={table} column="name" placeholder="Search files…" />
       </div>
       <DataTable table={table} />
@@ -551,7 +553,12 @@ const entryColumns: ColumnDef<Entry>[] = [
 export function ChangelogTable() {
   const [data] = useState(ENTRIES);
   const table = useDataTable({ data, columns: entryColumns, getRowId: (e) => e.id });
-  return <DataTable table={table} />;
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Changelog</DataTableTitle>
+      <DataTable table={table} />
+    </div>
+  );
 }
 
 export const changelogCode = `import { useDataTable, DataTable, type ColumnDef } from "./components";
@@ -755,6 +762,287 @@ const openView = (view: View) =>
 <DataTableFilterChips table={table} />
 <DataTable table={table} />`;
 
+// ── Frozen columns: a wide list of accounts ──────────────
+
+type Account = { id: string; company: string; contact: string; email: string; plan: "Free" | "Team" | "Scale"; seats: number; mrr: number; renewal: string; country: string; owner: string };
+
+const ACCOUNTS: Account[] = [
+  { id: "a1", company: "Northwind Labs", contact: "Ada Brooks", email: "ada@northwind.io", plan: "Scale", seats: 120, mrr: 4800, renewal: "2027-01-14", country: "Germany", owner: "Kenji" },
+  { id: "a2", company: "Halden Studio", contact: "Omar Haddad", email: "omar@halden.studio", plan: "Team", seats: 18, mrr: 540, renewal: "2026-12-02", country: "Norway", owner: "Lena" },
+  { id: "a3", company: "Brightside", contact: "Priya Nair", email: "priya@brightside.co", plan: "Team", seats: 42, mrr: 1260, renewal: "2027-03-20", country: "India", owner: "Kenji" },
+  { id: "a4", company: "Costa & Sons", contact: "Ines Costa", email: "ines@costa.pt", plan: "Free", seats: 3, mrr: 0, renewal: "2026-11-30", country: "Portugal", owner: "Sam" },
+  { id: "a5", company: "Varga Systems", contact: "Leo Varga", email: "leo@varga.systems", plan: "Scale", seats: 260, mrr: 10400, renewal: "2027-06-01", country: "Hungary", owner: "Lena" },
+  { id: "a6", company: "Okafor Health", contact: "Sam Okafor", email: "sam@okafor.health", plan: "Team", seats: 27, mrr: 810, renewal: "2027-02-11", country: "Nigeria", owner: "Sam" },
+];
+
+const PLAN_COLOR = { Free: "gray", Team: "blue", Scale: "purple" } as const;
+const euros = (n: number) => `€${n.toLocaleString("en-US")}`;
+
+const accountColumns: ColumnDef<Account>[] = [
+  selectColumn<Account>(),
+  { accessorKey: "company", header: ({ column }) => <DataTableColumnHeader column={column} title="Company" />, enableHiding: false },
+  // A floor per column (min-w): short of room a column gives up width
+  // down to its header's, and these would cut their text before the table
+  // scrolled.
+  { accessorKey: "contact", header: "Contact", meta: { className: "whitespace-nowrap min-w-28" } },
+  { accessorKey: "email", header: "Email", meta: { className: "whitespace-nowrap min-w-44" } },
+  {
+    accessorKey: "plan",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Plan" />,
+    cell: ({ row }) => (
+      <span className="flex h-[1lh] items-center">
+        <Badge variant="ghost" color={PLAN_COLOR[row.original.plan]}>
+          {row.original.plan}
+        </Badge>
+      </span>
+    ),
+  },
+  { accessorKey: "seats", header: ({ column }) => <DataTableColumnHeader column={column} title="Seats" />, meta: { className: "tabular-nums" } },
+  {
+    accessorKey: "mrr",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="MRR" />,
+    cell: ({ row }) => euros(row.original.mrr),
+    meta: { label: "MRR", className: "tabular-nums whitespace-nowrap min-w-20" },
+  },
+  {
+    accessorKey: "renewal",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Renews" />,
+    cell: ({ row }) => shortDay(row.original.renewal),
+    meta: { label: "Renews", className: "tabular-nums whitespace-nowrap" },
+  },
+  { accessorKey: "country", header: "Country", meta: { className: "whitespace-nowrap min-w-24" } },
+  { accessorKey: "owner", header: "Owner", meta: { className: "whitespace-nowrap" } },
+  rowActionsColumn<Account>((row) => (
+    <>
+      <MenuItem index={0} label="Copy email" onSelect={() => navigator.clipboard?.writeText(row.original.email)} />
+      <MenuItem index={1} label="Copy company" onSelect={() => navigator.clipboard?.writeText(row.original.company)} />
+    </>
+  )),
+];
+
+export function FrozenTable() {
+  const [data] = useState(ACCOUNTS);
+  const table = useDataTable({
+    data,
+    columns: accountColumns,
+    getRowId: (a) => a.id,
+    // One row selected, so its fill shows running over the frozen columns.
+    initialState: { rowSelection: { a3: true } },
+  });
+  const ready = useFontsReady();
+  // The section opens a little way into its scroll: the frozen edges'
+  // hairlines and both fades only show while content passes under them.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ready) return;
+    const viewport = box.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    const frame = requestAnimationFrame(() => {
+      if (viewport && viewport.scrollLeft === 0) viewport.scrollLeft = 96;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [ready]);
+  return (
+    <div ref={box} className="flex w-full flex-col gap-2">
+      <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Accounts</DataTableTitle>
+      <DataTable table={table} resizeColumns loading={!ready} loadingRows={6} />
+    </div>
+  );
+}
+
+export const frozenCode = `import { useDataTable, DataTable, DataTableTitle, selectColumn, rowActionsColumn, type ColumnDef } from "./components";
+
+const columns: ColumnDef<Account>[] = [
+  selectColumn<Account>(),
+  { accessorKey: "company", header: "Company" },
+  // Contact, Email, Plan, Seats, MRR, Renews, Country, Owner…
+  rowActionsColumn<Account>((row) => <MenuItem index={0} label="Copy email" onSelect={() => copy(row.original.email)} />),
+];
+
+// Out of the box: the boxes and the first data column stay on the left,
+// the row menus on the right, once the table scrolls sideways.
+const table = useDataTable({ data: accounts, columns });
+
+// Or choose them (ids, in order), or turn pinning off:
+// useDataTable({ data, columns, initialState: { columnPinning: { left: ["select", "company", "contact"], right: [] } } })
+// useDataTable({ data, columns, enableColumnPinning: false })
+
+<DataTableTitle table={table}>Accounts</DataTableTitle>
+<DataTable table={table} resizeColumns />`;
+
+// ── Filters: invoices ────────────────────────────────────
+
+type Invoice = { id: string; customer: string; status: "Paid" | "Open" | "Overdue" | "Draft"; amount: number; due: string };
+
+const INVOICES: Invoice[] = [
+  { id: "INV-1042", customer: "Northwind Labs", status: "Overdue", amount: 4800, due: "2026-10-28" },
+  { id: "INV-1043", customer: "Halden Studio", status: "Open", amount: 540, due: "2026-11-20" },
+  { id: "INV-1044", customer: "Brightside", status: "Paid", amount: 1260, due: "2026-11-02" },
+  { id: "INV-1045", customer: "Costa & Sons", status: "Draft", amount: 90, due: "2026-12-01" },
+  { id: "INV-1046", customer: "Varga Systems", status: "Open", amount: 10400, due: "2026-11-25" },
+  { id: "INV-1047", customer: "Okafor Health", status: "Overdue", amount: 810, due: "2026-11-05" },
+  { id: "INV-1048", customer: "Northwind Labs", status: "Paid", amount: 4800, due: "2026-09-28" },
+  { id: "INV-1049", customer: "Brightside", status: "Open", amount: 1260, due: "2026-12-02" },
+];
+
+const INVOICE_COLOR = { Paid: "green", Open: "blue", Overdue: "red", Draft: "gray" } as const;
+
+const invoiceColumns: ColumnDef<Invoice>[] = [
+  { accessorKey: "id", header: "Invoice", meta: { className: "tabular-nums whitespace-nowrap", filter: false } },
+  {
+    accessorKey: "customer",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
+    // Text: contains, is, starts with…
+    meta: { className: "w-full", filter: "text" },
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+    cell: ({ row }) => (
+      <span className="flex h-[1lh] items-center">
+        <Badge variant="ghost" color={INVOICE_COLOR[row.original.status]}>
+          {row.original.status}
+        </Badge>
+      </span>
+    ),
+    // A few values: pick any of them, each with its badge's dot.
+    meta: { filter: { type: "options", options: badgeOptions(INVOICE_COLOR) } },
+  },
+  {
+    accessorKey: "amount",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Amount" />,
+    cell: ({ row }) => euros(row.original.amount),
+    // A number: a least, a most, or both.
+    meta: { className: "tabular-nums whitespace-nowrap", filter: "number" },
+  },
+  {
+    accessorKey: "due",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Due" />,
+    cell: ({ row }) => shortDay(row.original.due),
+    // A day: between two, before one, or after one.
+    meta: { className: "tabular-nums whitespace-nowrap", filter: "date" },
+  },
+];
+
+export function FiltersTable() {
+  const [data] = useState(INVOICES);
+  const table = useDataTable({
+    data,
+    columns: invoiceColumns,
+    getRowId: (i) => i.id,
+    // The section opens filtered: two chips set, one of each kind.
+    initialState: {
+      columnFilters: [
+        { id: "status", value: { kind: "options", values: ["Open", "Overdue"] } },
+        { id: "amount", value: { kind: "number", min: 500 } },
+      ],
+    },
+  });
+  const ready = useFontsReady();
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table} className="font-heading-display">Invoices</DataTableTitle>
+        <DataTableFilters table={table} className="ml-auto" />
+      </div>
+      <DataTableFilterChips table={table} />
+      <DataTable
+        table={table}
+        loading={!ready}
+        loadingRows={5}
+        empty={{ title: "No invoices match" }}
+      />
+    </div>
+  );
+}
+
+export const filtersCode = `import { useDataTable, DataTable, DataTableTitle, DataTableFilters, DataTableFilterChips, type ColumnDef } from "./components";
+
+const columns: ColumnDef<Invoice>[] = [
+  { accessorKey: "id", header: "Invoice", meta: { filter: false } }, // not filterable
+  { accessorKey: "customer", header: "Customer", meta: { filter: "text" } },
+  // A few values, each with its badge's dot.
+  { accessorKey: "status", header: "Status", meta: { filter: { type: "options", options: [{ value: "Open", color: "blue" }, { value: "Overdue", color: "red" }] } } },
+  { accessorKey: "amount", header: "Amount", meta: { filter: "number" } },
+  { accessorKey: "due", header: "Due", meta: { filter: "date" } },
+];
+
+const table = useDataTable({
+  data: invoices,
+  columns,
+  // Filters are TanStack's columnFilters: start with some, or read them back.
+  initialState: {
+    columnFilters: [
+      { id: "status", value: { kind: "options", values: ["Open", "Overdue"] } },
+      { id: "amount", value: { kind: "number", min: 500 } },
+    ],
+  },
+});
+
+<div className="flex items-center">
+  <DataTableTitle table={table}>Invoices</DataTableTitle>
+  {/* The button lists the columns that can filter. */}
+  <DataTableFilters table={table} className="ml-auto" />
+</div>
+{/* The filters set, as chips on their own row. */}
+<DataTableFilterChips table={table} />
+<DataTable table={table} empty={{ title: "No invoices match" }} />`;
+
+// ── Resizing and reordering columns ──────────────────────
+
+const layoutColumns: ColumnDef<Member>[] = [
+  { accessorKey: "name", header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />, enableHiding: false },
+  { accessorKey: "email", header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />, meta: { lines: 1 } },
+  { accessorKey: "role", header: ({ column }) => <DataTableColumnHeader column={column} title="Role" /> },
+  { accessorKey: "status", header: ({ column }) => <DataTableColumnHeader column={column} title="Status" /> },
+  {
+    accessorKey: "lastActive",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Last active" />,
+    cell: ({ row }) => shortDay(row.original.lastActive),
+    meta: { label: "Last active", className: "tabular-nums whitespace-nowrap" },
+  },
+];
+
+export function ColumnsTable() {
+  const [data] = useState(() => MEMBERS.slice(0, 6));
+  const table = useDataTable({
+    data,
+    columns: layoutColumns,
+    getRowId: (m) => m.id,
+    // The section opens on a layout already changed: Status moved up
+    // beside the name. (Widths start from the content; a saved
+    // `columnSizing` would need every column's.)
+    initialState: { columnOrder: ["name", "status", "email", "role", "lastActive"] },
+  });
+  const ready = useFontsReady();
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table} className="font-heading-display">Members</DataTableTitle>
+        <DataTableViewOptions table={table} className="ml-auto" />
+      </div>
+      <DataTable table={table} resizeColumns reorderColumns loading={!ready} loadingRows={6} />
+    </div>
+  );
+}
+
+export const columnsCode = `import { useDataTable, DataTable, DataTableTitle, DataTableViewOptions } from "./components";
+
+const table = useDataTable({
+  data: members,
+  columns,
+  // Both are TanStack state (columnOrder, columnSizing): start from a saved
+  // layout, or read it back to save one. A saved columnSizing lists every column.
+  initialState: { columnOrder: ["name", "status", "email", "role", "lastActive"] },
+});
+
+<div className="flex items-center">
+  <DataTableTitle table={table}>Members</DataTableTitle>
+  {/* The Columns menu hides and shows columns, and reorders them too. */}
+  <DataTableViewOptions table={table} className="ml-auto" />
+</div>
+{/* Drag a column's right edge to resize it; drag a header to move it. */}
+<DataTable table={table} resizeColumns reorderColumns />`;
+
 // ── Reordering rows: a launch checklist ──────────────────
 
 type Step = { id: string; step: string; owner: string; when: string };
@@ -788,7 +1076,8 @@ export function ReorderTable() {
     initialState: { rowSelection: { "3": true, "4": true } },
   });
   return (
-    <div className="w-full">
+    <div className="flex w-full flex-col gap-2">
+      <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Launch checklist</DataTableTitle>
       <DataTable
         table={table}
         onRowReorder={(move) =>

@@ -6,6 +6,7 @@ import {
   DataTable,
   DataTableColumnHeader,
   DataTableSearch,
+  DataTableTitle,
   type ColumnDef,
 } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,13 @@ export function SortableTable() {
   const table = useDataTable({ data, columns: sortOnlyColumns, initialState: { sorting: [{ id: "amount", desc: true }] } });
   // Skeleton rows until the fonts are in: see useFontsReady.
   const ready = useFontsReady();
-  return <DataTable table={table} loading={!ready} loadingRows={5} />;
+  return (
+    <div className="flex w-full flex-col gap-2">
+      {/* h3 here: the docs section above is the h2. */}
+      <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Payments</DataTableTitle>
+      <DataTable table={table} loading={!ready} loadingRows={5} />
+    </div>
+  );
 }
 
 /** A search over every column, and an empty state when nothing matches. */
@@ -69,8 +76,10 @@ export function SearchTable() {
   const table = useDataTable({ data, columns: sortOnlyColumns, initialState: { globalFilter: "success" } });
   const ready = useFontsReady();
   return (
-    <div className="flex w-full flex-col gap-3">
-      <div className="flex justify-end">
+    <div className="flex w-full flex-col gap-2">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table} className="font-heading-display">Payments</DataTableTitle>
+        <span className="ml-auto" />
         <DataTableSearch table={table} placeholder="Search payments…" />
       </div>
       <DataTable
@@ -84,27 +93,23 @@ export function SearchTable() {
   );
 }
 
-/** Skeleton rows while a request runs: Reload plays a 1.5s fetch. */
+/** Skeleton rows while a request runs. The section opens held in loading,
+ *  so the skeletons can be looked at; the button lands the data, then
+ *  starts the load again. */
 export function LoadingTable() {
   const [data] = useState(() => PAYMENTS.slice(0, 5));
-  const [loading, setLoading] = useState(false);
-  const ready = useFontsReady();
+  const [loading, setLoading] = useState(true);
   const table = useDataTable({ data, columns: sortOnlyColumns });
   return (
-    <div className="flex w-full flex-col gap-3">
-      <div className="flex justify-end">
-        <Button
-          variant="tertiary"
-          disabled={loading}
-          onClick={() => {
-            setLoading(true);
-            setTimeout(() => setLoading(false), 1500);
-          }}
-        >
-          Reload
+    <div className="flex w-full flex-col gap-2">
+      <div className="mb-1 flex flex-wrap items-center gap-1">
+        <DataTableTitle as="h3" table={table} className="font-heading-display">Payments</DataTableTitle>
+        <span className="ml-auto" />
+        <Button variant="tertiary" onClick={() => setLoading((on) => !on)}>
+          {loading ? "Finish loading" : "Load again"}
         </Button>
       </div>
-      <DataTable table={table} loading={loading || !ready} loadingRows={5} />
+      <DataTable table={table} loading={loading} loadingRows={5} />
     </div>
   );
 }
