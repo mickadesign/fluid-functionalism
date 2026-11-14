@@ -273,6 +273,10 @@ interface DataTableCellEdit<TData> {
 type UseDataTableOptions<TData> = Omit<TableOptions<TData>, "getCoreRowModel"> & {
   /** Rows per page. @default 10 */
   pageSize?: number;
+  /** Starts with the filter chips row tucked away while filters are set
+   *  (the DataTableFilters button shows it): for a table that opens on a
+   *  saved view, where the view's name says what is filtered. @default false */
+  filtersHidden?: boolean;
 };
 
 /** A column definition's id, as TanStack derives it: its `id`, else its
@@ -304,7 +308,12 @@ function defaultPinning<TData>(columns: ColumnDef<TData, unknown>[]) {
 
 /** useReactTable with the row models every part here reads: sorted,
  *  filtered and paginated. Anything TanStack accepts still goes through. */
-function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDataTableOptions<TData>) {
+function useDataTable<TData>({
+  pageSize = 10,
+  filtersHidden: startFiltersHidden = false,
+  initialState,
+  ...options
+}: UseDataTableOptions<TData>) {
   "use no memo";
   // eslint-disable-next-line react-hooks/incompatible-library -- handled below and by "use no memo" in each part
   const table = useReactTable<TData>({
@@ -398,7 +407,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   const registerChips = useCallback((mounted: boolean) => setChipsMounted((n) => n + (mounted ? 1 : -1)), []);
   // The chips row tucked away by its button (DataTableFilters, which
   // toggles the row while filters are set). The filters stay on.
-  const [filtersHidden, setFiltersHidden] = useState(false);
+  const [filtersHidden, setFiltersHidden] = useState(startFiltersHidden);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {

@@ -334,7 +334,6 @@ export function TasksTable() {
     data: tasks,
     columns: taskColumns,
     getRowId: (t) => t.id,
-    initialState: { sorting: [{ id: "due", desc: false }] },
   });
   return (
     <div className="flex w-full flex-col gap-2">
@@ -643,6 +642,9 @@ export function ViewsTable() {
     pageSize: 6,
     getRowId: (m) => m.id,
     initialState: VIEWS[OPEN_VIEW - 1].state,
+    // The filter row starts tucked away, so the tabs lead: the Filter
+    // button (its dot says filters apply) brings it back.
+    filtersHidden: true,
   });
   const [views, setViews] = useState(VIEWS);
   // The open tab: 0 is Everyone, a saved view is its index + 1.
@@ -826,8 +828,6 @@ export function FrozenTable() {
     data,
     columns: accountColumns,
     getRowId: (a) => a.id,
-    // One row selected, so its fill shows running over the frozen columns.
-    initialState: { rowSelection: { a3: true } },
   });
   const ready = useFontsReady();
   // The section opens a little way into its scroll: the frozen edges'
