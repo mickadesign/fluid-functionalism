@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useDataTable,
   DataTable,
@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { useFontsReady } from "@/lib/docs/use-fonts-ready";
+import { clickStep, glideStep, useLoop, usePlayback, useScriptCursor } from "@/app/docs/skill/hero-shared";
+import { CursorLayer, GLIDE, retypeSteps, useHoldHeight, useScriptFocus } from "./scripted";
 
 export type Payment = {
   id: string;
@@ -60,8 +62,64 @@ export function SortableTable() {
   const table = useDataTable({ data, columns: sortOnlyColumns, initialState: { sorting: [{ id: "amount", desc: true }] } });
   // Skeleton rows until the fonts are in: see useFontsReady.
   const ready = useFontsReady();
+  // Left alone, the section plays itself: a cursor opens a header's menu
+  // and picks a sort, three times: Amount turns over, Status takes the
+  // sort, Amount takes it back. A menu takes focus when it opens, so the
+  // script only opens one while nobody else holds focus, and hands focus
+  // back to the page after each pick.
+  const { rootRef, playing, bind } = usePlayback();
+  const on = playing && ready;
+  const focus = useScriptFocus(rootRef, bind);
+  // The menu renders in a portal: the cursor hovers it too.
+  const cursor = useScriptCursor(rootRef, on, "[role=menu]");
+  const menuItem = (n: number) =>
+    focus.scripting.current ? document.querySelectorAll<HTMLElement>("[role=menu] [role^=menuitem]")[n] : undefined;
+  const pick = (column: string, item: number, holdMs: number) => {
+    const header = `thead th[data-column-id=${column}] button[aria-haspopup]`;
+    return [
+      ...clickStep(
+        cursor,
+        header,
+        0,
+        () => {
+          if (focus.take()) rootRef.current?.querySelector<HTMLElement>(header)?.click();
+        },
+        450
+      ),
+      {
+        ms: GLIDE + 350,
+        run: () => {
+          const el = menuItem(item);
+          if (el) cursor.goto(el);
+        },
+      },
+      {
+        ms: 120,
+        run: () => {
+          const el = menuItem(item);
+          if (!el) return;
+          cursor.click();
+          el.click();
+        },
+      },
+      // The closing menu sends focus to its header; back to the page.
+      { ms: holdMs, run: focus.giveBack },
+    ];
+  };
+  const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(settle.current), []);
+  useLoop(on, [...pick("amount", 0, 1500), ...pick("status", 0, 1500), ...pick("amount", 1, 2000)], () => {
+    if (!focus.scripting.current) return;
+    // A visitor took over with the script's menu open: close it, then
+    // hand focus back once the menu has returned it.
+    document
+      .querySelector("[role=menu]")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    settle.current = setTimeout(focus.giveBack, 100);
+  });
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...focus.bind}>
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={on} />
       {/* h3 here: the docs section above is the h2. */}
       <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Payments</DataTableTitle>
       <DataTable table={table} loading={!ready} loadingRows={5} />
@@ -72,21 +130,37 @@ export function SortableTable() {
 /** A search over every column, and an empty state when nothing matches. */
 export function SearchTable() {
   const [data] = useState(() => PAYMENTS.slice(0, 6));
-  // Opens on a search, so the field is open and the rows it leaves show.
-  const table = useDataTable({ data, columns: sortOnlyColumns, initialState: { globalFilter: "success" } });
+  const table = useDataTable({ data, columns: sortOnlyColumns });
   const ready = useFontsReady();
+  // Left alone, the section plays itself: a cursor clicks the field and
+  // types a search that leaves 3 rows, one that leaves none, then clears
+  // it. The field's text is set without taking focus. Every row shows at
+  // rest and the demo keeps that height, so the page below it stays put.
+  const { rootRef, playing, bind } = usePlayback();
+  const on = playing && ready;
+  const cursor = useScriptCursor(rootRef, on);
+  useHoldHeight(rootRef);
+  const field = () => rootRef.current?.querySelector<HTMLInputElement>("input[type=search]");
+  useLoop(on, [
+    glideStep(cursor, "input[type=search]", 0),
+    { ms: 300, run: () => cursor.click() },
+    ...retypeSteps(field, "", "success", 1800),
+    ...retypeSteps(field, "success", "refund", 2000),
+    ...retypeSteps(field, "refund", "", 1800),
+  ]);
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={on} />
       <div className="mb-1 flex flex-wrap items-center gap-1">
         <DataTableTitle as="h3" table={table} className="font-heading-display">Payments</DataTableTitle>
         <span className="ml-auto" />
-        <DataTableSearch table={table} placeholder="Search payments…" />
+        {/* Always open: the script types into it. */}
+        <DataTableSearch table={table} placeholder="Search payments…" collapsible={false} />
       </div>
       <DataTable
         table={table}
         loading={!ready}
-        // As many as the search it opens on leaves.
-        loadingRows={3}
+        loadingRows={6}
         empty={{ title: "No payments match", description: "Try an email, a status, or an amount." }}
       />
     </div>

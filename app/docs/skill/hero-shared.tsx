@@ -43,7 +43,7 @@ export function usePlayback() {
 export type Side = "generic" | "skill";
 
 /** A scripted pointer event, marked as the script's own. */
-function firePointer(target: EventTarget, type: string, at: { x: number; y: number }, buttons: number) {
+export function firePointer(target: EventTarget, type: string, at: { x: number; y: number }, buttons: number) {
   const event = new PointerEvent(type, {
     bubbles: true,
     cancelable: true,
@@ -149,7 +149,13 @@ const HOVER_ATTR = "data-script-hover";
  *  element under its tip gets HOVER_ATTR for CSS, and the same mouseover,
  *  mouseout, and mousemove events a mouse sends, so hover driven by script
  *  (fluid hover) follows it too. */
-export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playing: boolean) {
+export function useScriptCursor(
+  rootRef: RefObject<HTMLDivElement | null>,
+  playing: boolean,
+  /** A selector for what the cursor hovers outside its root: a menu the
+   *  example opens, which renders in a portal. */
+  reach?: string
+) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const scale = useMotionValue(1);
@@ -204,7 +210,7 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       if (!root || !placed.current) return;
       const at = tip();
       const hit = document.elementFromPoint(at.x, at.y);
-      const next = hit && hit !== root && root.contains(hit) ? hit : null;
+      const next = hit && hit !== root && (root.contains(hit) || (reach && hit.closest(reach))) ? hit : null;
       hoverTo(next, at);
       if (next) fire(next, "mousemove", null, at);
       // On the document's root, as a real pointer's would be (never on the
@@ -224,7 +230,7 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       offY();
       hoverTo(null, tip());
     };
-  }, [playing, rootRef, x, y]);
+  }, [playing, rootRef, x, y, reach]);
 
   return useMemo(
     () => ({
@@ -234,9 +240,11 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       opacity,
       /** `offset` moves the target off the element's center, in px: which
        *  half of a row or a header a carried thing is dropped on. */
-      goto(selector: string, index = 0, offset?: { x?: number; y?: number }) {
+      goto(selector: string | Element, index = 0, offset?: { x?: number; y?: number }) {
         const root = rootRef.current;
-        const target = root?.querySelectorAll<HTMLElement>(selector)[index];
+        // An element is taken as it is: one outside the root (a menu item
+        // in a portal), which a selector can't reach.
+        const target = typeof selector === "string" ? root?.querySelectorAll<HTMLElement>(selector)[index] : selector;
         if (!root || !target) return;
         const box = root.getBoundingClientRect();
         const to = target.getBoundingClientRect();
@@ -255,6 +263,11 @@ export function useScriptCursor(rootRef: RefObject<HTMLDivElement | null>, playi
       },
       click() {
         animate(scale, [1, 0.8, 1], { duration: 0.2 });
+      },
+      /** Where the tip is, in the viewport's coordinates. */
+      tip() {
+        const box = rootRef.current?.getBoundingClientRect();
+        return box ? { x: box.left + x.get(), y: box.top + y.get() } : { x: 0, y: 0 };
       },
       /** Presses and holds on whatever is under the tip: the start of a
        *  drag. The glides that follow carry it; `release` drops it. */

@@ -56,9 +56,10 @@ const searchCode = `import { useDataTable, DataTable, DataTableSearch } from "./
 const table = useDataTable({ data: payments, columns });
 
 <div className="flex flex-col gap-3">
-  {/* No column: the field searches every column. */}
+  {/* No column: the field searches every column. collapsible={false}
+      keeps it open; without it, an empty search folds to a button. */}
   <div className="flex justify-end">
-    <DataTableSearch table={table} placeholder="Search payments…" />
+    <DataTableSearch table={table} placeholder="Search payments…" collapsible={false} />
   </div>
   <DataTable
     table={table}

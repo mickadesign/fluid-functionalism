@@ -29,8 +29,9 @@ import { Button } from "@/components/ui/button";
 import { ViewTabs } from "@/lib/docs/playgrounds/view-tabs";
 import { showUndoToast } from "@/lib/docs/settings-toast";
 import { useFontsReady } from "@/lib/docs/use-fonts-ready";
-import { useLoop, usePlayback, useScriptCursor } from "@/app/docs/skill/hero-shared";
-import { CursorLayer, dragSteps } from "./scripted";
+import { animate } from "motion/react";
+import { clickStep, firePointer, useLoop, usePlayback, useScriptCursor } from "@/app/docs/skill/hero-shared";
+import { CursorLayer, GLIDE, dragSteps, mouseDown, mouseUp, retypeSteps, useHoldHeight, useScriptFocus } from "./scripted";
 import { Badge, type BadgeColor } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
 
@@ -327,6 +328,9 @@ const taskColumns: ColumnDef<Task>[] = [
   },
 ];
 
+/** What the scripted edit renames the first task to, before naming it back. */
+const TASK_RENAMED = "Draft the onboarding guide";
+
 export function TasksTable() {
   // Each edit is a step ⌘Z takes back, as in the playground.
   const history = useUndoableRows(TASKS, { getId: (t) => t.id });
@@ -337,8 +341,52 @@ export function TasksTable() {
     columns: taskColumns,
     getRowId: (t) => t.id,
   });
+  // Left alone, the section plays itself: a cursor clicks the first task's
+  // name and retypes its last word, then puts it back. An editor only
+  // exists focused, so the script takes focus, and only while nobody else
+  // holds it; it hands it back to the page after each edit.
+  const { rootRef, playing, bind } = usePlayback();
+  const on = playing && ready;
+  const focus = useScriptFocus(rootRef, bind);
+  const cursor = useScriptCursor(rootRef, on);
+  const nameCell = 'tbody tr[data-row-id="t1"] td[data-column-id=title]';
+  const editor = () => {
+    const active = document.activeElement;
+    const field = active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement;
+    return focus.scripting.current && field && rootRef.current?.contains(active) ? active : null;
+  };
+  const wake = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const openEditor = () => {
+    const cell = rootRef.current?.querySelector(nameCell);
+    if (!cell || !focus.take()) return;
+    const at = cursor.tip();
+    // On the cell, as a press on its padding is: the editor mounts, then
+    // the click that follows focuses it.
+    firePointer(cell, "pointerdown", at, 1);
+    wake.current = setTimeout(
+      () => cell.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: at.x, clientY: at.y })),
+      120
+    );
+  };
+  const closeEditor = () => {
+    clearTimeout(wake.current);
+    // Leaving the field commits it.
+    editor()?.blur();
+    focus.giveBack();
+  };
+  const edit = (from: string, to: string, holdMs: number) => [
+    ...clickStep(cursor, nameCell, 0, openEditor, 500),
+    ...retypeSteps(editor, from, to, 500),
+    { ms: holdMs, run: closeEditor },
+  ];
+  useLoop(
+    on,
+    [...edit(TASKS[0].title, TASK_RENAMED, 1600), ...edit(TASK_RENAMED, TASKS[0].title, 2200)],
+    closeEditor
+  );
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...focus.bind}>
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={on} />
       <div className="mb-1 flex flex-wrap items-center gap-1">
         <DataTableTitle as="h3" table={table} className="font-heading-display">Tasks</DataTableTitle>
         <DataTableFilters table={table} className="ml-auto" />
@@ -470,8 +518,18 @@ export function FilesTable() {
     // Two levels open, so the indent and the guides show.
     initialState: { expanded: { brand: true, "brand/type": true } },
   });
+  // Left alone, the section plays itself: a cursor closes the Type folder,
+  // then opens it again. The demo keeps its open height meanwhile, so the
+  // page below it stays put.
+  const { rootRef, playing, bind } = usePlayback();
+  const cursor = useScriptCursor(rootRef, playing);
+  useHoldHeight(rootRef);
+  const toggle = 'tbody tr[data-row-id="brand/type"] button[aria-expanded]';
+  const press = () => rootRef.current?.querySelector<HTMLElement>(toggle)?.click();
+  useLoop(playing, [...clickStep(cursor, toggle, 0, press, 1800), ...clickStep(cursor, toggle, 0, press, 2200)]);
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={playing} />
       <div className="mb-1 flex flex-wrap items-center gap-1">
         <DataTableTitle as="h3" table={table} className="font-heading-display">Files</DataTableTitle>
         <span className="ml-auto" />
@@ -551,13 +609,39 @@ const entryColumns: ColumnDef<Entry>[] = [
   },
 ];
 
+/** How far the scripted resize drags Summary's edge, in px. */
+const SUMMARY_DRAG = 48;
+
 export function ChangelogTable() {
   const [data] = useState(ENTRIES);
   const table = useDataTable({ data, columns: entryColumns, getRowId: (e) => e.id });
+  const ready = useFontsReady();
+  // Left alone, the section plays itself: a cursor drags Summary's edge
+  // in, the text takes more lines, then drags it back out. The demo keeps
+  // its tallest height, so the page below it stays put.
+  const { rootRef, playing, bind } = usePlayback();
+  const on = playing && ready;
+  const cursor = useScriptCursor(rootRef, on);
+  useHoldHeight(rootRef);
+  const edge = "thead th[data-column-id=summary] [data-resize-handle]";
+  const dragging = useRef(false);
+  const drop = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    mouseUp(cursor);
+  };
+  const drag = (by: number, holdMs: number) => [
+    { ms: GLIDE + 450, run: () => cursor.goto(edge) },
+    { ms: 250, run: () => { dragging.current = mouseDown(cursor, rootRef.current?.querySelector(edge)); } },
+    { ms: GLIDE + 350, run: () => cursor.goto(edge, 0, { x: by }) },
+    { ms: holdMs, run: drop },
+  ];
+  useLoop(on, [...drag(-SUMMARY_DRAG, 1800), ...drag(SUMMARY_DRAG, 2200)], drop);
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
+      <CursorLayer rootRef={rootRef} cursor={cursor} playing={on} />
       <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Changelog</DataTableTitle>
-      <DataTable table={table} />
+      <DataTable table={table} resizeColumns loading={!ready} loadingRows={5} />
     </div>
   );
 }
@@ -834,17 +918,44 @@ export function FrozenTable() {
   const ready = useFontsReady();
   // The section opens a little way into its scroll: the frozen edges'
   // hairlines and both fades only show while content passes under them.
-  const box = useRef<HTMLDivElement>(null);
+  // (Where motion is reduced, this is where it stays.)
+  const { rootRef, playing, bind } = usePlayback();
+  const viewport = () => rootRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
   useEffect(() => {
     if (!ready) return;
-    const viewport = box.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
     const frame = requestAnimationFrame(() => {
-      if (viewport && viewport.scrollLeft === 0) viewport.scrollLeft = 96;
+      const box = viewport();
+      if (box && box.scrollLeft === 0) box.scrollLeft = 96;
     });
     return () => cancelAnimationFrame(frame);
   }, [ready]);
+  // Left alone, the section plays itself: the table slides to its far
+  // side and back, under the frozen columns. A visitor's pointer inside
+  // stops it where it is.
+  const on = playing && ready;
+  const slide = useRef<{ stop: () => void } | null>(null);
+  const slideTo = (side: "end" | "start") => {
+    const box = viewport();
+    if (!box) return;
+    slide.current?.stop();
+    slide.current = animate(box.scrollLeft, side === "end" ? box.scrollWidth - box.clientWidth : 0, {
+      duration: 2.6,
+      ease: "easeInOut",
+      onUpdate: (x) => {
+        box.scrollLeft = x;
+      },
+    });
+  };
+  useLoop(
+    on,
+    [
+      { ms: 3500, run: () => slideTo("end") },
+      { ms: 3500, run: () => slideTo("start") },
+    ],
+    () => slide.current?.stop()
+  );
   return (
-    <div ref={box} className="flex w-full flex-col gap-2">
+    <div ref={rootRef} className="flex w-full flex-col gap-2" {...bind}>
       <DataTableTitle as="h3" table={table} className="mb-1 font-heading-display">Accounts</DataTableTitle>
       <DataTable table={table} resizeColumns loading={!ready} loadingRows={6} />
     </div>
