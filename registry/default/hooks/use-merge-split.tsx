@@ -405,6 +405,9 @@ export function SelectionBackgrounds({
           <motion.div
             key={b.key}
             aria-hidden
+            // A name for whatever must move these with their items (a
+            // table sliding its rows).
+            data-slot="selection-fill"
             className="absolute bg-active pointer-events-none"
             initial={
               b.enterFrom

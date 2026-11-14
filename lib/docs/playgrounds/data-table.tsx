@@ -1506,8 +1506,6 @@ export function DataTablePlayground({
     [state, loading, presetCode]
   );
 
-  // Expanded, the table fills the layer's height. Its rows per page stay
-  // as set: the reader's choice holds on the page and in the larger view.
   // Expanded, the table has the window's height: 10 rows a page becomes
   // 20, and goes back to 10 on closing. Only that pair: a size picked by
   // hand (before or while expanded) is left as it is.
@@ -1516,12 +1514,19 @@ export function DataTablePlayground({
     setExpanded(next);
     const now = stateRef.current;
     if (!now.pagination) return;
+    // The page follows: the first row in view stays in view (a change of
+    // size otherwise starts over on page 1).
+    const first = table.getState().pagination.pageIndex * Number(now.pageSize);
     if (next && now.pageSize === "10") {
       grewPage.current = true;
       set("pageSize", "20");
+      table.setPageIndex(Math.floor(first / 20));
     } else if (!next && grewPage.current) {
       grewPage.current = false;
-      if (now.pageSize === "20") set("pageSize", "10");
+      if (now.pageSize === "20") {
+        set("pageSize", "10");
+        table.setPageIndex(Math.floor(first / 10));
+      }
     }
   };
 

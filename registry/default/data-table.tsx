@@ -785,7 +785,10 @@ function setOrderKeepingFrozen<TData>(table: TanStackTable<TData>, order: string
   const frozen = left.filter(isData).length;
   if (frozen === 0) return;
   const right = new Set(pin.right ?? []);
-  const first = order.filter((id) => isData(id) && !right.has(id) && table.getColumn(id)?.getIsVisible()).slice(0, frozen);
+  // Only columns that may be frozen take a frozen place.
+  const first = order
+    .filter((id) => isData(id) && !right.has(id) && table.getColumn(id)?.getIsVisible() && table.getColumn(id)?.getCanPin())
+    .slice(0, frozen);
   const next = [...left.filter((id) => !isData(id)), ...first];
   if (next.join() !== left.join()) table.setColumnPinning((old) => ({ ...old, left: next }));
 }
@@ -1087,8 +1090,8 @@ function DataTable<TData>({
   // Opening and closing sub-rows, in 120ms. The layout changes at once,
   // with the selection fill and the highlight (Table snaps them on a new
   // snapKey), and then plays from where things were: the rows below slide
-  // to their new places, the rows that appear fade in, and the rows that
-  // went fade out (a copy of them, left where they were). The fills under
+  // to their new places, uncovering the rows that appear and covering the
+  // rows that went (a copy of them, left where they were). The fills under
   // the rows that slide take the same offset, as `translate`, apart from
   // the transform their own animation writes: sliding the rows alone left
   // the fills, keyed by position, a row's height away from them.
@@ -1197,7 +1200,7 @@ function DataTable<TData>({
     if (shift)
       // The selection's fills (and their copies over the frozen columns)
       // under the rows that moved.
-      wrap.querySelectorAll<HTMLElement>("div.bg-active.pointer-events-none:not([data-slot])").forEach((el) => {
+      wrap.querySelectorAll<HTMLElement>("[data-slot=selection-fill]").forEach((el) => {
         if (el.getBoundingClientRect().top >= boundary - 1)
           el.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], slide);
       });
@@ -3994,7 +3997,7 @@ const PIN_CSS = `
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
 [data-ff-table] [data-slot=scroll-area-viewport][data-scroll-held] { overflow: hidden !important; }
 [data-ff-table][data-text-editing] [data-slot=fluid-hover-highlight], [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
-[data-ff-table][data-text-editing] tbody [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
+[data-ff-table][data-text-editing] tbody td[data-column-id=select] [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
   [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x, --ff-table-y; }
@@ -5353,13 +5356,23 @@ function CellTextEditor({
   useEffect(() => {
     const box = ref.current?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
     if (!box) return;
-    box.setAttribute("data-scroll-held", "");
     // And no row lights up: the fill under a field being typed in (or
     // under whichever row the pointer rests on meanwhile) reads as
     // something to click. The same kind of mark, on the table's root.
     const root = box.closest<HTMLElement>("[data-ff-table]");
+    // Counted: the next cell's field can open before this one closes,
+    // and its marks must outlast this one's cleanup.
+    const open = (Number(box.dataset.textEditors) || 0) + 1;
+    box.dataset.textEditors = String(open);
+    box.setAttribute("data-scroll-held", "");
     root?.setAttribute("data-text-editing", "");
     return () => {
+      const left = (Number(box.dataset.textEditors) || 1) - 1;
+      if (left > 0) {
+        box.dataset.textEditors = String(left);
+        return;
+      }
+      delete box.dataset.textEditors;
       box.removeAttribute("data-scroll-held");
       root?.removeAttribute("data-text-editing");
     };
