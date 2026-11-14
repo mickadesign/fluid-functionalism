@@ -1138,6 +1138,8 @@ function DataTable<TData>({
   } | null>(null);
   // The copy still on the page from the last close, if its 120ms aren't up.
   const liveGhost = useRef<HTMLElement | null>(null);
+  // placeFadeBands, declared further down.
+  const placeBandsRef = useRef<() => void>(() => {});
   const toggleExpanded = (row: Row<TData>, open?: boolean) => {
     // A second toggle inside those 120ms: the old copy goes now, or it
     // would fade over the rows about to be uncovered in its place.
@@ -1270,6 +1272,11 @@ function DataTable<TData>({
       const done = () => {
         ghost.remove();
         if (liveGhost.current === ghost) liveGhost.current = null;
+        // The copy kept the scroll box as tall as before the close. With
+        // it gone the box is shorter, and nothing else says so (no render,
+        // no resize of the table itself): what rides the scroll (the
+        // frozen columns' fills) is told here, or it sat off its row.
+        placeBandsRef.current();
       };
       gone.finished.then(done, done);
     }
@@ -1961,6 +1968,7 @@ function DataTable<TData>({
   // After every render (a selection, a sort, a page turn), and when the
   // rows change size or the table scrolls up and down inside its box.
   useLayoutEffect(() => {
+    placeBandsRef.current = placeFadeBands;
     placeFadeBands();
   });
   useEffect(() => {
