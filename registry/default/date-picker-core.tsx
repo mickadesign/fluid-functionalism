@@ -407,6 +407,9 @@ export interface DatePickerPopoverProps {
   anchor: ReactElement;
   /** The field, for kind "anchor": presses on it are not outside presses. */
   anchorRef?: RefObject<HTMLElement | null>;
+  /** What stays live while the popover shields the page: the picker's row
+   *  of segments, so a press on a sibling segment still lands. */
+  liveRef?: RefObject<HTMLElement | null>;
   /** True while Escape belongs to the content (a range pick to undo). */
   escapeBlocked?: () => boolean;
   align?: "start" | "center" | "end";
@@ -463,6 +466,8 @@ DatePickerPopupFrame.displayName = "DatePickerPopupFrame";
 
 interface SegmentScope {
   registerItem: UseFluidHoverReturn["registerItem"];
+  /** The row of segments, kept live while one of their popovers is open. */
+  groupRef: RefObject<HTMLElement | null>;
 }
 
 function useSegment(scope: SegmentScope, index: number) {
@@ -753,6 +758,7 @@ function TimeField({
       kind="anchor"
       anchor={field}
       anchorRef={segmentRef}
+      liveRef={scope.groupRef}
       align="start"
     >
       <ScrollArea
@@ -1308,7 +1314,10 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
     return () => ro.disconnect();
   }, [timed]);
   const segmentHover = useFluidHover(segmentsRef, { axis: twoRows ? "xy" : "x", gapClick: false });
-  const scope = useMemo(() => ({ registerItem: segmentHover.registerItem }), [segmentHover.registerItem]);
+  const scope = useMemo(
+    () => ({ registerItem: segmentHover.registerItem, groupRef: segmentsRef }),
+    [segmentHover.registerItem]
+  );
   const dateRef = useSegment(scope, 0);
   // The clear button mounts only once there is a value, after the scope's
   // first registration pass, so it registers through a callback ref: the
@@ -1353,7 +1362,9 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
         "cursor-pointer whitespace-nowrap",
         field && !hasTime && !hasTimeRange && "flex-1",
         hasValue ? "text-foreground" : "text-muted-foreground",
-        open && "text-foreground"
+        // Held while the calendar is open: the pointer has left for it, so
+        // the shared hover highlight has moved on.
+        open && "bg-active text-foreground"
       )}
     >
       {field && (
@@ -1597,6 +1608,7 @@ function DatePickerCore(props: DatePickerProps & { Popover: ComponentType<DatePi
       kind={typeable ? "anchor" : "trigger"}
       anchor={typeable ? dateField : dateTrigger}
       anchorRef={typeable ? typedFieldRef : undefined}
+      liveRef={segmentsRef}
       escapeBlocked={() => !!draft}
       align="start"
     >

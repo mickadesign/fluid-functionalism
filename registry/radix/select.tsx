@@ -237,9 +237,10 @@ const triggerVariants = cva(
     variants: {
       variant: {
         bordered:
-          "border border-border bg-transparent text-foreground hover:bg-hover",
+          // Held while its list is open: the pointer has left for the list.
+          "border border-border bg-transparent text-foreground hover:bg-hover data-[state=open]:bg-active",
         borderless:
-          "border border-transparent bg-transparent text-foreground hover:bg-hover",
+          "border border-transparent bg-transparent text-foreground hover:bg-hover data-[state=open]:bg-active",
       },
     },
     defaultVariants: {

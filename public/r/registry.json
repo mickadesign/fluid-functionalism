@@ -650,7 +650,10 @@
       "name": "popup",
       "type": "registry:lib",
       "title": "Popup chrome",
-      "description": "Shared popup chrome for the dropdown, select, and combobox popups: side-aware enter/exit motion classes driven by the positioner's resolved data-side, the ScrollArea sizing the list scrolls inside, and the navigation-key list.",
+      "description": "Shared popup chrome for the dropdown, select, and combobox popups: side-aware enter/exit motion classes driven by the positioner's resolved data-side, the ScrollArea sizing the list scrolls inside, the navigation-key list, and the clear layer that keeps the page from reacting to the pointer while a popup is open.",
+      "registryDependencies": [
+        "https://www.fluidfunctionalism.com/r/tokens.json"
+      ],
       "files": [
         {
           "path": "registry/default/lib/popup.ts",

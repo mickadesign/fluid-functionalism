@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
+import { PopupShield } from "@/lib/popup";
 import {
   DatePickerCore,
   DatePickerPopupFrame,
@@ -59,6 +60,7 @@ function DatePickerPopover({
   kind,
   anchor,
   anchorRef,
+  liveRef,
   escapeBlocked,
   align = "start",
   className,
@@ -78,6 +80,9 @@ function DatePickerPopover({
   }, [open, actionsRef]);
 
   return (
+    <>
+    {/* The picker's own segments stay live under the open popover. */}
+    <PopupShield open={open} anchor={liveRef ?? anchorRef} />
     <PopoverPrimitive.Root
       open={rootOpen}
       actionsRef={actionsRef}
@@ -124,6 +129,7 @@ function DatePickerPopover({
         </PopoverPrimitive.Positioner>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
+    </>
   );
 }
 

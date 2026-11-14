@@ -1075,6 +1075,7 @@ import { Button } from "@/components/ui/button";
   },
   "dropdown": {
     craft: [
+      "While any popup is open (Dropdown, ContextMenu, Select, Combobox, DatePicker, ColorPicker) two things hold. Its trigger keeps the pressed look (`bg-active`): a Button does it on its own when it has `aria-haspopup` and `aria-expanded`, other triggers style the primitive's open attribute. And nothing else on the page hovers: `PopupShield` from lib/popup, a clear fixed layer one z-step under the popup, takes the pointer, and a press on it is a press outside. A field that stays live under its popup (the Combobox input, the DatePicker's row of segments) is cut out of the layer through its `anchor`. A menu opened by hover gets no layer, since the pointer leaving it is what closes it.",
       "Two forms with different semantics: the inline always-rendered panel is a plain `role=\"group\"` (name it with `aria-label`) \u2014 real `role=\"menu\"` lives only on the popup DropdownContent, so a hand-rolled trigger around the inline panel never announces a falsely popup menu.",
       "The popup enters/exits on the fast tier (0.08s spring in, 0.06s tween out) with opacity + `scaleY 0.96` + a 4px slide; origin and slide direction follow the RESOLVED side after collision flipping via `popupMotionClass`, so a popup that flips above its anchor grows upward from its bottom edge.",
       "Keyboard navigation inside the popup moves the hover background only \u2014 no ring: \"in a menu the highlighted row is the focus indicator\". The inline panel, by contrast, draws an animated focus ring on `:focus-visible`.",
@@ -1679,6 +1680,7 @@ import { Tooltip, TooltipGroup } from "@/components/ui/tooltip";
       "The menu opens down and to the right of the pointer, 2px off it, and flips at the window's edges like any Dropdown.",
       "Only what `filter` accepts opens the menu; everything else keeps the browser's. Text fields always keep the browser's menu (paste, spelling), and a nested trigger that already opened claims the event through defaultPrevented, so the outer one stays shut.",
       "Shift + F10 or the Menu key opens it under the focused element (8px in from its left edge, at its bottom). On close, focus goes back to what held it when the menu opened, never to the hidden trigger.",
+      "While the menu is open, what was right-clicked stays lit and nothing else on the page hovers: a clear fixed layer sits just under the menu, and a press on it closes the menu. The pointer has left the item for the menu, so :hover can't hold it; light it from state (the item recorded in onContextMenu, while onOpenChange says open) or, for a single-element trigger, from its data-open attribute.",
       "In DataTable, rowActionsColumn's items are the right-click menu too (meta.rowMenu), so a row's actions are written once; the right-clicked row holds the hover fill in its own cells while its menu is open, rounded at its ends, and the selection is left alone.",
     ],
     usage: `import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";

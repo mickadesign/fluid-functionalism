@@ -46,8 +46,9 @@ import { Copy, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 const [file, setFile] = useState<string | null>(null);
+const [open, setOpen] = useState(false);
 
-<ContextMenu>
+<ContextMenu onOpenChange={setOpen}>
   <ContextMenuTrigger
     // Only the rows open the menu; the gaps keep the browser's.
     filter={(target) => !!target.closest("[data-file]")}
@@ -57,7 +58,16 @@ const [file, setFile] = useState<string | null>(null);
     }}
   >
     {FILES.map((name) => (
-      <div key={name} data-file={name} tabIndex={0}>{name}</div>
+      // The row stays lit while its menu is open.
+      <div
+        key={name}
+        data-file={name}
+        data-menu-open={open && file === name ? "" : undefined}
+        tabIndex={0}
+        className="hover:bg-hover data-[menu-open]:bg-hover"
+      >
+        {name}
+      </div>
     ))}
   </ContextMenuTrigger>
   <ContextMenuContent className="w-48">
@@ -101,9 +111,10 @@ function BasicDemo() {
 function FilterDemo() {
   const [file, setFile] = useState<string | null>(null);
   const [last, setLast] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   return (
     <div className="flex w-full max-w-xs flex-col gap-2">
-      <ContextMenu>
+      <ContextMenu onOpenChange={setOpen}>
         <ContextMenuTrigger
           className="flex flex-col gap-1 rounded-lg border border-border p-1"
           filter={(target) => !!target.closest("[data-file]")}
@@ -120,8 +131,9 @@ function FilterDemo() {
             <div
               key={name}
               data-file={name}
+              data-menu-open={open && file === name ? "" : undefined}
               tabIndex={0}
-              className="select-none rounded-md px-2 py-1.5 text-site-body outline-none hover:bg-hover focus-visible:bg-hover"
+              className="select-none rounded-md px-2 py-1.5 text-site-body outline-none hover:bg-hover focus-visible:bg-hover data-[menu-open]:bg-hover"
             >
               {name}
             </div>
@@ -162,6 +174,11 @@ export default function ContextMenuDoc() {
           <code>filter</code> chooses which elements open the menu; everything else keeps the
           browser&apos;s. Record what was clicked in <code>onContextMenu</code> to build the items
           for it. Text fields always keep the browser&apos;s menu, for paste and spelling.
+        </p>
+        <p className="text-site-body text-muted-foreground">
+          While the menu is open nothing else on the page reacts to the pointer, so keep what was
+          right-clicked lit yourself: the pointer has left it for the menu. A trigger that is a
+          single element can style <code>data-open</code>, set on it while its menu is open.
         </p>
         <ComponentPreview code={filterCode}>
           <FilterDemo />

@@ -37,6 +37,7 @@ import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -365,6 +366,8 @@ function Combobox<
       >
         {children}
       </ComboboxPrimitive.Root>
+      {/* The field stays live under the open list: typing, chips, clear. */}
+      <PopupShield open={open} anchor={anchorRef} />
     </ComboboxHighlightContext.Provider>
     </ComboboxContext.Provider>
   );
