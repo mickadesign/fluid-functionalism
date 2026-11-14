@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { ScrollArea } from "@/registry/base/scroll-area";
 import type { ApiTable, PropDef } from "@/lib/docs/api/types";
@@ -27,16 +28,31 @@ function Description({ text }: { text: string }) {
 function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean }) {
   return (
     <tr className="border-b border-border/40">
-      {/* nowrap: a name like .reveal-landing-subtle stays whole and
-          the column grows to fit it, instead of breaking at hyphens. */}
-      <td className="px-3 py-2 text-foreground font-mono text-site-caption whitespace-nowrap">
-        {prop.name}
+      {/* A one-word name stays whole and the column grows to fit it
+          (.reveal-landing-subtle must not break at its hyphens). A name of
+          several words (a hook's whole signature, a list of methods) wraps
+          past 160px: left to grow, one took 400px and pushed the
+          descriptions off the table. The cap sits on a block inside the
+          cell, since a table cell ignores its own max-width; w-max keeps
+          the column from squeezing a short name onto several lines. */}
+      <td className="px-3 py-2 text-foreground font-mono text-site-caption">
+        <div className={/\s/.test(prop.name) ? "w-max max-w-40" : "whitespace-nowrap"}>
+          {/* A signature may break after its "(". */}
+          {prop.name.split(/(?<=\()/).map((part, i) => (
+            <Fragment key={i}>
+              {i > 0 && <wbr />}
+              {part}
+            </Fragment>
+          ))}
+        </div>
       </td>
-      <td className="px-3 py-2 text-muted-foreground font-mono text-site-caption">
+      {/* A long type breaks anywhere rather than holding the column open:
+          its longest token alone set a 180px floor. */}
+      <td className="px-3 py-2 text-muted-foreground font-mono text-site-caption [overflow-wrap:anywhere]">
         {prop.type}
       </td>
       {showDefault && (
-        <td className="px-3 py-2 text-muted-foreground font-mono text-site-caption">
+        <td className="px-3 py-2 text-muted-foreground font-mono text-site-caption [overflow-wrap:anywhere]">
           {prop.default ?? "—"}
         </td>
       )}
@@ -72,7 +88,9 @@ export function PropsTable({ props, groups }: PropsTableProps) {
               Prop
             </th>
             <th
-              className="px-3 py-2 text-left text-foreground"
+              // A floor here too: types break anywhere, and without one
+              // the descriptions took the room and left them a word wide.
+              className="min-w-32 px-3 py-2 text-left text-foreground"
               style={{ fontVariationSettings: fontWeights.semibold }}
             >
               Type
