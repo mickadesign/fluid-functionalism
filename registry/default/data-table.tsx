@@ -748,15 +748,47 @@ const ADDED_COLUMN_WIDTH = 166;
 const HeaderMenuContext = createContext<{
   table: TanStackTable<unknown>;
   reorder: boolean;
+  /** A column's menu opened or closed: its header stays pressed meanwhile. */
+  onMenuOpenChange: (columnId: string, open: boolean) => void;
 } | null>(null);
 
 // The table last clicked or focused, for the page-level undo keys.
 let lastUsedTable: HTMLElement | null = null;
 
 /** Data columns (with an accessor) move; selection and action columns hold
- *  their place at the ends, and pinned columns at theirs. */
+ *  their place at the ends, and columns pinned right at theirs. A column
+ *  frozen on the left moves too: the freeze belongs to the place, not the
+ *  column (see setOrderKeepingFrozen), so any column can be made the first. */
 const canReorder = <TData,>(column: Column<TData, unknown>) =>
-  column.accessorFn !== undefined && !column.getIsPinned();
+  column.accessorFn !== undefined && column.getIsPinned() !== "right";
+
+/** Every column in the order the table draws them: the left pins, the rest
+ *  in their saved order, the right pins. */
+function drawnOrderOf<TData>(table: TanStackTable<TData>) {
+  const order = columnOrderOf(table);
+  const pin = table.getState().columnPinning;
+  const left = (pin.left ?? []).filter((id) => order.includes(id));
+  const right = (pin.right ?? []).filter((id) => order.includes(id));
+  const held = new Set([...left, ...right]);
+  return [...left, ...order.filter((id) => !held.has(id)), ...right];
+}
+
+/** Sets the column order, and keeps the left freeze where it was: as many
+ *  data columns frozen as before, now the first ones of the new order.
+ *  A column dropped ahead of the frozen one takes its place there, as
+ *  freezing "the first column" means in a spreadsheet. */
+function setOrderKeepingFrozen<TData>(table: TanStackTable<TData>, order: string[]) {
+  table.setColumnOrder(order);
+  const pin = table.getState().columnPinning;
+  const left = pin.left ?? [];
+  const isData = (id: string) => table.getColumn(id)?.accessorFn !== undefined;
+  const frozen = left.filter(isData).length;
+  if (frozen === 0) return;
+  const right = new Set(pin.right ?? []);
+  const first = order.filter((id) => isData(id) && !right.has(id) && table.getColumn(id)?.getIsVisible()).slice(0, frozen);
+  const next = [...left.filter((id) => !isData(id)), ...first];
+  if (next.join() !== left.join()) table.setColumnPinning((old) => ({ ...old, left: next }));
+}
 
 /** Moves `id` before or after `refId` among the reorderable columns, leaving
  *  every other column in its slot. */
@@ -768,14 +800,14 @@ function moveColumn<TData>(
 ) {
   if (id === refId) return;
   const all = table.getAllLeafColumns();
-  const order = columnOrderOf(table);
+  const order = drawnOrderOf(table);
   const movable = new Set(all.filter(canReorder).map((c) => c.id));
   const slots = order.filter((c) => movable.has(c) && c !== id);
   const at = slots.indexOf(refId);
   if (at === -1) return;
   slots.splice(place === "before" ? at : at + 1, 0, id);
   let next = 0;
-  table.setColumnOrder(order.map((c) => (movable.has(c) ? slots[next++] : c)));
+  setOrderKeepingFrozen(table, order.map((c) => (movable.has(c) ? slots[next++] : c)));
 }
 
 function DataTable<TData>({
@@ -1243,13 +1275,16 @@ function DataTable<TData>({
     // Places the ghost for a pointer x and finds where it would land.
     const place = (clientX: number) => {
       // The ghost stays within the table's visible box: it stops at the left
-      // and right edges, and the landing spot follows where it stopped.
+      // and right edges.
       const box = wrapRef.current?.getBoundingClientRect();
       let dx = clientX - startX;
       if (box) dx = Math.min(Math.max(dx, box.left - rect.left), box.right - rect.right);
       lastDx = dx;
       if (ghostRef.current) ghostRef.current.style.transform = `translateX(${dx}px)`;
-      const next = dropTarget(startX + dx, id);
+      // The landing spot follows the pointer, not where the ghost stopped:
+      // held at the left edge, a wide header's ghost never got its middle
+      // past a narrower first column's, so nothing could be dropped first.
+      const next = dropTarget(clientX, id);
       if (!target || next.refId !== target.refId || next.place !== target.place) setDrag(next);
       target = next;
     };
@@ -2500,9 +2535,18 @@ function DataTable<TData>({
   const boxAt =
     boxColumn === 0 ? 8 : boxColumn === 1 && visible[0].id === "drag" ? HANDLE_WIDTH + 8 : -1;
 
+  // The column whose header menu is open. Its header stays pressed, as
+  // every trigger does while its popup is open: the layer under the menu
+  // takes the pointer off the table, and the header's hover fill went
+  // out with it, leaving the menu hanging from an unmarked header.
+  const [heldHead, setHeldHead] = useState<string | null>(null);
+  const onMenuOpenChange = useCallback(
+    (columnId: string, open: boolean) => setHeldHead((old) => (open ? columnId : old === columnId ? null : old)),
+    []
+  );
   const headerMenu = useMemo(
-    () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns }),
-    [table, reorderColumns]
+    () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns, onMenuOpenChange }),
+    [table, reorderColumns, onMenuOpenChange]
   );
   // The row a right-click opened the menu for.
   const rowMenu = table.getAllLeafColumns().find((c) => c.columnDef.meta?.rowMenu)?.columnDef.meta?.rowMenu;
@@ -2510,6 +2554,10 @@ function DataTable<TData>({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRow = menuRowId ? table.getCoreRowModel().rowsById[menuRowId] : undefined;
 
+  // Where that header sits in the header row's gliding fill (a filled
+  // table's headers draw their own, marked `data-held`).
+  const heldAt = heldHead && !fill ? (table.getHeaderGroups().at(-1)?.headers.findIndex((h) => h.column.id === heldHead) ?? -1) : -1;
+  const heldHeadIndex = heldAt >= 0 ? heldAt : null;
   const tableEl = (
     <EditContext.Provider value={stableEditing}>
     <Table
@@ -2520,6 +2568,7 @@ function DataTable<TData>({
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() && !rowGhost?.ids.includes(row.id) ? [i] : []))}
       snapKey={expandTick}
       hideHeadHighlight={!!drag}
+      heldHeadIndex={heldHeadIndex}
       // The handles' and the boxes' columns, leading: one grip and one
       // empty box ride the highlight.
       onHighlightFrame={placeHoverFade}
@@ -2605,6 +2654,7 @@ function DataTable<TData>({
                   // filled table's sticky headers paint over it, so they
                   // keep a fill of their own).
                   hoverIndex={!fill && (movable || column.getCanSort() || !!column.accessorFn) ? headerIndex : undefined}
+                  data-held={heldHead === column.id || undefined}
                   aria-sort={
                     sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
                   }
@@ -2685,6 +2735,8 @@ function DataTable<TData>({
                       (movable || column.getCanSort() || !!column.accessorFn) && [
                         "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
                         "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
+                        // Its menu open: pressed until it closes.
+                        "data-held:after:bg-active!",
                         PRESS_RADIUS[shape.variant],
                       ],
                     meta?.className
@@ -2699,6 +2751,8 @@ function DataTable<TData>({
                           className={cn(
                             "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
                             "group-hover/th:bg-hover group-active/th:bg-active",
+                            // Its menu open: pressed until it closes.
+                            "group-data-held/th:bg-active!",
                             shape.bg
                           )}
                         />
@@ -3211,6 +3265,14 @@ function DataTableColumnHeader<TData, TValue>({
   const table = ctx?.table as TanStackTable<TData> | undefined;
   const [menuOpen, setMenuOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  // The table keeps this header pressed while its menu is open.
+  const reportOpen = ctx?.onMenuOpenChange;
+  const columnId = column.id;
+  useEffect(() => {
+    if (!menuOpen || !reportOpen) return;
+    reportOpen(columnId, true);
+    return () => reportOpen(columnId, false);
+  }, [menuOpen, reportOpen, columnId]);
 
   const icon = column.columnDef.meta?.icon;
   const col = column as unknown as Column<TData, unknown>;
@@ -6523,6 +6585,9 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
     // 4px around the word and the value (the × keeps its square).
     "px-1",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+    // The part whose menu is open stays pressed until it closes, as any
+    // trigger does: the pointer has left it for the menu.
+    "transition-[background-color] duration-80 aria-expanded:bg-active",
     innerRadius
   );
 
@@ -6892,13 +6957,13 @@ function columnOrderOf<TData>(table: TanStackTable<TData>) {
 /** Puts the given columns in this order, leaving every other column (the
  *  selection and action columns, any not listed) in its slot. */
 function reorderColumns<TData>(table: TanStackTable<TData>, ids: string[]) {
-  const order = columnOrderOf(table);
+  const order = drawnOrderOf(table);
   const listed = new Set(ids);
   let next = 0;
   const reordered = order.map((c) => (listed.has(c) ? ids[next++] : c));
   if (reordered.join() === order.join()) return;
   (table as Partial<DataTableExtras>).captureLayout?.();
-  table.setColumnOrder(reordered);
+  setOrderKeepingFrozen(table, reordered);
 }
 
 interface ColumnMenuRowProps<TData> {
@@ -6994,7 +7059,7 @@ function DataTableViewOptions<TData>({
   const Sliders = icons["sliders-horizontal"];
   const compact = useSize(size).variant === "compact";
   // In the table's display order, so the list reads like the header row.
-  const order = columnOrderOf(table);
+  const order = drawnOrderOf(table);
   const columns = table
     .getAllLeafColumns()
     .filter((column) => column.accessorFn !== undefined && column.getCanHide())
