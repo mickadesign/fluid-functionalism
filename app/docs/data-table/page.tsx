@@ -159,17 +159,6 @@ export default function DataTableDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Frozen columns">
-        <p className="text-site-body text-muted-foreground">
-          Scroll sideways: the boxes and the first column stay on the left, the row menus on the
-          right. A hairline marks each frozen edge while content passes under it. Open a header&apos;s
-          menu to freeze the columns up to it.
-        </p>
-        <ComponentPreview code={frozenCode}>
-          <FrozenTable />
-        </ComponentPreview>
-      </DocSection>
-
       <DocSection title="Resizing and reordering columns">
         <p className="text-site-body text-muted-foreground">
           Drag a column&apos;s right edge to resize it, and drag a header to move it. From the keyboard:
@@ -178,6 +167,17 @@ export default function DataTableDoc() {
         </p>
         <ComponentPreview code={columnsCode}>
           <ColumnsTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Frozen columns">
+        <p className="text-site-body text-muted-foreground">
+          Scroll sideways: the boxes and the first column stay on the left, the row menus on the
+          right. A hairline marks each frozen edge while content passes under it. Open a header&apos;s
+          menu to freeze the columns up to it.
+        </p>
+        <ComponentPreview code={frozenCode}>
+          <FrozenTable />
         </ComponentPreview>
       </DocSection>
 

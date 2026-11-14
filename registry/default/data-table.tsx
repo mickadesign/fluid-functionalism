@@ -1122,19 +1122,24 @@ function DataTable<TData>({
           copy.removeAttribute("id");
           copy.setAttribute("aria-hidden", "true");
           copy.style.cssText = `position:absolute;left:0;top:${going[0].getBoundingClientRect().top - host.getBoundingClientRect().top}px;width:${tableNode.offsetWidth}px;table-layout:fixed;pointer-events:none;margin:0`;
+          // The copy has no header row to take its columns' widths from:
+          // a col per cell holds each to the width it has in the table.
+          // (Widths set on the copied cells lost to the cells' own
+          // classes, and the copy's columns landed out of line.)
+          const cols = document.createElement("colgroup");
+          Array.from(going[0].children).forEach((cell) => {
+            const col = document.createElement("col");
+            col.style.width = `${(cell as HTMLElement).offsetWidth}px`;
+            cols.append(col);
+          });
           const body = document.createElement("tbody");
           for (const tr of going) {
             const clone = tr.cloneNode(true) as HTMLElement;
             clone.classList.remove("is-active");
             clone.removeAttribute("data-row-id");
-            // The copy has no header row to take its columns' widths from.
-            Array.from(tr.children).forEach((cell, i) => {
-              const twin = clone.children[i] as HTMLElement | undefined;
-              if (twin) twin.style.width = `${cell.getBoundingClientRect().width}px`;
-            });
             body.append(clone);
           }
-          copy.append(body);
+          copy.append(cols, body);
           ghost = copy;
         }
       }
@@ -1153,13 +1158,13 @@ function DataTable<TData>({
     if (!from || !wrap) return;
     expandFrom.current = null;
     const slide = { duration: 120, easing: "cubic-bezier(0.23, 1, 0.32, 1)" };
-    const fade = { duration: 80, easing: "ease-out" };
     let shift = 0;
     let boundary = Infinity;
+    const fresh: HTMLElement[] = [];
     wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
       const old = from.tops.get(tr.dataset.rowId!);
       if (old === undefined) {
-        tr.animate([{ opacity: 0 }, { opacity: 1 }], fade);
+        fresh.push(tr);
         return;
       }
       const dy = old - tr.offsetTop;
@@ -1168,6 +1173,27 @@ function DataTable<TData>({
       boundary = Math.min(boundary, tr.getBoundingClientRect().top);
       tr.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], slide);
     });
+    // The rows that appear are uncovered by the rows sliding down off
+    // them, never under them: each is cut at the sliding rows' top edge,
+    // on the slide's own clock (the keyframes are placed where that edge
+    // reaches the row, and the easing is the slide's). Faded in under the
+    // sliding rows instead, two rows' text showed through each other.
+    if (fresh.length) {
+      const top = fresh[0].offsetTop;
+      const span = fresh[fresh.length - 1].offsetTop + fresh[fresh.length - 1].offsetHeight - top;
+      for (const tr of fresh) {
+        const start = Math.min(1, Math.max(0, (tr.offsetTop - top) / span));
+        const end = Math.min(1, Math.max(start, (tr.offsetTop + tr.offsetHeight - top) / span));
+        const frames = [
+          { clipPath: "inset(0 0 100% 0)", opacity: 0, offset: 0 },
+          ...(start > 0 ? [{ clipPath: "inset(0 0 100% 0)", opacity: 0, offset: start }] : []),
+          ...(end < 1 ? [{ clipPath: "inset(0 0 0 0)", opacity: 1, offset: end }] : []),
+          { clipPath: "inset(0 0 0 0)", opacity: 1, offset: 1 },
+        ];
+        // On the cells: a table row takes no clip of its own.
+        Array.from(tr.children).forEach((cell) => cell.animate(frames, slide));
+      }
+    }
     if (shift)
       // The selection's fills (and their copies over the frozen columns)
       // under the rows that moved.
@@ -1179,7 +1205,16 @@ function DataTable<TData>({
     if (from.ghost && host) {
       const ghost = from.ghost;
       host.append(ghost);
-      const gone = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...fade, fill: "forwards" });
+      // Covered from the bottom up by the rows sliding over it, the same
+      // way: cut at their top edge as it fades, so its text never shows
+      // through theirs.
+      const gone = ghost.animate(
+        [
+          { clipPath: "inset(0 0 0 0)", opacity: 1 },
+          { clipPath: "inset(0 0 100% 0)", opacity: 0 },
+        ],
+        { ...slide, fill: "forwards" }
+      );
       gone.finished.then(() => ghost.remove(), () => ghost.remove());
     }
     // A filled box's height is its parent's; a free one follows the rows,
