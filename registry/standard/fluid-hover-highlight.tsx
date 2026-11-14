@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { ItemRect, UseFluidHoverReturn } from "@/hooks/use-fluid-hover";
 
@@ -48,6 +49,12 @@ export type FluidHoverHighlightProps = (HighlightFromHook | HighlightFromRect) &
   className?: string;
   /** Unused by standard hover (nothing travels). */
   transition?: unknown;
+  /** Where the fill is, each time it moves or goes (opacity 0): for what
+   *  must sit with it from outside (a table's fill over frozen columns).
+   *  Fluid hover reports every frame of its glide; here, each change. */
+  onFrame?: (box: { y: number; height: number; opacity: number }) => void;
+  /** Sits on the fill, positioned against it. */
+  children?: ReactNode;
 };
 
 export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
@@ -59,6 +66,16 @@ export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
         ? (itemRects[activeIndex] ?? null)
         : null;
   } else rect = props.rect;
+  const { onFrame } = props;
+  const top = rect?.top ?? null;
+  const height = rect?.height ?? null;
+  // The last place it was, so "gone" is reported where it left from.
+  const last = useRef({ y: 0, height: 0 });
+  useLayoutEffect(() => {
+    if (!onFrame) return;
+    if (top !== null && height !== null) last.current = { y: top, height };
+    onFrame({ ...last.current, opacity: top === null ? 0 : 1 });
+  }, [onFrame, top, height]);
   if (!rect) return null;
   return (
     <div
@@ -69,6 +86,8 @@ export function FluidHoverHighlight(props: FluidHoverHighlightProps) {
         width: rect.width,
         height: rect.height,
       }}
-    />
+    >
+      {props.children}
+    </div>
   );
 }

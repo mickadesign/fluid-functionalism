@@ -18,13 +18,15 @@ import {
   DataTablePagination,
   DataTableSelectionBar,
   selectColumn,
+  rowHandleColumn,
   rowActionsColumn,
+  moveRows,
   type ColumnDef,
 } from "@/components/ui/data-table";
 import { MenuItem } from "@/components/ui/menu-item";
 import { TooltipGroup } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsItem } from "@/components/ui/tabs";
+import { ViewTabs } from "@/lib/docs/playgrounds/view-tabs";
 import { showUndoToast } from "@/lib/docs/settings-toast";
 import { Badge, type BadgeColor } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
@@ -528,7 +530,10 @@ const table = useDataTable({ data: entries, columns });
 
 // ── Saved views: the table's state, named ─────────────────
 
-type View = { name: string; state: Pick<TableState, "columnFilters" | "sorting" | "columnVisibility" | "globalFilter"> };
+type View = { id: number; name: string; state: Pick<TableState, "columnFilters" | "sorting" | "columnVisibility" | "globalFilter"> };
+
+// The table as it starts: the first tab, which stays put.
+const EVERYONE: View["state"] = { columnFilters: [], sorting: [], columnVisibility: {}, globalFilter: "" };
 
 const viewColumns: ColumnDef<Member>[] = [
   { accessorKey: "name", header: ({ column }) => <DataTableColumnHeader column={column} title="Name" /> },
@@ -538,8 +543,8 @@ const viewColumns: ColumnDef<Member>[] = [
 ];
 
 const VIEWS: View[] = [
-  { name: "Everyone", state: { columnFilters: [], sorting: [], columnVisibility: {}, globalFilter: "" } },
   {
+    id: 1,
     name: "Pending invites",
     state: {
       columnFilters: [{ id: "status", value: { kind: "options", values: ["Invited"] } }],
@@ -553,16 +558,41 @@ const VIEWS: View[] = [
 export function ViewsTable() {
   const table = useDataTable({ data: MEMBERS, columns: viewColumns, pageSize: 6, getRowId: (m) => m.id });
   const [views, setViews] = useState(VIEWS);
-  const [current, setCurrent] = useState("Everyone");
-  const pick = (view: View) => {
-    table.setState((old) => ({ ...old, ...view.state, pagination: { ...old.pagination, pageIndex: 0 } }));
-    setCurrent(view.name);
+  // The open tab: 0 is Everyone, a saved view is its index + 1.
+  const [open, setOpen] = useState(0);
+  // A view just saved opens for naming in its tab.
+  const [nameNext, setNameNext] = useState<number | null>(null);
+  const show = (state: View["state"]) =>
+    table.setState((old) => ({ ...old, ...state, pagination: { ...old.pagination, pageIndex: 0 } }));
+  const pick = (tab: number) => {
+    const state = tab === 0 ? EVERYONE : views[tab - 1]?.state;
+    if (!state) return;
+    show(state);
+    setOpen(tab);
   };
   const save = () => {
     const { columnFilters, sorting, columnVisibility, globalFilter } = table.getState();
-    const name = `View ${views.length + 1}`;
-    setViews((old) => [...old, { name, state: { columnFilters, sorting, columnVisibility, globalFilter } }]);
-    setCurrent(name);
+    const id = views.reduce((max, v) => Math.max(max, v.id), 0) + 1;
+    setViews((old) => [...old, { id, name: `View ${old.length + 1}`, state: { columnFilters, sorting, columnVisibility, globalFilter } }]);
+    setOpen(views.length + 1);
+    setNameNext(views.length + 1);
+  };
+  const remove = (at: number) => {
+    setViews((old) => old.filter((_, i) => i !== at));
+    show(EVERYONE);
+    setOpen(0);
+  };
+  const move = (from: number, to: number) => {
+    setViews((old) => {
+      const next = [...old];
+      const [moved] = next.splice(from - 1, 1);
+      next.splice(to - 1, 0, moved);
+      return next;
+    });
+    // The open view stays open wherever it lands.
+    setOpen((cur) =>
+      cur === from ? to : cur > Math.min(from, to) && cur <= Math.max(from, to) ? cur + (from < to ? -1 : 1) : cur
+    );
   };
   return (
     <div className="flex w-full flex-col gap-2">
@@ -572,23 +602,25 @@ export function ViewsTable() {
         <DataTableFilters table={table} />
       </div>
       {/* The views as subtle tabs: one gliding hover, the open view's pill.
-          A single view needs no tabs. */}
-      {views.length > 1 && (
-        <Tabs
-          size="compact"
-          selectedIndex={Math.max(0, views.findIndex((v) => v.name === current))}
-          onSelect={(i) => pick(views[i])}
-          aria-label="Views"
-        >
-          {views.map((view, i) => (
-            <TabsItem key={view.name} index={i} label={view.name} />
-          ))}
-        </Tabs>
+          Click the open tab to rename it (its × deletes it), drag a tab or
+          press Alt + ← / → to move it. Everyone alone needs no tabs. */}
+      {views.length > 0 && (
+        <ViewTabs
+          first="Everyone"
+          views={views}
+          selected={open}
+          onSelect={pick}
+          onRename={(at, name) => setViews((old) => old.map((v, i) => (i === at ? { ...v, name } : v)))}
+          onDelete={remove}
+          onMove={move}
+          nameRequest={nameNext}
+          onNameRequested={() => setNameNext(null)}
+        />
       )}
       {/* Save view after the chips' + Add filter, with the first filter. */}
       <DataTableFilterChips table={table}>
         {table.getState().columnFilters.length > 0 && (
-          <Button variant="ghost" size="compact" onClick={save}>
+          <Button variant="ghost" onClick={save}>
             Save view
           </Button>
         )}
@@ -616,7 +648,7 @@ const openView = (view: View) =>
   table.setState((old) => ({ ...old, ...view.state, pagination: { ...old.pagination, pageIndex: 0 } }));
 
 {views.length > 1 && (
-  <Tabs size="compact" selectedIndex={views.indexOf(current)} onSelect={(i) => openView(views[i])}>
+  <Tabs selectedIndex={views.indexOf(current)} onSelect={(i) => openView(views[i])}>
     {views.map((view, i) => (
       <TabsItem key={view.name} index={i} label={view.name} />
     ))}
@@ -625,3 +657,60 @@ const openView = (view: View) =>
 <DataTableFilters table={table} />
 <DataTableFilterChips table={table} />
 <DataTable table={table} />`;
+
+// ── Reordering rows: a launch checklist ──────────────────
+
+type Step = { id: string; step: string; owner: string; when: string };
+
+const STEPS: Step[] = [
+  { id: "1", step: "Freeze the release branch", owner: "Kenji", when: "Mon" },
+  { id: "2", step: "Run the migration on staging", owner: "Lena", when: "Mon" },
+  { id: "3", step: "Write the changelog", owner: "Ada", when: "Tue" },
+  { id: "4", step: "Record the demo video", owner: "Omar", when: "Tue" },
+  { id: "5", step: "Email the beta group", owner: "Priya", when: "Wed" },
+  { id: "6", step: "Flip the feature flag", owner: "Kenji", when: "Thu" },
+  { id: "7", step: "Post the announcement", owner: "Ada", when: "Thu" },
+];
+
+export function ReorderTable() {
+  // Each move is a step ⌘Z takes back.
+  const history = useUndoableRows(STEPS, { getId: (s) => s.id });
+  // No sortable headers: a sorted column would decide the order instead.
+  const columns: ColumnDef<Step>[] = [
+    rowHandleColumn<Step>(),
+    selectColumn<Step>(),
+    { accessorKey: "step", header: "Step", enableSorting: false, meta: { className: "w-full" } },
+    { accessorKey: "owner", header: "Owner", enableSorting: false },
+    { accessorKey: "when", header: "When", enableSorting: false },
+  ];
+  const table = useDataTable({ data: history.rows, columns, getRowId: (s) => s.id });
+  return (
+    <div className="w-full">
+      <DataTable
+        table={table}
+        onRowReorder={(move) =>
+          history.apply(move.rows.length === 1 ? "Moved a row" : `Moved ${move.rows.length} rows`, (rows) => moveRows(rows, move))
+        }
+        onUndo={history.undo}
+        onRedo={history.redo}
+      />
+    </div>
+  );
+}
+
+export const reorderCode = `import { useState } from "react";
+import { useDataTable, DataTable, rowHandleColumn, selectColumn, moveRows, type ColumnDef } from "./components";
+
+const columns: ColumnDef<Step>[] = [
+  rowHandleColumn<Step>(), // the grip, before the boxes
+  selectColumn<Step>(),
+  { accessorKey: "step", header: "Step" },
+  { accessorKey: "owner", header: "Owner" },
+  { accessorKey: "when", header: "When" },
+];
+
+const [rows, setRows] = useState(steps);
+const table = useDataTable({ data: rows, columns, getRowId: (s) => s.id });
+
+// The table reports the move; moveRows writes it to your data.
+<DataTable table={table} onRowReorder={(move) => setRows((old) => moveRows(old, move))} />`;

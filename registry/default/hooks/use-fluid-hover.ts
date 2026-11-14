@@ -56,6 +56,14 @@ export interface UseFluidHoverOptions {
    * light the item nearest the pointer wherever it is in the container.
    */
   nearest?: boolean;
+  /**
+   * Whether the highlight goes to the item under the pointer when the items
+   * scroll under a pointer at rest. Off by default: in a menu or a list box
+   * the highlight is also where focus is, and moving one without the other
+   * would light an item that Enter doesn't pick. For lists whose highlight
+   * is hover only (a table's rows).
+   */
+  followScroll?: boolean;
 }
 
 /**
@@ -272,7 +280,7 @@ export function useFluidHover<T extends HTMLElement>(
   containerRef: RefObject<T | null>,
   options: UseFluidHoverOptions = {}
 ): UseFluidHoverReturn {
-  const { axis = "y", isItemDisabled, gapClick = true, nearest = false } = options;
+  const { axis = "y", isItemDisabled, gapClick = true, nearest = false, followScroll = false } = options;
   const gapClickMaxDistance =
     typeof gapClick === "object" ? (gapClick.maxDistance ?? Infinity) : Infinity;
   const itemsRef = useRef(new Map<number, HTMLElement>());
@@ -492,38 +500,13 @@ export function useFluidHover<T extends HTMLElement>(
     [remeasure, getItemRo]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isOwnEvent(e)) return;
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      const target = e.target as Node;
-
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-
-      rafIdRef.current = requestAnimationFrame(() => {
-        rafIdRef.current = null;
-        const container = containerRef.current;
-        if (!container) return;
-        let next: number | null;
-        if (!nearest) {
-          // The item under the pointer, or none. Items can nest (a sidebar
-          // row's sub-rows sit inside it): the innermost one holding the
-          // pointer wins.
-          next = null;
-          let hit: HTMLElement | null = null;
-          for (const [index, el] of itemsRef.current) {
-            if (!el.contains(target) || isItemDisabled?.(el)) continue;
-            if (!hit || hit.contains(el)) {
-              hit = el;
-              next = index;
-            }
-          }
-        } else next = pickNearest({
+  // The item at a point: the one under it, or with `nearest` the closest.
+  const itemAt = useCallback(
+    (container: HTMLElement, point: { x: number; y: number }, target: Node): number | null => {
+      if (nearest)
+        return pickNearest({
           axis,
-          point: { x: mouseX, y: mouseY },
+          point,
           rects: itemRectsRef.current,
           containerRect: container.getBoundingClientRect(),
           scroll: { x: container.scrollLeft, y: container.scrollTop },
@@ -536,6 +519,45 @@ export function useFluidHover<T extends HTMLElement>(
               }
             : undefined,
         });
+      // The item under the pointer, or none. Items can nest (a sidebar
+      // row's sub-rows sit inside it): the innermost one holding the
+      // pointer wins.
+      let next: number | null = null;
+      let hit: HTMLElement | null = null;
+      for (const [index, el] of itemsRef.current) {
+        if (!el.contains(target) || isItemDisabled?.(el)) continue;
+        if (!hit || hit.contains(el)) {
+          hit = el;
+          next = index;
+        }
+      }
+      return next;
+    },
+    [axis, isItemDisabled, nearest]
+  );
+
+  // Where the pointer last moved inside the container, while the highlight
+  // is the pointer's: gone once it leaves, or once the highlight is set
+  // from outside (the keyboard, focus), until the pointer moves again.
+  const pointRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isOwnEvent(e)) return;
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      const target = e.target as Node;
+      pointRef.current = { x: mouseX, y: mouseY };
+
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        const container = containerRef.current;
+        if (!container) return;
+        const next = itemAt(container, { x: mouseX, y: mouseY }, target);
         if (sessionPendingRef.current && next !== activeIndexRef.current) {
           sessionPendingRef.current = false;
           sessionRef.current += 1;
@@ -547,8 +569,52 @@ export function useFluidHover<T extends HTMLElement>(
         setActiveIndex(next);
       });
     },
-    [axis, containerRef, isItemDisabled, nearest]
+    [containerRef, itemAt]
   );
+
+  // Hover is what sits under the pointer, moved or not: when the items
+  // scroll under a pointer at rest, the highlight goes to the item now
+  // under it, as the browser's own :hover does, instead of riding away on
+  // the item it was on (which left a row lit under no pointer, and
+  // whatever follows :hover, like a row's checkbox, on another row). It
+  // glides there as usual: the items move one way and the highlight the
+  // other, so on screen it stays where the pointer is.
+  useEffect(() => {
+    if (!followScroll) return;
+    let frame: number | null = null;
+    const follow = () => {
+      frame = null;
+      const container = containerRef.current;
+      const point = pointRef.current;
+      if (!container || !point) return;
+      const target = document.elementFromPoint(point.x, point.y);
+      // Something else is over the container there (a popup opened from an
+      // item): the pointer is its business, and the highlight stays put.
+      if (!target || !container.contains(target)) return;
+      const next = itemAt(container, point, target);
+      if (next === activeIndexRef.current) return;
+      // As a pointer move does: after empty space, the next item lit fades
+      // the highlight in there instead of sliding from the last one.
+      if (sessionPendingRef.current && next !== null) {
+        sessionPendingRef.current = false;
+        sessionRef.current += 1;
+        setSession(sessionRef.current);
+      }
+      if (next === null) sessionPendingRef.current = true;
+      setActiveIndex(next);
+    };
+    const onScroll = () => {
+      // A touch screen has no pointer at rest: the last tap's point would
+      // drag the highlight across whatever scrolls under it.
+      if (!pointRef.current || frame !== null || window.matchMedia("(hover: none)").matches) return;
+      frame = requestAnimationFrame(follow);
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [containerRef, itemAt, followScroll]);
 
   const handleMouseEnter = useCallback(() => {
     sessionPendingRef.current = true;
@@ -559,7 +625,16 @@ export function useFluidHover<T extends HTMLElement>(
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
+    pointRef.current = null;
     setActiveIndex(null);
+  }, []);
+
+  // Set from outside (the keyboard, focus), the highlight is no longer the
+  // pointer's: a scroll that follows (the focused row brought into view)
+  // must not hand it back to the item under a pointer at rest.
+  const setActiveIndexFromOutside = useCallback<Dispatch<SetStateAction<number | null>>>((value) => {
+    pointRef.current = null;
+    setActiveIndex(value);
   }, []);
 
   const handleClick = useCallback(
@@ -634,7 +709,7 @@ export function useFluidHover<T extends HTMLElement>(
 
   return {
     activeIndex,
-    setActiveIndex,
+    setActiveIndex: setActiveIndexFromOutside,
     activeStore,
     itemRects,
     isMeasured,

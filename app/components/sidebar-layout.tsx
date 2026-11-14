@@ -203,7 +203,7 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
           collapse (⌘B + cookie persistence via app/layout.tsx) and the
           mobile sheet. The site switches rail ↔ sheet at xl, so the
           breakpoint is 1280 instead of the component's 768 default. */}
-      <SidebarProvider defaultOpen={defaultOpen} mobileBreakpoint={1280} className="min-h-screen [&:has([data-not-found])_[data-site-right-panel]]:hidden">
+      <SidebarProvider defaultOpen={defaultOpen} mobileBreakpoint={1280} className="min-h-screen">
         <SiteSidebar />
         <CloseSheetOnNavigate />
 
@@ -222,7 +222,10 @@ export function SidebarLayout({ children, defaultOpen = true, marks = NO_MARKS }
           {children}
         </SidebarInset>
 
-        {/* Desktop right panel */}
+        {/* Desktop right panel. The 404 page hides it with a style tag of
+            its own (app/not-found.tsx), not a `:has()` on this wrapper:
+            that one made the browser restyle the whole page whenever
+            anything mounted inside it (every menu, tooltip and popover). */}
         <div data-site-right-panel className="contents">
           <RightPanel />
         </div>
