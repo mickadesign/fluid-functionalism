@@ -2825,6 +2825,12 @@ function DataTable<TData>({
         style={{ "--pin-l": `${pinWidths.l}px`, "--pin-r": `${pinWidths.r}px` } as CSSProperties}
         viewportClassName={cn(
           "scroll-fade-x",
+          // No rubber-banding sideways: past either end the browser slides
+          // the whole content, frozen columns included, while what is
+          // drawn over them from the box (the hover and selection fills,
+          // the fades) stays put, so they came apart for the bounce. It
+          // also keeps a hard swipe from going back a page.
+          "overscroll-x-none",
           (pinnedLeft || pinnedRight) &&
             "[mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]! [-webkit-mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]!"
         )}
