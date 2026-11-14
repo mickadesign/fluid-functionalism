@@ -1340,10 +1340,9 @@ function DataTable<TData>({
       .querySelectorAll<HTMLElement>("th[data-column-id], td[data-column-id]")
       .forEach((el) => {
         const id = el.dataset.columnId!;
-        // A dropped column's header lands from where it was let go; its
-        // cells never left their slot, so they travel from there.
-        const dropped = before.dropped?.id === id;
-        const old = dropped && el.tagName === "TH" ? before.dropped!.left : before.lefts.get(id);
+        // A dropped column lands from where its copy was let go, header
+        // and cells together: the copy carried both.
+        const old = before.dropped?.id === id ? before.dropped.left : before.lefts.get(id);
         if (old === undefined) {
           animate(el, { opacity: [0, 1] }, spring.moderate).then(() => {
             el.style.opacity = "";
@@ -1353,12 +1352,9 @@ function DataTable<TData>({
         const th = wrap.querySelector<HTMLElement>(`thead th[data-column-id="${CSS.escape(id)}"]`);
         const dx = th ? old - th.offsetLeft : 0;
         if (!dx) return;
-        // A drop settles on the fast tier: the header was carried most of
-        // the way, and the neighbors step aside one column's width. The
-        // dropped column's cells cross the distance it was dragged, which
-        // the moderate tier is for.
-        const quick = before.dropped && !(dropped && el.tagName === "TD");
-        animate(el, { x: [dx, 0] }, quick ? spring.fast : spring.moderate).then(() => {
+        // One spring for all of it: the column landing and its neighbors
+        // stepping aside read as one move.
+        animate(el, { x: [dx, 0] }, spring.moderate).then(() => {
           el.style.transform = "";
         });
       });
