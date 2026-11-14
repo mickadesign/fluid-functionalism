@@ -67,7 +67,7 @@ export function SortableTable() {
   // sort, Amount takes it back. A menu takes focus when it opens, so the
   // script only opens one while nobody else holds focus, and hands focus
   // back to the page after each pick.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const focus = useScriptFocus(rootRef, bind);
   const on = playing && ready && !focus.paused;
   // The menu renders in a portal: the cursor hovers it too.
@@ -136,7 +136,7 @@ export function SearchTable() {
   // types a search that leaves 3 rows, one that leaves none, then clears
   // it. The field's text is set without taking focus. Every row shows at
   // rest and the demo keeps that height, so the page below it stays put.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const on = playing && ready;
   const cursor = useScriptCursor(rootRef, on);
   useHoldHeight(rootRef);

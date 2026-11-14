@@ -347,7 +347,7 @@ export function TasksTable() {
   // name and retypes its last word, then puts it back. An editor only
   // exists focused, so the script takes focus, and only while nobody else
   // holds it; it hands it back to the page after each edit.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const focus = useScriptFocus(rootRef, bind);
   const on = playing && ready && !focus.paused;
   const cursor = useScriptCursor(rootRef, on);
@@ -530,7 +530,7 @@ export function FilesTable() {
   // Left alone, the section plays itself: a cursor closes the Type folder,
   // then opens it again. The demo keeps its open height meanwhile, so the
   // page below it stays put.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const cursor = useScriptCursor(rootRef, playing);
   useHoldHeight(rootRef);
   const toggle = 'tbody tr[data-row-id="brand/type"] button[aria-expanded]';
@@ -628,7 +628,7 @@ export function ChangelogTable() {
   // Left alone, the section plays itself: a cursor drags Summary's edge
   // in, the text takes more lines, then drags it back out. The demo keeps
   // its tallest height, so the page below it stays put.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const on = playing && ready;
   const cursor = useScriptCursor(rootRef, on);
   useHoldHeight(rootRef);
@@ -958,7 +958,7 @@ export function FrozenTable() {
   // The section opens a little way into its scroll: the frozen edges'
   // hairlines and both fades only show while content passes under them.
   // (Where motion is reduced, this is where it stays.)
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const viewport = () => rootRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
   useEffect(() => {
     if (!ready) return;
@@ -1171,7 +1171,7 @@ export function ColumnsTable() {
   // Left alone, the section plays itself: a cursor drags Status past
   // Email, then back beside the name. A visitor's pointer (or keyboard
   // focus) inside takes over, and the script lets go of whatever it held.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const on = playing && ready;
   const cursor = useScriptCursor(rootRef, on);
   useLoop(
@@ -1249,7 +1249,7 @@ export function ReorderTable() {
   // Left alone, the section plays itself: a cursor carries the two
   // selected steps down the list by one's handle, then back. Rows are named
   // by id, so a pass cut short (a visitor took over) still ends in order.
-  const { rootRef, playing, bind } = usePlayback();
+  const { rootRef, playing, bind } = usePlayback({ stopOnUse: true });
   const cursor = useScriptCursor(rootRef, playing);
   const handleOf = (id: string) => `tbody tr[data-row-id="${id}"] td[data-column-id=drag]`;
   useLoop(

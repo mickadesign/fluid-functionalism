@@ -20,13 +20,16 @@ const fromVisitor = (e: SyntheticEvent) => !scriptedEvents.has(e.nativeEvent);
  *  keyboard focus until it moves out, so the script never changes what
  *  someone is tabbing through. Only :focus-visible counts: a mouse click
  *  leaves focus on its button after the pointer has gone. */
-export function usePlayback() {
+export function usePlayback({ stopOnUse = false }: { /** Once a visitor has used the example (a press or a key, more than a
+   *  hover), the script never starts again: what they changed stays as
+   *  they left it. */ stopOnUse?: boolean } = {}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { amount: 0.35 });
   const reduced = useReducedMotion();
   const playback = usePreviewPlayback();
   const [pointerInside, setPointerInside] = useState(false);
   const [keyboardInside, setKeyboardInside] = useState(false);
+  const [used, setUsed] = useState(false);
   // What an example opens in a portal (a menu and the layer under it, a
   // drag's ghost) can cover the whole page, and a pointer anywhere over it
   // bubbles here too, through the React tree. Taken as a visitor inside,
@@ -35,24 +38,40 @@ export function usePlayback() {
   // box, outside once past it, unless it came there from the example
   // itself (the visitor's own menu, which they are still using).
   const cameFromRoot = useRef(false);
+  /** Notes where a visitor's pointer is; true when it is in the example
+   *  (or in something they opened from it). */
   const seen = (e: SyntheticEvent) => {
-    if (!fromVisitor(e)) return;
+    if (!fromVisitor(e)) return false;
     const root = rootRef.current;
-    if (!root) return;
+    if (!root) return false;
     if (root.contains(e.target as Node)) {
       cameFromRoot.current = true;
       setPointerInside(true);
-      return;
+      return true;
     }
     const { clientX: x, clientY: y } = e.nativeEvent as MouseEvent;
     const box = root.getBoundingClientRect();
-    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) setPointerInside(true);
-    else if (!cameFromRoot.current) setPointerInside(false);
+    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) {
+      setPointerInside(true);
+      return true;
+    }
+    if (!cameFromRoot.current) setPointerInside(false);
+    return cameFromRoot.current;
   };
   const bind = {
     onMouseEnter: seen,
     onMouseMove: seen,
-    onPointerDown: seen,
+    onPointerDown: (e: SyntheticEvent) => {
+      // A real press in the example, or in a menu opened from it. (Code's
+      // own presses, an editor waking its field, are nobody's; a press
+      // elsewhere on the page, over a layer the script opened, isn't use.)
+      if (seen(e) && stopOnUse && e.nativeEvent.isTrusted) setUsed(true);
+    },
+    // A real key, typed in it. Tab alone only passes through, as a hover does.
+    onKeyDown: (e: SyntheticEvent) => {
+      const key = (e.nativeEvent as KeyboardEvent).key;
+      if (stopOnUse && e.nativeEvent.isTrusted && !["Tab", "Shift", "Control", "Alt", "Meta"].includes(key)) setUsed(true);
+    },
     onMouseLeave: (e: SyntheticEvent) => {
       if (!fromVisitor(e)) return;
       cameFromRoot.current = false;
@@ -63,7 +82,7 @@ export function usePlayback() {
       if (!rootRef.current?.contains(e.relatedTarget)) setKeyboardInside(false);
     },
   };
-  return { rootRef, playing: playback && inView && !reduced && !pointerInside && !keyboardInside, bind };
+  return { rootRef, playing: playback && inView && !reduced && !pointerInside && !keyboardInside && !used, bind };
 }
 
 export type Side = "generic" | "skill";
