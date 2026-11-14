@@ -1050,6 +1050,28 @@ export function DataTablePlayground({
     setState(next);
   }, [tablePageSize]);
 
+  // The Columns menu's Wrap text is the same setting as the rail's Text
+  // wrap: the menu sets every text column's lines over its own, and that
+  // becomes the rail's setting (and the code's and the preset's), with
+  // the columns' own lines carrying it from then on.
+  const lineOverrides = table.columnLines;
+  useEffect(() => {
+    const now = stateRef.current;
+    // The columns the menu's switch sets: the listed ones with lines of
+    // their own.
+    const text = table
+      .getAllLeafColumns()
+      .filter((column) => column.accessorFn !== undefined && column.getCanHide() && column.columnDef.meta?.lines !== undefined);
+    const set = text.map((column) => lineOverrides[column.id]);
+    // One column set on its own is not the switch.
+    if (set.length === 0 || set.some((lines) => lines === undefined)) return;
+    const wrap = set.every((lines) => lines === "wrap");
+    if (wrap === (now.lines === "wrap") || (!wrap && set.some((lines) => lines === "wrap"))) return;
+    // The menu already animated the change; this only moves where it lives.
+    for (const id of Object.keys(lineOverrides)) table.setColumnLines(id, undefined, false);
+    apply({ ...now, lines: wrap ? "wrap" : "2" }, { animate: false });
+  }, [lineOverrides]);
+
   // ── Get code (presets) ─────────────────────────────────
   const globals = usePresetGlobals();
   const presetCode = encodeDataTablePreset({ ...state, ...globals });
