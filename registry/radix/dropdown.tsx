@@ -29,6 +29,7 @@ import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -326,7 +327,29 @@ function DropdownMenu({
   size,
 }: DropdownMenuProps) {
   const [open, handleOpenChange] = useControllableOpen(openProp, defaultOpen, onOpenChange);
-  const hover = useHoverControl(open, handleOpenChange);
+  // A hover-opened menu gets no shield: the pointer leaving it is what
+  // closes it. The hover timer opens through the first setter, everything
+  // else (a click, the keyboard) through the primitive's.
+  const [openedByHover, setOpenedByHover] = useState(false);
+  const hoverControl = useHoverControl(open, (next) => {
+    if (next) setOpenedByHover(true);
+    handleOpenChange(next);
+  });
+  // A click that pins a hover-opened menu makes it a clicked-open one.
+  const hover = useMemo<HoverControl>(
+    () => ({
+      ...hoverControl,
+      pin: () => {
+        const pinned = hoverControl.pin();
+        if (pinned) setOpenedByHover(false);
+        return pinned;
+      },
+    }),
+    [hoverControl]
+  );
+  // Closed by any route, a parent's own `open` included: the next open
+  // starts as a clicked one until the hover timer says otherwise.
+  if (!open && openedByHover) setOpenedByHover(false);
 
   const ctx = useMemo(
     () => ({ open, disabled, sub: false, hover }),
@@ -343,11 +366,15 @@ function DropdownMenu({
           scrolling and the popup tracks its anchor instead of detaching. */}
       <DropdownMenuPrimitive.Root
         open={open}
-        onOpenChange={handleOpenChange}
+        onOpenChange={(next) => {
+          if (next) setOpenedByHover(false);
+          handleOpenChange(next);
+        }}
         modal={false}
       >
         {children}
       </DropdownMenuPrimitive.Root>
+      <PopupShield open={open && !openedByHover} />
     </DropdownMenuContext.Provider>
   );
 

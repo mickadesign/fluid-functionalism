@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
+import { PopupShield } from "@/lib/popup";
 import {
   DatePickerCore,
   DatePickerPopupFrame,
@@ -24,6 +25,7 @@ function DatePickerPopover({
   kind,
   anchor,
   anchorRef,
+  liveRef,
   escapeBlocked,
   align = "start",
   className,
@@ -48,6 +50,9 @@ function DatePickerPopover({
   };
 
   return (
+    <>
+    {/* The picker's own segments stay live under the open popover. */}
+    <PopupShield open={open} anchor={liveRef ?? anchorRef} />
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
       {kind === "trigger" ? (
         <PopoverPrimitive.Trigger asChild>{anchor}</PopoverPrimitive.Trigger>
@@ -90,6 +95,7 @@ function DatePickerPopover({
         </PopoverPrimitive.Portal>
       )}
     </PopoverPrimitive.Root>
+    </>
   );
 }
 

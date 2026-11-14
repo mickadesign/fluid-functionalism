@@ -1,4 +1,5 @@
 export {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,

@@ -72,7 +72,7 @@ export const componentEntries: ComponentEntry[] = [
  *  few people before the launch: not in the sidebar, ⌘K, the Showcase,
  *  /demo, prev/next, the changelog marks, the sitemap, llms.txt or the
  *  README, and noindex. Delete a slug here to launch it. */
-export const UNLISTED_SLUGS: ReadonlySet<string> = new Set(["context-menu", "data-table"]);
+export const UNLISTED_SLUGS: ReadonlySet<string> = new Set(["data-table"]);
 
 /** The listed components: what navigation, search and indexes show. */
 export const componentList: ComponentEntry[] = componentEntries.filter((c) => !UNLISTED_SLUGS.has(c.slug));

@@ -37,7 +37,7 @@ export interface AheadOfRelease {
 export const AHEAD_OF_RELEASE: AheadOfRelease[] = [
   // Merged in October 2026; the October release ships Friday 2026-11-06.
   { month: "2026-10", slugs: ["banner", "typography", "reveal", "calendar", "date-picker"] },
-  { month: "2026-11", slugs: ["field", "checkbox", "input", "textarea", "breadcrumb"] },
+  { month: "2026-11", slugs: ["field", "checkbox", "input", "textarea", "breadcrumb", "context-menu"] },
 ];
 
 /** The first month whose new pages the sidebar dots (recentNew below). */
