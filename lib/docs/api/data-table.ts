@@ -69,7 +69,7 @@ export const titleProps: PropDef[] = [
 ];
 
 export const filtersProps: PropDef[] = [
-  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. An icon-only filter button whose menu lists the columns that can filter, with a search on top; a pick adds that column's chip, its editor open." },
+  { name: "table", type: "Table<TData>", description: "What `useDataTable` returns. An icon-only filter button whose menu lists the columns that can filter, with a search on top; a pick adds that column's chip, its editor open. While filters are set, the button shows and hides the chips row instead (pressed while it shows, a dot while it is hidden); the row's + adds the next filter." },
   { name: "size", type: '"default" | "compact"', description: "Pins the button and its menu to one size step." },
   { name: "className", type: "string", description: "Classes for the button's box." },
 ];

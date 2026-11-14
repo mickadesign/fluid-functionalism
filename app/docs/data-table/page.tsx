@@ -28,6 +28,7 @@ import {
   columnsCode,
 } from "./capability-demos";
 import { SortableTable, SearchTable, LoadingTable } from "./demo-data";
+import { KeyboardShortcuts } from "./keyboard";
 
 const sortCode = `import { useDataTable, DataTable, DataTableColumnHeader, type ColumnDef } from "./components";
 
@@ -242,21 +243,9 @@ export default function DataTableDoc() {
 
       <DocSection title="Keyboard">
         <p className="text-site-body text-muted-foreground">
-          The rows work like a spreadsheet&apos;s. A row under the pointer counts as focused, so you can point
-          at one and carry on from the keyboard.
+          The rows work like a spreadsheet&apos;s: 20 shortcuts, grouped by what they act on.
         </p>
-        <ul className="text-site-body text-muted-foreground flex list-disc flex-col gap-1 pl-5">
-          <li>↓ from the search or a header steps into the first row; ↑ / ↓ and Home / End move between rows.</li>
-          <li>X or Enter selects or clears a row; Shift + ↑ / ↓ grows or shrinks the selection from where it started.</li>
-          <li>⌘A / Ctrl+A selects every row, on every page, with the pointer anywhere over the table; Esc clears the selection.</li>
-          <li>Tab to the header&apos;s box and press Space or Enter to select or clear every row.</li>
-          <li>With sub-rows, → opens a row or steps into it and ← closes it or steps back to its parent. Without a selection column or onRowClick, Enter or Space opens and closes it too.</li>
-          <li>Rows take focus whenever they can be selected, opened or expanded, so the keys work without a selection column.</li>
-          <li>In an editable cell, Enter or Esc leaves the field and keeps what you typed; F2 edits a link.</li>
-          <li>With a selection, ⌘K opens its actions.</li>
-          <li>With row reordering, Alt + ↑ / ↓ moves the selected rows a place when there are any, else the row under the pointer or the focused one, and the highlight goes with a row it moves; Esc during a drag puts the row back.</li>
-          <li>Alt + ← / → on a focused header moves its column; ← / → on a focused resize handle steps its width by 16px.</li>
-        </ul>
+        <KeyboardShortcuts />
       </DocSection>
 
       <DocSection title="API Reference">

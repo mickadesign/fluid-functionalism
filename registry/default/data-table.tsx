@@ -396,6 +396,9 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
   // One function for the table's life: the chips register in an effect
   // keyed on it, which a new one per view would re-run on every change.
   const registerChips = useCallback((mounted: boolean) => setChipsMounted((n) => n + (mounted ? 1 : -1)), []);
+  // The chips row tucked away by its button (DataTableFilters, which
+  // toggles the row while filters are set). The filters stay on.
+  const [filtersHidden, setFiltersHidden] = useState(false);
   return useMemo(
     () =>
       Object.assign(Object.create(table) as TanStackTable<TData>, {
@@ -414,6 +417,13 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
         getRootElement: () => rootRef.current(),
         filterRequest,
         _registerChips: registerChips,
+        filtersHidden,
+        setFiltersHidden: (hidden: boolean) => {
+          setFiltersHidden(hidden);
+          // The chip last asked to open has been seen: brought back, the
+          // row shows its chips closed instead of opening that one again.
+          if (hidden) setFilterRequest(null);
+        },
         openFilter: (id: string) => {
           const column = table.getColumn(id);
           const kind = column ? filterOf(table, column) : null;
@@ -424,6 +434,8 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
             table.setPageIndex(0);
           }
           setFilterRequest((old) => ({ id, n: (old?.n ?? 0) + 1 }));
+          // A filter asked for is one to look at: the row comes back.
+          setFiltersHidden(false);
           return true;
         },
         canOpenFilter: () => chipsMounted > 0,
@@ -438,7 +450,7 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
         },
       }) as DataTableInstance<TData>,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state is the trigger
-    [table, state, columnLines, filterRequest, chipsMounted]
+    [table, state, columnLines, filterRequest, chipsMounted, filtersHidden]
   );
 }
 
@@ -475,6 +487,10 @@ interface DataTableExtras {
   filterRequest: { id: string; n: number } | null;
   /** @internal DataTableFilterChips counts itself here. */
   _registerChips: (mounted: boolean) => void;
+  /** Whether the chips row is tucked away while filters are set (the
+   *  DataTableFilters button toggles it). The filters still apply. */
+  filtersHidden: boolean;
+  setFiltersHidden: (hidden: boolean) => void;
 }
 
 type DataTableInstance<TData> = TanStackTable<TData> & DataTableExtras;
@@ -6167,7 +6183,11 @@ function useFilters<TData>(table: TanStackTable<TData>) {
 
 /** An icon button that adds a filter: its menu lists the columns that can
  *  filter, with a search on top, and a pick adds that column's chip to
- *  DataTableFilterChips with its editor open. */
+ *  DataTableFilterChips with its editor open. Once filters are set (and a
+ *  chips row is there to show them) the button toggles that row instead:
+ *  pressed while the chips show, with a dot while they are tucked away, so
+ *  filters that still apply are never out of sight unmarked. The row's own
+ *  + adds the next filter. */
 function DataTableFilters<TData>({
   table,
   size,
@@ -6190,6 +6210,33 @@ function DataTableFilters<TData>({
   const matches = available.filter(({ column }) => columnLabel(column).toLowerCase().includes(q));
   const label = add ? "Add filter" : "Filter";
   if (add && available.length === 0) return null;
+  const extras = table as Partial<DataTableExtras>;
+  const hidden = !!extras.filtersHidden;
+  if (!add && active.length > 0 && extras.canOpenFilter?.()) {
+    const count = `${active.length} ${active.length === 1 ? "filter" : "filters"}`;
+    return (
+      <Tooltip content={hidden ? `Show ${count}` : "Hide filters"}>
+        <span data-slot="data-table-filters" className={cn("relative inline-flex", className)}>
+          <Button
+            variant="ghost"
+            size={compact ? "icon-compact" : "icon"}
+            aria-label="Filters"
+            aria-pressed={!hidden}
+            active={!hidden}
+            onClick={() => extras.setFiltersHidden?.(!hidden)}
+          >
+            <FilterIcon />
+          </Button>
+          {hidden && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+            />
+          )}
+        </span>
+      </Tooltip>
+    );
+  }
 
   return (
     // The tooltip's trigger is a wrapper, so the button stays the menu's.
@@ -6320,6 +6367,14 @@ function DataTableFilterChips<TData>({
     register?.(true);
     return () => register?.(false);
   }, [register]);
+  // Tucked away by its button (DataTableFilters). With no filter left
+  // there is nothing to tuck: the next one shows.
+  const hidden = !!extras.filtersHidden;
+  const setHidden = extras.setFiltersHidden;
+  const none = active.length === 0;
+  useEffect(() => {
+    if (none && hidden) setHidden?.(false);
+  }, [none, hidden, setHidden]);
 
   const set = (column: Column<TData, unknown>, value: DataTableFilterValue | undefined) => {
     column.setFilterValue(value);
@@ -6330,7 +6385,7 @@ function DataTableFilterChips<TData>({
   const gutter = leadingGutter(table);
 
   return (
-    <RowReveal show={active.length > 0}>
+    <RowReveal show={active.length > 0 && !hidden}>
       <div
         data-slot="data-table-filter-chips"
         // Past a selection column the chips start where the first data
