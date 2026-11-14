@@ -346,7 +346,7 @@ function useDataTable<TData>({
     // Every column filters the way DataTableFilters sets it, unless it
     // brings its own filterFn; DataTableSearch has the global filter.
     // A column shown after the widths were read (from the Columns menu)
-    // takes this default: TanStack's 150px plus 16, so a short header and
+    // takes this default: 200px (TanStack's is 150), so a header and
     // its sort arrow have room.
     defaultColumn: { filterFn: dataTableFilterFn, size: ADDED_COLUMN_WIDTH, ...options.defaultColumn },
     globalFilterFn: options.globalFilterFn ?? dataTableSearchFn,
@@ -405,6 +405,9 @@ function useDataTable<TData>({
   // One function for the table's life: the chips register in an effect
   // keyed on it, which a new one per view would re-run on every change.
   const registerChips = useCallback((mounted: boolean) => setChipsMounted((n) => n + (mounted ? 1 : -1)), []);
+  // One function for the table's life too: effects keyed on it (the
+  // selection bar watching the table) must not re-run on every change.
+  const getRootElement = useCallback(() => rootRef.current(), []);
   // The chips row tucked away by its button (DataTableFilters, which
   // toggles the row while filters are set). The filters stay on.
   const [filtersHidden, setFiltersHidden] = useState(startFiltersHidden);
@@ -423,7 +426,7 @@ function useDataTable<TData>({
         _registerRoot: (get: () => HTMLElement | null) => {
           rootRef.current = get;
         },
-        getRootElement: () => rootRef.current(),
+        getRootElement,
         filterRequest,
         _registerChips: registerChips,
         filtersHidden,
@@ -739,7 +742,7 @@ function ownSize<TData>(defs: ColumnDef<TData, unknown>[], id: string): number |
 const NATURAL_CAP = 240;
 
 /** The width a column gets when it is shown after the others were sized. */
-const ADDED_COLUMN_WIDTH = 166;
+const ADDED_COLUMN_WIDTH = 200;
 
 /** What a header's menu acts on: the table, and whether its columns move. */
 const HeaderMenuContext = createContext<{
@@ -7349,7 +7352,10 @@ function DataTableSelectionBar<TData>({
       observer.disconnect();
       // Unknown again until the next selection's observer reports: the
       // table may have left the screen meanwhile, and the old answer
-      // would flash the bar for it.
+      // would flash the bar for it. This only runs when the selection
+      // empties: `getRoot` is one function for the table's life (see
+      // useDataTable). A new one per state change re-ran this on every
+      // row picked, and the bar went down and came up again each time.
       setInView(false);
     };
   }, [count > 0, getRoot]); // eslint-disable-line react-hooks/exhaustive-deps -- watched while rows are selected
