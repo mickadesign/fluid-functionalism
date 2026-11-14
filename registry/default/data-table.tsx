@@ -2831,6 +2831,11 @@ function DataTable<TData>({
           // the fades) stays put, so they came apart for the bounce. It
           // also keeps a hard swipe from going back a page.
           "overscroll-x-none",
+          // Up and down too where the rows scroll inside the box: the
+          // sticky header and what rides the scroll came apart the same
+          // way. Only then: a table that doesn't scroll up and down must
+          // still hand the wheel on to the page.
+          fill && "overscroll-y-none",
           (pinnedLeft || pinnedRight) &&
             "[mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]! [-webkit-mask-image:linear-gradient(to_right,#000_var(--pin-l),rgba(0,0,0,var(--sf-start))_var(--pin-l),#000_calc(var(--pin-l)+var(--scroll-fade-size)),#000_calc(100%-var(--pin-r)-var(--scroll-fade-size)),rgba(0,0,0,var(--sf-end))_calc(100%-var(--pin-r)),#000_calc(100%-var(--pin-r)))]!"
         )}
