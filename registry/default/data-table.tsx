@@ -1084,14 +1084,62 @@ function DataTable<TData>({
     };
   }, [fill, wrapEl]);
 
-  // Opening and closing sub-rows: rows below jump to their new places in
-  // one frame, with the selection fill and the highlight (Table snaps them
-  // on a new snapKey), and only the rows that appear fade in. A slide here
-  // left the fills, keyed by position, springing apart from the rows.
+  // Opening and closing sub-rows, in 120ms. The layout changes at once,
+  // with the selection fill and the highlight (Table snaps them on a new
+  // snapKey), and then plays from where things were: the rows below slide
+  // to their new places, the rows that appear fade in, and the rows that
+  // went fade out (a copy of them, left where they were). The fills under
+  // the rows that slide take the same offset, as `translate`, apart from
+  // the transform their own animation writes: sliding the rows alone left
+  // the fills, keyed by position, a row's height away from them.
   const [expandTick, setExpandTick] = useState(0);
-  const fadeFrom = useRef<Set<string> | null>(null);
+  const expandFrom = useRef<{
+    tops: Map<string, number>;
+    height: number;
+    /** A copy of the rows a close removes, and where they were. */
+    ghost: HTMLElement | null;
+  } | null>(null);
   const toggleExpanded = (row: Row<TData>, open?: boolean) => {
-    fadeFrom.current = new Set(rows.map((r) => r.id));
+    const wrap = wrapRef.current;
+    const tableNode = wrap?.querySelector<HTMLTableElement>("table");
+    if (wrap && tableNode && !reduceMotion) {
+      const tops = new Map<string, number>();
+      const trs = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]"));
+      trs.forEach((tr) => tops.set(tr.dataset.rowId!, tr.offsetTop));
+      let ghost: HTMLElement | null = null;
+      const closing = row.getIsExpanded() && open !== true;
+      const at = rows.findIndex((r) => r.id === row.id);
+      if (closing && at !== -1) {
+        // The rows under it, at any depth: what the close takes away.
+        const going: HTMLElement[] = [];
+        for (let i = at + 1; i < rows.length && rows[i].depth > row.depth; i++) {
+          const tr = trs.find((el) => el.dataset.rowId === rows[i].id);
+          if (tr) going.push(tr);
+        }
+        const host = tableNode.parentElement;
+        if (going.length && host) {
+          const copy = tableNode.cloneNode(false) as HTMLTableElement;
+          copy.removeAttribute("id");
+          copy.setAttribute("aria-hidden", "true");
+          copy.style.cssText = `position:absolute;left:0;top:${going[0].getBoundingClientRect().top - host.getBoundingClientRect().top}px;width:${tableNode.offsetWidth}px;table-layout:fixed;pointer-events:none;margin:0`;
+          const body = document.createElement("tbody");
+          for (const tr of going) {
+            const clone = tr.cloneNode(true) as HTMLElement;
+            clone.classList.remove("is-active");
+            clone.removeAttribute("data-row-id");
+            // The copy has no header row to take its columns' widths from.
+            Array.from(tr.children).forEach((cell, i) => {
+              const twin = clone.children[i] as HTMLElement | undefined;
+              if (twin) twin.style.width = `${cell.getBoundingClientRect().width}px`;
+            });
+            body.append(clone);
+          }
+          copy.append(body);
+          ghost = copy;
+        }
+      }
+      expandFrom.current = { tops, height: wrap.offsetHeight, ghost };
+    }
     setExpandTick((t) => t + 1);
     row.toggleExpanded(open);
   };
@@ -1100,16 +1148,44 @@ function DataTable<TData>({
     toggleRef.current = toggleExpanded;
   });
   useLayoutEffect(() => {
-    const seen = fadeFrom.current;
-    if (!seen) return;
-    fadeFrom.current = null;
-    if (reduceMotion) return;
-    wrapRef.current?.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
-      if (seen.has(tr.dataset.rowId!)) return;
-      animate(tr, { opacity: [0, 1] }, spring.moderate).then(() => {
-        tr.style.opacity = "";
-      });
+    const from = expandFrom.current;
+    const wrap = wrapRef.current;
+    if (!from || !wrap) return;
+    expandFrom.current = null;
+    const slide = { duration: 120, easing: "cubic-bezier(0.23, 1, 0.32, 1)" };
+    const fade = { duration: 80, easing: "ease-out" };
+    let shift = 0;
+    let boundary = Infinity;
+    wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
+      const old = from.tops.get(tr.dataset.rowId!);
+      if (old === undefined) {
+        tr.animate([{ opacity: 0 }, { opacity: 1 }], fade);
+        return;
+      }
+      const dy = old - tr.offsetTop;
+      if (!dy) return;
+      shift = dy;
+      boundary = Math.min(boundary, tr.getBoundingClientRect().top);
+      tr.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], slide);
     });
+    if (shift)
+      // The selection's fills (and their copies over the frozen columns)
+      // under the rows that moved.
+      wrap.querySelectorAll<HTMLElement>("div.bg-active.pointer-events-none:not([data-slot])").forEach((el) => {
+        if (el.getBoundingClientRect().top >= boundary - 1)
+          el.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], slide);
+      });
+    const host = wrap.querySelector("table")?.parentElement;
+    if (from.ghost && host) {
+      const ghost = from.ghost;
+      host.append(ghost);
+      const gone = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { ...fade, fill: "forwards" });
+      gone.finished.then(() => ghost.remove(), () => ghost.remove());
+    }
+    // A filled box's height is its parent's; a free one follows the rows,
+    // so what sits under the table (the pagination) glides with them.
+    const height = wrap.offsetHeight;
+    if (!fill && from.height !== height) wrap.animate([{ height: `${from.height}px` }, { height: `${height}px` }], slide);
   });
   const [stableToggle] = useState(() => (row: Row<unknown>, open?: boolean) =>
     toggleRef.current(row as Row<TData>, open)
@@ -2979,7 +3055,7 @@ function DataTable<TData>({
             <div className="ff-ride absolute inset-0">
             <div ref={fadeHostRef} />
             {/* The hovered row's band: one pair, moved with the highlight. */}
-            <div ref={hoverFadeRef} className="absolute inset-x-0 top-0 opacity-0">
+            <div ref={hoverFadeRef} data-row-hover="" className="absolute inset-x-0 top-0 opacity-0">
               <div
                 className="ff-fade-l absolute inset-y-0 left-(--pin-l,0px) w-(--ff-fade,48px)"
                 style={{ background: "linear-gradient(to right, var(--hover), transparent)" }}
@@ -3032,7 +3108,7 @@ function DataTable<TData>({
             {/* Cut off at the header's bottom, which the rows scroll under. */}
             <div className="absolute inset-0 [clip-path:inset(var(--ff-head,0px)_0_0_0)]">
             <div className="ff-ride absolute inset-0">
-            <div ref={pinHoverRef} className="absolute inset-x-0 top-0 opacity-0">
+            <div ref={pinHoverRef} data-row-hover="" className="absolute inset-x-0 top-0 opacity-0">
               <div
                 className={cn(
                   "ff-pinhover-l absolute inset-y-0 left-(--ff-inset-l,0px) w-[calc(var(--pin-l,0px)-var(--ff-inset-l,0px))] bg-hover",
@@ -3882,6 +3958,8 @@ const PIN_CSS = `
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
 [data-ff-table] [data-slot=scroll-area-viewport][data-scroll-held] { overflow: hidden !important; }
+[data-ff-table][data-text-editing] [data-slot=fluid-hover-highlight], [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-text-editing] tbody [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
   [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x, --ff-table-y; }
@@ -5241,7 +5319,15 @@ function CellTextEditor({
     const box = ref.current?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
     if (!box) return;
     box.setAttribute("data-scroll-held", "");
-    return () => box.removeAttribute("data-scroll-held");
+    // And no row lights up: the fill under a field being typed in (or
+    // under whichever row the pointer rests on meanwhile) reads as
+    // something to click. The same kind of mark, on the table's root.
+    const root = box.closest<HTMLElement>("[data-ff-table]");
+    root?.setAttribute("data-text-editing", "");
+    return () => {
+      box.removeAttribute("data-scroll-held");
+      root?.removeAttribute("data-text-editing");
+    };
   }, []);
   // The raised field's height follows its wrapped text.
   useLayoutEffect(() => {
