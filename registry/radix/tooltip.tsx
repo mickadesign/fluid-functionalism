@@ -20,6 +20,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
@@ -101,6 +102,11 @@ type TooltipSide = "top" | "right" | "bottom" | "left";
 
 interface TooltipProps {
   content: ReactNode;
+  /** A keystroke shown after the label as a key cap, e.g. "Esc". The bubble
+   *  keeps the height of a tooltip without one. A combo ("⇧⌘O") draws one
+   *  cap per key; a key with a space in its name goes in an array
+   *  (["Page Up"]). Empty means no cap. */
+  shortcut?: string | readonly string[];
   children: React.ReactElement;
   side?: TooltipSide;
   sideOffset?: number;
@@ -149,6 +155,25 @@ function getSlideOffset(side: TooltipSide) {
 // overall height (~24px) as untrimmed browsers.
 const bubbleText =
   "text-background text-[length:var(--fs-caption,12px)] leading-[var(--lh-caption,16px)] px-2 py-1 [text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both]:py-2";
+
+/** A keystroke in the bubble's inverted colors, one cap per key. Negative
+ *  margins keep the caps out of the row's height, so they never make a
+ *  bubble taller. */
+function TooltipShortcut({
+  children,
+  className,
+}: {
+  children: string | readonly string[];
+  className?: string;
+}) {
+  return (
+    <KeyCaps
+      keys={children}
+      tone="inverted"
+      className={cn("-my-[5px]", className)}
+    />
+  );
+}
 
 // ---------------------------------------------------------------------------
 // TooltipGroup
@@ -522,7 +547,8 @@ function TooltipGroup({
 // ---------------------------------------------------------------------------
 
 function Tooltip({
-  content,
+  content: label,
+  shortcut,
   children,
   side: sideProp = "top",
   sideOffset = 8,
@@ -541,6 +567,17 @@ function Tooltip({
   const portalContainer = useContext(TooltipPortalContainerContext);
   const hasAmbientProvider = useContext(TooltipGroupContext);
   const groupStore = useContext(TooltipGroupStoreContext);
+  // A flex row escapes the bubble's text-box trim, so the label takes it
+  // again: with a key cap or without, the bubble is the same height.
+  const content =
+    shortcut == null || shortcut.length === 0 ? (
+      label
+    ) : (
+      <span className="flex items-center gap-2">
+        <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
+        <TooltipShortcut>{shortcut}</TooltipShortcut>
+      </span>
+    );
   // In a group every bubble sits on the side the group is on: the one a
   // neighbor was placed on, flipped or not, over this tooltip's own.
   const side = groupStore?.side() ?? sideProp;
@@ -672,7 +709,13 @@ function Tooltip({
   );
 }
 
-export { Tooltip, TooltipGroup, TooltipPortalContainer, TooltipProvider };
+export {
+  Tooltip,
+  TooltipGroup,
+  TooltipPortalContainer,
+  TooltipProvider,
+  TooltipShortcut,
+};
 export type {
   TooltipGroupProps,
   TooltipProps,

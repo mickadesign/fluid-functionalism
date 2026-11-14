@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { Toaster, toast } from "sonner";
 
 import { cn } from "@/lib/utils";
+import { KeyCap, KeyCaps } from "@/lib/key-cap";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape, useShapeContext } from "@/lib/shape-context";
@@ -113,23 +114,7 @@ function UndoToast({ message, onUndo }: { message: string; onUndo: () => void })
         style={{ fontVariationSettings: fontWeights.semibold }}
       >
         Undo
-        {/* One chip per key, as the sidebar's ⌘K: ⌘ in the sans font,
-            which the mono font draws undersized. */}
-        <span className="flex gap-0.5">
-          {(mac ? ["⌘", "Z"] : ["Ctrl", "Z"]).map((key) => (
-            <kbd
-              key={key}
-              className={cn(
-                // The one key cap: a filled 5px-radius chip that keeps its
-                // shape under every Radius setting (a pill here read as a
-                // second kind of key).
-                "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[11px] leading-none text-background"
-              )}
-            >
-              {key}
-            </kbd>
-          ))}
-        </span>
+        <KeyCaps keys={mac ? ["⌘", "Z"] : ["Ctrl", "Z"]} tone="inverted" />
       </button>
     </div>
   );
@@ -208,14 +193,9 @@ function ShortcutToast({
       )}
       style={{ fontVariationSettings: fontWeights.normal }}
     >
-      <kbd
-        aria-hidden
-        className={cn(
-          "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[11px] leading-none text-background"
-        )}
-      >
+      <KeyCap aria-hidden tone="inverted">
         {keyLabel}
-      </kbd>
+      </KeyCap>
       <span className="[text-box:trim-both_cap_alphabetic]">{message}</span>
     </motion.div>
   );

@@ -3253,11 +3253,6 @@ function selectRange<TData>(table: TanStackTable<TData>, fromId: string, toId: s
  *  negative margins and puts it back as its own, so the row keeps its size.
  *  `group/field` lets the box darken its border while the area is hovered,
  *  as it does inside a Field. */
-// A key cap in a tooltip's inverted colors: the same filled chip as
-// CommandMenuShortcut's, as the Sidebar's tooltips draw theirs.
-const TOOLTIP_CAP =
-  "-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background";
-
 interface SelectHitProps extends HTMLAttributes<HTMLSpanElement> {
   disabled?: boolean;
   onToggle: () => void;
@@ -3393,22 +3388,13 @@ function RowHandle() {
   const compact = useSize().variant === "compact";
   const Grip = useIcons()["grip-vertical"];
   const mac = useIsMac();
-  const cap = TOOLTIP_CAP;
   return (
     <Tooltip
       // Over the row above: the pointer passes through to it.
       hoverable={false}
       side="top"
-      content={
-        <span className="flex items-center gap-2">
-          Drag to move
-          <span className="flex items-center gap-0.5">
-            <kbd className={cap}>{mac ? "\u2325" : "Alt"}</kbd>
-            <kbd className={cap}>{"\u2191"}</kbd>
-            <kbd className={cap}>{"\u2193"}</kbd>
-          </span>
-        </span>
-      }
+      content="Drag to move"
+      shortcut={[mac ? "\u2325" : "Alt", "\u2191", "\u2193"]}
     >
     <button
       type="button"
@@ -3527,12 +3513,8 @@ function selectColumn<TData>(): ColumnDef<TData> {
         // Over the row above: the pointer passes through to it.
         hoverable={false}
         side="top"
-        content={
-          <span className="flex items-center gap-2">
-            {row.getIsSelected() ? "Unselect" : "Select"}
-            <kbd className={TOOLTIP_CAP}>X</kbd>
-          </span>
-        }
+        content={row.getIsSelected() ? "Unselect" : "Select"}
+        shortcut="X"
       >
       <SelectHit
         // A row that can't be selected shows its dimmed box the old way:
@@ -3598,15 +3580,16 @@ interface PinInfo {
 }
 
 // Corner radii for a pinned cell's fills on the table's outer edge, per
-// shape, matching the row highlight and selection (literal classes, so
-// Tailwind sees them).
+// shape (literal classes, so Tailwind sees them): left / right match the
+// hover (shape.bg), the corners the merged selection (shape.mergedBg,
+// 16px in pill, not 20).
 const PIN_RADIUS = {
   left: { rounded: "rounded-l-lg", pill: "rounded-l-[20px]", sharp: "rounded-l-[1px]" },
   right: { rounded: "rounded-r-lg", pill: "rounded-r-[20px]", sharp: "rounded-r-[1px]" },
-  tl: { rounded: "rounded-tl-lg", pill: "rounded-tl-[20px]", sharp: "rounded-tl-[1px]" },
-  bl: { rounded: "rounded-bl-lg", pill: "rounded-bl-[20px]", sharp: "rounded-bl-[1px]" },
-  tr: { rounded: "rounded-tr-lg", pill: "rounded-tr-[20px]", sharp: "rounded-tr-[1px]" },
-  br: { rounded: "rounded-br-lg", pill: "rounded-br-[20px]", sharp: "rounded-br-[1px]" },
+  tl: { rounded: "rounded-tl-lg", pill: "rounded-tl-2xl", sharp: "rounded-tl-[1px]" },
+  bl: { rounded: "rounded-bl-lg", pill: "rounded-bl-2xl", sharp: "rounded-bl-[1px]" },
+  tr: { rounded: "rounded-tr-lg", pill: "rounded-tr-2xl", sharp: "rounded-tr-[1px]" },
+  br: { rounded: "rounded-br-lg", pill: "rounded-br-2xl", sharp: "rounded-br-[1px]" },
 } as const;
 
 /** A pinned cell's classes and offset. It sticks always and is always
@@ -6204,27 +6187,30 @@ function DataTableFilterChips<TData>({
         // they share with the table when there are no boxes.
         className={cn("flex flex-wrap items-center gap-1", gutter, className)}
       >
-        {active.map((f) => {
-          const entry = filterable.find(({ column }) => column.id === f.id);
-          if (!entry) return null;
-          // The chip asked for opens its editor; the count remounts it if it
-          // was already there.
-          const asked = request?.id === f.id;
-          return (
-            <FilterChip
-              key={asked ? `${f.id}:${request.n}` : f.id}
-              label={columnLabel(entry.column)}
-              filter={entry.filter}
-              value={f.value as Exclude<DataTableFilterValue, string>}
-              autoOpen={asked}
-              compact={compact}
-              size={size}
-              onChange={(value) => set(entry.column, value)}
-              onRemove={() => set(entry.column, undefined)}
-            />
-          );
-        })}
-        <DataTableFilters table={table} size={size} add />
+        {/* One bubble for the row: it glides from chip to chip. */}
+        <TooltipGroup>
+          {active.map((f) => {
+            const entry = filterable.find(({ column }) => column.id === f.id);
+            if (!entry) return null;
+            // The chip asked for opens its editor; the count remounts it if it
+            // was already there.
+            const asked = request?.id === f.id;
+            return (
+              <FilterChip
+                key={asked ? `${f.id}:${request.n}` : f.id}
+                label={columnLabel(entry.column)}
+                filter={entry.filter}
+                value={f.value as Exclude<DataTableFilterValue, string>}
+                autoOpen={asked}
+                compact={compact}
+                size={size}
+                onChange={(value) => set(entry.column, value)}
+                onRemove={() => set(entry.column, undefined)}
+              />
+            );
+          })}
+          <DataTableFilters table={table} size={size} add />
+        </TooltipGroup>
         {children}
       </div>
     </RowReveal>
@@ -7274,16 +7260,8 @@ function DataTableSelectionBar<TData>({
               </Button>
             )}
             <Tooltip
-              content={
-                <span className="flex items-center gap-2">
-                  Clear selection
-                  {/* A key cap in the tooltip's inverted colors, as the
-                      Sidebar's tooltips draw theirs. */}
-                  <kbd className={TOOLTIP_CAP}>
-                    Esc
-                  </kbd>
-                </span>
-              }
+              content="Clear selection"
+              shortcut="Esc"
             >
               <Button
                 variant="ghost"

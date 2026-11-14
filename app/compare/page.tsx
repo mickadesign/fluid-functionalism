@@ -13,7 +13,7 @@ import { BentoCard } from "@/app/components/bento-card";
 import { Button } from "@/registry/radix/button";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useIcon } from "@/lib/icon-context";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import "./shadcn-theme.css";
 
 // Mirrors the slide order on /demo. Components without a shadcn equivalent
@@ -166,28 +166,30 @@ function ComparePageInner() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => goTo(currentIndex - 1)}
-                disabled={!prevSlide}
-                aria-label="Previous slide"
-              >
-                <ArrowRight className="rotate-180" />
-              </Button>
-            </Tooltip>
-            <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => goTo(currentIndex + 1)}
-                disabled={!nextSlide}
-                aria-label="Next slide"
-              >
-                <ArrowRight />
-              </Button>
-            </Tooltip>
+            <TooltipGroup>
+              <Tooltip content={prevSlide ? prevSlide.name : "No previous"} shortcut={prevSlide ? "←" : undefined}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => goTo(currentIndex - 1)}
+                  disabled={!prevSlide}
+                  aria-label="Previous slide"
+                >
+                  <ArrowRight className="rotate-180" />
+                </Button>
+              </Tooltip>
+              <Tooltip content={nextSlide ? nextSlide.name : "No next"} shortcut={nextSlide ? "→" : undefined}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => goTo(currentIndex + 1)}
+                  disabled={!nextSlide}
+                  aria-label="Next slide"
+                >
+                  <ArrowRight />
+                </Button>
+              </Tooltip>
+            </TooltipGroup>
           </div>
         </div>
       </div>

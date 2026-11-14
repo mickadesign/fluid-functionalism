@@ -17,6 +17,7 @@ import {
   type SidebarProps,
 } from "@/components/ui/sidebar";
 import { Tooltip } from "@/components/ui/tooltip";
+import { KeyCaps } from "@/lib/key-cap";
 import { MenuItem } from "@/components/ui/menu-item";
 import { useIcons } from "@/lib/icon-context";
 import {
@@ -68,9 +69,7 @@ export function AppSidebar(props: Omit<SidebarProps, "children">) {
                 New
                 {/* shortcut chip, revealed on row hover */}
                 <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80 group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">
-                  <kbd className="font-sans text-[length:var(--fs-micro,11px)] leading-[var(--lh-micro,14px)] text-muted-foreground">
-                    ⇧⌘O
-                  </kbd>
+                  <KeyCaps keys="⇧⌘O" />
                 </span>
               </SidebarMenuButton>
             </SidebarMenuItem>

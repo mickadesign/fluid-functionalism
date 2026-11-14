@@ -229,20 +229,8 @@ export function ComponentPreview({
           {/* Expand last, at the far right, after the replay. */}
           {expand && (
             <Tooltip
-              content={
-                expand.expanded ? (
-                  <span className="flex items-center gap-2">
-                    Collapse
-                    {/* A key cap in the tooltip's inverted colors, as the
-                        DataTable's and the Sidebar's tooltips draw theirs. */}
-                    <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background">
-                      Esc
-                    </kbd>
-                  </span>
-                ) : (
-                  "Expand"
-                )
-              }
+              content={expand.expanded ? "Collapse" : "Expand"}
+              shortcut={expand.expanded ? "Esc" : undefined}
               side="top"
             >
               <button

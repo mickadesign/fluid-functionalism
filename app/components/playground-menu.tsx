@@ -189,18 +189,8 @@ export function PlaygroundMenu({
     <>
       <div ref={buttonRef} className="relative">
         <Tooltip
-          content={
-            large ? (
-              <span className="flex items-center gap-2">
-                Change playground variant
-                <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background pointer-coarse:hidden">
-                  /
-                </kbd>
-              </span>
-            ) : (
-              "Change playground variant"
-            )
-          }
+          content="Change playground variant"
+          shortcut={large ? "/" : undefined}
           side="top"
         >
           <Button

@@ -27,6 +27,7 @@ import { FakeCursor } from "@/lib/docs/fake-cursor";
 import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
 import { scrollAreaProps } from "@/lib/docs/api/scrollbars";
+import { KeyCap } from "@/lib/key-cap";
 
 // ---------------------------------------------------------------------------
 // Demo data
@@ -479,9 +480,7 @@ export default function ScrollbarsDoc() {
         <P>
           The thumb rests narrow and low-contrast, then widens and darkens on
           hover so it stays quiet until you reach for it. Press{" "}
-          <kbd className="px-1 py-0.5 rounded bg-muted text-site-caption font-mono">
-            R
-          </kbd>{" "}
+          <KeyCap className="align-middle">R</KeyCap>{" "}
           to see the radius follow the shape system. On touch-primary devices
           the whole thing steps aside for native overflow scrolling, where
           platform physics beat any custom scrollbar.

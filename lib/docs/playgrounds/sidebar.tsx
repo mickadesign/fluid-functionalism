@@ -44,7 +44,8 @@ import {
 } from "@/lib/docs/preset-ui";
 import { Switch } from "@/registry/radix/switch";
 import { Button } from "@/registry/radix/button";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
+import { KeyCaps } from "@/lib/key-cap";
 import {
   DropdownMenu,
   DropdownTrigger,
@@ -458,23 +459,6 @@ function popupConstLines(): string[] {
   ];
 }
 
-/** Tooltip content used by the horizontal header's icon buttons: the label
- *  plus a keystroke chip, height-matched to a chipless tooltip. */
-function tipHelperLines(): string[] {
-  return [
-    `/* Tooltip label + keystroke chip, height-matched to a chipless tooltip:`,
-    `   the flex row escapes the surface's text-box trim, so the label`,
-    `   re-applies it and the chip pulls its box back with -my-1. */`,
-    `const tipWithShortcut = (label: string, shortcut: string) => (`,
-    `  <span className="flex items-center gap-2">`,
-    `    <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>`,
-    `    <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px]`,
-    `      bg-background/15 px-1 font-sans text-[10px] text-background">{shortcut}</kbd>`,
-    `  </span>`,
-    `);`,
-  ];
-}
-
 /** The footer's user row, emitted for real — avatar on the leading icon
  *  axis, chevron on the trailing action axis, popup on the shared grid. */
 function userRowLines(horizontal: boolean, indent: string): string[] {
@@ -628,18 +612,18 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
     o.sectionActions > 0 ||
     o.headerStack === "horizontal" ||
     (o.footerStack === "horizontal" && o.footerActions > 0);
+  const anyTooltipGroup =
+    (o.headerStack === "horizontal" && o.headerActions > 0) ||
+    (o.footerStack === "horizontal" && o.footerActions > 1);
   if (anyMenuPopup || maxActions > 0 || anyTooltip) {
     lines.push(
-      `import { DropdownMenu, DropdownTrigger, DropdownContent, MenuItem, Tooltip } from "./components";`
+      `import { DropdownMenu, DropdownTrigger, DropdownContent, MenuItem, Tooltip${anyTooltipGroup ? ", TooltipGroup" : ""} } from "./components";`
     );
   }
+  if (o.headerStack !== "horizontal") lines.push(`import { KeyCaps } from "@/lib/key-cap";`);
   lines.push(``);
   if (anyMenuPopup) {
     lines.push(...popupConstLines());
-    lines.push(``);
-  }
-  if (o.headerStack === "horizontal") {
-    lines.push(...tipHelperLines());
     lines.push(``);
   }
 
@@ -654,7 +638,7 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
   const peek = o.collapsedBehavior !== "none";
   const iconButton = (label: string, icon: string, shortcut: string | null, indent: string) => [
     shortcut
-      ? `${indent}<Tooltip content={tipWithShortcut("${label}", "${shortcut}")} side="bottom">`
+      ? `${indent}<Tooltip content="${label}" shortcut="${shortcut}" side="bottom">`
       : `${indent}<Tooltip content="${label}" side="bottom">`,
     `${indent}  <Button variant="ghost" size="icon-compact" className="size-6 shrink-0" aria-label="${label}">`,
     `${indent}    <${icon} />`,
@@ -675,10 +659,15 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
       lines.push(...brandRowLines(o.headerPrimary, peek, `          `));
       lines.push(`        </div>`);
     }
-    lines.push(...iconButton("Search", "SearchIcon", SEARCH_SHORTCUT, `        `));
+    // One bubble for the row once there is a second button to glide to.
+    const grouped = headerActions.length > 0;
+    const buttonIndent = grouped ? `          ` : `        `;
+    if (grouped) lines.push(`        <TooltipGroup>`);
+    lines.push(...iconButton("Search", "SearchIcon", SEARCH_SHORTCUT, buttonIndent));
     for (const a of headerActions) {
-      lines.push(...iconButton(a.label, iconTag(a.icon), a.shortcut, `        `));
+      lines.push(...iconButton(a.label, iconTag(a.icon), a.shortcut, buttonIndent));
     }
+    if (grouped) lines.push(`        </TooltipGroup>`);
     lines.push(`      </div>`);
   } else {
     if (o.headerPrimary !== "none") {
@@ -692,9 +681,9 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
     lines.push(`            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />`);
     lines.push(`          <SidebarInput placeholder="Search…" aria-label="Search" className="pl-8 pr-12" />`);
     lines.push(`          {/* revealed on hover/focus — the placeholder owns the field at rest */}`);
-    lines.push(`          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-sans`);
-    lines.push(`            text-[11px] leading-3.5 text-muted-foreground opacity-0 transition-opacity duration-80`);
-    lines.push(`            group-hover/search:opacity-100 group-focus-within/search:opacity-100">${SEARCH_SHORTCUT}</kbd>`);
+    lines.push(`          <KeyCaps keys="${SEARCH_SHORTCUT}"`);
+    lines.push(`            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity`);
+    lines.push(`              duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100" />`);
     lines.push(`        </div>`);
     if (headerActions.length > 0) {
       lines.push(`        <SidebarMenu>`);
@@ -705,7 +694,7 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
         lines.push(`              {/* shortcut chip, revealed on row hover */}`);
         lines.push(`              <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80`);
         lines.push(`                group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">`);
-        lines.push(`                <kbd className="font-sans text-[11px] leading-3.5 text-muted-foreground">${a.shortcut}</kbd>`);
+        lines.push(`                <KeyCaps keys="${a.shortcut}" />`);
         lines.push(`              </span>`);
         lines.push(`            </SidebarMenuButton>`);
         lines.push(`          </SidebarMenuItem>`);
@@ -938,13 +927,17 @@ export function buildSidebarPlaygroundCode(o: PlayState): string {
         if (o.footerPrimary === "dropdown") {
           lines.push(...userRowLines(true, `        `));
         }
+        const grouped = footerActions.length > 1;
+        const ind = grouped ? `          ` : `        `;
+        if (grouped) lines.push(`        <TooltipGroup>`);
         for (const a of footerActions) {
-          lines.push(`        <Tooltip content="${a.label}" side="top">`);
-          lines.push(`          <Button variant="ghost" size="icon-compact" className="size-6 shrink-0" aria-label="${a.label}">`);
-          lines.push(`            <${iconTag(a.icon)} />`);
-          lines.push(`          </Button>`);
-          lines.push(`        </Tooltip>`);
+          lines.push(`${ind}<Tooltip content="${a.label}" side="top">`);
+          lines.push(`${ind}  <Button variant="ghost" size="icon-compact" className="size-6 shrink-0" aria-label="${a.label}">`);
+          lines.push(`${ind}    <${iconTag(a.icon)} />`);
+          lines.push(`${ind}  </Button>`);
+          lines.push(`${ind}</Tooltip>`);
         }
+        if (grouped) lines.push(`        </TooltipGroup>`);
         lines.push(`      </div>`);
       }
     } else {
@@ -1077,19 +1070,6 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
     }
   });
 
-  /** Tooltip content with the action's keystroke, on the same inverted
-   *  surface treatment the sidebar trigger's tooltip uses. */
-  const tipWithShortcut = (label: string, shortcut: string) => (
-    <span className="flex items-center gap-2">
-      {/* A flex row escapes the tooltip surface's text-box trim, so the label
-          re-applies it and the chip pulls its box back with -my-1 — together
-          they keep this the same height as a tooltip without a shortcut. */}
-      <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
-      <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded-[5px] bg-background/15 px-1 font-sans text-[10px] text-background">
-        {shortcut}
-      </kbd>
-    </span>
-  );
   const loading = state.state === "loading";
   const headerHorizontal = state.headerStack === "horizontal";
   const footerHorizontal = state.footerStack === "horizontal";
@@ -1348,8 +1328,8 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                 ) : null}
               </div>
               {headerHorizontal && (
-                <>
-                  <Tooltip content={tipWithShortcut("Search", SEARCH_SHORTCUT)} side="bottom">
+                <TooltipGroup>
+                  <Tooltip content="Search" shortcut={SEARCH_SHORTCUT} side="bottom">
                     <Button
                       variant="ghost"
                       size="icon-compact"
@@ -1360,7 +1340,7 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                     </Button>
                   </Tooltip>
                   {headerActionSet.map((a) => (
-                    <Tooltip key={a.icon} content={tipWithShortcut(a.label, a.shortcut)} side="bottom">
+                    <Tooltip key={a.icon} content={a.label} shortcut={a.shortcut} side="bottom">
                       <Button
                         variant="ghost"
                         size="icon-compact"
@@ -1371,7 +1351,7 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                       </Button>
                     </Tooltip>
                   ))}
-                </>
+                </TooltipGroup>
               )}
             </div>
             {!headerHorizontal && (
@@ -1387,9 +1367,7 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                         <SidebarMenuButton icon={icons[a.icon]}>
                           {a.label}
                           <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80 group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">
-                            <kbd className="font-sans text-[11px] leading-3.5 text-muted-foreground">
-                              {a.shortcut}
-                            </kbd>
+                            <KeyCaps keys={a.shortcut} />
                           </span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -1459,8 +1437,9 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                     }
                   />
                 )}
-                {footerHorizontal &&
-                  footerActionSet.map((a) => (
+                {footerHorizontal && (
+                  <TooltipGroup>
+                    {footerActionSet.map((a) => (
                     <Tooltip key={a.icon} content={a.label} side="top">
                       <Button
                         variant="ghost"
@@ -1471,7 +1450,9 @@ export function SidebarPlayground({ children }: PlaygroundProps) {
                         {createElement(icons[a.icon], {})}
                       </Button>
                     </Tooltip>
-                  ))}
+                    ))}
+                  </TooltipGroup>
+                )}
               </div>
               )}
             </SidebarFooter>
