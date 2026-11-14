@@ -1,5 +1,6 @@
 "use client";
 
+import { demoToday } from "@/lib/demo-today";
 import { startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
@@ -171,12 +172,17 @@ function partsOf(slug: string, name: string): ComponentRow[] | undefined {
 }
 
 // Formatted by hand, not with the viewer's time zone: an ISO day read as a
-// local Date can land on the previous day and break hydration.
+// local Date can land on the previous day and break hydration. The date
+// editor's own format (Wed Nov 4, the year only outside this one), so a
+// date reads the same whether its cell can be edited or not.
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function formatDay(iso: string) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
-  return `${MONTHS[m - 1]} ${d}, ${y}`;
+  const day = DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  const year = y === demoToday().getFullYear() ? "" : `, ${y}`;
+  return `${day} ${MONTHS[m - 1]} ${d}${year}`;
 }
 
 export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", None: "gray" } as const;
