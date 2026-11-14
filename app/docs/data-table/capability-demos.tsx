@@ -620,7 +620,7 @@ export function ViewsTable() {
       {/* Save view after the chips' + Add filter, with the first filter. */}
       <DataTableFilterChips table={table}>
         {table.getState().columnFilters.length > 0 && (
-          <Button variant="ghost" size="compact" onClick={save}>
+          <Button variant="ghost" onClick={save}>
             Save view
           </Button>
         )}

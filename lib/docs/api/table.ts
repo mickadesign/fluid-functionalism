@@ -9,6 +9,7 @@ export const tableProps: PropDef[] = [
 
 export const rowProps: PropDef[] = [
   { name: "index", type: "number", description: "Row index for fluid hover. Omit for header rows." },
+  { name: "keepRule", type: "boolean", default: "false", description: "On a header row: keeps its rule when the first body row is selected. For a sticky header." },
   { name: "children", type: "ReactNode", description: "TableCell or TableHead children." },
 ];
 

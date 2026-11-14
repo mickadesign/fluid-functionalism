@@ -73,9 +73,8 @@ const table = useDataTable({ data: data ?? [], columns });
 function DataTablePlaygroundSection() {
   const ReloadIcon = useIcon("rotate-ccw");
   return (
-    // A hundred rows a page here: each sample table has that many to show.
-    <DataTablePlayground initial={{ pageSize: "100" }}>
-      {({ preview, controls, code, tabs, onExpandedChange, onReplay }) => (
+    <DataTablePlayground>
+      {({ preview, controls, code, onExpandedChange, onReplay }) => (
         <PlaygroundLayout
           expandable
           onExpandedChange={onExpandedChange}
@@ -84,7 +83,7 @@ function DataTablePlaygroundSection() {
           preview={
             <ComponentPreview
               code={code}
-              tabs={tabs}
+              hideTabs
               padding="none"
               align="top"
               playbackButton={

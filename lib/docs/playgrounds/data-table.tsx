@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
@@ -50,6 +50,7 @@ import type { PlaygroundProps } from "./types";
 import { ViewTabs } from "./view-tabs";
 import {
   DATA_TABLE_DEFAULT_CODE,
+  DATA_TABLE_PAGE_SIZES,
   DEFAULT_DATA_TABLE_PRESET,
   DATA_TABLE_PROPS_OPTIONS,
   DATA_TABLE_TAG_OPTIONS,
@@ -65,12 +66,7 @@ import {
 import { GetCodeDialog, usePresetGlobals, usePresetUrlSync } from "@/lib/docs/preset-ui";
 import { PRESET_GLOBAL_KEYS } from "@/lib/preset/sidebar-options";
 import { omit } from "@/lib/omit";
-import {
-  SAMPLE_DATASETS,
-  formatMoney,
-  type SampleDataset,
-  type SampleRow,
-} from "./data-table-datasets";
+import type { BadgeColor } from "@/registry/default/badge";
 
 // ── DataTable playground ─────────────────────────────────
 // The library describing itself: one row per component, with its props
@@ -228,35 +224,46 @@ type Lines = DataTableLines;
 
 type Icons = ReturnType<typeof useIcons>;
 
-/** The library describing itself, as one of the playground's tables. */
-const COMPONENTS: SampleDataset = {
-  key: "components",
-  label: "Components",
-  title: "Components",
-  noun: "components",
-  searchPlaceholder: "Search components…",
-  hint: "Try a name like Dialog or Tabs.",
-  settings: {},
-  sort: { id: "added", desc: true },
-  hidden: { fluidHover: false },
-  columns: [
-    { id: "name", kind: "title", label: "Component", icon: "square-library" },
-    { id: "primitives", kind: "badge", label: "Primitives", icon: "folder", options: PRIMITIVE_COLOR },
-    { id: "fluidHover", kind: "bool", label: "Fluid hover", icon: "star" },
-    { id: "props", kind: "number", label: "Props", icon: "sliders-horizontal", options: DATA_TABLE_PROPS_OPTIONS },
-    { id: "added", kind: "date", label: "Added", icon: "calendar" },
-    { id: "tags", kind: "tags", label: "Tags", icon: "tag", options: DATA_TABLE_TAG_OPTIONS },
-    { id: "website", kind: "link", label: "Website", icon: "link" },
-    { id: "summary", kind: "text", label: "Summary", icon: "file", grow: true },
-  ],
-  rows: buildRows,
-};
+/** A row as the table reads it: its id (`slug`), its main text (`name`),
+ *  and whatever its columns hold. */
+type SampleRow = {
+  slug: string;
+  name: string;
+  subRows?: SampleRow[];
+} & Record<string, unknown>;
 
-/** The playground's tables: the components, then the made-up ones. */
-const DATASETS: readonly SampleDataset[] = [COMPONENTS, ...SAMPLE_DATASETS];
+/** One column of the table, by what it holds. */
+type SampleColumn =
+  /** The row's main text: sorts, never hides, edits as text. */
+  | { id: "name"; kind: "title"; label: string; icon: string }
+  /** One of a few, as a badge: sorts, filters, edits from a menu. */
+  | { id: string; kind: "badge"; label: string; icon: string; options: Record<string, BadgeColor> }
+  | { id: string; kind: "bool"; label: string; icon: string }
+  /** A number: sorts, edits from a list or by typing. */
+  | { id: string; kind: "number"; label: string; icon: string; options: readonly number[] }
+  | { id: string; kind: "date"; label: string; icon: string }
+  | { id: string; kind: "tags"; label: string; icon: string; options: readonly string[] }
+  /** A docs path shown as a link; beside the text, the cell edits. */
+  | { id: string; kind: "link"; label: string; icon: string }
+  /** Plain text. `grow` takes the width that is left (the last column). */
+  | { id: string; kind: "text"; label: string; icon: string; grow?: boolean };
+
+/** The playground's table: the library describing itself. */
+const COLUMNS: readonly SampleColumn[] = [
+  { id: "name", kind: "title", label: "Component", icon: "square-library" },
+  { id: "primitives", kind: "badge", label: "Primitives", icon: "folder", options: PRIMITIVE_COLOR },
+  { id: "fluidHover", kind: "bool", label: "Fluid hover", icon: "star" },
+  { id: "props", kind: "number", label: "Props", icon: "sliders-horizontal", options: DATA_TABLE_PROPS_OPTIONS },
+  { id: "added", kind: "date", label: "Added", icon: "calendar" },
+  { id: "tags", kind: "tags", label: "Tags", icon: "tag", options: DATA_TABLE_TAG_OPTIONS },
+  { id: "website", kind: "link", label: "Website", icon: "link" },
+  { id: "summary", kind: "text", label: "Summary", icon: "file", grow: true },
+];
+/** How it starts: newest first, the Fluid hover column in the Columns menu. */
+const START_SORT = { id: "added", desc: true };
+const START_HIDDEN: Record<string, boolean> = { fluidHover: false };
 
 function buildColumns(o: {
-  dataset: SampleDataset;
   /** Drag handles, left of the boxes. */
   rowReorder: boolean;
   selection: boolean;
@@ -272,7 +279,7 @@ function buildColumns(o: {
   // Text wrap on wraps every text column; off, they keep one line.
   const wrap = o.lines === "wrap";
   const lines = wrap ? "wrap" : 1;
-  const data = o.dataset.columns.map((c): ColumnDef<SampleRow> => {
+  const data = COLUMNS.map((c): ColumnDef<SampleRow> => {
     const sortable: ColumnDef<SampleRow>["header"] = ({ column }) => (
       <DataTableColumnHeader column={column} title={c.label} />
     );
@@ -321,11 +328,6 @@ function buildColumns(o: {
         return {
           accessorKey: c.id,
           header: sortable,
-          // Money reads with its sign and currency; its editor takes the
-          // plain number.
-          ...(c.money
-            ? { cell: ({ row }) => formatMoney(Number(row.original[c.id] ?? 0), c.money === "signed") }
-            : {}),
           meta: {
             label: c.label,
             className: "tabular-nums",
@@ -376,7 +378,14 @@ function buildColumns(o: {
                 // A new tab: the table keeps its state (selection, filters, edits).
                 target="_blank"
                 rel="noreferrer"
-                className="underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground"
+                className={cn(
+                  "underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground",
+                  // The cell cuts what runs past it, a focus ring included:
+                  // the link cuts its own text short (so its box ends where
+                  // the cell does) and draws its ring inside that box.
+                  "focus-visible:outline-offset-[-1px]",
+                  !wrap && "inline-block max-w-full truncate align-bottom"
+                )}
               >
                 {text}
               </a>
@@ -395,56 +404,44 @@ function buildColumns(o: {
       case "text":
         return {
           accessorKey: c.id,
-          header: c.sortable ? sortable : c.label,
+          header: c.label,
           meta: {
             label: c.label,
             // The last of the data columns takes whatever width is left,
             // and at least 256px of it: past that the table scrolls sideways.
             className: c.grow ? "w-full min-w-64" : undefined,
-            lines: c.short ? 1 : lines,
+            lines,
             icon: icon(c.icon),
             editor: o.editable ? "text" : undefined,
           },
         };
     }
   });
-  const components = o.dataset.key === "components";
   return [
     ...(o.rowReorder ? [rowHandleColumn<SampleRow>()] : []),
     ...(o.selection ? [selectColumn<SampleRow>()] : []),
     ...data,
     ...(o.rowActions
       ? [
-          rowActionsColumn<SampleRow>((row) =>
-            components ? (
-              <>
-                <MenuItem
-                  index={0}
-                  label="Open docs"
-                  onSelect={() => window.location.assign(`/docs/${row.original.slug}`)}
-                />
-                <MenuItem
-                  index={1}
-                  label="Copy install command"
-                  onSelect={() =>
-                    navigator.clipboard?.writeText(
-                      `npx shadcn@latest add ${INSTALL_URL}/${row.original.slug}.json`
-                    )
-                  }
-                />
-                <MenuItem index={2} label="Delete" destructive onSelect={() => o.onDelete(row.original)} />
-              </>
-            ) : (
-              <>
-                <MenuItem
-                  index={0}
-                  label="Copy name"
-                  onSelect={() => navigator.clipboard?.writeText(row.original.name)}
-                />
-                <MenuItem index={1} label="Delete" destructive onSelect={() => o.onDelete(row.original)} />
-              </>
-            )
-          ),
+          rowActionsColumn<SampleRow>((row) => (
+            <>
+              <MenuItem
+                index={0}
+                label="Open docs"
+                onSelect={() => window.location.assign(`/docs/${row.original.slug}`)}
+              />
+              <MenuItem
+                index={1}
+                label="Copy install command"
+                onSelect={() =>
+                  navigator.clipboard?.writeText(
+                    `npx shadcn@latest add ${INSTALL_URL}/${row.original.slug}.json`
+                  )
+                }
+              />
+              <MenuItem index={2} label="Delete" destructive onSelect={() => o.onDelete(row.original)} />
+            </>
+          )),
         ]
       : []),
   ];
@@ -701,7 +698,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
         ? [
             `  {/* Save view after the chips' + Add filter, with the first filter. */}`,
             `  <DataTableFilterChips table={table}>`,
-            `    {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`,
+            `    {changed && <Button variant="ghost" onClick={saveView}>Save view</Button>}`,
             `  </DataTableFilterChips>`,
           ]
         : [`  <DataTableFilterChips table={table} />`]
@@ -729,7 +726,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
       : [
           `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
         ]),
-    ...(o.pagination ? [`  <DataTablePagination table={table} />`] : []),
+    ...(o.pagination ? [`  <DataTablePagination table={table} pageSizes={[${DATA_TABLE_PAGE_SIZES.join(", ")}]} />`] : []),
     ...(o.selection
       ? [
           `  <DataTableSelectionBar`,
@@ -745,13 +742,11 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   ].join("\n");
 }
 
-/** The selection bar's actions, for the selected rows. Only components
- *  have something to install. */
+/** The selection bar's actions, for the selected rows. */
 function selectionActions(
   rows: Row<SampleRow>[],
   icons: Icons,
-  onDelete: (rows: Row<SampleRow>[]) => void,
-  install: boolean
+  onDelete: (rows: Row<SampleRow>[]) => void
 ) {
   return [
     {
@@ -761,19 +756,15 @@ function selectionActions(
       destructive: true,
       onSelect: () => onDelete(rows),
     },
-    ...(install
-      ? [
-          {
-            value: "install",
-            label: "Copy install command",
-            icon: icons.copy,
-            onSelect: () =>
-              navigator.clipboard?.writeText(
-                `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
-              ),
-          },
-        ]
-      : []),
+    {
+      value: "install",
+      label: "Copy install command",
+      icon: icons.copy,
+      onSelect: () =>
+        navigator.clipboard?.writeText(
+          `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
+        ),
+    },
     {
       value: "names",
       label: "Copy names",
@@ -807,24 +798,23 @@ function stableJson(value: unknown): string {
 const visibleOnly = (visibility: Record<string, boolean> | undefined) =>
   Object.keys(visibility ?? {}).filter((id) => visibility?.[id] === false).sort();
 
-/** How long a table's tab shows its skeleton before the rows land. */
-const TAB_LOAD_MS = 450;
 
-/** The page size with pagination off: more rows than any of the tables
- *  has. Not the row count, which this render's handlers read stale (the
- *  rail is memoized) and which changes with the table shown. */
+/** The rows-per-page choices, as the footer's select takes them. */
+const PAGE_SIZES: number[] = [...DATA_TABLE_PAGE_SIZES];
+
+/** The page size with pagination off: more rows than the table has. Not
+ *  the row count, which this render's handlers read stale (the rail is
+ *  memoized). */
 const EVERY_ROW = 10_000;
 
-/** A table's "All" view: how it starts. */
-function allViewOf(dataset: SampleDataset): SavedView["state"] {
-  return {
-    columnFilters: [],
-    globalFilter: "",
-    sorting: [dataset.sort],
-    columnOrder: [],
-    columnVisibility: dataset.hidden,
-  };
-}
+/** The "All" view: how the table starts. */
+const START_VIEW: SavedView["state"] = {
+  columnFilters: [],
+  globalFilter: "",
+  sorting: [START_SORT],
+  columnOrder: [],
+  columnVisibility: START_HIDDEN,
+};
 
 // ── Playground ───────────────────────────────────────────
 
@@ -901,10 +891,25 @@ export function DataTablePlayground({
   const stateRef = useRef(state);
   // Loading: held by the switch, or played as a 1.5s fetch by the preview's
   // reload button, so the skeleton-to-data hand-over can be watched.
-  const [loading, setLoading] = useState(false);
+  // The page itself opens on the skeleton: the server can't know the
+  // fonts or the box the columns will be measured in, so rows it sent
+  // would shift once measured. They land when the fonts have, in a
+  // transition that never blocks a frame.
+  const [loading, setLoading] = useState(true);
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Loading held on by its switch, as opposed to a load that will end.
   const loadingHeld = useRef(false);
+  useEffect(() => {
+    let live = true;
+    const land = () => {
+      if (live && !loadingHeld.current && !reloadTimer.current) startTransition(() => setLoading(false));
+    };
+    if (document.fonts) document.fonts.ready.then(land, land);
+    else land();
+    return () => {
+      live = false;
+    };
+  }, []);
   const reload = () => {
     if (reloadTimer.current) clearTimeout(reloadTimer.current);
     loadingHeld.current = false;
@@ -916,11 +921,6 @@ export function DataTablePlayground({
   const [expanded, setExpanded] = useState(false);
   // Edits and deletes are undoable steps (⌘Z / ⇧⌘Z in the table). Nothing
   // is saved: a refresh brings every row back.
-  // Which table the playground shows: the components, or one of the
-  // made-up ones (the preview's tabs).
-  const [datasetIndex, setDatasetIndex] = useState(0);
-  const dataset = DATASETS[datasetIndex];
-  const datasetRef = useRef(dataset);
   const history = useUndoableRows<SampleRow>(() => buildRows(), { getId: (r) => r.slug });
   const data = history.rows;
   const { apply: applyStep, undoTo, stepCount } = history;
@@ -960,7 +960,6 @@ export function DataTablePlayground({
   const columns = useMemo(
     () =>
       buildColumns({
-        dataset,
         rowReorder: state.rowReorder,
         selection: state.selection,
         rowActions: state.rowActions,
@@ -969,7 +968,7 @@ export function DataTablePlayground({
         editable: state.editable,
         onDelete: (row) => deleteRows([row.slug], `Deleted ${row.name}`),
       }),
-    [dataset, state.rowReorder, state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
+    [state.rowReorder, state.selection, state.rowActions, state.lines, state.headerIcons, state.editable, icons, deleteRows]
   );
 
   const table = useDataTable({
@@ -1018,7 +1017,7 @@ export function DataTablePlayground({
     // Rows moved by hand start unsorted (under a sort, a move first asks
     // to remove it);
     // off, the starting sort comes back.
-    if (next.rowReorder !== prev.rowReorder) table.setSorting(next.rowReorder ? [] : [datasetRef.current.sort]);
+    if (next.rowReorder !== prev.rowReorder) table.setSorting(next.rowReorder ? [] : [START_SORT]);
     if (!next.filters) table.resetColumnFilters();
     // Each side sticks on its own: the left the boxes and the first
     // column, the right the row menus (useDataTable's own pins).
@@ -1030,14 +1029,26 @@ export function DataTablePlayground({
     // The Text wrap switch sets the columns' own lines; a wrap chosen in the
     // Columns menu would otherwise sit on top of it.
     if (next.lines !== prev.lines)
-      for (const c of datasetRef.current.columns)
-        if (c.kind === "title" || c.kind === "link" || c.kind === "text") table.setColumnLines(c.id, undefined);
+      for (const c of COLUMNS)
+        if (c.kind === "title" || c.kind === "link" || c.kind === "text") table.setColumnLines(c.id, undefined, animate);
     table.setPageSize(next.pagination ? Number(next.pageSize) : EVERY_ROW);
     table.setPageIndex(0);
     setState(next);
   };
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
     apply({ ...stateRef.current, [key]: value });
+  // The footer's own Rows per page is the same setting as the rail's: a
+  // size picked there shows in the rail (and in the code and the preset),
+  // and the next rail change doesn't put the old size back.
+  const tablePageSize = table.getState().pagination.pageSize;
+  useEffect(() => {
+    const now = stateRef.current;
+    const size = String(tablePageSize) as PlayState["pageSize"];
+    if (!now.pagination || size === now.pageSize || !PAGE_SIZES.includes(tablePageSize)) return;
+    const next = { ...now, pageSize: size };
+    stateRef.current = next;
+    setState(next);
+  }, [tablePageSize]);
 
   // ── Get code (presets) ─────────────────────────────────
   const globals = usePresetGlobals();
@@ -1082,8 +1093,7 @@ export function DataTablePlayground({
   const [views, setViews] = useState<SavedView[]>([]);
   const [viewIndex, setViewIndex] = useState(0);
   // "All" is unsorted while rows move by hand.
-  const startView = allViewOf(dataset);
-  const allView = state.rowReorder ? { ...startView, sorting: [] } : startView;
+  const allView = state.rowReorder ? { ...START_VIEW, sorting: [] } : START_VIEW;
   const openView = (i: number) => {
     const view = i === 0 ? allView : views[i - 1]?.state;
     if (!view) return;
@@ -1113,45 +1123,6 @@ export function DataTablePlayground({
     setViewIndex(views.length + 1);
     // Ask for its name in place, on the new tab.
     setNameNext(views.length + 1);
-  };
-
-  // Another table: its own rows (nothing of the last ones to undo back
-  // to), and everything that named the old columns let go, from the
-  // filters and the sort to the saved views.
-  const openDataset = (index: number) => {
-    const next = DATASETS[index];
-    if (!next || next === datasetRef.current) return;
-    // A wrap set by hand in the Columns menu belongs to the table it was
-    // set on: the next one may have a column of the same id.
-    for (const c of datasetRef.current.columns) table.setColumnLines(c.id, undefined);
-    datasetRef.current = next;
-    // The table loads into its new rows: skeletons at once, in the new
-    // columns, then the rows once they are ready, as a fetch would land.
-    // Held a moment even when the rows are ready sooner, so the skeleton
-    // is a state you see and not a flash.
-    // The Loading switch, held on, stays on: only a load this starts ends.
-    if (!loadingHeld.current) {
-      if (reloadTimer.current) clearTimeout(reloadTimer.current);
-      setLoading(true);
-      reloadTimer.current = setTimeout(() => setLoading(false), TAB_LOAD_MS);
-    }
-    const rows = next.rows();
-    history.reset(rows);
-    setDatasetIndex(index);
-    setViews([]);
-    setViewIndex(0);
-    // Each table opens set up its own way (see its `settings`).
-    apply({ ...base, ...next.settings }, { animate: false });
-    const latest = stateRef.current;
-    table.setState((old) => ({
-      ...old,
-      ...allViewOf(next),
-      sorting: latest.rowReorder ? [] : [next.sort],
-      rowSelection: {},
-      expanded: {},
-      columnSizing: {},
-      pagination: { pageIndex: 0, pageSize: latest.pagination ? old.pagination.pageSize : EVERY_ROW },
-    }));
   };
 
   // Saved views come with filters: they save what the filters set.
@@ -1217,7 +1188,7 @@ export function DataTablePlayground({
           title (a site class, so the generated code leaves it out). */}
       {state.title && (
         <DataTableTitle table={table} className="font-heading-display">
-          {dataset.title}
+          Components
         </DataTableTitle>
       )}
       {state.title ? (
@@ -1251,10 +1222,10 @@ export function DataTablePlayground({
           <DataTableSearch
             // Remounts the field when the mode (or the table) flips, so it
             // starts empty.
-            key={`${dataset.key}:${state.filter}`}
+            key={state.filter}
             table={table}
             column={state.filter === "column" ? "name" : undefined}
-            placeholder={state.filter === "column" ? dataset.searchPlaceholder : "Search all columns…"}
+            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
           />
         )}
       </TooltipGroup>
@@ -1275,7 +1246,7 @@ export function DataTablePlayground({
         // stays away, and a moved column alone doesn't bring it.
         <DataTableFilterChips table={table}>
           {showViews && viewChanged && (
-            <Button variant="ghost" size="compact" onClick={saveView}>
+            <Button variant="ghost" onClick={saveView}>
               Save view
             </Button>
           )}
@@ -1298,7 +1269,7 @@ export function DataTablePlayground({
         empty={
           data.length === 0
             ? {
-                title: `No ${dataset.noun} left`,
+                title: "No components left",
                 description: "Undo brings back what you deleted.",
                 action: history.canUndo ? (
                   <Button variant="ghost" size="compact" onClick={history.undo}>
@@ -1307,8 +1278,8 @@ export function DataTablePlayground({
                 ) : undefined,
               }
             : filterCount > 0
-              ? { title: `No ${dataset.noun} match` }
-              : { title: `No ${dataset.noun} match`, description: dataset.hint }
+              ? { title: "No components match" }
+              : { title: "No components match", description: "Try a name like Dialog or Tabs." }
         }
         onCellEdit={
           state.editable
@@ -1332,7 +1303,7 @@ export function DataTablePlayground({
         onUndo={history.undo}
         onRedo={history.redo}
       />
-      {state.pagination && <DataTablePagination table={table} />}
+      {state.pagination && <DataTablePagination table={table} pageSizes={PAGE_SIZES} />}
       {state.selection && (
         <DataTableSelectionBar
           table={table}
@@ -1346,8 +1317,7 @@ export function DataTablePlayground({
                   picked.length === 1 ? `Deleted ${picked[0].original.name}` : `Deleted ${picked.length} rows`
                 );
                 table.resetRowSelection();
-              },
-              dataset.key === "components"
+              }
             )
           }
         />
@@ -1490,12 +1460,7 @@ export function DataTablePlayground({
           <PlaySelect
             value={state.pageSize}
             onChange={(v) => set("pageSize", v as PlayState["pageSize"])}
-            options={[
-              { value: "5", label: "5" },
-              { value: "10", label: "10" },
-              { value: "20", label: "20" },
-              { value: "100", label: "100" },
-            ]}
+            options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
           />
         </PlayField>
         <Switch
@@ -1529,6 +1494,5 @@ export function DataTablePlayground({
     demoMaxWidth: 640,
     controls,
     code: buildDataTablePlaygroundCode(state),
-    tabs: { labels: DATASETS.map((d) => d.label), selected: datasetIndex, onSelect: openDataset },
   });
 }

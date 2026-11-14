@@ -53,6 +53,15 @@ interface ViewTabsProps {
  *  a 2px accent bar marks where it lands, and it moves on release, the
  *  other tabs sliding to their new places. The click the drag ends with is
  *  swallowed, so it doesn't rename. Alt + ← / → moves a focused tab. */
+/** A view's name takes 192px of its tab at most, then cuts short with an
+ *  ellipsis: a long name (or one being typed) no longer pushes the other
+ *  tabs and the tools off the row. Being named, the field keeps to the
+ *  same width and scrolls its text. Clipped sideways only: the labels'
+ *  text box is trimmed to the cap height, and a full clip would cut their
+ *  descenders. */
+const VIEW_NAME_CAP =
+  "[&_span>span]:max-w-48 [&_span>span]:overflow-x-clip [&_span>span]:text-ellipsis [&_span>span]:whitespace-nowrap";
+
 export function ViewTabs({
   first,
   views,
@@ -247,6 +256,7 @@ export function ViewTabs({
               data-view-id={id}
               // The dragged tab's slot shows empty; its copy rides the pointer.
               className={cn(
+                VIEW_NAME_CAP,
                 i > 0 && "touch-none select-none",
                 tabDrag?.from === i && "invisible",
                 editing && "pr-8 [&_span]:!text-transparent"

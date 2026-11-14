@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useInsertionEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -187,6 +188,20 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       [selectedKey]
     );
 
+    // A selection change switches its rows' rules in the same frame as
+    // their fill, which doesn't fade either. Left to the 80ms fade (there
+    // for the gliding highlight), selecting every row started a transition
+    // per cell border: 1,200 of them for 34 rows, each with its events.
+    // An insertion effect, so the mark is on before any layout effect
+    // reads layout and commits the new rules without it.
+    useInsertionEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      container.setAttribute("data-snap-rules", "");
+      const frame = requestAnimationFrame(() => container.removeAttribute("data-snap-rules"));
+      return () => cancelAnimationFrame(frame);
+    }, [selectedKey]);
+
     // A divider hides once the highlight's fill covers it, read from where
     // the fill is this frame rather than where it's headed: hiding on the
     // hover change itself would drop the rule before the fill gets there.
@@ -297,7 +312,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             positioned wrapper behind the table and rows ride above it (z-10). */}
         <div
           ref={containerRef}
-          className="relative"
+          className="group/table relative"
           onMouseEnter={(e) => {
             headHover.handlers.onMouseEnter();
             if (fromPointer(e)) handlers.onMouseEnter();
@@ -421,10 +436,15 @@ TableBody.displayName = "TableBody";
 
 interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
   index?: number;
+  /** A header row keeps its rule when the first body row is selected. For
+   *  a header that stays put over scrolling rows: its rule is the bar's
+   *  own edge, and each sticky cell repainting it on every selection
+   *  change showed, cell by cell. */
+  keepRule?: boolean;
 }
 
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ index, className, style, ...props }, ref) => {
+  ({ index, keepRule = false, className, style, ...props }, ref) => {
     const internalRef = useRef<HTMLTableRowElement>(null);
     const ctx = useContext(TableContext);
 
@@ -442,7 +462,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
     const nextIndex = isBodyRow ? index + 1 : 0;
     const bySelection =
       !!selected && ((isBodyRow && selected.has(index)) || selected.has(nextIndex));
-    const hideBorder = bySelection;
+    const hideBorder = bySelection && !(keepRule && !isBodyRow);
 
     return (
       <tr
@@ -456,6 +476,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         // `is-active` lets every cell read the lit state through the row.
         className={cn(
           "group/row relative z-10 *:border-b *:transition-[border-color] *:duration-80",
+          "group-data-snap-rules/table:*:duration-0",
           hideBorder
             ? "*:border-transparent"
             : "*:border-accent/40 data-[under-highlight]:*:border-transparent data-[under-highlight]:*:duration-0",

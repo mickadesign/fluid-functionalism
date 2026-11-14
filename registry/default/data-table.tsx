@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useCallback,
+  useInsertionEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -423,8 +424,8 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
           return true;
         },
         canOpenFilter: () => chipsMounted > 0,
-        setColumnLines: (id: string, lines: ColumnLines | undefined) => {
-          captureRef.current();
+        setColumnLines: (id: string, lines: ColumnLines | undefined, animate = true) => {
+          if (animate) captureRef.current();
           setLines((old) => {
             const next = { ...old };
             if (lines === undefined) delete next[id];
@@ -459,7 +460,9 @@ interface DataTableExtras {
   /** @internal DataTable installs getRootElement here. */
   _registerRoot: (get: () => HTMLElement | null) => void;
   /** Overrides a column's `meta.lines`; `undefined` hands it back. */
-  setColumnLines: (id: string, lines: ColumnLines | undefined) => void;
+  /** `animate: false` sets it without the rows gliding to their new
+   *  heights: for a change that comes with other rows altogether. */
+  setColumnLines: (id: string, lines: ColumnLines | undefined, animate?: boolean) => void;
   /** Adds a filter on the column (or opens the one it has), its chip's
    *  editor open. False when the column can't filter. */
   openFilter: (id: string) => boolean;
@@ -786,6 +789,35 @@ function DataTable<TData>({
         return row ? [row] : [];
       })
     : liveRows;
+  // A long page mounts in steps: the rows already on screen stay, and of
+  // the ones that are new (another page, other data, a first load) a
+  // screenful goes in at once and the rest right after, a batch at a time,
+  // each in a transition. A hundred rows mounted in one commit held the
+  // page still for most of a second, nearly all of it layout. A sort, a
+  // search or an edit brings no new rows, so nothing is ever held back
+  // from those.
+  const [mounted, setMounted] = useState<ReadonlySet<string>>(() => new Set());
+  let fresh = 0;
+  const drawn =
+    rows.length <= ROW_BATCH ? rows : rows.filter((row) => mounted.has(row.id) || fresh++ < ROW_BATCH);
+  const drawnKey = drawn.length === rows.length ? "" : drawn.map((row) => row.id).join("\n");
+  useEffect(() => {
+    // What is drawn now counts as mounted for the next step; once every
+    // row is in, there is nothing left to step through.
+    const ids = rows.length <= ROW_BATCH || loading ? null : drawn.map((row) => row.id);
+    startTransition(() =>
+      setMounted((old) =>
+        ids === null
+          ? old.size === 0
+            ? old
+            : new Set()
+          : ids.length === old.size && ids.every((id) => old.has(id))
+            ? old
+            : new Set(ids)
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the drawn rows, by id
+  }, [drawnKey, rows.length, loading]);
   const visible = table.getVisibleLeafColumns();
   const columnCount = visible.length;
   const filterCount = table.getState().columnFilters.length;
@@ -829,7 +861,9 @@ function DataTable<TData>({
   }
   useEffect(() => {
     if (!swapping) return;
-    const id = setTimeout(() => setSwapping(false), SWAP_MS);
+    // Not urgent: taking the faded skeletons out re-renders every row, and
+    // as one blocking update it held a long page still once more.
+    const id = setTimeout(() => startTransition(() => setSwapping(false)), SWAP_MS);
     return () => clearTimeout(id);
   }, [swapping]);
   const skeletonRows = loadingRows ?? table.getState().pagination.pageSize;
@@ -886,6 +920,25 @@ function DataTable<TData>({
     wrapRef.current = node;
     setWrapEl(node);
   }, []);
+  // The rows still to mount (see `drawn`) hold their place: a spacer under
+  // the ones drawn, as tall as the rest will be at the height the drawn
+  // ones average. Without it the table grew a batch at a time, and the
+  // page under it, its scrollbar and the pagination jumped with each one.
+  const pendingRows = rows.length - drawn.length;
+  const [rowHeight, setRowHeight] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- settles: it only sets a height that differs
+  useLayoutEffect(() => {
+    if (pendingRows <= 0) return;
+    const trs = wrapRef.current?.querySelectorAll<HTMLElement>("tbody tr[data-row-id]");
+    if (!trs?.length) return;
+    const first = trs[0];
+    const last = trs[trs.length - 1];
+    const average = (last.offsetTop + last.offsetHeight - first.offsetTop) / trs.length;
+    setRowHeight((old) => (Math.abs(old - average) < 0.5 ? old : average));
+    // Every commit while rows are pending, and only then: the first one
+    // reads rows in columns not yet sized (wrapped, tall), the next the
+    // real ones.
+  });
   const snapshot = useRef<{
     lefts: Map<string, number>;
     tops: Map<string, number>;
@@ -1318,12 +1371,18 @@ function DataTable<TData>({
   // every state change, and as a dependency it measured the columns again
   // on every sort, selection and keystroke.
   const tableRef = useRef(table);
+  const captureLayoutRef = useRef(captureLayout);
   useLayoutEffect(() => {
     tableRef.current = table;
+    captureLayoutRef.current = captureLayout;
   });
   useLayoutEffect(() => {
     const table = tableRef.current;
-    if (resizeColumns && seeded) return;
+    // Seeded widths are the reader's from then on, unless they were read
+    // from a first load's skeletons: the rows that land size the columns
+    // for good (a name column stayed as narrow as its skeleton bar).
+    const guessed = seeded && !loading && !naturalFromRows.current;
+    if (resizeColumns && seeded && !guessed) return;
     const tableNode = wrapRef.current?.querySelector<HTMLTableElement>("table");
     const ths = headRowRef.current?.querySelectorAll<HTMLElement>("th[data-column-id]");
     // Nothing measured (no visible columns yet): setting empty widths
@@ -1338,6 +1397,11 @@ function DataTable<TData>({
     // and nothing moves when it does. Only a first load, with no rows read
     // yet, sizes from the headers and the skeleton bars.
     const known = natural.current;
+    // A first load's rows have just landed in columns sized from the
+    // skeletons. The headers can't have known better, so they glide to
+    // the widths the rows give them (see captureLayout) instead of
+    // jumping there.
+    if (!loading && known && !naturalFromRows.current) captureLayoutRef.current();
     const keep =
       loading &&
       naturalFromRows.current &&
@@ -1406,17 +1470,23 @@ function DataTable<TData>({
     }
     if (resizeColumns) {
       const widths = fit();
-      if (widths) table.setColumnSizing((old) => ({ ...widths, ...old }));
+      if (widths) table.setColumnSizing((old) => (guessed ? widths : { ...widths, ...old }));
       return;
     }
     // Without resizing, the widths follow the box. The observer reports
     // the box once on observing too, before the next paint.
     const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
     if (!viewport) return;
-    const observer = new ResizeObserver(() => {
+    const apply = () => {
       const widths = fit();
       if (widths) setFitted((old) => (JSON.stringify(old) === JSON.stringify(widths) ? old : widths));
-    });
+    };
+    // Now, in this same commit: left to the observer's first report, the
+    // new widths came a paint late, and rows that had just landed showed
+    // for a frame in their skeletons' columns (wrapped text, three times
+    // its height).
+    apply();
+    const observer = new ResizeObserver(apply);
     observer.observe(viewport);
     return () => observer.disconnect();
     // `loading` too: a first load's skeleton rows give way to real ones of
@@ -1526,7 +1596,11 @@ function DataTable<TData>({
   const [mirrorRight, setMirrorRight] = useState<HTMLDivElement | null>(null);
   const selectionMirrors = useMemo(() => [mirrorLeft, mirrorRight], [mirrorLeft, mirrorRight]);
   const fadeBase = useRef(0);
+  // The highlight's last frame, to place the bands again when the table
+  // moves under them without the highlight moving in it (a scroll).
+  const lastHoverBox = useRef<{ y: number; height: number; opacity: number } | null>(null);
   const placeHoverFade = useCallback((box: { y: number; height: number; opacity: number }) => {
+    lastHoverBox.current = box;
     for (const band of [hoverFadeRef.current, pinHoverRef.current]) {
       if (!band) continue;
       band.style.transform = `translateY(${fadeBase.current + box.y}px)`;
@@ -1543,7 +1617,20 @@ function DataTable<TData>({
       // kinds of band (it moves when the table scrolls up and down).
       const container = wrap.querySelector("table")?.parentElement;
       const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
-      if (container) fadeBase.current = container.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+      if (container) {
+        const base = container.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+        // The bands over the frozen columns sit in the box, not in the
+        // table: scrolled up or down with the pointer still, the row's
+        // fill went with the rows and its frozen part stayed behind, on
+        // whichever row had scrolled into its place.
+        if (base !== fadeBase.current) {
+          fadeBase.current = base;
+          const box = lastHoverBox.current;
+          if (box)
+            for (const band of [hoverFadeRef.current, pinHoverRef.current])
+              if (band) band.style.transform = `translateY(${base + box.y}px)`;
+        }
+      }
       const frame = host.parentElement;
       if (frame && viewport)
         frame.style.setProperty("--ff-fade", getComputedStyle(viewport).getPropertyValue("--scroll-fade-size").trim() || "48px");
@@ -1914,10 +2001,23 @@ function DataTable<TData>({
         !!active?.closest("tbody tr[data-row-id]") &&
         wrap.contains(active) &&
         !active.closest("input, textarea, select, [contenteditable=true]");
-      const tr = wrap.querySelector<HTMLElement>("tbody tr[data-row-id]:hover");
       const fresh = pointerFresh;
       pointerFresh = false;
-      if (!tr || !(resting || (inRows && fresh && !tr.contains(active)))) return;
+      // ⌘A over the table is the table's wherever focus was left, short of
+      // a field being typed in or an open popup: a button pressed last
+      // (Rows per page, a toolbar tool) keeps focus, and the key then
+      // selected every word on the page instead of the rows. Over the
+      // header too, where it goes through the row holding the tab stop.
+      const selectAll =
+        mod &&
+        wrap.matches(":hover") &&
+        // Not the replay below, which starts from a row.
+        !active?.closest("tbody tr[data-row-id]") &&
+        !active?.closest("input, textarea, select, [contenteditable=true], [role=dialog], [role=menu], [role=listbox]");
+      const tr =
+        wrap.querySelector<HTMLElement>("tbody tr[data-row-id]:hover") ??
+        (selectAll ? wrap.querySelector<HTMLElement>("tbody tr[data-row-id][tabindex='0']") : null);
+      if (!tr || !(resting || selectAll || (inRows && fresh && !tr.contains(active)))) return;
       e.preventDefault();
       e.stopPropagation();
       tr.focus({ preventScroll: true });
@@ -2350,7 +2450,7 @@ function DataTable<TData>({
         {table.getHeaderGroups().map((group) => (
           // Sticky header rows ride above the body rows (both z-10 by
           // default, and later rows would paint over earlier ones).
-          <TableRow key={group.id} ref={headRowRef} className={fill ? "z-20" : undefined}>
+          <TableRow key={group.id} ref={headRowRef} keepRule={fill} className={fill ? "z-20" : undefined}>
             {group.headers.map((header, headerIndex) => {
               const column = header.column;
               const meta = column.columnDef.meta;
@@ -2539,7 +2639,11 @@ function DataTable<TData>({
             </TableRow>
           ))
         ) : rows.length > 0 ? (
-          rows.map((row, i) => (
+          <>
+          {drawn.map((row, at) => {
+            // Its place among all the rows, drawn or not yet.
+            const i = drawn.length === rows.length ? at : rows.indexOf(row);
+            return (
             <DataTableBodyRow
               // Keyed by record, so state in a cell (an open row menu, a
               // consumer's own input, focus) stays with its row through a
@@ -2567,7 +2671,14 @@ function DataTable<TData>({
               compact={sizeClasses.variant === "compact"}
               shapeVariant={shape.variant}
             />
-          ))
+            );
+          })}
+          {pendingRows > 0 && rowHeight > 0 && (
+            <tr aria-hidden data-row-spacer>
+              <td colSpan={columnCount} style={{ height: pendingRows * rowHeight, padding: 0 }} />
+            </tr>
+          )}
+          </>
         ) : (
           <TableEmpty
             columns={columnCount}
@@ -3182,13 +3293,31 @@ const SelectHit = forwardRef<HTMLSpanElement, SelectHitProps>(
 );
 SelectHit.displayName = "SelectHit";
 
+/** A hidden box that gets checked (select all, a range) shows up already
+ *  checked: its border doesn't fade out while the box fades in, which
+ *  flashed an empty outline on every row at once. The row under the
+ *  pointer or holding focus keeps the Checkbox's own border fade. Nor
+ *  does a box fade in or out on a selection change (Table marks the
+ *  frame, `data-snap-rules`): a fade per row put every box on a layer of
+ *  its own while its check drew, and on a real GPU the checks came and
+ *  went a few rows at a time. Switched at once, they change together,
+ *  with the fill. */
+const SELECT_SNAP =
+  "group-[:not(:hover,:focus-within)]/row:[&_[role=checkbox]]:duration-0 group-data-snap-rules/table:duration-0";
+
+// What a row shows under the pointer (its box, its handle) follows the
+// row's highlight (`is-active`), not `:hover`: the highlight moves to the
+// row under the pointer as the table scrolls, while the browser updates
+// `:hover` only once the pointer moves again, which left the box and the
+// handle on the row that had scrolled away. The header row has no
+// highlight of its own, so its box still follows `:hover`.
 /** A selection box shows only where it's wanted: on the row under the
  *  pointer or holding focus, on a checked (or, in the header, partly
  *  checked) box, and always on touch screens, which have no hover. A
  *  selection doesn't bring the rest up. The cell still takes the click
  *  while the box is hidden. */
 const SELECT_REVEAL =
-  "opacity-0 transition-opacity duration-80 group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100";
+  `opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-100 in-[thead]:group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100 ${SELECT_SNAP}`;
 /** A row's empty box is the one the highlight carries (SelectMarker), so
  *  its own stays hidden under the pointer's row: one box glides down the
  *  rows instead of each row's fading in and out. The row's own shows where
@@ -3196,11 +3325,11 @@ const SELECT_REVEAL =
  *  pointer itself or on the row holding keyboard focus (the darker hover
  *  border) while the highlight is on that row: once the pointer takes the
  *  highlight to another row, the focused row's box goes with it rather
- *  than staying behind as a second box. Also on touch screens, and while
- *  its column is pinned over
- *  scrolling content (`--ff-pin`), which covers the carried box. */
+ *  than staying behind as a second box. Also on touch screens, and in a
+ *  frozen column (`--ff-frozen`): a frozen cell is opaque, scrolled or
+ *  not, and covers the carried box. */
 const SELECT_REVEAL_CARRIED =
-  "opacity-0 transition-opacity duration-80 group-hover/row:opacity-(--ff-pin,0) hover:opacity-100! group-[.is-active:focus-visible]/row:opacity-100 group-[.is-active:has(:focus-visible)]/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100";
+  `opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-(--ff-frozen,0) hover:opacity-100! group-[.is-active:focus-visible]/row:opacity-100 group-[.is-active:has(:focus-visible)]/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100 ${SELECT_SNAP}`;
 
 /** The empty selection box the row highlight carries: the Checkbox's own
  *  box at rest, in the place a row's box sits (8px in, centered on the
@@ -3289,7 +3418,7 @@ function RowHandle() {
       aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
       className={cn(
         "-my-(--table-cell-py) hidden h-[calc(1lh+2*var(--table-cell-py))] w-4 cursor-grab touch-none items-center justify-center text-foreground outline-none select-none [[data-row-reorder]_&]:flex",
-        "opacity-0 transition-opacity duration-80 group-hover/row:opacity-(--ff-pin,0) hover:opacity-100! [@media(hover:none)]:opacity-100"
+        "opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-(--ff-frozen,0) hover:opacity-100! [@media(hover:none)]:opacity-100"
       )}
     >
       <Grip size={compact ? 14 : 16} strokeWidth={1.5} />
@@ -3379,6 +3508,14 @@ function selectColumn<TData>(): ColumnDef<TData> {
               checked={all}
               indeterminate={some}
               onCheckedChange={(checked) => selectAllRows(table, checked)}
+              // Enter selects too, as Space does: tabbed to, the box is the
+              // header's one control, and Enter there did nothing.
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || e.repeat) return;
+                e.preventDefault();
+                e.stopPropagation();
+                selectAllRows(table, !all);
+              }}
             />
           </SelectHit>
         </Tooltip>
@@ -3446,6 +3583,10 @@ const MENU_ROW = {
   sharp: `[&>td]:bg-hover [&>td:first-child]:rounded-l-[1px] [&>td:last-child]:rounded-r-[1px] ${MENU_PIN}`,
 } as const;
 
+/** How many rows that weren't on screen mount in one commit: about a
+ *  screenful. The rest of a longer page follows in batches of the same. */
+const ROW_BATCH = 30;
+
 interface PinInfo {
   side: "left" | "right";
   /** Px from its edge: the pinned columns' widths between. */
@@ -3486,7 +3627,9 @@ function pinProps(pin: PinInfo | undefined) {
       // editor's trigger, a chip's parts), which at an equal z painted over
       // the pinned cells in DOM order as it scrolled under them; a raised
       // editor (z-30) still covers them, as it covers its neighbors.
-      "sticky z-[2] [--ff-pin:0]",
+      // --ff-frozen: the cell covers what rides behind the table (the box
+      // carried by the highlight), so its own box answers the hover.
+      "sticky z-[2] [--ff-pin:0] [--ff-frozen:1]",
       // The cell's own bottom rule sits in its border, outside the layers
       // below (and out of reach where the cell clips), so the rules of the
       // cells scrolling under showed through it. A 1px strip
@@ -3503,7 +3646,9 @@ function pinProps(pin: PinInfo | undefined) {
 
 // The scroll-driven half of pinning: a pinned cell's `--ff-pin` flips to 1
 // once the table has scrolled 1px past its side, read from the scroll box's
-// own timeline, and shows the hairline at the frozen edge. Nothing a cell
+// own timeline, and shows the hairline at the frozen edge. One animation
+// a side, on the table, that every pinned cell inherits from, rather than
+// one running on each cell (three a row). Nothing a cell
 // needs to hide what scrolls under it depends on this (see pinProps).
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
@@ -3517,11 +3662,12 @@ const PIN_CSS = `
   .ff-fade-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0 var(--ff-fade, 48px); }
   .ff-fade-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - var(--ff-fade, 48px)) 100%; }
 }
-@keyframes ff-pin-on { from { --ff-pin: 0 } to { --ff-pin: 1 } }
-@keyframes ff-pin-off { from { --ff-pin: 1 } to { --ff-pin: 0 } }
+@keyframes ff-pin-on { from { --ff-pin-l: 0 } to { --ff-pin-l: 1 } }
+@keyframes ff-pin-off { from { --ff-pin-r: 1 } to { --ff-pin-r: 0 } }
 @supports (animation-timeline: scroll()) {
-  .ff-pin-l { animation: ff-pin-on linear both; animation-timeline: scroll(nearest inline); animation-range: 0px 2px; }
-  .ff-pin-r { animation: ff-pin-off linear both; animation-timeline: scroll(nearest inline); animation-range: calc(100% - 2px) 100%; }
+  [data-ff-table] table { animation: ff-pin-on linear both, ff-pin-off linear both; animation-timeline: scroll(nearest inline), scroll(nearest inline); animation-range: 0px 2px, calc(100% - 2px) 100%; }
+  [data-ff-table] .ff-pin-l { --ff-pin: var(--ff-pin-l, 0); }
+  [data-ff-table] .ff-pin-r { --ff-pin: var(--ff-pin-r, 0); }
 }`;
 
 /** A pinned cell's own surface: the page background, always there, and
@@ -4022,7 +4168,9 @@ const DataTableBodyRow = memo(
       },
       [ref]
     );
-    useLayoutEffect(() => {
+    // An insertion effect: every row's runs before any layout effect, so
+    // no cell's layout read can commit the new rule without the snap.
+    useInsertionEffect(() => {
       const tr = rowRef.current;
       if (!tr) return;
       tr.setAttribute("data-snap-rule", "");

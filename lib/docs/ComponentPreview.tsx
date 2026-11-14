@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { useState, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { highlightCode } from "./highlight-client";
 import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 import { fontWeights } from "@/registry/default/lib/font-weight";
@@ -12,18 +12,6 @@ import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
 import { InspectOverlay } from "./InspectOverlay";
 import { usePreviewExpand } from "@/lib/docs/preview-expand";
-
-// The expand button carries a dot until the visitor has used it once.
-const EXPAND_SEEN_KEY = "ff_expand_seen";
-const noSubscription = () => () => {};
-function readExpandSeen() {
-  try {
-    return localStorage.getItem(EXPAND_SEEN_KEY) === "1";
-  } catch {
-    // No storage (private mode): no dot rather than one that never goes away.
-    return true;
-  }
-}
 
 export interface PlaybackButton {
   icon: ReactNode;
@@ -75,10 +63,9 @@ interface ComponentPreviewProps {
   hideHeader?: boolean;
   /** Centered label rendered under the frame — the gallery rows' captions. */
   caption?: string;
-  /** Tabs of the preview's own, in place of Preview / Code: what the demo
-   *  shows (a playground's sample data). There is no Code tab then: the
-   *  playground hands its code out its own way (Get code). */
-  tabs?: { labels: readonly string[]; selected: number; onSelect: (index: number) => void };
+  /** No Preview / Code tabs: the demo hands its code out its own way (a
+   *  playground's Get code). */
+  hideTabs?: boolean;
   children: ReactNode;
 }
 
@@ -95,7 +82,7 @@ export function ComponentPreview({
   inspectRulers = true,
   hideHeader = false,
   caption,
-  tabs,
+  hideTabs = false,
   children,
 }: ComponentPreviewProps) {
   const [tab, setTab] = useState(0);
@@ -111,17 +98,9 @@ export function ComponentPreview({
   const ExpandIcon = useIcon("maximize");
   const CollapseIcon = useIcon("minimize");
   const expand = usePreviewExpand();
-  // Seen on the server, so the dot only ever appears, never flashes away.
-  const expandSeenBefore = useSyncExternalStore(noSubscription, readExpandSeen, () => true);
-  const [expandUsed, setExpandUsed] = useState(false);
-  const expandHint = !!expand && !expand.expanded && !expandSeenBefore && !expandUsed;
-  const toggleExpand = () => {
-    setExpandUsed(true);
-    try {
-      localStorage.setItem(EXPAND_SEEN_KEY, "1");
-    } catch {}
-    expand?.toggle();
-  };
+  // The expand button always carries its dot (2026-11-13 user call): it
+  // marks that the preview has a larger view, used before or not.
+  const expandHint = !!expand && !expand.expanded;
   const previewRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -133,8 +112,8 @@ export function ComponentPreview({
 
   // Shiki (its grammars and regex engine) loads only for a reader who goes
   // for the code, never with the page: most visitors only use the Preview.
-  // Never with tabs of the preview's own: there is no code view to open.
-  const codeNeeded = !!code && !tabs && (codeWanted || tab === 1);
+  // Never without the tabs: there is no code view to open.
+  const codeNeeded = !!code && !hideTabs && (codeWanted || tab === 1);
   useEffect(() => {
     if (!codeNeeded || !code) return;
     let cancelled = false;
@@ -199,13 +178,7 @@ export function ComponentPreview({
             {title}
           </span>
         )}
-        {tabs ? (
-          <Tabs selectedIndex={tabs.selected} onSelect={tabs.onSelect}>
-            {tabs.labels.map((label, index) => (
-              <TabsItem key={label} index={index} label={label} />
-            ))}
-          </Tabs>
-        ) : (
+        {!hideTabs && (
           <Tabs selectedIndex={tab} onSelect={setTab}>
             <TabsItem index={0} label="Preview" />
             <TabsItem index={1} label="Code" />
@@ -274,7 +247,7 @@ export function ComponentPreview({
             >
               <button
                 type="button"
-                onClick={toggleExpand}
+                onClick={expand.toggle}
                 aria-label={expand.expanded ? "Collapse preview" : "Expand preview"}
                 aria-pressed={expand.expanded}
                 className={`relative w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}

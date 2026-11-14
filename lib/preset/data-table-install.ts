@@ -13,6 +13,7 @@ import type { PresetGenerator } from "./generators";
 import {
   type DataTablePreset,
   DATA_TABLE_PROPS_OPTIONS,
+  DATA_TABLE_PAGE_SIZES,
   DATA_TABLE_SAMPLE_PARTS,
   DATA_TABLE_SAMPLE_ROWS,
   DATA_TABLE_TAG_OPTIONS,
@@ -179,7 +180,9 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`        href={\`/docs/\${row.original.slug}\`}`);
   l.push(`        target="_blank"`);
   l.push(`        rel="noreferrer"`);
-  l.push(`        className="underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground"`);
+  // The cell cuts what runs past it, a focus ring included: the link cuts
+  // its own text short and draws its ring inside its box.
+  l.push(`        className="${wrap ? "" : "inline-block max-w-full truncate align-bottom "}underline decoration-foreground/30 underline-offset-2 transition-colors duration-80 hover:decoration-foreground focus-visible:outline-offset-[-1px]"`);
   l.push(`      >`);
   l.push(`        {\`/docs/\${row.original.slug}\`}`);
   l.push(`      </a>`);
@@ -318,7 +321,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   if (p.filters && views) {
     // Save view after the chips' + Add filter, with the first filter.
     l.push(`      <DataTableFilterChips table={table}>`);
-    l.push(`        {changed && <Button variant="ghost" size="compact" onClick={saveView}>Save view</Button>}`);
+    l.push(`        {changed && <Button variant="ghost" onClick={saveView}>Save view</Button>}`);
     l.push(`      </DataTableFilterChips>`);
   } else if (p.filters) l.push(`      <DataTableFilterChips table={table} />`);
   const tableProps = [
@@ -345,7 +348,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     }
     l.push(`      />`);
   } else l.push(`      <DataTable ${tableProps.join(" ")} />`);
-  if (p.pagination) l.push(`      <DataTablePagination table={table} />`);
+  if (p.pagination) l.push(`      <DataTablePagination table={table} pageSizes={[${DATA_TABLE_PAGE_SIZES.join(", ")}]} />`);
   if (p.selection) {
     l.push(`      {/* Floats over the table while rows are selected: \u2318K opens the actions. */}`);
     l.push(`      <DataTableSelectionBar`);
