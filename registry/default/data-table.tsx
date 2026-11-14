@@ -963,8 +963,8 @@ function DataTable<TData>({
   const headRowRef = useRef<HTMLTableRowElement>(null);
   const sizeClasses = useSize(size);
   const shape = useShape();
-  // A copy of the dragged column, header and cells, that follows the
-  // pointer at 80%, as a dragged row's copy does: the column it left stays
+  // A copy of the dragged header that follows the pointer at 80%, as a
+  // dragged row's copy does: the column it left, header and cells, stays
   // in place, stepped back. Its position is written straight to the
   // element, so a drag doesn't re-render the table on every move, only
   // when the landing spot changes.
@@ -974,6 +974,8 @@ function DataTable<TData>({
     left: number;
     width: number;
     height: number;
+    /** The column's height in view: the drop line runs down it. */
+    column: number;
   } | null>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const columnLineRef = useRef<HTMLDivElement>(null);
@@ -1340,9 +1342,9 @@ function DataTable<TData>({
       .querySelectorAll<HTMLElement>("th[data-column-id], td[data-column-id]")
       .forEach((el) => {
         const id = el.dataset.columnId!;
-        // A dropped column lands from where its copy was let go, header
-        // and cells together: the copy carried both.
-        const old = before.dropped?.id === id ? before.dropped.left : before.lefts.get(id);
+        // A dropped column's header lands from where its copy was let go;
+        // its cells never left their slot, so they travel from there.
+        const old = before.dropped?.id === id && el.tagName === "TH" ? before.dropped.left : before.lefts.get(id);
         if (old === undefined) {
           animate(el, { opacity: [0, 1] }, spring.moderate).then(() => {
             el.style.opacity = "";
@@ -1419,63 +1421,32 @@ function DataTable<TData>({
     }
   });
 
-  // The carried column's copy: its header and each of its cells as they
-  // look right now, in one-column tables with the real one's classes, the
-  // rows scrolled as far as the table's are.
+  // The carried header's copy: the cell as it looks right now (its icon,
+  // its sort arrow), in a one-cell table with the real one's classes.
   const ghostId = ghost?.id;
   useLayoutEffect(() => {
     const host = ghostRef.current?.querySelector<HTMLElement>("[data-column-ghost]");
-    const wrap = wrapRef.current;
-    const source = wrap?.querySelector("table");
-    if (ghostId === undefined || !host || !wrap || !source) return;
-    const pick = `[data-column-id="${CSS.escape(ghostId)}"]`;
-    const head = source.querySelector<HTMLElement>(`thead th${pick}`);
-    if (!head) return;
-    const width = head.getBoundingClientRect().width;
-    const vars = getComputedStyle(head.parentElement!);
-    const tableOf = (section: "thead" | "tbody", rows: HTMLElement[]) => {
-      const copy = document.createElement("table");
-      copy.className = source.className;
-      copy.style.cssText = `table-layout:fixed;min-width:0;width:${width}px;--table-cell-py:${vars.getPropertyValue("--table-cell-py")}`;
-      const part = document.createElement(section);
-      for (const from of rows) {
-        // The row without its cells: its classes say how its cells read
-        // (selected, a sub-row).
-        const row = from.cloneNode(false) as HTMLElement;
-        row.removeAttribute("data-row-id");
-        row.classList.remove("is-active");
-        row.style.height = `${from.getBoundingClientRect().height}px`;
-        const origin = from.querySelector<HTMLElement>(`:scope > ${pick}`);
-        const cell = origin ? (origin.cloneNode(true) as HTMLElement) : document.createElement("td");
-        cell.removeAttribute("data-column-dragging");
-        cell.removeAttribute("data-dragging");
-        // In the flow of its own table: a frozen cell's place and hairline
-        // belong to the table it left.
-        cell.style.cssText += `;box-sizing:border-box;position:relative;left:auto;right:auto;width:${width}px;min-width:${width}px;max-width:${width}px;--ff-pin:0;--expander-pl:${origin ? getComputedStyle(origin).getPropertyValue("--expander-pl") : 0}`;
-        row.append(cell);
-        part.append(row);
-      }
-      copy.append(part);
-      return copy;
-    };
-    const headRect = head.getBoundingClientRect();
-    const box = host.getBoundingClientRect();
-    // Only the rows in view: the rest are outside the copy's box.
-    const rows = Array.from(source.querySelectorAll<HTMLElement>("tbody > tr")).filter((tr) => {
-      const r = tr.getBoundingClientRect();
-      return r.bottom > headRect.bottom && r.top < box.bottom;
-    });
-    const header = tableOf("thead", [head.parentElement as HTMLElement]);
-    // Over the rows, which pass under the header where they scroll.
-    header.style.cssText += ";position:relative;z-index:1";
-    const body = document.createElement("div");
-    body.style.cssText = `position:absolute;left:0;right:0;top:${headRect.height}px;bottom:0;overflow:hidden`;
-    if (rows.length) {
-      const cells = tableOf("tbody", rows);
-      cells.style.cssText += `;position:absolute;left:0;top:${rows[0].getBoundingClientRect().top - headRect.bottom}px`;
-      body.append(cells);
-    }
-    host.replaceChildren(header, body);
+    const source = wrapRef.current?.querySelector("table");
+    if (ghostId === undefined || !host || !source) return;
+    const head = source.querySelector<HTMLElement>(`thead th[data-column-id="${CSS.escape(ghostId)}"]`);
+    const from = head?.parentElement;
+    if (!head || !from) return;
+    const { width, height } = head.getBoundingClientRect();
+    const copy = document.createElement("table");
+    copy.className = source.className;
+    copy.style.cssText = `table-layout:fixed;min-width:0;width:${width}px;--table-cell-py:${getComputedStyle(from).getPropertyValue("--table-cell-py")}`;
+    const part = document.createElement("thead");
+    const row = from.cloneNode(false) as HTMLElement;
+    row.style.height = `${height}px`;
+    const cell = head.cloneNode(true) as HTMLElement;
+    cell.removeAttribute("data-dragging");
+    // In the flow of its own table: a frozen cell's place and hairline
+    // belong to the table it left.
+    cell.style.cssText += `;box-sizing:border-box;position:relative;left:auto;right:auto;width:${width}px;min-width:${width}px;max-width:${width}px;--ff-pin:0`;
+    row.append(cell);
+    part.append(row);
+    copy.append(part);
+    host.replaceChildren(copy);
   }, [ghostId]);
 
   // A drag's window listeners, removed if the table goes away mid-drag.
@@ -1514,8 +1485,8 @@ function DataTable<TData>({
       const next = dropTarget(clientX, id);
       if (!target || next.refId !== target.refId || next.place !== target.place) setDrag(next);
       target = next;
-      // The line where it would land, the copy's height, as a row's is
-      // the table's width.
+      // The line where it would land, the column's height, as a row's
+      // is the table's width.
       const line = columnLineRef.current;
       const ref = headRowRef.current?.querySelector<HTMLElement>(`th[data-column-id="${CSS.escape(next.refId)}"]`);
       if (!line) return;
@@ -1554,8 +1525,8 @@ function DataTable<TData>({
         moved = true;
         const wrap = wrapRef.current;
         const tableNode = wrap?.querySelector("table");
-        // Header and cells: down to the last row, or the box's bottom
-        // where the rows scroll inside it.
+        // The column's foot: the last row, or the box's bottom where the
+        // rows scroll inside it.
         const bottom =
           wrap && tableNode
             ? Math.min(wrap.getBoundingClientRect().bottom, tableNode.getBoundingClientRect().bottom)
@@ -1567,7 +1538,14 @@ function DataTable<TData>({
           marked.push(cell);
         });
         flushSync(() =>
-          setGhost({ id, top: rect.top, left: rect.left, width: rect.width, height: Math.max(rect.height, bottom - rect.top) })
+          setGhost({
+            id,
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            column: Math.max(rect.height, bottom - rect.top),
+          })
         );
         frame = requestAnimationFrame(edgeScroll);
       }
@@ -3399,7 +3377,7 @@ function DataTable<TData>({
               ref={ghostRef}
               aria-hidden
               inert
-              // The carried column at 80%, on the lifted surface a carried
+              // The carried header at 80%, on the lifted surface a carried
               // row has (GHOST_BLOCK).
               className="pointer-events-none fixed z-[var(--z-popover,60)] overflow-hidden opacity-80"
               style={{ top: ghost.top, left: ghost.left, width: ghost.width, height: ghost.height }}
@@ -3410,7 +3388,7 @@ function DataTable<TData>({
               ref={columnLineRef}
               aria-hidden
               className="pointer-events-none fixed z-[var(--z-popover,60)] hidden w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
-              style={{ top: ghost.top, height: ghost.height }}
+              style={{ top: ghost.top, height: ghost.column }}
             />
           </>,
           document.body
