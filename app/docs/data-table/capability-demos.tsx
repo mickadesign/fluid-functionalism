@@ -1046,7 +1046,7 @@ const invoiceColumns: ColumnDef<Invoice>[] = [
     accessorKey: "customer",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
     // Text: contains, is, starts with…
-    meta: { className: "w-full", filter: "text" },
+    meta: { filter: "text" },
   },
   {
     accessorKey: "status",
@@ -1072,8 +1072,9 @@ const invoiceColumns: ColumnDef<Invoice>[] = [
     accessorKey: "due",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Due" />,
     cell: ({ row }) => shortDay(row.original.due),
-    // A day: between two, before one, or after one.
-    meta: { className: "tabular-nums whitespace-nowrap", filter: "date" },
+    // A day: between two, before one, or after one. The last column
+    // takes the room left over, so Customer is as wide as its names.
+    meta: { className: "tabular-nums whitespace-nowrap w-full", filter: "date" },
   },
 ];
 
