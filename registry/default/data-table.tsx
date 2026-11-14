@@ -7362,9 +7362,17 @@ function DataTableSelectionBar<TData>({
       const own = Number.parseInt(getComputedStyle(bar).zIndex, 10) || 0;
       if (lift > own) bar.style.zIndex = String(lift);
       const r = root.getBoundingClientRect();
-      const bottom = Math.min(r.bottom, window.innerHeight) - BAR_INSET;
-      bar.style.left = `${r.left + r.width / 2}px`;
-      bar.style.top = `${bottom}px`;
+      // Two places, and the browser holds the bar in each: while the
+      // table runs past the window's bottom the bar is fixed there; once
+      // the table's bottom is in view the bar sits on it in the page's own
+      // coordinates and scrolls with the page. Kept fixed and moved to the
+      // table's bottom on each scroll event, it trailed the scroll by a
+      // frame and shook up and down. Only the hand-over between the two
+      // (where both give the same spot) is placed from the scroll.
+      const pinned = r.bottom > window.innerHeight;
+      bar.style.position = pinned ? "fixed" : "absolute";
+      bar.style.left = `${r.left + r.width / 2 + (pinned ? 0 : window.scrollX)}px`;
+      bar.style.top = `${(pinned ? window.innerHeight : r.bottom + window.scrollY) - BAR_INSET}px`;
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(place);
