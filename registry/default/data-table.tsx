@@ -963,18 +963,20 @@ function DataTable<TData>({
   const headRowRef = useRef<HTMLTableRowElement>(null);
   const sizeClasses = useSize(size);
   const shape = useShape();
-  // A copy of the dragged header that follows the pointer, at 80%. Its position is
-  // written straight to the element, so a drag doesn't re-render the table
-  // on every move, only when the landing spot changes.
+  // A copy of the dragged column, header and cells, that follows the
+  // pointer at 80%, as a dragged row's copy does: the column it left stays
+  // in place, stepped back. Its position is written straight to the
+  // element, so a drag doesn't re-render the table on every move, only
+  // when the landing spot changes.
   const [ghost, setGhost] = useState<{
-    label: string;
-    icon?: IconComponent;
+    id: string;
     top: number;
     left: number;
     width: number;
     height: number;
   } | null>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
+  const columnLineRef = useRef<HTMLDivElement>(null);
 
   const dropTarget = (x: number, id: string) => {
     const heads = Array.from(
@@ -1421,16 +1423,70 @@ function DataTable<TData>({
     }
   });
 
+  // The carried column's copy: its header and each of its cells as they
+  // look right now, in one-column tables with the real one's classes, the
+  // rows scrolled as far as the table's are.
+  const ghostId = ghost?.id;
+  useLayoutEffect(() => {
+    const host = ghostRef.current?.querySelector<HTMLElement>("[data-column-ghost]");
+    const wrap = wrapRef.current;
+    const source = wrap?.querySelector("table");
+    if (ghostId === undefined || !host || !wrap || !source) return;
+    const pick = `[data-column-id="${CSS.escape(ghostId)}"]`;
+    const head = source.querySelector<HTMLElement>(`thead th${pick}`);
+    if (!head) return;
+    const width = head.getBoundingClientRect().width;
+    const vars = getComputedStyle(head.parentElement!);
+    const tableOf = (section: "thead" | "tbody", rows: HTMLElement[]) => {
+      const copy = document.createElement("table");
+      copy.className = source.className;
+      copy.style.cssText = `table-layout:fixed;min-width:0;width:${width}px;--table-cell-py:${vars.getPropertyValue("--table-cell-py")}`;
+      const part = document.createElement(section);
+      for (const from of rows) {
+        // The row without its cells: its classes say how its cells read
+        // (selected, a sub-row).
+        const row = from.cloneNode(false) as HTMLElement;
+        row.removeAttribute("data-row-id");
+        row.classList.remove("is-active");
+        row.style.height = `${from.getBoundingClientRect().height}px`;
+        const origin = from.querySelector<HTMLElement>(`:scope > ${pick}`);
+        const cell = origin ? (origin.cloneNode(true) as HTMLElement) : document.createElement("td");
+        cell.removeAttribute("data-column-dragging");
+        cell.removeAttribute("data-dragging");
+        // In the flow of its own table: a frozen cell's place and hairline
+        // belong to the table it left.
+        cell.style.cssText += `;box-sizing:border-box;position:relative;left:auto;right:auto;width:${width}px;min-width:${width}px;max-width:${width}px;--ff-pin:0;--expander-pl:${origin ? getComputedStyle(origin).getPropertyValue("--expander-pl") : 0}`;
+        row.append(cell);
+        part.append(row);
+      }
+      copy.append(part);
+      return copy;
+    };
+    const headRect = head.getBoundingClientRect();
+    const box = host.getBoundingClientRect();
+    // Only the rows in view: the rest are outside the copy's box.
+    const rows = Array.from(source.querySelectorAll<HTMLElement>("tbody > tr")).filter((tr) => {
+      const r = tr.getBoundingClientRect();
+      return r.bottom > headRect.bottom && r.top < box.bottom;
+    });
+    const header = tableOf("thead", [head.parentElement as HTMLElement]);
+    // Over the rows, which pass under the header where they scroll.
+    header.style.cssText += ";position:relative;z-index:1";
+    const body = document.createElement("div");
+    body.style.cssText = `position:absolute;left:0;right:0;top:${headRect.height}px;bottom:0;overflow:hidden`;
+    if (rows.length) {
+      const cells = tableOf("tbody", rows);
+      cells.style.cssText += `;position:absolute;left:0;top:${rows[0].getBoundingClientRect().top - headRect.bottom}px`;
+      body.append(cells);
+    }
+    host.replaceChildren(header, body);
+  }, [ghostId]);
+
   // A drag's window listeners, removed if the table goes away mid-drag.
   const dragCleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => dragCleanup.current?.(), []);
 
-  const startDrag = (
-    e: PointerEvent<HTMLTableCellElement>,
-    id: string,
-    label: string,
-    icon: IconComponent | undefined
-  ) => {
+  const startDrag = (e: PointerEvent<HTMLTableCellElement>, id: string) => {
     // A press in the header's menu (portalled, but bubbling here through
     // React) isn't one on the cell.
     if (!e.currentTarget.contains(e.target as Node)) return;
@@ -1446,6 +1502,7 @@ function DataTable<TData>({
       "[data-slot=scroll-area-viewport]"
     );
     const scrolledAtStart = viewport?.scrollLeft ?? 0;
+    const marked: HTMLElement[] = [];
     // Places the ghost for a pointer x and finds where it would land.
     const place = (clientX: number) => {
       // The ghost stays within the table's visible box: it stops at the left
@@ -1461,6 +1518,18 @@ function DataTable<TData>({
       const next = dropTarget(clientX, id);
       if (!target || next.refId !== target.refId || next.place !== target.place) setDrag(next);
       target = next;
+      // The line where it would land, the copy's height, as a row's is
+      // the table's width.
+      const line = columnLineRef.current;
+      const ref = headRowRef.current?.querySelector<HTMLElement>(`th[data-column-id="${CSS.escape(next.refId)}"]`);
+      if (!line) return;
+      const shown = !!ref && !!box && next.refId !== id;
+      line.style.display = shown ? "block" : "none";
+      if (!shown) return;
+      const edge = ref.getBoundingClientRect();
+      const x = next.place === "before" ? edge.left : edge.right;
+      // Kept inside the table's box: past it the edge has scrolled away.
+      line.style.left = `${Math.min(Math.max(x, box.left), box.right) - 1}px`;
     };
     // Near an edge of a table that scrolls sideways, the table scrolls that
     // way, so a column can be carried to one that's out of view (narrow
@@ -1487,7 +1556,23 @@ function DataTable<TData>({
       if (!moved && Math.abs(ev.clientX - startX) < DRAG_THRESHOLD) return;
       if (!moved) {
         moved = true;
-        setGhost({ label, icon, top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+        const wrap = wrapRef.current;
+        const tableNode = wrap?.querySelector("table");
+        // Header and cells: down to the last row, or the box's bottom
+        // where the rows scroll inside it.
+        const bottom =
+          wrap && tableNode
+            ? Math.min(wrap.getBoundingClientRect().bottom, tableNode.getBoundingClientRect().bottom)
+            : rect.bottom;
+        // Marked before the copy renders, as carried rows are: the column
+        // steps back while its copy is out.
+        tableNode?.querySelectorAll<HTMLElement>(`tbody td[data-column-id="${CSS.escape(id)}"]`).forEach((cell) => {
+          cell.setAttribute("data-column-dragging", "");
+          marked.push(cell);
+        });
+        flushSync(() =>
+          setGhost({ id, top: rect.top, left: rect.left, width: rect.width, height: Math.max(rect.height, bottom - rect.top) })
+        );
         frame = requestAnimationFrame(edgeScroll);
       }
       lastX = ev.clientX;
@@ -1498,6 +1583,7 @@ function DataTable<TData>({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      marked.forEach((cell) => cell.removeAttribute("data-column-dragging"));
       dragCleanup.current = null;
     };
     const onUp = () => {
@@ -2787,6 +2873,9 @@ function DataTable<TData>({
         // Important: a row keeps an inline opacity from its last animation,
         // which a plain rule here lost to (the rows stayed at full strength).
         "[&_tr[data-row-dragging]]:opacity-40!",
+        // And a carried column's cells. A frozen cell dims its content
+        // only: its own surface still has to cover what scrolls under it.
+        "[&_td[data-column-dragging]:not(.sticky)]:opacity-40 [&_td.sticky[data-column-dragging]>*:not([aria-hidden])]:opacity-40",
         "[&[data-measuring]_:is(th,td)]:!w-auto [&[data-measuring]_:is(th,td)]:!max-w-none [&[data-measuring]_*]:!whitespace-nowrap",
         // The sub-row guides start from the first column's left padding.
         sizeClasses.variant === "compact" ? "[--expander-pl:10px]" : "[--expander-pl:12px]",
@@ -2837,7 +2926,7 @@ function DataTable<TData>({
                   data-reorderable={movable || undefined}
                   data-drop={dropSide}
                   data-dragging={drag?.id === column.id || undefined}
-                  onPointerDown={movable ? (e) => startDrag(e, column.id, label, meta?.icon) : undefined}
+                  onPointerDown={movable ? (e) => startDrag(e, column.id) : undefined}
                   onKeyDown={movable ? (e) => moveByKey(e, column.id) : undefined}
                   // The whole cell opens the header's menu, padding and the
                   // space past the label included: a click anywhere else in
@@ -2889,13 +2978,9 @@ function DataTable<TData>({
                       "group-data-scrolled/scroll:border-b-foreground/[0.08]!",
                     ],
                     movable && "touch-none select-none",
-                    // The dragged header's label lifts out into the ghost, so
-                    // its slot shows empty; a 2px accent bar marks where it
-                    // lands.
-                    "data-dragging:[&>*:not([data-resize-handle])]:invisible",
-                    "before:pointer-events-none before:absolute before:inset-y-1.5 before:w-0.5 before:rounded-full before:bg-[var(--fluid-accent,#6B97FF)] before:opacity-0",
-                    "data-[drop=before]:before:-left-px data-[drop=before]:before:opacity-100",
-                    "data-[drop=after]:before:-right-px data-[drop=after]:before:opacity-100",
+                    // The dragged header steps back with its column while
+                    // their copy is out (see the cells' rule on the table).
+                    "data-dragging:[&>*:not([data-resize-handle],[aria-hidden])]:opacity-40",
                     // A header that sorts or moves behaves like a ghost
                     // Button: its label lifts from muted to foreground on
                     // hover. Its fill is the header row's gliding one,
@@ -3310,30 +3395,28 @@ function DataTable<TData>({
         )}
       {ghost &&
         createPortal(
-          <div
-            ref={ghostRef}
-            aria-hidden
-            className={cn(
-              // The pressed header, lifted: the same --active fill over the
-              // page background (opaque, so the table doesn't show through
-              // the 80%), no border, no shadow.
-              "pointer-events-none fixed z-[var(--z-popover,60)] flex items-center bg-background bg-[linear-gradient(var(--active),var(--active))] text-foreground opacity-80",
-              sizeClasses.variant === "compact" ? "px-2.5" : "px-3",
-              sizeClasses.text,
-              shape.item
-            )}
-            style={{
-              top: ghost.top,
-              left: ghost.left,
-              width: ghost.width,
-              height: ghost.height,
-              fontVariationSettings: fontWeights.semibold,
-            }}
-          >
-            <span className="min-w-0 truncate">
-              <HeaderLabel icon={ghost.icon} title={ghost.label} />
-            </span>
-          </div>,
+          <>
+            {/* Over the page while a column is carried, as for a row: the
+                grabbing cursor everywhere, and nothing lights under it. */}
+            <div aria-hidden className="fixed inset-0 z-[var(--z-popover,60)] cursor-grabbing" />
+            <div
+              ref={ghostRef}
+              aria-hidden
+              inert
+              // The carried column at 80%, on the lifted surface a carried
+              // row has (GHOST_BLOCK).
+              className="pointer-events-none fixed z-[var(--z-popover,60)] overflow-hidden opacity-80"
+              style={{ top: ghost.top, left: ghost.left, width: ghost.width, height: ghost.height }}
+            >
+              <div data-column-ghost="" className={cn(GHOST_BLOCK, "inset-y-0", shape.bg)} />
+            </div>
+            <div
+              ref={columnLineRef}
+              aria-hidden
+              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+              style={{ top: ghost.top, height: ghost.height }}
+            />
+          </>,
           document.body
         )}
     </>
