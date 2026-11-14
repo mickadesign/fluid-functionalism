@@ -682,6 +682,12 @@ const PRESS_RADIUS = {
   pill: "after:rounded-[20px]",
   sharp: "after:rounded-[1px]",
 } as const;
+// The same corners on a frozen header, whose fill is an element of its own.
+const PRESS_RADIUS_PINNED = {
+  rounded: "rounded-lg",
+  pill: "rounded-[20px]",
+  sharp: "rounded-[1px]",
+} as const;
 
 // A drag starts once the pointer has travelled this far, so a plain click
 // on a header still sorts.
@@ -2872,7 +2878,10 @@ function DataTable<TData>({
                     // the cell draws its own, the same way: --hover, then
                     // --active, clear of the header's bottom line. Once it
                     // drags, the ghost takes over and the slot stays empty.
+                    // A frozen header's own surface would cover it: that
+                    // one draws the fill in its pin layers below.
                     fill &&
+                      !pins[column.id] &&
                       (movable || column.getCanSort() || !!column.accessorFn) && [
                         "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
                         "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
@@ -2887,14 +2896,14 @@ function DataTable<TData>({
                     <PinLayers pin={pins[column.id]}>
                       {/* Opaque, a pinned header covers the row's gliding
                           fill: it draws its own, the same way. */}
-                      {!fill && (movable || column.getCanSort() || !!column.accessorFn) && (
+                      {(movable || column.getCanSort() || !!column.accessorFn) && (
                         <span
                           className={cn(
                             "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
                             "group-hover/th:bg-hover group-active/th:bg-active",
                             // Its menu open: pressed until it closes.
                             "group-data-held/th:bg-active!",
-                            shape.bg
+                            fill ? PRESS_RADIUS_PINNED[shape.variant] : shape.bg
                           )}
                         />
                       )}
