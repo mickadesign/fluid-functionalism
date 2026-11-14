@@ -303,7 +303,9 @@ const taskColumns: ColumnDef<Task>[] = [
         </Badge>
       </span>
     ),
-    meta: { editor: { type: "select", options: STATUS_OPTIONS } },
+    // A floor of 112px: room for the longest status, "In progress", which
+    // the column was otherwise cut short of when the table is tight.
+    meta: { className: "min-w-28", editor: { type: "select", options: STATUS_OPTIONS } },
   },
   {
     accessorKey: "estimate",
