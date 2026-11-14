@@ -32,6 +32,17 @@ const useIsoLayoutEffect =
 /** How close to the end (px) still counts as "at the end". */
 const END_THRESHOLD = 24;
 
+/** Keys that scroll a focused region: the ones that interrupt a glide. */
+const SCROLL_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+  " ",
+]);
+
 const maxTop = (el: HTMLElement) => el.scrollHeight - el.clientHeight;
 
 interface MessageScrollerContextValue {
@@ -231,37 +242,52 @@ const MessageScroller = forwardRef<HTMLDivElement, MessageScrollerProps>(
       syncAtEnd();
     }, [sizeSpacer, syncAtEnd, writeTop]);
 
+    // The effect below owns the observer: it builds it, watches the viewport
+    // and whatever content is mounted, and disconnects it. The content's ref
+    // only hands a later (re)mounted content to the live observer. One owner,
+    // so an effect that re-runs without its refs re-running (Strict Mode on
+    // React 18) still ends up watching the content.
     const observerRef = useRef<ResizeObserver | null>(null);
-    const contentRef = useCallback(
-      (el: HTMLDivElement | null) => {
-        contentElRef.current = el;
-        observerRef.current?.disconnect();
-        observerRef.current = null;
-        if (!el || typeof ResizeObserver === "undefined") return;
-        const observer = new ResizeObserver(onResize);
-        observer.observe(el);
-        if (viewportRef.current) observer.observe(viewportRef.current);
-        observerRef.current = observer;
-      },
-      [onResize]
-    );
+    const contentRef = useCallback((el: HTMLDivElement | null) => {
+      const previous = contentElRef.current;
+      contentElRef.current = el;
+      const observer = observerRef.current;
+      if (!observer) return;
+      if (previous && previous !== el) observer.unobserve(previous);
+      if (el) observer.observe(el);
+    }, []);
 
     // Open at the end, before the first paint.
     useIsoLayoutEffect(() => {
       const el = viewportRef.current;
-      if (el) {
-        // The content's ref ran before this element's own: watch the
-        // viewport here, so a resized window re-fits the spacer too.
-        observerRef.current?.observe(el);
-        writeTop(maxTop(el));
+      if (typeof ResizeObserver !== "undefined") {
+        const observer = new ResizeObserver(onResize);
+        if (el) observer.observe(el);
+        if (contentElRef.current) observer.observe(contentElRef.current);
+        observerRef.current = observer;
       }
+      if (el) writeTop(maxTop(el));
       readyRef.current = true;
       return () => {
         readyRef.current = false;
         stopGlide();
         observerRef.current?.disconnect();
+        observerRef.current = null;
       };
-    }, [stopGlide, writeTop]);
+    }, [onResize, stopGlide, writeTop]);
+
+    /** The reader takes over mid-glide: stop where it is, and re-read from
+     *  the real position whether the view still follows. Without this the
+     *  follow stayed on, and the next streamed chunk jumped to the end. */
+    const interrupt = useCallback(() => {
+      if (!glideRef.current) return;
+      stopGlide();
+      const el = viewportRef.current;
+      if (el) {
+        followRef.current = maxTop(el) - el.scrollTop <= END_THRESHOLD;
+      }
+      syncAtEnd();
+    }, [stopGlide, syncAtEnd]);
 
     const onScroll = () => {
       const el = viewportRef.current;
@@ -294,12 +320,17 @@ const MessageScroller = forwardRef<HTMLDivElement, MessageScrollerProps>(
             tabIndex={0}
             onScroll={onScroll}
             // The reader takes over: a glide in flight stops where it is.
-            onWheel={stopGlide}
-            onTouchStart={stopGlide}
-            onPointerDown={stopGlide}
-            onKeyDown={stopGlide}
+            onWheel={interrupt}
+            onTouchStart={interrupt}
+            onPointerDown={interrupt}
+            // Only keys that scroll: a modifier or Tab leaves the glide alone.
+            onKeyDown={(event) => {
+              if (SCROLL_KEYS.has(event.key)) interrupt();
+            }}
             className={cn(
               "relative min-h-0 flex-1 overflow-y-auto overscroll-contain outline-none [overflow-anchor:none]",
+              // Focusable, so it shows where focus is. Inset: the frame clips.
+              "focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
               viewportClassName
             )}
           >
@@ -319,7 +350,9 @@ interface MessageScrollerContentProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 
-/** The column of rows. A log: new rows are announced once. */
+/** The column of rows. It is a `role="log"`, a polite live region: pass
+ *  `aria-busy` while a reply streams, so a screen reader reads the reply
+ *  once it is complete and not chunk by chunk. */
 function MessageScrollerContent({
   className,
   children,

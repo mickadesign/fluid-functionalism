@@ -78,7 +78,8 @@ export function Chat() {
   return (
     <div className="flex h-dvh flex-col">
       <MessageScroller className="flex-1" viewportClassName="p-4">
-        <MessageScrollerContent className="gap-2">
+        {/* aria-busy: the reply is read once complete, not chunk by chunk. */}
+        <MessageScrollerContent className="gap-2" aria-busy={status === "streaming"}>
           {messages.map((message) => {
             const from = message.role === "user" ? "user" : "assistant";
             return (
@@ -98,12 +99,15 @@ export function Chat() {
                         <ThinkingStepsContent>{part.text}</ThinkingStepsContent>
                       </ThinkingSteps>
                     );
-                  if (isToolUIPart(part) && part.state === "approval-requested") {
-                    const { id } = part.approval;
+                  // Any tool part that asked: the banner stays once answered
+                  // and shows the answer, so the transcript keeps its row.
+                  if (isToolUIPart(part) && part.approval) {
+                    const { id, approved } = part.approval;
                     return (
                       <Confirmation
                         key={i}
                         title={\`Run \${getToolName(part)}?\`}
+                        state={approved == null ? "requested" : approved ? "approved" : "denied"}
                         onApprove={() => addToolApprovalResponse({ id, approved: true })}
                         onDeny={() => addToolApprovalResponse({ id, approved: false })}
                       />

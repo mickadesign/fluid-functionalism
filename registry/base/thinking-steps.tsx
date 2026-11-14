@@ -287,11 +287,10 @@ const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
   ({ size, defaultOpen = true, open, onOpenChange, running, children, className, ...props }, ref) => {
     // Always drive Base UI as controlled so the header/panel can read the
     // open state (chevron rotation, framer enter/exit) from context.
-    // With `running`, the open state follows it until the reader toggles:
-    // null means "no choice made yet".
-    const [internalOpen, setInternalOpen] = useState<boolean | null>(
-      running === undefined ? defaultOpen : null
-    );
+    // The reader's own toggle, null until they make one. It wins over
+    // `running`, which wins over `defaultOpen`: decided on every render, so
+    // a `running` that only becomes defined later is still followed.
+    const [internalOpen, setInternalOpen] = useState<boolean | null>(null);
     const isOpen = open ?? internalOpen ?? running ?? defaultOpen;
 
     const root = (
@@ -384,7 +383,9 @@ interface ThinkingStepProps {
   description?: string;
   /** Muted text after the label: a duration, a count, a diff stat. */
   meta?: ReactNode;
-  /** Turns the label into a link that opens in a new tab. */
+  /** Turns the label into a link that opens in a new tab. Only `http(s)://`
+   *  addresses and paths starting with `/` are linked; any other value
+   *  renders the plain label. */
   href?: string;
   status?: StepStatus;
   delay?: number;
@@ -439,6 +440,11 @@ function ThinkingStep({
     if (status === "pending") return null;
 
     const isActive = status === "active";
+    // A link target often comes from a model or a tool. Only web addresses
+    // and site paths become links; anything else (`javascript:`, `data:`)
+    // renders as the plain label.
+    const safeHref =
+      href && /^(https?:\/\/|\/(?!\/))/i.test(href) ? href : undefined;
     const isError = status === "error";
     // Planned, not started: shown, but quiet.
     const isUpcoming = status === "upcoming";
@@ -505,9 +511,9 @@ function ThinkingStep({
             {/* Text content */}
             <div className="flex-1 flex flex-col gap-1 min-w-0">
               <span className="flex items-baseline gap-2">
-                {href ? (
+                {safeHref ? (
                   <a
-                    href={href}
+                    href={safeHref}
                     target="_blank"
                     rel="noreferrer"
                     className={cn(
@@ -518,6 +524,7 @@ function ThinkingStep({
                     style={labelStyle}
                   >
                     {label}
+                    {isActive && "…"}
                     <span className="sr-only"> (opens in a new tab)</span>
                   </a>
                 ) : (

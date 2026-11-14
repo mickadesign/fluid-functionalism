@@ -129,7 +129,16 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
   // one-frame "before URL" state is covered by the bg-accent (no fallback
   // icon shown for images), so the transition is visually clean.
   const objectUrl = useObjectUrl(isImage ? local : null);
-  const imageUrl = local ? objectUrl : isImage ? (file as RemoteFile).url : null;
+  // A remote image can fail to load (an expired signed URL in a saved
+  // conversation); a local object URL cannot. Remember the URL that failed
+  // and fall back to the document glyph, as a failed PDF does.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const remoteUrl = !local && isImage ? (file as RemoteFile).url : null;
+  const imageUrl = local
+    ? objectUrl
+    : remoteUrl !== failedUrl
+      ? remoteUrl
+      : null;
 
   // PDFs need async rendering — loading flash is unavoidable for the first
   // ~100–300ms while pdfjs loads. Falls back to the generic icon on error
@@ -165,7 +174,7 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
   const previewUrl = imageUrl ?? pdfUrl;
   // Spinner only while a preview is genuinely pending; anything that can't
   // produce one (failed PDF, unsupported type) gets the generic icon instead.
-  const isPending = (isImage && !imageUrl) || (isPdf && !pdfUrl && !pdfError);
+  const isPending = (isImage && local !== null && !imageUrl) || (isPdf && !pdfUrl && !pdfError);
 
   return (
     <div
@@ -189,6 +198,9 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
         <img
           src={previewUrl}
           alt={name}
+          onError={() => {
+            if (remoteUrl) setFailedUrl(remoteUrl);
+          }}
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : isPending ? (

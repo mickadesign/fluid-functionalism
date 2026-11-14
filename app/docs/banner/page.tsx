@@ -250,9 +250,9 @@ export default function BannerDoc() {
 
       <DocSection title="Confirmation with the AI SDK">
         <p className="text-site-body text-muted-foreground">
-          A tool part in <code>approval-requested</code> is the question.
-          Answer it with <code>addToolApprovalResponse</code>; once the tool
-          runs, show it as a ThinkingSteps row.
+          A tool part with an <code>approval</code> is the question. Answer it
+          with <code>addToolApprovalResponse</code> and read the answer back
+          from the same part, so the banner stays in the transcript.
         </p>
         <ComponentPreview code={confirmationAiSdkCode}>
           <div className="w-full max-w-[480px]">

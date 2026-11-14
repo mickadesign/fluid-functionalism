@@ -28,12 +28,14 @@ const { messages, addToolApprovalResponse } = useChat({
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 });
 
-// Inside the loop over message.parts:
-if (isToolUIPart(part) && part.state === "approval-requested") {
-  const { id } = part.approval;
+// Inside the loop over message.parts. Any tool part that asked: the banner
+// stays once answered and shows the answer.
+if (isToolUIPart(part) && part.approval) {
+  const { id, approved } = part.approval;
   return (
     <Confirmation
       title={\`Run \${getToolName(part)}?\`}
+      state={approved == null ? "requested" : approved ? "approved" : "denied"}
       onApprove={() => addToolApprovalResponse({ id, approved: true })}
       onDeny={() => addToolApprovalResponse({ id, approved: false })}
     />

@@ -24,7 +24,7 @@ export const stepProps: PropDef[] = [
   { name: "label", type: "string", description: "Step label text." },
   { name: "description", type: "string", description: "Optional secondary text below the label." },
   { name: "meta", type: "ReactNode", description: "Muted text after the label: a duration, a count, a diff stat." },
-  { name: "href", type: "string", description: "Turns the label into a link that opens in a new tab, announced as such to screen readers." },
+  { name: "href", type: "string", description: "Turns the label into a link that opens in a new tab, announced as such to screen readers. Only http(s) addresses and paths starting with / are linked; any other value renders the plain label." },
   { name: "status", type: '"complete" | "active" | "pending" | "upcoming" | "error"', default: '"complete"', description: "Step state. Pending steps are hidden until they start; upcoming steps show, muted, for a plan known ahead; active steps shimmer; error steps turn red." },
   { name: "delay", type: "number", default: "0.08", description: "Content fade-in delay in seconds, after the step's height starts expanding." },
   { name: "isLast", type: "boolean", default: "false", description: "Hides the connector line below this step." },

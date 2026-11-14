@@ -109,7 +109,10 @@ function CopyButton({
   className?: string;
 }) {
   const CopyIcon = useIcons().copy;
-  const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
+  // Whether the result shows. What it shows is `result`, written only by a
+  // copy, so a failed copy stays a red x all the way through its fade out.
+  const [shown, setShown] = useState(false);
+  const [result, setResult] = useState<"copied" | "error">("copied");
   // Keys the result glyph, so copying again replays the draw.
   const [count, setCount] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,19 +126,21 @@ function CopyButton({
 
   const handleCopy = useCallback(async () => {
     const ok = await copyText(code);
-    setStatus(ok ? "copied" : "error");
+    setResult(ok ? "copied" : "error");
+    setShown(true);
     setCount((c) => c + 1);
     if (ok) onCopy?.();
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setStatus("idle"), 2000);
+    timeoutRef.current = setTimeout(() => setShown(false), 2000);
   }, [code, onCopy]);
 
-  const idle = status === "idle";
-  const label =
-    status === "copied" ? "Copied" : status === "error" ? "Copy failed" : "Copy";
+  const idle = !shown;
+  const failed = result === "error";
+  const outcome = failed ? "Copy failed" : "Copied";
 
   return (
-    <Tooltip content={label}>
+    <>
+    <Tooltip content={idle ? "Copy" : outcome}>
       <Button
         type="button"
         variant="ghost"
@@ -157,7 +162,7 @@ function CopyButton({
           <motion.span
             className={cn(
               "col-start-1 row-start-1 flex",
-              status === "error" && "text-destructive"
+              failed && "text-destructive"
             )}
             initial={false}
             animate={idle ? HIDDEN : SHOWN}
@@ -176,9 +181,9 @@ function CopyButton({
             >
               {/* The check (or the x of a failed copy) draws itself. */}
               <motion.path
-                key={`${status}-${count}`}
-                d={status === "error" ? "M9 9L15 15M15 9L9 15" : "M6 12L10 16L18 8"}
-                initial={{ pathLength: idle ? 1 : 0 }}
+                key={`${result}-${count}`}
+                d={failed ? "M9 9L15 15M15 9L9 15" : "M6 12L10 16L18 8"}
+                initial={{ pathLength: 0 }}
                 animate={{
                   pathLength: 1,
                   transition: { duration: 0.08, ease: "easeOut" },
@@ -187,11 +192,14 @@ function CopyButton({
             </svg>
           </motion.span>
         </span>
-        <span className="sr-only" role="status" aria-live="polite">
-          {status === "copied" ? "Copied" : status === "error" ? "Copy failed" : ""}
-        </span>
       </Button>
     </Tooltip>
+    {/* Beside the button, not inside it: a button's content is its name,
+        and a live region nested there can go unannounced. */}
+    <span className="sr-only" role="status" aria-live="polite">
+      {idle ? "" : outcome}
+    </span>
+    </>
   );
 }
 
@@ -300,7 +308,10 @@ const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(
                         <span key={i} className="flex">
                           <span
                             aria-hidden="true"
-                            className="mr-4 w-[2ch] shrink-0 select-none text-right tabular-nums text-muted-foreground"
+                            // As wide as the last line's number, so 3 and 4
+                            // digit numbers stay in their column.
+                            style={{ width: `${String(lines.length).length}ch` }}
+                            className="mr-4 shrink-0 select-none text-right tabular-nums text-muted-foreground"
                           >
                             {i + 1}
                           </span>

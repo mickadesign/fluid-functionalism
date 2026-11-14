@@ -188,7 +188,8 @@ interface InputMessageProps
    *  control (empty draft) or a Queue action (non-empty draft); when it goes
    *  back to `"idle"` or `"ready"` the next queued message auto-dispatches via
    *  `onSend`. `"error"` is not busy and holds the queue: a failed reply never
-   *  sends the next message by itself. The 4 values of the AI SDK's `useChat`
+   *  sends the next message by itself. Clearing the error (back to `"idle"`
+   *  or `"ready"`) releases it, so queued messages still go out in order. The 4 values of the AI SDK's `useChat`
    *  status pass straight through. Leave undefined to keep the legacy
    *  send-immediately behavior. */
   status?: "idle" | "streaming" | "submitted" | "ready" | "error";
@@ -722,11 +723,19 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     // queue and drop it. The consumer is expected to set status back to
     // "streaming" inside onSend, which re-arms this for the next item.
     const prevBusyRef = useRef(streaming);
+    const prevStatusRef = useRef(status);
     useEffect(() => {
       const wasBusy = prevBusyRef.current;
+      const wasError = prevStatusRef.current === "error";
       prevBusyRef.current = streaming;
+      prevStatusRef.current = status;
       if (!supportsQueue) return;
-      if (wasBusy && !streaming && status !== "error" && queueArr.length > 0) {
+      // Released when a reply ends, and when an error is cleared: otherwise
+      // the queue stayed parked after an error and the next typed message
+      // went out ahead of the older queued ones.
+      const released =
+        !streaming && status !== "error" && (wasBusy || wasError);
+      if (released && queueArr.length > 0) {
         const [next, ...rest] = queueArr;
         onQueueChange?.(rest);
         onSend?.(next.text, next.files, { queuedId: next.id });
