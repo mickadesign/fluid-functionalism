@@ -56,7 +56,9 @@ export function CursorLayer({
       className="pointer-events-none absolute z-[calc(var(--z-popover,60)+1)] size-0 transition-opacity duration-150"
       style={{ ...at, opacity: playing ? 1 : 0 }}
     >
-      <FakeCursor x={cursor.x} y={cursor.y} scale={cursor.scale} opacity={cursor.opacity} />
+      {/* A real pointer's size: these demos are components at full size,
+          not the skill page's small frames. */}
+      <FakeCursor x={cursor.x} y={cursor.y} scale={cursor.scale} opacity={cursor.opacity} size={24} />
     </div>,
     document.body
   );

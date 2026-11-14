@@ -99,6 +99,7 @@ export function FakeCursor({
   scale,
   opacity,
   className,
+  size = 18,
 }: {
   x: MotionValue<number>;
   y: MotionValue<number>;
@@ -107,15 +108,19 @@ export function FakeCursor({
   /** A z-index, where the example lifts something over the page (a drag's
    *  ghost) that the cursor must stay above. */
   className?: string;
+  /** The drawing's box, in px: 18 inside the small example frames, 24
+   *  (the arrow a real pointer's size) over a full-size component. */
+  size?: number;
 }) {
+  // The arrow's tip sits a sixth of the box in from its corner.
+  const inset = -size / 6;
   return (
     <motion.span
       aria-hidden
-      // The arrow's tip sits 3px in from the SVG's corner.
-      className={cn("pointer-events-none absolute -left-[3px] -top-[3px] z-30 origin-top-left", className)}
-      style={{ x, y, scale, opacity }}
+      className={cn("pointer-events-none absolute z-30 origin-top-left", className)}
+      style={{ x, y, scale, opacity, left: inset, top: inset }}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24">
+      <svg width={size} height={size} viewBox="0 0 24 24">
         <path
           d="m4 4 7.07 17 2.51-7.39L21 11.07z"
           strokeWidth="1.5"
