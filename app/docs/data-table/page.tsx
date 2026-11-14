@@ -144,7 +144,7 @@ export default function DataTableDoc() {
       <DocSection title="Reordering rows">
         <p className="text-site-body text-muted-foreground">
           Drag a row by its handle, or press Alt + ↑ / ↓ on the row under the pointer or holding focus. Select a few and drag one
-          to move them together. While a column sorts the table, dropping a row (or pressing the keys) asks whether to remove the sort first.
+          to move them together: every row you carry shows in the drag, where it was. While a column sorts the table, dropping a row (or pressing the keys) asks whether to remove the sort first.
         </p>
         <ComponentPreview code={reorderCode}>
           <ReorderTable />
@@ -211,7 +211,8 @@ export default function DataTableDoc() {
         <ul className="text-site-body text-muted-foreground flex list-disc flex-col gap-1 pl-5">
           <li>↓ from the search or a header steps into the first row; ↑ / ↓ and Home / End move between rows.</li>
           <li>X or Enter selects or clears a row; Shift + ↑ / ↓ grows or shrinks the selection from where it started.</li>
-          <li>⌘A / Ctrl+A selects every row, on every page; Esc clears the selection.</li>
+          <li>⌘A / Ctrl+A selects every row, on every page, with the pointer anywhere over the table; Esc clears the selection.</li>
+          <li>Tab to the header&apos;s box and press Space or Enter to select or clear every row.</li>
           <li>With sub-rows, → opens a row or steps into it and ← closes it or steps back to its parent. Without a selection column or onRowClick, Enter or Space opens and closes it too.</li>
           <li>Rows take focus whenever they can be selected, opened or expanded, so the keys work without a selection column.</li>
           <li>In an editable cell, Enter or Esc leaves the field and keeps what you typed; F2 edits a link.</li>

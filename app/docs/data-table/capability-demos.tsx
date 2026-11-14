@@ -28,6 +28,7 @@ import { TooltipGroup } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ViewTabs } from "@/lib/docs/playgrounds/view-tabs";
 import { showUndoToast } from "@/lib/docs/settings-toast";
+import { useFontsReady } from "@/lib/docs/use-fonts-ready";
 import { Badge, type BadgeColor } from "@/registry/default/badge";
 import { useIcons } from "@/lib/icon-context";
 
@@ -130,6 +131,8 @@ export function TeamTable() {
   ];
 
   const table = useDataTable({ data: members, columns, pageSize: 8, getRowId: (m) => m.id });
+  // Skeleton rows until the fonts are in: see useFontsReady.
+  const ready = useFontsReady();
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -147,6 +150,8 @@ export function TeamTable() {
       <DataTableFilterChips table={table} />
       <DataTable
         table={table}
+        loading={!ready}
+        loadingRows={8}
         onUndo={history.undo}
         onRedo={history.redo}
       />
@@ -306,7 +311,10 @@ const taskColumns: ColumnDef<Task>[] = [
 ];
 
 export function TasksTable() {
-  const [tasks, setTasks] = useState(TASKS);
+  // Each edit is a step ⌘Z takes back, as in the playground.
+  const history = useUndoableRows(TASKS, { getId: (t) => t.id });
+  const tasks = history.rows;
+  const ready = useFontsReady();
   const table = useDataTable({
     data: tasks,
     columns: taskColumns,
@@ -323,15 +331,24 @@ export function TasksTable() {
       <DataTable
         table={table}
         resizeColumns
+        loading={!ready}
+        loadingRows={6}
         onCellEdit={({ row, columnId, value }) =>
-          setTasks((old) => old.map((t) => (t.id === row.original.id ? { ...t, [columnId]: value } : t)))
+          history.apply(
+            `Edited ${row.original.title}`,
+            (old) => old.map((t) => (t.id === row.original.id ? { ...t, [columnId]: value } : t)),
+            // A burst of typing in one cell is one step.
+            `${row.original.id}:${columnId}`
+          )
         }
+        onUndo={history.undo}
+        onRedo={history.redo}
       />
     </div>
   );
 }
 
-export const tasksCode = `import { useDataTable, DataTable, DataTableColumnHeader, selectColumn, type ColumnDef } from "./components";
+export const tasksCode = `import { useDataTable, DataTable, DataTableColumnHeader, selectColumn, useUndoableRows, type ColumnDef } from "./components";
 
 const columns: ColumnDef<Task>[] = [
   selectColumn<Task>(),
@@ -349,15 +366,23 @@ const columns: ColumnDef<Task>[] = [
   { accessorKey: "link", header: "Spec", meta: { lines: 1, editor: { type: "text", link: true } } },
 ];
 
-const [tasks, setTasks] = useState(initialTasks);
-const table = useDataTable({ data: tasks, columns, getRowId: (t) => t.id });
+// Each edit is a step: ⌘Z / ⇧⌘Z in the table take it back and redo it.
+const history = useUndoableRows(initialTasks, { getId: (t) => t.id });
+const table = useDataTable({ data: history.rows, columns, getRowId: (t) => t.id });
 
 <DataTable
   table={table}
   // Each change as it's made: write it back, and the table shows it.
   onCellEdit={({ row, columnId, value }) =>
-    setTasks((old) => old.map((t) => (t.id === row.original.id ? { ...t, [columnId]: value } : t)))
+    // The third argument merges a burst of typing in one cell into one step.
+    history.apply(
+      "Edited a task",
+      (old) => old.map((t) => (t.id === row.original.id ? { ...t, [columnId]: value } : t)),
+      \`\${row.original.id}:\${columnId}\`
+    )
   }
+  onUndo={history.undo}
+  onRedo={history.redo}
 />`;
 
 // ── Sub-rows: folders and files ──────────────────────────
@@ -542,6 +567,17 @@ const viewColumns: ColumnDef<Member>[] = [
   { accessorKey: "lastActive", header: ({ column }) => <DataTableColumnHeader column={column} title="Last active" />, cell: ({ row }) => shortDay(row.original.lastActive) },
 ];
 
+/** A view's state as one string, to tell two apart: only the hidden
+ *  columns count (an empty visibility and one listing every column as
+ *  shown are the same view), and an unset search is an empty one. */
+const viewKey = (state: View["state"]) =>
+  JSON.stringify([
+    state.columnFilters,
+    state.sorting,
+    Object.keys(state.columnVisibility ?? {}).filter((id) => state.columnVisibility[id] === false).sort(),
+    state.globalFilter ?? "",
+  ]);
+
 const VIEWS: View[] = [
   {
     id: 1,
@@ -578,10 +614,27 @@ export function ViewsTable() {
     setNameNext(views.length + 1);
   };
   const remove = (at: number) => {
+    const view = views[at];
+    if (!view) return;
     setViews((old) => old.filter((_, i) => i !== at));
     show(EVERYONE);
     setOpen(0);
+    // Its way back: the view returns to its place, open.
+    showUndoToast(`Deleted ${view.name}`, () => {
+      setViews((old) => [...old.slice(0, at), view, ...old.slice(at)]);
+      show(view.state);
+      setOpen(at + 1);
+    });
   };
+  // Save view shows once the table differs from the open view: before
+  // that there is nothing new to save.
+  const openState = open === 0 ? EVERYONE : views[open - 1]?.state;
+  const now = table.getState();
+  const changed =
+    !openState ||
+    viewKey({ columnFilters: now.columnFilters, sorting: now.sorting, columnVisibility: now.columnVisibility, globalFilter: now.globalFilter }) !==
+      viewKey(openState);
+  const ready = useFontsReady();
   const move = (from: number, to: number) => {
     setViews((old) => {
       const next = [...old];
@@ -619,13 +672,13 @@ export function ViewsTable() {
       )}
       {/* Save view after the chips' + Add filter, with the first filter. */}
       <DataTableFilterChips table={table}>
-        {table.getState().columnFilters.length > 0 && (
+        {changed && (
           <Button variant="ghost" onClick={save}>
             Save view
           </Button>
         )}
       </DataTableFilterChips>
-      <DataTable table={table} />
+      <DataTable table={table} loading={!ready} loadingRows={6} />
     </div>
   );
 }

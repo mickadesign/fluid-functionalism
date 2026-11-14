@@ -9,6 +9,7 @@ import {
   type ColumnDef,
 } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
+import { useFontsReady } from "@/lib/docs/use-fonts-ready";
 
 export type Payment = {
   id: string;
@@ -55,13 +56,16 @@ const sortOnlyColumns: ColumnDef<Payment>[] = [
 export function SortableTable() {
   const [data] = useState(() => PAYMENTS.slice(0, 5));
   const table = useDataTable({ data, columns: sortOnlyColumns });
-  return <DataTable table={table} />;
+  // Skeleton rows until the fonts are in: see useFontsReady.
+  const ready = useFontsReady();
+  return <DataTable table={table} loading={!ready} loadingRows={5} />;
 }
 
 /** A search over every column, and an empty state when nothing matches. */
 export function SearchTable() {
   const [data] = useState(() => PAYMENTS.slice(0, 4));
   const table = useDataTable({ data, columns: sortOnlyColumns });
+  const ready = useFontsReady();
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="flex justify-end">
@@ -69,6 +73,8 @@ export function SearchTable() {
       </div>
       <DataTable
         table={table}
+        loading={!ready}
+        loadingRows={4}
         empty={{ title: "No payments match", description: "Try an email, a status, or an amount." }}
       />
     </div>
@@ -79,6 +85,7 @@ export function SearchTable() {
 export function LoadingTable() {
   const [data] = useState(() => PAYMENTS.slice(0, 5));
   const [loading, setLoading] = useState(false);
+  const ready = useFontsReady();
   const table = useDataTable({ data, columns: sortOnlyColumns });
   return (
     <div className="flex w-full flex-col gap-3">
@@ -94,7 +101,7 @@ export function LoadingTable() {
           Reload
         </Button>
       </div>
-      <DataTable table={table} loading={loading} loadingRows={5} />
+      <DataTable table={table} loading={loading || !ready} loadingRows={5} />
     </div>
   );
 }
