@@ -336,7 +336,10 @@ function useDataTable<TData>({ pageSize = 10, initialState, ...options }: UseDat
     ...options,
     // Every column filters the way DataTableFilters sets it, unless it
     // brings its own filterFn; DataTableSearch has the global filter.
-    defaultColumn: { filterFn: dataTableFilterFn, ...options.defaultColumn },
+    // A column shown after the widths were read (from the Columns menu)
+    // takes this default: TanStack's 150px plus 16, so a short header and
+    // its sort arrow have room.
+    defaultColumn: { filterFn: dataTableFilterFn, size: ADDED_COLUMN_WIDTH, ...options.defaultColumn },
     globalFilterFn: options.globalFilterFn ?? dataTableSearchFn,
     initialState: {
       // A wide table keeps its edges in view: the boxes and the first data
@@ -1637,12 +1640,15 @@ function DataTable<TData>({
       // kinds of band (it moves when the table scrolls up and down).
       const container = wrap.querySelector("table")?.parentElement;
       const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+      // What draws over or behind the rows from outside the scroll box (the
+      // fade bands, the frozen columns' fills) is placed in the table's own
+      // coordinates and rides its scroll up and down (`ff-ride`): a
+      // scroll-driven transform, which moves in the scroll's own frame.
+      // Placed from scroll events instead, it trailed a fast scroll by a
+      // frame, and the frozen columns' fills lagged behind their rows.
+      const scrollTop = viewport?.scrollTop ?? 0;
       if (container) {
-        const base = container.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
-        // The bands over the frozen columns sit in the box, not in the
-        // table: scrolled up or down with the pointer still, the row's
-        // fill went with the rows and its frozen part stayed behind, on
-        // whichever row had scrolled into its place.
+        const base = container.getBoundingClientRect().top - wrap.getBoundingClientRect().top + scrollTop;
         if (base !== fadeBase.current) {
           fadeBase.current = base;
           const box = lastHoverBox.current;
@@ -1651,6 +1657,12 @@ function DataTable<TData>({
               if (band) band.style.transform = `translateY(${base + box.y}px)`;
         }
       }
+      if (viewport) wrap.style.setProperty("--ff-scroll-y", `${Math.max(0, viewport.scrollHeight - viewport.clientHeight)}px`);
+      // Where there are no scroll timelines the riders follow the scroll
+      // event (an animation, where there is one, takes over this style).
+      wrap.querySelectorAll<HTMLElement>(".ff-ride").forEach((rider) => {
+        rider.style.transform = `translateY(${-scrollTop}px)`;
+      });
       const frame = host.parentElement;
       if (frame && viewport)
         frame.style.setProperty("--ff-fade", getComputedStyle(viewport).getPropertyValue("--scroll-fade-size").trim() || "48px");
@@ -1677,9 +1689,12 @@ function DataTable<TData>({
         const rest = at.left + viewport.scrollLeft;
         const end = rest - Math.max(0, viewport.scrollWidth - viewport.clientWidth);
         wrap.querySelectorAll<HTMLElement>("[data-pin-mirror]").forEach((mirror) => {
-          const clip = mirror.parentElement!.getBoundingClientRect();
+          // The clipping box, not the rider between it and the mirror
+          // (which is wherever the scroll has taken it).
+          const clip = (mirror.closest(".ff-ride")?.parentElement ?? mirror.parentElement!).getBoundingClientRect();
           const x = (mirror.dataset.pinMirror === "left" ? rest : end) - clip.left;
-          mirror.style.transform = `translate(${x}px, ${at.top - clip.top}px)`;
+          // In the table's coordinates: its rider carries the scroll.
+          mirror.style.transform = `translate(${x}px, ${at.top + scrollTop - clip.top}px)`;
           mirror.style.width = `${(container as HTMLElement).offsetWidth}px`;
         });
       }
@@ -2864,7 +2879,11 @@ function DataTable<TData>({
       </ScrollArea>
       {wrapEl &&
         createPortal(
-          <div aria-hidden className="pointer-events-none absolute inset-0 -z-[1] overflow-hidden">
+          // Cut off at the header's bottom: the scroll fade's mask thins the
+          // header's last cell before a frozen column too, and a selected
+          // row passing under it showed its band through that cell.
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-[1] overflow-hidden [clip-path:inset(var(--ff-head,0px)_0_0_0)]">
+            <div className="ff-ride absolute inset-0">
             <div ref={fadeHostRef} />
             {/* The hovered row's band: one pair, moved with the highlight. */}
             <div ref={hoverFadeRef} className="absolute inset-x-0 top-0 opacity-0">
@@ -2876,6 +2895,7 @@ function DataTable<TData>({
                 className="ff-fade-r absolute inset-y-0 right-(--pin-r,0px) w-(--ff-fade,48px)"
                 style={{ background: "linear-gradient(to left, var(--hover), transparent)" }}
               />
+            </div>
             </div>
           </div>,
           wrapEl
@@ -2907,11 +2927,18 @@ function DataTable<TData>({
                 that scroll, and a run's rounded ends are the same ones.
                 (A fill per frozen cell could only switch on.) */}
             <div className="ff-pinhover-l absolute bottom-0 left-(--ff-inset-l,0px) top-(--ff-head,0px) w-[calc(var(--pin-l,0px)-var(--ff-inset-l,0px))] overflow-hidden">
-              <div ref={setMirrorLeft} data-pin-mirror="left" className="absolute left-0 top-0 h-0" />
+              <div className="ff-ride absolute inset-0">
+                <div ref={setMirrorLeft} data-pin-mirror="left" className="absolute left-0 top-0 h-0" />
+              </div>
             </div>
             <div className="ff-pinhover-r absolute bottom-0 right-(--ff-inset-r,0px) top-(--ff-head,0px) w-[calc(var(--pin-r,0px)-var(--ff-inset-r,0px))] overflow-hidden">
-              <div ref={setMirrorRight} data-pin-mirror="right" className="absolute left-0 top-0 h-0" />
+              <div className="ff-ride absolute inset-0">
+                <div ref={setMirrorRight} data-pin-mirror="right" className="absolute left-0 top-0 h-0" />
+              </div>
             </div>
+            {/* Cut off at the header's bottom, which the rows scroll under. */}
+            <div className="absolute inset-0 [clip-path:inset(var(--ff-head,0px)_0_0_0)]">
+            <div className="ff-ride absolute inset-0">
             <div ref={pinHoverRef} className="absolute inset-x-0 top-0 opacity-0">
               <div
                 className={cn(
@@ -2925,6 +2952,8 @@ function DataTable<TData>({
                   PIN_RADIUS.right[shape.variant]
                 )}
               />
+            </div>
+            </div>
             </div>
           </div>,
           wrapEl
@@ -3409,6 +3438,9 @@ const SELECT_SNAP =
 // `:hover` only once the pointer moves again, which left the box and the
 // handle on the row that had scrolled away. The header row has no
 // highlight of its own, so its box still follows `:hover`.
+/** The width a column gets when it is shown after the others were sized. */
+const ADDED_COLUMN_WIDTH = 166;
+
 /** One block of rows in the drag's copy: the page background under the
  *  rows and the --active fill over them. */
 const GHOST_BLOCK =
@@ -3744,12 +3776,14 @@ function pinProps(pin: PinInfo | undefined) {
 // Rendered once per page (React hoists and dedupes it by href).
 const PIN_CSS = `
 @keyframes ff-fade-on { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ff-ride { from { transform: translateY(0) } to { transform: translateY(calc(-1 * var(--ff-scroll-y, 0px))) } }
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
-  [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x; }
-  [data-ff-table] [data-slot=scroll-area-viewport] { scroll-timeline: --ff-table-x inline; }
+  [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x, --ff-table-y; }
+  [data-ff-table] [data-slot=scroll-area-viewport] { scroll-timeline: --ff-table-x inline, --ff-table-y block; }
+  .ff-ride { animation: ff-ride linear both; animation-timeline: --ff-table-y; }
   .ff-fade-l { animation: ff-fade-on linear both; animation-timeline: --ff-table-x; animation-range: 0 var(--ff-fade, 48px); }
   .ff-fade-r { animation: ff-fade-off linear both; animation-timeline: --ff-table-x; animation-range: calc(100% - var(--ff-fade, 48px)) 100%; }
 }
