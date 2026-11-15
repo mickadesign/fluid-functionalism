@@ -92,8 +92,19 @@ function useObjectUrl(file: File | null): string | null {
 // resolving a spinner is shown. Self-contained (outline + surface + sizing) so
 // it can be reused both inside the composer's preview row and to render
 // already-sent attachments in a chat transcript.
+/** A file that lives at a URL: an attachment loaded back from a saved
+ *  conversation, or one the assistant produced. The shape of the AI SDK's
+ *  file part. */
+interface RemoteFile {
+  url: string;
+  mediaType: string;
+  filename?: string;
+}
+
 interface FileThumbnailProps {
-  file: File;
+  /** A File from an input, or a `{ url, mediaType }` file that lives at a
+   *  URL. Remote images show; other remote types get the document glyph. */
+  file: File | RemoteFile;
   /** Side length of the square thumbnail in pixels. */
   size: number;
   /** Explicit corner radius for a known nested inset. Defaults to the active
@@ -104,13 +115,30 @@ interface FileThumbnailProps {
 
 function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
   const shape = useShape();
-  const isImage = file.type.startsWith("image/");
-  const isPdf = file.type === "application/pdf";
+  // Only a local File can be read: object URLs and the PDF render need its bytes.
+  const local = "url" in file ? null : file;
+  const type = local ? local.type : (file as RemoteFile).mediaType;
+  const name = local
+    ? local.name
+    : ((file as RemoteFile).filename ?? "Attachment");
+  // A remote media type may be the bare top-level segment ("image").
+  const isImage = type === "image" || type.startsWith("image/");
+  const isPdf = local !== null && type === "application/pdf";
 
   // The URL exists from the commit on, so the first render has none. That
   // one-frame "before URL" state is covered by the bg-accent (no fallback
   // icon shown for images), so the transition is visually clean.
-  const imageUrl = useObjectUrl(isImage ? file : null);
+  const objectUrl = useObjectUrl(isImage ? local : null);
+  // A remote image can fail to load (an expired signed URL in a saved
+  // conversation); a local object URL cannot. Remember the URL that failed
+  // and fall back to the document glyph, as a failed PDF does.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const remoteUrl = !local && isImage ? (file as RemoteFile).url : null;
+  const imageUrl = local
+    ? objectUrl
+    : remoteUrl !== failedUrl
+      ? remoteUrl
+      : null;
 
   // PDFs need async rendering — loading flash is unavoidable for the first
   // ~100–300ms while pdfjs loads. Falls back to the generic icon on error
@@ -126,26 +154,27 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
     setPdf({ url: null, failed: null });
   }
   useEffect(() => {
-    if (!isPdf) return;
+    if (!isPdf || !local) return;
     let cancelled = false;
-    renderPdfFirstPage(file, size)
+    renderPdfFirstPage(local, size)
       .then((url) => {
         if (!cancelled) setPdf({ url, failed: null });
       })
       .catch(() => {
-        if (!cancelled) setPdf((prev) => ({ ...prev, failed: { file, size } }));
+        if (!cancelled)
+          setPdf((prev) => ({ ...prev, failed: { file: local, size } }));
       });
     return () => {
       cancelled = true;
     };
-  }, [file, isPdf, size]);
+  }, [local, isPdf, size]);
   const pdfUrl = pdf.url;
-  const pdfError = pdf.failed?.file === file && pdf.failed.size === size;
+  const pdfError = pdf.failed?.file === local && pdf.failed.size === size;
 
   const previewUrl = imageUrl ?? pdfUrl;
   // Spinner only while a preview is genuinely pending; anything that can't
   // produce one (failed PDF, unsupported type) gets the generic icon instead.
-  const isPending = (isImage && !imageUrl) || (isPdf && !pdfUrl && !pdfError);
+  const isPending = (isImage && local !== null && !imageUrl) || (isPdf && !pdfUrl && !pdfError);
 
   return (
     <div
@@ -168,7 +197,10 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={previewUrl}
-          alt={file.name}
+          alt={name}
+          onError={() => {
+            if (remoteUrl) setFailedUrl(remoteUrl);
+          }}
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : isPending ? (
@@ -191,7 +223,7 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
         <div
           className="absolute inset-0 flex items-center justify-center text-muted-foreground"
           role="img"
-          aria-label={file.name}
+          aria-label={name}
         >
           <svg
             width={Math.max(16, size * 0.35)}
@@ -214,4 +246,4 @@ function FileThumbnail({ file, size, radius, className }: FileThumbnailProps) {
 }
 
 export { FileThumbnail, loadPdfjs, renderPdfFirstPage, setPdfWorkerSrc };
-export type { FileThumbnailProps };
+export type { FileThumbnailProps, RemoteFile };

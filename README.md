@@ -60,7 +60,7 @@ Every component that touches a primitive has both a Radix and a Base UI flavor. 
 npx shadcn@latest add @fluid/base/button
 ```
 
-The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Breadcrumb, Calendar, ColorPicker, CommandMenu, ContextMenu, DataTable, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
+The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Breadcrumb, Calendar, CodeBlock, ColorPicker, CommandMenu, Confirmation, ContextMenu, DataTable, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
 
 ### Overwrite the stock files
 
@@ -112,7 +112,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Accordion](https://www.fluidfunctionalism.com/docs/accordion) | `accordion` · `base/accordion` | Collapsible sections with animated expand/collapse and fluid hover in grouped mode |
 | [AskUserQuestions](https://www.fluidfunctionalism.com/docs/ask-user-questions) | `ask-user-questions` · `base/ask-user-questions` | Stepped question flow with single/multi-select, an inline "other" input, skip, and multi-question navigation |
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | `badge` | Compact label with solid, dot, and ghost variants, the Tailwind color palette, and 2 sizes |
-| [Banner](https://www.fluidfunctionalism.com/docs/banner) | `banner` · `base/banner` | Status message in 5 statuses and 2 contrasts with a status icon, up to 3 actions, a dismiss that collapses its height, and a fixed full-bleed variant |
+| [Banner](https://www.fluidfunctionalism.com/docs/banner) | `banner` · `base/banner` | Status message in 5 statuses and 2 contrasts with a status icon, up to 3 actions, a dismiss that collapses its height, and a fixed full-bleed variant. Confirmation (`confirmation` · `base/confirmation`) is a banner that asks a yes or no question |
 | [Breadcrumb](https://www.fluidfunctionalism.com/docs/breadcrumb) | `breadcrumb` · `base/breadcrumb` | Trail of links to the current page with one fluid hover across every crumb, icons, a Dropdown on a step, and a collapsed middle |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | `button` · `base/button` | Variants, sizes, loading state, icon slots, and a weight shift on hover |
 | [Calendar](https://www.fluidfunctionalism.com/docs/calendar) | `calendar` · `base/calendar` | Month grid for a day or a range with one fluid hover across 2 months, a range band that follows the pointer, booked days, and ISO week numbers |
@@ -121,6 +121,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments |
 | [Checkbox](https://www.fluidfunctionalism.com/docs/checkbox) | `checkbox` · `base/checkbox` | A single checkbox: a hairline square that darkens on hover and a check that draws itself |
 | [CheckboxGroup](https://www.fluidfunctionalism.com/docs/checkbox-group) | `checkbox-group` · `base/checkbox-group` | Checkbox group with merged backgrounds for contiguous selections |
+| [CodeBlock](https://www.fluidfunctionalism.com/docs/code-block) | `code-block` · `base/code-block` | Code or command output with a language header, a copy button whose check draws itself, line numbers, and a height cap |
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | `color-picker` · `base/color-picker` | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper, inline or in a popover |
 | [Combobox](https://www.fluidfunctionalism.com/docs/combobox) | `combobox` · `base/combobox` | Type-to-filter field with keyboard highlight, fluid hover, chips for multiple selection, and a create-from-query row |
 | [CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu) | `command-menu` · `base/command-menu` | Type to filter a list of actions, arrow through them, press Enter: groups, shortcut caps, suggestions, and a dialog shell on ⌘K |

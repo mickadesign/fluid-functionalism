@@ -39,6 +39,7 @@ import { apiReference as sliderApi } from "@/lib/docs/api/slider";
 import { apiReference as switchApi } from "@/lib/docs/api/switch";
 import { apiReference as tableApi } from "@/lib/docs/api/table";
 import { apiReference as tabsApi } from "@/lib/docs/api/tabs";
+import { apiReference as codeBlockApi } from "@/lib/docs/api/code-block";
 import { apiReference as thinkingIndicatorApi } from "@/lib/docs/api/thinking-indicator";
 import { apiReference as thinkingStepsApi } from "@/lib/docs/api/thinking-steps";
 import { apiReference as tooltipApi } from "@/lib/docs/api/tooltip";
@@ -57,6 +58,7 @@ export const API_REFERENCE: Record<string, ApiTable[]> = {
   "checkbox-group": checkboxGroupApi,
   "color-picker": colorPickerApi,
   combobox: comboboxApi,
+  "code-block": codeBlockApi,
   "command-menu": commandMenuApi,
   "context-menu": contextMenuApi,
   "data-table": dataTableApi,

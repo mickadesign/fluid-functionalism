@@ -183,11 +183,16 @@ interface InputMessageProps
     TextareaHTMLAttributes<HTMLTextAreaElement>,
     "value" | "onChange" | "onKeyDown" | "disabled" | "placeholder"
   >;
-  /** Assistant response state. When `"streaming"`, the send button becomes a
-   *  Stop control (empty draft) or a Queue action (non-empty draft); on the
-   *  `streaming → idle` edge the next queued message auto-dispatches via `onSend`.
-   *  Leave undefined to keep the legacy send-immediately behavior. */
-  status?: "idle" | "streaming";
+  /** Assistant response state. While it is busy (`"streaming"`, or
+   *  `"submitted"`: sent, nothing back yet), the send button becomes a Stop
+   *  control (empty draft) or a Queue action (non-empty draft); when it goes
+   *  back to `"idle"` or `"ready"` the next queued message auto-dispatches via
+   *  `onSend`. `"error"` is not busy and holds the queue: a failed reply never
+   *  sends the next message by itself. Clearing the error (back to `"idle"`
+   *  or `"ready"`) releases it, so queued messages still go out in order. The 4 values of the AI SDK's `useChat`
+   *  status pass straight through. Leave undefined to keep the legacy
+   *  send-immediately behavior. */
+  status?: "idle" | "streaming" | "submitted" | "ready" | "error";
   /** Fired when the Stop control is pressed (streaming, empty draft). The
    *  consumer should halt the current response and flip `status` to `"idle"`,
    *  which immediately dispatches the next queued message. */
@@ -552,7 +557,8 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       queueRef.current = queueArr;
     });
     const supportsQueue = status !== undefined && onQueueChange !== undefined;
-    const streaming = status === "streaming";
+    // Busy: a reply is on its way or arriving.
+    const streaming = status === "streaming" || status === "submitted";
     const [liveMsg, setLiveMsg] = useState("");
 
     // Sent-message history navigation (readline-style). `historyIndex` is null
@@ -716,12 +722,20 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     // finished on its own or the user pressed Stop), fire the head of the
     // queue and drop it. The consumer is expected to set status back to
     // "streaming" inside onSend, which re-arms this for the next item.
+    const prevBusyRef = useRef(streaming);
     const prevStatusRef = useRef(status);
     useEffect(() => {
-      const prev = prevStatusRef.current;
+      const wasBusy = prevBusyRef.current;
+      const wasError = prevStatusRef.current === "error";
+      prevBusyRef.current = streaming;
       prevStatusRef.current = status;
       if (!supportsQueue) return;
-      if (prev === "streaming" && status === "idle" && queueArr.length > 0) {
+      // Released when a reply ends, and when an error is cleared: otherwise
+      // the queue stayed parked after an error and the next typed message
+      // went out ahead of the older queued ones.
+      const released =
+        !streaming && status !== "error" && (wasBusy || wasError);
+      if (released && queueArr.length > 0) {
         const [next, ...rest] = queueArr;
         onQueueChange?.(rest);
         onSend?.(next.text, next.files, { queuedId: next.id });
@@ -729,7 +743,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
           `Message sent.${rest.length ? ` ${rest.length} still queued.` : ""}`
         );
       }
-    }, [status, supportsQueue, queueArr, onQueueChange, onSend]);
+    }, [status, streaming, supportsQueue, queueArr, onQueueChange, onSend]);
 
     // ── Queue item actions ────────────────────────────────────────────
     const editQueued = useCallback(

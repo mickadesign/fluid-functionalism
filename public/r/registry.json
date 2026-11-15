@@ -1839,7 +1839,7 @@
       "name": "input-message",
       "type": "registry:ui",
       "title": "Input Message",
-      "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
+      "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate. Ships with MessageScroller, the scroll position of the transcript above it.",
       "dependencies": [
         "motion"
       ],
@@ -1854,6 +1854,7 @@
         "https://www.fluidfunctionalism.com/r/surface-context.json",
         "https://www.fluidfunctionalism.com/r/surface-classes.json",
         "https://www.fluidfunctionalism.com/r/file-thumbnail.json",
+        "https://www.fluidfunctionalism.com/r/message-scroller.json",
         "https://www.fluidfunctionalism.com/r/use-fluid-hover.json",
         "https://www.fluidfunctionalism.com/r/button.json",
         "https://www.fluidfunctionalism.com/r/tooltip.json",
@@ -1950,6 +1951,95 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/chat-message. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#chat-message.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "message-scroller",
+      "type": "registry:ui",
+      "title": "Message Scroller",
+      "description": "Scroll position for a chat transcript: follows a streamed reply while the reader is at the end, lets go on a manual scroll, glides a new user turn to the top of the view with the reply growing under it, and shows a button back to the latest message. Holds no messages and no chat state.",
+      "dependencies": [
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
+        "https://www.fluidfunctionalism.com/r/tokens.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/message-scroller.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live demo: https://www.fluidfunctionalism.com/docs/input-message. Craft notes, the scroll and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input-message.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "code-block",
+      "type": "registry:ui",
+      "title": "Code Block",
+      "description": "Code or command output built from the library's own parts: a ghost icon Button with a Tooltip whose copy icon crossfades to a check that draws itself, and the ScrollArea scrollbar with scroll-fade edges. Line numbers, wrapping and a height cap. Ships no highlighter: pass highlighted markup as children and the plain string stays what gets copied.",
+      "dependencies": [
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
+        "https://www.fluidfunctionalism.com/r/button.json",
+        "https://www.fluidfunctionalism.com/r/tooltip.json",
+        "https://www.fluidfunctionalism.com/r/scroll-area.json",
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/tokens.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/code-block.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/code-block. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#code-block.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "confirmation",
+      "type": "registry:ui",
+      "title": "Confirmation",
+      "description": "A yes or no question asked before something runs, such as an agent's tool call. Built on the Banner: its neutral fill, grid and actions, with Deny and Approve giving way to the answer in the same slot.",
+      "dependencies": [
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "https://www.fluidfunctionalism.com/r/springs.json",
+        "https://www.fluidfunctionalism.com/r/size-context.json",
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/banner.json",
+        "https://www.fluidfunctionalism.com/r/button.json",
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/tokens.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/confirmation.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live demo: https://www.fluidfunctionalism.com/docs/banner. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#banner.",
       "categories": [
         "components"
       ]

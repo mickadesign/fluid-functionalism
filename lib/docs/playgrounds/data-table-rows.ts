@@ -26,6 +26,7 @@ export const ADDED: Record<string, string> = {
   "chat-message": "2026-05-28",
   checkbox: "2026-11-04",
   "checkbox-group": "2026-02-16",
+  "code-block": "2026-11-14",
   "color-picker": "2026-04-24",
   combobox: "2026-09-06",
   "command-menu": "2026-09-08",

@@ -17,6 +17,7 @@ behavior they extend.
 | [AskUserQuestions](https://www.fluidfunctionalism.com/docs/ask-user-questions) | `ask-user-questions` · `base/ask-user-questions` | Stepped question flow with single/multi-select, an inline "other" input, skip, and multi-question navigation | [AskUserQuestions](craft.md#ask-user-questions) |
 | [Badge](https://www.fluidfunctionalism.com/docs/badge) | `badge` | Compact label with solid, dot, and ghost variants, the Tailwind color palette, and 2 sizes | [Badge](craft.md#badge) |
 | [Banner](https://www.fluidfunctionalism.com/docs/banner) | `banner` | Status message in 5 statuses and 2 contrasts (`contrast` low or high): status icon, title, optional description, up to 3 actions (primary, secondary, ghost), a dismiss that collapses its height, and a fixed full-bleed variant | [Banner](craft.md#banner) |
+| [Confirmation](https://www.fluidfunctionalism.com/docs/banner) | `confirmation` | A Banner that asks a yes or no question before something runs (an agent's tool call): Approve and Deny give way to the answer in the same slot | [Banner](craft.md#banner) |
 | [Breadcrumb](https://www.fluidfunctionalism.com/docs/breadcrumb) | `breadcrumb` | Trail of links to the current page with one fluid hover across every crumb (chevron trailing each crumb, no gaps), icons, a Dropdown on a step (optionally on hover), a collapsed middle with a hidden-step count, and a long page name that truncates in place | [Breadcrumb](craft.md#breadcrumb) |
 | [Button](https://www.fluidfunctionalism.com/docs/button) | `button` · `base/button` | Variants (primary, secondary, tertiary, ghost, destructive), sizes, loading state, icon slots, and a weight shift on hover | [Button](craft.md#button) |
 | [Calendar](https://www.fluidfunctionalism.com/docs/calendar) | `calendar` · `base/calendar` | Month grid on DayPicker v10 for a day or a range (`mode`): one fluid hover across 1 or 2 months (`numberOfMonths`, `orientation` auto/horizontal/vertical), a range band that previews the end, `booked` / `available` / `disabled` matchers, `cellSize`, `fill`, ISO week numbers | [Calendar](craft.md#calendar) |
@@ -25,6 +26,7 @@ behavior they extend.
 | [ChatMessage](https://www.fluidfunctionalism.com/docs/chat-message) | `chat-message` | Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments | [ChatMessage](craft.md#chat-message) |
 | [Checkbox](https://www.fluidfunctionalism.com/docs/checkbox) | `checkbox` · `base/checkbox` | A single checkbox: a hairline square that darkens on hover and a check that draws itself | [Checkbox](craft.md#checkbox) |
 | [CheckboxGroup](https://www.fluidfunctionalism.com/docs/checkbox-group) | `checkbox-group` · `base/checkbox-group` | Checkbox group with merged backgrounds for contiguous selections | [CheckboxGroup](craft.md#checkbox-group) |
+| [CodeBlock](https://www.fluidfunctionalism.com/docs/code-block) | `code-block` | Code or command output with a language header, a copy button whose check draws itself, line numbers, and a height cap | [CodeBlock](craft.md#code-block) |
 | [ColorPicker](https://www.fluidfunctionalism.com/docs/color-picker) | `color-picker` · `base/color-picker` | HEX, RGB, HSL, and OKLCH formats with alpha, swatches, and eyedropper, inline or in a popover | [ColorPicker](craft.md#color-picker) |
 | [Combobox](https://www.fluidfunctionalism.com/docs/combobox) | `combobox` · `base/combobox` | Type-to-filter field with keyboard highlight, fluid hover, chips for multiple selection, and a create-from-query row | [Combobox](craft.md#combobox) |
 | [CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu) | `command-menu` · `base/command-menu` | Type to filter a list of actions, arrow through them, press Enter: groups, shortcut caps, suggestions, and a dialog shell on ⌘K | [CommandMenu](craft.md#command-menu) |
@@ -35,6 +37,7 @@ behavior they extend.
 | [Dropdown](https://www.fluidfunctionalism.com/docs/dropdown) | `dropdown` · `base/dropdown` | Menu-style dropdown with fluid hover, animated selection, and an optional search field in the popup | [Dropdown](craft.md#dropdown) |
 | [Field](https://www.fluidfunctionalism.com/docs/field) | `field` (brings `input`, `textarea`) | Label, control, help text, and error composed into one accessible field: fieldsets, legends, horizontal or responsive layout, choice cards | [Field](craft.md#field) |
 | [FileThumbnail](https://www.fluidfunctionalism.com/docs/input-message) | `file-thumbnail` | Read-only square preview of a File: images object-cover, PDFs render their first page (strict CSP: `setPdfWorkerSrc()` to self-host the worker) | [InputMessage](craft.md#input-message) |
+| [MessageScroller](https://www.fluidfunctionalism.com/docs/input-message) | `message-scroller` | Ships with InputMessage. Scroll position for the transcript above the composer: follows a streamed reply, lets go when the reader scrolls, glides each new turn to the top | [InputMessage](craft.md#input-message) |
 | [Input](https://www.fluidfunctionalism.com/docs/input) | `input` | Single-line text field in the Select trigger's hairline, with a neutral focus border | [Input](craft.md#input) |
 | [InputCopy](https://www.fluidfunctionalism.com/docs/input-copy) | `input-copy` · `base/input-copy` | Read-only input with copy-to-clipboard and animated check feedback | [InputCopy](craft.md#input-copy) |
 | [InputGroup](https://www.fluidfunctionalism.com/docs/input-group) | `input-group` | Input fields with fluid hover, animated labels, and validation | [InputGroup](craft.md#input-group) |
@@ -114,9 +117,11 @@ part itself.
 
 - App shell / navigation → `sidebar-app` block (or `sidebar` to compose your own)
 - Settings surface → `dialog-sidebar` block
-- Chat / AI interface → `input-message` + `chat-message` + `thinking-steps` +
-  `thinking-indicator` (+ `queued-stack`, `ask-user-questions`), and
-  `typography` for the markdown in replies (`.typeset`)
+- Chat / AI interface → `input-message` (brings `message-scroller`) + `chat-message` +
+  `thinking-steps` + `thinking-indicator` (+ `confirmation`, `code-block`,
+  `queued-stack`, `ask-user-questions`), and `typography` for the markdown in
+  replies (`.typeset`). Wiring to the AI SDK's `useChat`:
+  [InputMessage craft](craft.md#input-message)
 - Docs, changelogs, any rendered markdown → `typography` (`.typeset`)
 - Action palette → `command-menu` (dialog shell on ⌘K included)
 - Forms → `field` + `input`, `textarea`, `checkbox`, `input-group`, `select`, `combobox`, `checkbox-group`,
