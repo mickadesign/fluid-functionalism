@@ -9,7 +9,7 @@ import { motion } from "motion/react";
 import { componentList } from "@/lib/docs/components";
 import { useReleaseMarks } from "@/lib/changelog/marks";
 import { previewMap } from "@/app/components/bento-previews";
-import { playgroundMap } from "@/lib/docs/playgrounds";
+import { demoPlaygroundMap as playgroundMap } from "@/lib/docs/playgrounds";
 import { BentoCard } from "@/app/components/bento-card";
 import { cn } from "@/lib/utils";
 import { PlaygroundMenu } from "@/app/components/playground-menu";
