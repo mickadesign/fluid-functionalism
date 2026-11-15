@@ -6643,6 +6643,11 @@ const ITEM_HIDDEN = { opacity: 0, scale: 0.96, filter: "blur(4px)" };
 // last ones together: five take no longer than three.
 const ITEM_STAGGER = 0.04;
 const ITEM_STAGGER_CAP = 0.08;
+// Items that arrive with their row wait for it to open most of the way:
+// the row is not clipped, and an item showing sooner sat over the table's
+// header while that was still sliding out from under it. (Clipped
+// instead, the items were cut off by the row's edge as they came in.)
+const ITEM_ROW_WAIT = 0.06;
 // A new item's popup opens once the item has landed.
 const ITEM_POPUP_WAIT = 150;
 
@@ -6686,12 +6691,8 @@ function RowRevealPart({ children }: { children: ReactNode }) {
       if (!isPresent) fade.then(() => safeToRemove?.());
       return () => fade.stop();
     }
-    // Clipped only while it moves: at rest a chip's focus ring shows.
-    // clip, not hidden: hidden makes the row a scroll container, and a
-    // field focused inside it as it grows (a new chip's input, a view's
-    // name) scrolled the row to show it, shifting its content, which then
-    // jumped back when the clip came off.
-    el.style.overflow = "clip";
+    // Never clipped: the items time themselves to the room (they come in
+    // once it is there, and are gone before it closes).
     // The start, set before this frame paints: animate() only applies its
     // first keyframe on the next one, which showed the row whole for a frame.
     if (isPresent) {
@@ -6700,11 +6701,13 @@ function RowRevealPart({ children }: { children: ReactNode }) {
     }
     const run = isPresent
       ? animate(el, { height: [0, height], marginTop: [-gap, 0] }, { ...spring.moderate })
-      : animate(el, { height: [height, 0], marginTop: [0, -gap] }, { ...spring.moderate, ...spring.moderate.exit });
-    // Leaving, the items go together, no stagger, as the row closes.
+      : // The room closes once the items have gone (their 60ms, below).
+        animate(el, { height: [height, 0], marginTop: [0, -gap] }, { ...spring.moderate, ...spring.moderate.exit, delay: spring.fast.exit.duration });
+    // Leaving, the items go together, no stagger, and first: on the fast
+    // tier's exit, so they are gone before the table reaches them.
     const parts = isPresent ? [] : Array.from(el.querySelectorAll<HTMLElement>("[data-reveal-item] > *"));
     const out = parts.length
-      ? animate(parts, { opacity: 0, filter: "blur(4px)" }, { ...spring.moderate.exit, ease: "easeIn" })
+      ? animate(parts, { opacity: 0, filter: "blur(4px)" }, { ...spring.fast.exit, ease: "easeIn" })
       : null;
     run.then(() => (isPresent ? clear() : safeToRemove?.()));
     // Stopped early (a re-run, Strict Mode's double effect): back to its
@@ -6738,7 +6741,7 @@ const RevealItem = forwardRef<HTMLSpanElement, { id: string; order?: number; chi
     const reduceMotion = useReducedMotion();
     // Read once, as it mounts.
     const [start] = useState(() => ({ still: !row || row.still(), withRow: !!row?.withRow() }));
-    const delay = start.withRow ? Math.min(order * ITEM_STAGGER, ITEM_STAGGER_CAP) : 0;
+    const delay = start.withRow ? ITEM_ROW_WAIT + Math.min(order * ITEM_STAGGER, ITEM_STAGGER_CAP) : 0;
     const [landed, setLanded] = useState(start.still);
     return (
       <span ref={ref} data-reveal-item={id} className="inline-flex min-w-0 max-w-full">
