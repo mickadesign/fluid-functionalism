@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { cloneElement, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, RotateCw, Copy, Link, Mail, Share, Pencil, Trash2 } from "lucide-react";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/registry/default/context-menu";
 import {
+  Dropdown,
   DropdownSeparator,
   DropdownSub,
   DropdownSubContent,
   DropdownSubTrigger,
 } from "@/components/flavored/dropdown";
-import { MenuItem } from "@/registry/default/menu-item";
+import { DropdownContext, MenuItem, useDropdown, type MenuItemRenderOptions } from "@/registry/default/menu-item";
+import { SubmenuChevron } from "@/registry/default/dropdown-sub";
 import { ComponentPreview } from "@/lib/docs/ComponentPreview";
 import { PropsTable } from "@/lib/docs/PropsTable";
 import { DocPage, DocSection } from "@/lib/docs/DocPage";
@@ -79,28 +82,74 @@ const [open, setOpen] = useState(false);
 
 const FILES = ["Q3 report.pdf", "Roadmap.fig", "Notes.md"];
 
+/** The Share row as the open menu draws it: a MenuItem with its chevron. */
+function ShareRowStill() {
+  const parent = useDropdown();
+  const ctx = useMemo(
+    () => ({
+      ...parent,
+      renderMenuItem: ({ element, children }: MenuItemRenderOptions) =>
+        cloneElement(element, {}, <>{children}<SubmenuChevron lit={false} /></>),
+    }),
+    [parent]
+  );
+  return (
+    <DropdownContext.Provider value={ctx}>
+      <MenuItem index={3} icon={Share} label="Share" />
+    </DropdownContext.Provider>
+  );
+}
+
 function BasicDemo() {
   const [last, setLast] = useState<string | null>(null);
+  // The page opens on the menu as a right-click shows it, a still drawn
+  // with the same parts. The pointer arriving puts it away, so the real
+  // one is a right-click away.
+  const [still, setStill] = useState(true);
   return (
-    <div className="flex w-full max-w-sm flex-col gap-2">
-      <ContextMenu>
-        <ContextMenuTrigger className="grid h-40 select-none place-items-center rounded-lg border border-dashed border-border text-site-body text-muted-foreground">
-          Right-click here
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-56">
-          <MenuItem index={0} icon={ArrowLeft} label="Back" onSelect={() => setLast("Back")} />
-          <MenuItem index={1} icon={ArrowRight} label="Forward" disabled />
-          <MenuItem index={2} icon={RotateCw} label="Reload" onSelect={() => setLast("Reload")} />
-          <DropdownSeparator />
-          <DropdownSub>
-            <DropdownSubTrigger index={3} icon={Share} label="Share" />
-            <DropdownSubContent>
-              <MenuItem index={0} icon={Link} label="Copy link" onSelect={() => setLast("Copy link")} />
-              <MenuItem index={1} icon={Mail} label="Email" onSelect={() => setLast("Email")} />
-            </DropdownSubContent>
-          </DropdownSub>
-        </ContextMenuContent>
-      </ContextMenu>
+    <div className="flex w-full max-w-sm flex-col gap-2 pb-10" onPointerEnter={() => setStill(false)}>
+      <div className="relative">
+        <ContextMenu>
+          <ContextMenuTrigger
+            onFocus={() => setStill(false)}
+            className="grid h-40 select-none place-items-center rounded-lg border border-dashed border-border text-site-body text-muted-foreground"
+          >
+            Right-click here
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-56">
+            <MenuItem index={0} icon={ArrowLeft} label="Back" onSelect={() => setLast("Back")} />
+            <MenuItem index={1} icon={ArrowRight} label="Forward" disabled />
+            <MenuItem index={2} icon={RotateCw} label="Reload" onSelect={() => setLast("Reload")} />
+            <DropdownSeparator />
+            <DropdownSub>
+              <DropdownSubTrigger index={3} icon={Share} label="Share" />
+              <DropdownSubContent>
+                <MenuItem index={0} icon={Link} label="Copy link" onSelect={() => setLast("Copy link")} />
+                <MenuItem index={1} icon={Mail} label="Email" onSelect={() => setLast("Email")} />
+              </DropdownSubContent>
+            </DropdownSub>
+          </ContextMenuContent>
+        </ContextMenu>
+        <AnimatePresence>
+          {still && (
+            <motion.div
+              aria-hidden
+              inert
+              className="pointer-events-none absolute left-1/2 top-24 z-10 w-56"
+              initial={false}
+              exit={{ opacity: 0, transition: { duration: 0.1, ease: "easeOut" } }}
+            >
+              <Dropdown>
+                <MenuItem index={0} icon={ArrowLeft} label="Back" />
+                <MenuItem index={1} icon={ArrowRight} label="Forward" disabled />
+                <MenuItem index={2} icon={RotateCw} label="Reload" />
+                <DropdownSeparator />
+                <ShareRowStill />
+              </Dropdown>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       <p className="h-5 text-site-caption text-muted-foreground" aria-live="polite">
         {last ? `Chose ${last}` : " "}
       </p>
@@ -157,12 +206,11 @@ export default function ContextMenuDoc() {
     <DocPage
       title="ContextMenu"
       slug="context-menu"
-      description="The Dropdown, opened where you right-click: the same items, submenus and keys, in both flavors."
+      description="The Dropdown, opened where you right-click."
     >
       <DocSection title="Usage">
         <p className="text-site-body text-muted-foreground">
-          A right-click opens the menu at the pointer. Its items are the Dropdown&apos;s: MenuItem,
-          submenus, labels, separators and search all work as they do there.
+          Right-click to open it at the pointer. Items, submenus and search work as in the Dropdown.
         </p>
         <ComponentPreview code={basicCode}>
           <BasicDemo />
@@ -171,14 +219,8 @@ export default function ContextMenuDoc() {
 
       <DocSection title="Pick what opens it">
         <p className="text-site-body text-muted-foreground">
-          <code>filter</code> chooses which elements open the menu; everything else keeps the
-          browser&apos;s. Record what was clicked in <code>onContextMenu</code> to build the items
-          for it. Text fields always keep the browser&apos;s menu, for paste and spelling.
-        </p>
-        <p className="text-site-body text-muted-foreground">
-          While the menu is open nothing else on the page reacts to the pointer, so keep what was
-          right-clicked lit yourself: the pointer has left it for the menu. A trigger that is a
-          single element can style <code>data-open</code>, set on it while its menu is open.
+          <code>filter</code> picks what opens the menu; the rest, and text fields, keep the
+          browser&apos;s. Keep the right-clicked row lit with <code>data-open</code>.
         </p>
         <ComponentPreview code={filterCode}>
           <FilterDemo />
@@ -187,8 +229,8 @@ export default function ContextMenuDoc() {
 
       <DocSection title="Keyboard">
         <p className="text-site-body text-muted-foreground">
-          Shift + F10, or the Menu key, opens the menu under the focused element. Arrows move
-          through the items, Enter runs one, Esc closes the menu and focus returns where it was.
+          Shift + F10 or the Menu key opens it on the focused element. Esc closes it and returns
+          focus.
         </p>
       </DocSection>
 

@@ -36,8 +36,8 @@ const columns: ColumnDef<ApiRow>[] = [
       ) : (
         <span className="font-mono text-site-caption text-foreground">{row.original.name}</span>
       ),
-    // 24px past what its names need: the longest sat tight against Type.
-    meta: { filter: false, lines: "wrap", className: "min-w-55" },
+    // 32px past what its names need: the longest sat tight against Type.
+    meta: { filter: false, lines: "wrap", className: "min-w-57" },
   },
   {
     accessorKey: "type",
@@ -109,6 +109,8 @@ export function ApiReferenceTable({ groups, title }: { groups: ApiTable[]; title
         table={table}
         resizeColumns
         empty={{ title: "No props match" }}
+        // A reference is read, not worked: no fill follows the pointer.
+        rowHover={false}
         // A group opens from anywhere on its row, through its own chevron,
         // so it moves the way the table opens rows.
         onRowClick={(row) => {
