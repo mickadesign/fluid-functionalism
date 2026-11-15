@@ -249,8 +249,9 @@ export default function DataTableDoc() {
         <KeyboardShortcuts />
       </DocSection>
 
-      <DocSection title="API Reference">
-        <PropsTable groups={apiReference} />
+      {/* The heading sits on the table's own toolbar row, with its search. */}
+      <DocSection>
+        <PropsTable groups={apiReference} title="API Reference" />
       </DocSection>
     </DocPage>
   );

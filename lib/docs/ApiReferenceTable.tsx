@@ -5,6 +5,7 @@ import { useDataTable, DataTable, DataTableSearch, type ColumnDef } from "@/comp
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import type { ApiTable } from "@/lib/docs/api/types";
 import { Description } from "@/lib/docs/PropsTable";
+import { DocSectionTitle } from "@/lib/docs/DocPage";
 
 /** A row of the reference: a group (a component, a hook) with its props
  *  under it, or one prop. */
@@ -62,7 +63,7 @@ const columns: ColumnDef<ApiRow>[] = [
 /** A long API reference as the library's own DataTable: each group is a
  *  row that opens into its props (sub-rows), the ones marked
  *  `collapsed: true` closed at first, and one search covers them all. */
-export function ApiReferenceTable({ groups }: { groups: ApiTable[] }) {
+export function ApiReferenceTable({ groups, title }: { groups: ApiTable[]; title?: string }) {
   const data = useMemo<ApiRow[]>(
     () =>
       groups.map((group) => ({
@@ -97,7 +98,11 @@ export function ApiReferenceTable({ groups }: { groups: ApiTable[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   return (
     <div ref={rootRef} className="flex w-full flex-col gap-2">
-      <div className="flex justify-end">
+      {/* The section's heading is the table's title: on one row with the
+          search, the two share a center line. */}
+      <div className="flex items-center gap-2">
+        {title !== undefined && <DocSectionTitle>{title}</DocSectionTitle>}
+        <span className="ml-auto" />
         <DataTableSearch table={table} placeholder="Search the API…" />
       </div>
       <DataTable

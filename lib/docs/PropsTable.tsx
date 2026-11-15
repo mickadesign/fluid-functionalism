@@ -10,7 +10,13 @@ type PropsTableProps =
   | { props: PropDef[]; groups?: never }
   /** Several groups in ONE table, each under a heading row, so the columns
    *  line up from group to group (separate tables size theirs apart). */
-  | { groups: ApiTable[]; props?: never };
+  | {
+      groups: ApiTable[];
+      props?: never;
+      /** For a reference that folds its groups: the section's heading, on
+       *  the table's toolbar row with its search. */
+      title?: string;
+    };
 
 /** A description's `code` spans as inline code (the same text the .md
  *  pages render as Markdown), the rest as plain text. */
@@ -68,10 +74,11 @@ function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean })
   );
 }
 
-export function PropsTable({ props, groups }: PropsTableProps) {
+export function PropsTable(all: PropsTableProps) {
+  const { props, groups } = all;
   // A reference long enough to fold its groups (ApiTable `collapsed`) is
   // the library's own DataTable, each group a row with its props under it.
-  if (groups?.some((group) => group.collapsed !== undefined)) return <ApiReferenceTable groups={groups} />;
+  if (groups?.some((group) => group.collapsed !== undefined)) return <ApiReferenceTable groups={groups} title={all.title} />;
   return <PlainPropsTable {...(groups ? { groups } : { props })} />;
 }
 

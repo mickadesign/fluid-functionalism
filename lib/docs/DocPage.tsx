@@ -171,8 +171,22 @@ export function DocPage({
 }
 
 interface DocSectionProps {
-  title: string;
+  /** Omit it when what's inside carries the heading itself (a table with
+   *  the title on its toolbar's row: see DocSectionTitle). */
+  title?: string;
   children: ReactNode;
+}
+
+/** A section's heading, for content that places it itself. */
+export function DocSectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <h2
+      className={"text-site-title text-foreground leading-none" + (className ? ` ${className}` : "")}
+      style={{ fontVariationSettings: fontWeights.semibold }}
+    >
+      {children}
+    </h2>
+  );
 }
 
 export function DocSection({ title, children }: DocSectionProps) {
@@ -184,12 +198,7 @@ export function DocSection({ title, children }: DocSectionProps) {
   // below the description a fuller 16px.
   return (
     <div className="flex flex-col gap-4 pt-6">
-      <h2
-        className="-mb-2 text-site-title text-foreground leading-none"
-        style={{ fontVariationSettings: fontWeights.semibold }}
-      >
-        {title}
-      </h2>
+      {title !== undefined && <DocSectionTitle className="-mb-2">{title}</DocSectionTitle>}
       {children}
     </div>
   );
