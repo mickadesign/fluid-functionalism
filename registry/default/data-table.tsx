@@ -3781,6 +3781,81 @@ const SELECT_SNAP =
 // `:hover` only once the pointer moves again, which left the box and the
 // handle on the row that had scrolled away. The header row has no
 // highlight of its own, so its box still follows `:hover`.
+// The selection bar, out of sight: 8px under its place, a little smaller.
+const BAR_SHOWN = { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
+const BAR_HIDDEN = { opacity: 0, y: 8, scale: 0.96, filter: "blur(4px)" };
+
+// A digit on its way in or out: half a line up or down, by which way the
+// count went.
+const DIGIT = {
+  enter: (dir: number) => ({ y: `${dir * 0.5}em`, opacity: 0, filter: "blur(2px)" }),
+  shown: { y: "0em", opacity: 1, filter: "blur(0px)" },
+  exit: (dir: number) => ({ y: `${dir * -0.5}em`, opacity: 0, filter: "blur(2px)" }),
+};
+
+/** A count whose digits roll when it changes: the ones that changed slide
+ *  out and the new ones in, upward as the count grows and downward as it
+ *  shrinks, and its box springs to the new width (9 to 10), so what
+ *  follows glides. Use inside `tabular-nums`. Purely visual: give the
+ *  number to screen readers some other way. */
+function RollingCount({ value }: { value: number }) {
+  const reduceMotion = useReducedMotion();
+  // Which way it went, kept from the last change.
+  const [last, setLast] = useState(value);
+  const [dir, setDir] = useState(1);
+  if (value !== last) {
+    setDir(value > last ? 1 : -1);
+    setLast(value);
+  }
+  const text = String(value);
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const width = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return;
+    const next = inner.offsetWidth;
+    const from = width.current;
+    width.current = next;
+    if (from === null || from === next || reduceMotion) return;
+    // Measured, never "auto"; set before paint so the first frame holds
+    // the old width.
+    box.style.width = `${from}px`;
+    const run = animate(box, { width: [from, next] }, spring.moderate);
+    run.then(() => {
+      box.style.width = "";
+    });
+    return () => run.stop();
+  }, [text.length, reduceMotion]);
+  return (
+    <span ref={boxRef} className="inline-flex justify-end align-bottom">
+      <span ref={innerRef} className="inline-flex">
+        {text.split("").map((char, i) => (
+          // Keyed from the right: the units stay the units when a digit
+          // is added in front.
+          <span key={text.length - i} className="relative inline-flex">
+            <AnimatePresence initial={false} mode="popLayout" custom={dir}>
+              <motion.span
+                key={char}
+                custom={dir}
+                variants={DIGIT}
+                initial={reduceMotion ? false : "enter"}
+                animate="shown"
+                exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : "exit"}
+                transition={spring.moderate}
+                className="inline-block"
+              >
+                {char}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 /** One block of rows in the drag's copy: the page background under the
  *  rows and the --active fill over them. */
 const GHOST_BLOCK =
@@ -6735,13 +6810,21 @@ function RowRevealPart({ children }: { children: ReactNode }) {
  *  blurs out when removed (inside an AnimatePresence). The outer box is
  *  the one that slides when its neighbors come and go; the inner one
  *  carries the enter, so the two never write the same transform. */
-const RevealItem = forwardRef<HTMLSpanElement, { id: string; order?: number; children: ReactNode }>(
-  function RevealItem({ id, order = 0, children }, ref) {
+const RevealItem = forwardRef<
+  HTMLSpanElement,
+  { id: string; order?: number; /** What closes the row (the +): one step after the last item. */ after?: boolean; children: ReactNode }
+>(
+  function RevealItem({ id, order = 0, after = false, children }, ref) {
     const row = useContext(RowRevealContext);
     const reduceMotion = useReducedMotion();
     // Read once, as it mounts.
     const [start] = useState(() => ({ still: !row || row.still(), withRow: !!row?.withRow() }));
-    const delay = start.withRow ? ITEM_ROW_WAIT + Math.min(order * ITEM_STAGGER, ITEM_STAGGER_CAP) : 0;
+    // The cap holds for the items; what closes the row still comes one
+    // step after the last of them, so it reads as the end of the run.
+    const stagger = after
+      ? Math.min(Math.max(order - 1, 0) * ITEM_STAGGER, ITEM_STAGGER_CAP) + ITEM_STAGGER
+      : Math.min(order * ITEM_STAGGER, ITEM_STAGGER_CAP);
+    const delay = start.withRow ? ITEM_ROW_WAIT + stagger : 0;
     const [landed, setLanded] = useState(start.still);
     return (
       <span ref={ref} data-reveal-item={id} className="inline-flex min-w-0 max-w-full">
@@ -6879,12 +6962,16 @@ function DataTableFilterChips<TData>({
               ];
             })}
           </AnimatePresence>
-          {/* With the first chip, not after the last. */}
-          <RevealItem id=" add">
+          {/* After the chips: the + ends the run. */}
+          <RevealItem id=" add" order={active.length} after>
             <DataTableFilters table={table} size={size} add />
           </RevealItem>
         </TooltipGroup>
-        {children && <RevealItem id=" more">{children}</RevealItem>}
+        {children && (
+          <RevealItem id=" more" order={active.length} after>
+            {children}
+          </RevealItem>
+        )}
       </div>
     </RowReveal>
   );
@@ -7893,21 +7980,25 @@ function DataTableSelectionBar<TData>({
         <motion.div
           key="bar"
           ref={barRef}
-          // The toast's entrance: it slides up by its own height and fades,
-          // no scale. The slide springs (spring.moderate); the fade is a
-          // short ease-out tween, so the bar doesn't creep the last few
-          // percent of its opacity the way a spring would. It leaves the way
-          // it came, quicker, slide and fade together.
-          className="pointer-events-auto fixed z-[var(--z-sticky,30)] -translate-x-1/2 -translate-y-full"
-          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "100%" }}
-          animate={{ opacity: 1, y: 0 }}
+          // It appears in place, like the library's other floating
+          // surfaces: a short rise (8px), a slight scale up from its
+          // bottom center, where it is anchored, and a touch of blur
+          // clearing. A toast's entrance (a slide by its own height) read
+          // as the bar travelling across the rows it floats over. The
+          // move springs (spring.moderate); the fade is a short ease-out
+          // tween, so the bar doesn't creep the last few percent of its
+          // opacity the way a spring would. It leaves the way it came,
+          // quicker.
+          className="pointer-events-auto fixed z-[var(--z-sticky,30)] origin-bottom -translate-x-1/2 -translate-y-full"
+          initial={reduceMotion ? { opacity: 0 } : BAR_HIDDEN}
+          animate={BAR_SHOWN}
           exit={
             reduceMotion
               ? { opacity: 0, transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
-              : { opacity: 0, y: "100%", transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
+              : { ...BAR_HIDDEN, transition: { type: "tween", ease: "easeIn", ...spring.moderate.exit } }
           }
           transition={{
-            y: spring.moderate,
+            ...spring.moderate,
             opacity: { type: "tween", ease: "easeOut", ...spring.moderate.exit },
           }}
           onKeyDown={(e) => {
@@ -7954,7 +8045,11 @@ function DataTableSelectionBar<TData>({
               )}
             >
             <span aria-live="polite" className="tabular-nums text-foreground">
-              {shown} selected
+              {/* Read as one phrase; the digits that roll are for the eye. */}
+              <span className="sr-only">{shown} selected</span>
+              <span aria-hidden>
+                <RollingCount value={shown} /> selected
+              </span>
             </span>
             {items.length > 0 && (
               <Button
