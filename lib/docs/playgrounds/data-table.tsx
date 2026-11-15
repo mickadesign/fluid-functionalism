@@ -714,7 +714,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(held
       ? [
           `  <DataTable`,
-          `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}`,
+          `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}${o.rowHover === "on" ? " rowHover" : o.rowHover === "off" ? " rowHover={false}" : ""}`,
           ...(o.editable
             ? [
                 `    // Each edit writes back to your data; the table shows what it holds.`,
@@ -732,7 +732,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  />`,
         ]
       : [
-          `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
+          `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}${o.rowHover === "on" ? " rowHover" : o.rowHover === "off" ? " rowHover={false}" : ""} />`,
         ]),
     ...(o.pagination ? [`  <DataTablePagination table={table} pageSizes={[${DATA_TABLE_PAGE_SIZES.join(", ")}]} />`] : []),
     ...(o.selection
@@ -1119,6 +1119,7 @@ export function DataTablePlayground({
       title: Math.random() > 0.3,
       views: Math.random() > 0.3,
       rowReorder: Math.random() > 0.7,
+      rowHover: pick(["auto", "auto", "auto", "on", "off"] as const),
     });
 
   // ── Saved views ────────────────────────────────────────
@@ -1292,6 +1293,7 @@ export function DataTablePlayground({
         resizeColumns={state.resize}
         reorderColumns={state.reorder}
         cellAlign={state.align}
+        rowHover={state.rowHover === "auto" ? undefined : state.rowHover === "on"}
         fill={expanded}
         loading={loading}
         // A screenful of skeletons, not one per row of a long page: a
@@ -1482,6 +1484,17 @@ export function DataTablePlayground({
               { value: "auto", label: "Auto" },
               { value: "center", label: "Center" },
               { value: "top", label: "Top" },
+            ]}
+          />
+        </PlayField>
+        <PlayField label="Row hover">
+          <PlaySelect
+            value={state.rowHover}
+            onChange={(v) => set("rowHover", v as PlayState["rowHover"])}
+            options={[
+              { value: "auto", label: "Auto" },
+              { value: "on", label: "On" },
+              { value: "off", label: "Off" },
             ]}
           />
         </PlayField>

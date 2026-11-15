@@ -60,6 +60,9 @@ export interface DataTablePlayState {
    *  since it drops the starting sort (under one, a move first asks to
    *  remove it). */
   rowReorder: boolean;
+  /** The rows' hover fill: by what the table does (on where a row answers
+   *  a click, off on one that is only read), or held on or off. */
+  rowHover: "auto" | "on" | "off";
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -84,6 +87,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   title: true,
   views: true,
   rowReorder: false,
+  rowHover: "auto",
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -212,11 +216,19 @@ export const DATA_TABLE_PRESET_FIELDS_I: readonly PresetField[] = DATA_TABLE_PRE
   field.key === "filters" ? { ...field, values: [true, false] } : field
 );
 
-// Version j adds row reordering, off by default.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version j adds row reordering, off by default. Kept so its codes still
+// decode.
+export const DATA_TABLE_PRESET_FIELDS_J: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_I.slice(0, -3),
   { key: "rowReorder", values: [false, true], bits: 1 },
   ...DATA_TABLE_PRESET_FIELDS_I.slice(-3),
+];
+
+// Version k adds the rows' hover fill: by the table, on, or off.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_J.slice(0, -3),
+  { key: "rowHover", values: ["auto", "on", "off"], bits: 2 },
+  ...DATA_TABLE_PRESET_FIELDS_J.slice(-3),
 ];
 
 // ── Registration (tag "t") ──────────────────────────────────────────────────
@@ -225,8 +237,8 @@ export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS_I, j: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "j",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS_I, j: DATA_TABLE_PRESET_FIELDS_J, k: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "k",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };

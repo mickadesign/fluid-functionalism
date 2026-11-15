@@ -555,6 +555,12 @@ interface DataTableProps<TData> {
    *  stop: ↑ / ↓ and Home / End move between them, Enter or Space opens
    *  one. */
   onRowClick?: (row: Row<TData>) => void;
+  /** Whether the row under the pointer takes the gliding hover fill.
+   *  Unset, it follows the table: on where a row answers a click (it
+   *  opens, selects, has a menu, moves, opens sub-rows, or its cells
+   *  edit), off on a table that is only read, where a fill would promise
+   *  a click that does nothing. The header keeps its own. */
+  rowHover?: boolean;
   /** Adds a handle on each header's right edge: drag it, or focus it and
    *  press ← / →, to set the column's width. Columns start at the widths the
    *  table lays out on its own (or their `size`); the last resizable one takes the
@@ -862,6 +868,7 @@ function DataTable<TData>({
   onUndo,
   onRedo,
   onRowReorder,
+  rowHover,
   className,
 }: DataTableProps<TData>) {
   "use no memo";
@@ -2066,6 +2073,11 @@ function DataTable<TData>({
   // row counts as focused while nothing else is (see below).
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
   const rowsFocusable = hasSelection || !!onRowClick || !!onRowReorder || table.getCanSomeRowsExpand();
+  // The hover fill says "this row does something". Where nothing does (no
+  // click, no box, no menu, no handle, no sub-rows, no editors), there is
+  // none. Only the fill goes: what rides the highlight (the box, the
+  // handle) and the keyboard's place still follow it.
+  const rowHoverOn = rowHover ?? (rowsFocusable || !!onCellEdit || actionsShown);
   // Whether rows can move right now, for the window key listener below
   // (set once the handles are known to show, further down).
   const canMoveRows = useRef(false);
@@ -3154,6 +3166,7 @@ function DataTable<TData>({
         // isolate: its own stacking context, so the selection's fade bands
         // (placeFadeBands) can sit behind the rows without leaving the box.
         data-ff-table=""
+        data-no-row-hover={rowHoverOn ? undefined : ""}
         className={cn("group/pin isolate w-full", fill && "group/scroll min-h-0 flex-1")}
         // Content fades while there's more to a side, at the line where it
         // meets the pinned columns (the box's own edge when none are):
@@ -4196,6 +4209,8 @@ const PIN_CSS = `
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
 [data-ff-table] [data-slot=scroll-area-viewport][data-scroll-held] { overflow: hidden !important; }
 [data-ff-table][data-text-editing] .table-row-highlight, [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-no-row-hover] .table-row-highlight { background-color: transparent !important; }
+[data-ff-table][data-no-row-hover] [data-row-hover] { visibility: hidden; }
 [data-ff-table][data-text-editing] tbody td[data-column-id=select] [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {

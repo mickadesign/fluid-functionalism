@@ -11,6 +11,9 @@ export interface PropDef {
 /** One table of a page's API reference, titled as on the page. */
 export interface ApiTable {
   title: string;
+  /** One line on what the group is, shown on its row and under its
+   *  heading in the Markdown. */
+  description?: string;
   props: PropDef[];
   /** On the page only (the Markdown always lists every group): set on a
    *  page's groups, the reference renders as a DataTable where each group

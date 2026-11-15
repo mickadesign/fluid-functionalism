@@ -329,6 +329,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     ...(p.resize ? ["resizeColumns"] : []),
     ...(p.reorder ? ["reorderColumns"] : []),
     ...(p.align !== "auto" ? [`cellAlign="${p.align}"`] : []),
+    ...(p.rowHover !== "auto" ? [p.rowHover === "on" ? "rowHover" : "rowHover={false}"] : []),
   ];
   if (held) {
     l.push(`      <DataTable`);

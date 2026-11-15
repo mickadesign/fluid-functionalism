@@ -114,7 +114,16 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tjHcUr"`);
+    expect(code).toMatchInlineSnapshot(`"tk18Pt3"`);
+  });
+
+  // Version "j" codes were published before the row hover option (auto).
+  it("a version-j code still decodes, with row hover by the table", () => {
+    const back = decodeDataTablePreset("tjHcUr");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("j");
+    expect(back.preset.lines).toBe("wrap");
+    expect(back.preset.rowHover).toBe("auto");
   });
 
   // Version "i" codes were published before row reordering (off by default).

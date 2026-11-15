@@ -35,7 +35,8 @@ const columns: ColumnDef<ApiRow>[] = [
       ) : (
         <span className="font-mono text-site-caption text-foreground">{row.original.name}</span>
       ),
-    meta: { filter: false, lines: "wrap" },
+    // 24px past what its names need: the longest sat tight against Type.
+    meta: { filter: false, lines: "wrap", className: "min-w-55" },
   },
   {
     accessorKey: "type",
@@ -54,7 +55,7 @@ const columns: ColumnDef<ApiRow>[] = [
     accessorKey: "description",
     header: "Description",
     cell: ({ row }) => <Description text={row.original.description} />,
-    meta: { filter: false, lines: "wrap", className: "w-full min-w-56 text-muted-foreground" },
+    meta: { filter: false, lines: "wrap", className: "w-full min-w-48 text-muted-foreground" },
   },
 ];
 
@@ -69,7 +70,7 @@ export function ApiReferenceTable({ groups }: { groups: ApiTable[] }) {
         name: group.title,
         type: "",
         default: "",
-        description: "",
+        description: group.description ?? "",
         children: group.props.map((prop) => ({
           id: `${group.title}/${prop.name}`,
           name: prop.name,
@@ -101,6 +102,7 @@ export function ApiReferenceTable({ groups }: { groups: ApiTable[] }) {
       </div>
       <DataTable
         table={table}
+        resizeColumns
         empty={{ title: "No props match" }}
         // A group opens from anywhere on its row, through its own chevron,
         // so it moves the way the table opens rows.

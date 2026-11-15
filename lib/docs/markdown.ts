@@ -251,6 +251,7 @@ function installSection(
 function apiTable(table: ApiTable, withHeading: boolean): string[] {
   const lines: string[] = [];
   if (withHeading) lines.push(`### ${table.title}`, "");
+  if (table.description) lines.push(table.description, "");
   const withDefault = table.props.some((p) => p.default !== undefined);
   lines.push(withDefault ? "| Prop | Type | Default | Description |" : "| Prop | Type | Description |");
   lines.push(withDefault ? "| --- | --- | --- | --- |" : "| --- | --- | --- |");
