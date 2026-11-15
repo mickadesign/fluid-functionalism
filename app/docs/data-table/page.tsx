@@ -112,7 +112,7 @@ export default function DataTableDoc() {
     <DocPage
       title="DataTable"
       slug="data-table"
-      description="A table you can sort, search, select from and edit in place. Turn on only the parts you need."
+      description="A table that works like a spreadsheet: sort, filter, select and edit rows in place, all from the keyboard. Add only the parts you use."
     >
       <DocSection title="Playground">
         <DataTablePlaygroundSection />

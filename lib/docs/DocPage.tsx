@@ -147,12 +147,6 @@ export function DocPage({
                   ? "Base UI flavor. Switch in the right panel."
                   : "Radix flavor. Switch in the right panel."}
               </p>
-            ) : base === "base" ? (
-              // User has Base UI selected globally, but this component has no
-              // Base flavour. Surface that so the toggle doesn't feel inert.
-              <p className="text-site-body text-muted-foreground">
-                Same source under both flavors.
-              </p>
             ) : (
               <p className="text-site-body text-muted-foreground">
                 One prompt for your coding agent: install command, usage, props.

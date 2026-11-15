@@ -730,14 +730,24 @@ const START_VIEW: SavedView["state"] = {
 export function DataTablePlayground({
   children,
   initial,
+  maxPageSize,
 }: PlaygroundProps & {
   /** Settings the playground starts from, over the defaults: the docs page
    *  opens every table at 100 rows a page, where the /demo card keeps 10. */
   initial?: Partial<PlayState>;
+  /** The most rows a page offers, in the rail and the footer alike: the
+   *  /demo card holds 10 before its table runs past the card. */
+  maxPageSize?: number;
 }) {
+  const pageSizes = maxPageSize ? PAGE_SIZES.filter((n) => n <= maxPageSize) : PAGE_SIZES;
+  // A page size past the cap (a shared link's, say) comes down to it.
+  const capped = (next: PlayState): PlayState =>
+    maxPageSize && Number(next.pageSize) > maxPageSize
+      ? { ...next, pageSize: String(maxPageSize) as PlayState["pageSize"] }
+      : next;
   // What "as it starts" means here, for the first render, for each table's
   // tab and for the link that carries no preset.
-  const [base] = useState<PlayState>(() => ({ ...DEFAULT_STATE, ...initial }));
+  const [base] = useState<PlayState>(() => capped({ ...DEFAULT_STATE, ...initial }));
   const [state, setState] = useState<PlayState>(base);
   // The settings as of the latest change, for callbacks that outlive the
   // render they were made in.
@@ -843,7 +853,8 @@ export function DataTablePlayground({
 
   // Each change lands on TanStack's state as well as the playground's, so
   // nothing hidden keeps acting: a cleared filter, a dropped selection.
-  const apply = (next: PlayState, { animate = true }: { animate?: boolean } = {}) => {
+  const apply = (wanted: PlayState, { animate = true }: { animate?: boolean } = {}) => {
+    const next = capped(wanted);
     // Compared with the latest settings, not this render's: apply also runs
     // from callbacks set up earlier (the expand / collapse).
     const prev = stateRef.current;
@@ -902,7 +913,7 @@ export function DataTablePlayground({
   useEffect(() => {
     const now = stateRef.current;
     const size = String(tablePageSize) as PlayState["pageSize"];
-    if (!now.pagination || size === now.pageSize || !PAGE_SIZES.includes(tablePageSize)) return;
+    if (!now.pagination || size === now.pageSize || !pageSizes.includes(tablePageSize)) return;
     const next = { ...now, pageSize: size };
     stateRef.current = next;
     setState(next);
@@ -950,7 +961,7 @@ export function DataTablePlayground({
       selection: Math.random() > 0.3,
       rowActions: Math.random() > 0.3,
       pagination: Math.random() > 0.2,
-      pageSize: pick(["5", "10", "20"] as const),
+      pageSize: pick((["5", "10", "20"] as const).filter((n) => pageSizes.includes(Number(n)))),
       resize: Math.random() > 0.3,
       reorder: Math.random() > 0.3,
       lines: pick(["2", "wrap"] as const),
@@ -1185,7 +1196,7 @@ export function DataTablePlayground({
         onUndo={history.undo}
         onRedo={history.redo}
       />
-      {state.pagination && <DataTablePagination table={table} pageSizes={PAGE_SIZES} />}
+      {state.pagination && <DataTablePagination table={table} pageSizes={pageSizes} />}
       {state.selection && (
         <DataTableSelectionBar
           table={table}
@@ -1353,7 +1364,7 @@ export function DataTablePlayground({
           <PlaySelect
             value={state.pageSize}
             onChange={(v) => set("pageSize", v as PlayState["pageSize"])}
-            options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
+            options={pageSizes.map((n) => ({ value: String(n), label: String(n) }))}
           />
         </PlayField>
         <Switch
@@ -1405,7 +1416,13 @@ export function DataTablePlayground({
     preview: <div className={cn("w-full px-4 py-8 sm:px-6", expanded && "h-full")}>{body}</div>,
     demoPreview: <div className="w-full">{body}</div>,
     demoMaxWidth: 640,
+    demoAlign: "top",
     controls,
     code: buildDataTablePlaygroundCode(state),
   });
+}
+
+/** The /demo card's playground: the same table, at most 10 rows a page. */
+export function DataTableDemoPlayground(props: PlaygroundProps) {
+  return <DataTablePlayground {...props} maxPageSize={10} />;
 }
