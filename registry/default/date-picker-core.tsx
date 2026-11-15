@@ -116,17 +116,31 @@ export function formatDuration(minutes: number): string {
   return `${h}h ${m}min`;
 }
 
+// Formatters are costly to build (each reads the locale's data) and a table
+// of date cells built several per cell on every render: one per locale and
+// option set, kept.
+const DATE_FORMATS = new Map<string, Intl.DateTimeFormat>();
+function dateFormat(locale?: string, options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale ?? ""}|${options ? JSON.stringify(options) : ""}`;
+  let format = DATE_FORMATS.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale, options);
+    DATE_FORMATS.set(key, format);
+  }
+  return format;
+}
+
 /** 12 or 24 hours: the override, else the locale's own clock. */
 export function resolveHourCycle(locale?: string, override?: 12 | 24): 12 | 24 {
   if (override) return override;
-  const cycle = new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions().hourCycle;
+  const cycle = dateFormat(locale, { hour: "numeric" }).resolvedOptions().hourCycle;
   return cycle === "h11" || cycle === "h12" ? 12 : 24;
 }
 
 /** Minutes after midnight as the locale shows a time: `11:00` or `11:00 AM`. */
 export function formatTime(minutes: number, hourCycle: 12 | 24, locale?: string): string {
   const date = new Date(2000, 0, 1, Math.floor(minutes / 60), minutes % 60);
-  return new Intl.DateTimeFormat(locale, {
+  return dateFormat(locale, {
     hour: hourCycle === 12 ? "numeric" : "2-digit",
     minute: "2-digit",
     hourCycle: hourCycle === 12 ? "h12" : "h23",
@@ -202,7 +216,7 @@ function rangeLabelOptions(withYear: boolean): Intl.DateTimeFormatOptions {
 
 /** A date's label as parts, in the locale's order. */
 function labelParts(date: Date, locale: string | undefined, options: Intl.DateTimeFormatOptions) {
-  const parts = new Intl.DateTimeFormat(locale, options).formatToParts(date);
+  const parts = dateFormat(locale, options).formatToParts(date);
   return parts.map(
     (part, i): LabelPart =>
       // Drop the comma English puts after the weekday: "Wed Oct 21".
@@ -224,7 +238,7 @@ export function formatDateLabel(date: Date, locale?: string, now = new Date()): 
 export function formatRangeLabel(range: DateRange, locale?: string, now = new Date()): string {
   if (!range.from) return "";
   const withYear = rangeWithYear(range, now);
-  const fmt = new Intl.DateTimeFormat(locale, rangeLabelOptions(withYear));
+  const fmt = dateFormat(locale, rangeLabelOptions(withYear));
   if (!range.to) return `${fmt.format(range.from)} →`;
   return `${fmt.format(range.from)} → ${fmt.format(range.to)}`;
 }
@@ -235,7 +249,7 @@ function monthNames(locale?: string): Map<string, number> {
   const names = new Map<string, number>();
   for (const loc of [locale, "en"]) {
     for (const month of ["long", "short"] as const) {
-      const fmt = new Intl.DateTimeFormat(loc, { month });
+      const fmt = dateFormat(loc, { month });
       for (let m = 0; m < 12; m++) {
         const name = fmt.format(new Date(2000, m, 1)).toLowerCase().replace(/\.$/, "");
         if (!names.has(name)) names.set(name, m);
@@ -247,7 +261,7 @@ function monthNames(locale?: string): Map<string, number> {
 
 /** Whether the locale writes the month before the day in numeric dates. */
 function monthFirst(locale?: string) {
-  const parts = new Intl.DateTimeFormat(locale).formatToParts(new Date(2000, 10, 22));
+  const parts = dateFormat(locale).formatToParts(new Date(2000, 10, 22));
   return parts.findIndex((p) => p.type === "month") < parts.findIndex((p) => p.type === "day");
 }
 
@@ -360,7 +374,7 @@ export function widestLabelParts(
   locale: string | undefined,
   options: Intl.DateTimeFormatOptions
 ): string[][] {
-  const fmt = new Intl.DateTimeFormat(locale, options);
+  const fmt = dateFormat(locale, options);
   const pick = (date: Date, type: Intl.DateTimeFormatPartTypes) =>
     fmt.formatToParts(date).find((part) => part.type === type)?.value ?? "";
   const weekdays = Array.from({ length: 7 }, (_, i) => pick(new Date(2026, 0, 4 + i), "weekday"));

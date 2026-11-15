@@ -167,6 +167,13 @@ page (`app/docs/fluid-hover/page.tsx`, served at `/docs/fluid-hover`; demos in
 
 Rules the hook enforces, worth knowing when you consume it:
 
+- **Hover follows the pointer, not the item** (2026-11-13 user call), where
+  the highlight is hover only: a table's rows (`followScroll: true`). When
+  the items scroll under a pointer at rest, the highlight goes to the item
+  now under it, as `:hover` does, and glides there, so on screen it stays at
+  the pointer. A highlight set from the keyboard or focus is left alone by a
+  scroll until the pointer moves. Off in menus, selects and list boxes, where
+  the highlight is also the focus, and on touch screens.
 - **The item under the pointer lights; empty space lights nothing** (default,
   2026-10-27 user call). The highlight glides between touching items and fades
   in fresh on the next item after empty space. With `nearest: true`, a
@@ -180,9 +187,10 @@ Rules the hook enforces, worth knowing when you consume it:
   highlight, so it fades in at the row it lands on instead of sliding over from
   where it was last). `hidden` keeps
   the list's state but shows nothing (a closed popup). Optional `from` is where
-  a fresh entry starts (dropdowns pass the checked row, the sidebar its level's
-  active row), `className` carries radius and z-index, and `transition={false}`
-  snaps when only a reflow moved the rows. A list that resolves its own rect
+  a fresh entry starts, for a fill the hover extends (the calendar passes the
+  start of the range being picked). Never the selected item: see below.
+  `className` carries radius and z-index, and `transition={false}` snaps when
+  only a reflow moved the rows. A list that resolves its own rect
   (the sidebar's unified scope) passes `rect` and `session` instead.
   `tests/registry-consistency.test.mjs` fails on any new hand-rolled copy.
 - **A gap click lands on the lit row.** `handlers.onClick` (spread with the
@@ -225,9 +233,17 @@ transform, and the component reads `useReducedMotion()` itself so an installed
 copy drops the travel and keeps the fade without any wrapper (see
 [Reduced motion](#reduced-motion)).
 
-Deliberately not on the component: `tabs` (the hover pill fades in
-from, and on leave back to, the selected pill at 0.4 opacity on
-`spring.moderate`) and `thinking-steps` (a single trigger with an inset fade).
+Deliberately not on the component: `tabs` (the hover pill is the selected
+fill at 0.4 opacity, and hides over the selected tab) and `thinking-steps` (a
+single trigger with an inset fade).
+
+A selected item takes no part in hover. The highlight fades in on the item
+under the pointer and fades out where it is: it never starts on the selected
+(checked, active, open) item to slide out of it, and never slides back into it
+on leave. The selected fill keeps its full opacity while another item is
+hovered. This holds in tabs, dropdowns, selects, nav and sidebar menus,
+accordions and tables alike. In tabs the pill also never crosses the selected
+tab: past it, a new pill fades in.
 
 ## Where each speed shows up
 

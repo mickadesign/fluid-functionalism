@@ -1278,7 +1278,8 @@
         "https://www.fluidfunctionalism.com/r/popup.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -1331,7 +1332,8 @@
         "https://www.fluidfunctionalism.com/r/popup.json",
         "https://www.fluidfunctionalism.com/r/size-context.json",
         "https://www.fluidfunctionalism.com/r/tokens.json",
-        "https://www.fluidfunctionalism.com/r/type-scale.json"
+        "https://www.fluidfunctionalism.com/r/type-scale.json",
+        "https://www.fluidfunctionalism.com/r/key-cap.json"
       ],
       "files": [
         {
@@ -2290,6 +2292,7 @@
         "https://www.fluidfunctionalism.com/r/reveal.json",
         "https://www.fluidfunctionalism.com/r/combobox.json",
         "https://www.fluidfunctionalism.com/r/date-picker.json",
+        "https://www.fluidfunctionalism.com/r/dialog.json",
         "https://www.fluidfunctionalism.com/r/command-menu.json",
         "https://www.fluidfunctionalism.com/r/elevated.json",
         "https://www.fluidfunctionalism.com/r/badge.json",

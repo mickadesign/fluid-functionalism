@@ -126,6 +126,11 @@ interface TooltipProps {
   followCursor?: "x" | "y";
   /** Called when the tooltip's internal open state changes (before forceOpen is applied). */
   onOpenChange?: (open: boolean) => void;
+  /** Whether the pointer can move onto the bubble and keep it open
+   *  (default). Pass false where the bubble covers something else to reach,
+   *  as over the next row of a list: the pointer then passes through it and
+   *  the tooltip closes with its trigger. */
+  hoverable?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +556,7 @@ function Tooltip({
   className,
   contentClassName,
   forceOpen,
+  hoverable = true,
   onOpenChange: onOpenChangeProp,
   followCursor,
 }: TooltipProps) {
@@ -575,6 +581,8 @@ function Tooltip({
   // In a group every bubble sits on the side the group is on: the one a
   // neighbor was placed on, flipped or not, over this tooltip's own.
   const side = groupStore?.side() ?? sideProp;
+  // In a group, or asked not to catch the pointer.
+  const passThrough = !!groupStore || !hoverable;
 
   // Set during the render that opens it, so the portal mounts in the same
   // commit as `open` rather than one after.
@@ -618,7 +626,7 @@ function Tooltip({
   // An explicit delayDuration overrides the ambient provider's delay; left
   // undefined, the Root inherits it from the nearest provider.
   const tooltip = (
-    <TooltipPrimitive.Root delayDuration={delayDuration} open={open} onOpenChange={(v) => { setInternalOpen(v); onOpenChangeProp?.(v); }}>
+    <TooltipPrimitive.Root delayDuration={delayDuration} disableHoverableContent={hoverable ? undefined : true} open={open} onOpenChange={(v) => { setInternalOpen(v); onOpenChangeProp?.(v); }}>
       <TooltipPrimitive.Trigger asChild onPointerMove={followCursor ? handleFollowMove : undefined}>
         {children}
       </TooltipPrimitive.Trigger>
@@ -632,13 +640,13 @@ function Tooltip({
             // reach it. A grouped bubble that caught the pointer would cover
             // the trigger above it in a grid or a stacked toolbar.
             ref={(node) => {
-              if (groupStore && node?.parentElement) {
+              if (passThrough && node?.parentElement) {
                 node.parentElement.style.pointerEvents = "none";
               }
             }}
             className={cn(
               "z-[var(--z-tooltip,70)]",
-              groupStore && "pointer-events-none",
+              passThrough && "pointer-events-none",
               contentClassName
             )}
           >

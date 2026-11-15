@@ -9,8 +9,9 @@ import { motion } from "motion/react";
 import { componentList } from "@/lib/docs/components";
 import { useReleaseMarks } from "@/lib/changelog/marks";
 import { previewMap } from "@/app/components/bento-previews";
-import { playgroundMap } from "@/lib/docs/playgrounds";
+import { demoPlaygroundMap as playgroundMap } from "@/lib/docs/playgrounds";
 import { BentoCard } from "@/app/components/bento-card";
+import { cn } from "@/lib/utils";
 import { PlaygroundMenu } from "@/app/components/playground-menu";
 import { PlaygroundOverlay } from "@/lib/docs/playground";
 import { SettingsContent } from "@/app/components/right-panel";
@@ -193,7 +194,7 @@ function DemoPageInner() {
   // The scaling stage, shared by every slide type. A plain helper (not a
   // component) so it inlines into the same tree on each render — a nested
   // component would be a new type every render and remount the slide.
-  const stage = (children: ReactNode, maxWidth = 420) => (
+  const stage = (children: ReactNode, maxWidth = 420, align: "center" | "top" = "center") => (
     <motion.div
       ref={setScaleEl}
       // Keys typed in the slide reach its component, not the site's shortcuts.
@@ -206,7 +207,8 @@ function DemoPageInner() {
       initial={false}
       animate={{ scale: scaleOn ? scale : 1 }}
       transition={spring.moderate}
-      style={{ transformOrigin: "center", maxWidth }}
+      // Top-aligned, it scales from its top edge so it stays put up there.
+      style={{ transformOrigin: align === "top" ? "top center" : "center", maxWidth }}
     >
       <TooltipPortalContainer value={scaleEl}>
         <ColorPickerPortalContainer value={scaleEl}>
@@ -308,7 +310,7 @@ function DemoPageInner() {
             </BentoCard>
           ) : Playground ? (
             <Playground key={current.slug}>
-              {({ demoPreview, demoMaxWidth, controls, overlay }) => (
+              {({ demoPreview, demoMaxWidth, demoAlign, controls, overlay }) => (
                 <BentoCard
                   slug={current.slug}
                   name={current.name}
@@ -316,14 +318,14 @@ function DemoPageInner() {
                   style={{ height: "100%" }}
                   // Anchors the playground overlay to the preview area,
                   // above the footer and outside the stage's scaling.
-                  previewClassName="relative"
+                  previewClassName={cn("relative", demoAlign === "top" && "items-start")}
                   action={cardActions(
                     <PlaygroundMenu label={`Customize ${current.name}`}>
                       {controls}
                     </PlaygroundMenu>
                   )}
                 >
-                  {stage(demoPreview, demoMaxWidth)}
+                  {stage(demoPreview, demoMaxWidth, demoAlign)}
                   <PlaygroundOverlay>{overlay}</PlaygroundOverlay>
                 </BentoCard>
               )}

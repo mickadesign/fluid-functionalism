@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Children,
   useRef,
   useState,
   useCallback,
@@ -53,11 +54,9 @@ interface TabsProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> {
 const Tabs = forwardRef<HTMLDivElement, TabsProps>(
   ({ children, selectedIndex, onSelect, idPrefix, activeLabel = false, size, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    // Whether the pointer is over the list: a ref for blur, which reads it at
-    // the moment it runs, and the same flag as state for the render, which
-    // picks the hover pill's exit from it. Both flip in the same handlers.
+    // Whether the pointer is over the list, for blur, which reads it at
+    // the moment it runs.
     const isMouseInside = useRef(false);
-    const [mouseInside, setMouseInside] = useState(false);
     const shape = useShape();
 
     const {
@@ -69,38 +68,46 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       measureItems: measureTabs,
     } = useFluidHover(containerRef, { axis: "x" });
 
-    // Track tab elements locally so we can observe their individual resizes
+    // Each tab button is watched for resize (a label expanding or
+    // collapsing in activeLabel mode) by one observer that lives as long as
+    // the tabs do: tabs join and leave it as they mount and unmount. Keyed
+    // on `children` instead, it was torn down and rebuilt, and every tab
+    // measured again, on every render of whatever holds the tabs.
     const tabElementsRef = useRef(new Map<number, HTMLElement>());
+    const measureTabsRef = useRef(measureTabs);
+    useEffect(() => {
+      measureTabsRef.current = measureTabs;
+    });
+    const tabObserverRef = useRef<ResizeObserver | null>(null);
     const registerTab = useCallback(
       (index: number, element: HTMLElement | null) => {
         registerItem(index, element);
+        if (tabObserverRef.current === null && typeof ResizeObserver !== "undefined")
+          tabObserverRef.current = new ResizeObserver(() => measureTabsRef.current());
+        const previous = tabElementsRef.current.get(index);
+        if (previous && previous !== element) tabObserverRef.current?.unobserve(previous);
         if (element) {
           tabElementsRef.current.set(index, element);
+          tabObserverRef.current?.observe(element);
         } else {
           tabElementsRef.current.delete(index);
         }
       },
       [registerItem]
     );
+    useEffect(() => () => tabObserverRef.current?.disconnect(), []);
 
+    // Measured again when tabs are added or removed; a tab that changes
+    // size reports itself above.
+    const tabCount = Children.count(children);
     useEffect(() => {
       measureTabs();
-    }, [measureTabs, children]);
-
-    // Observe individual tab buttons for resize (label expand/collapse in activeLabel mode)
-    useEffect(() => {
-      const elements = tabElementsRef.current;
-      if (elements.size === 0) return;
-      const ro = new ResizeObserver(() => measureTabs());
-      elements.forEach((el) => ro.observe(el));
-      return () => ro.disconnect();
-    }, [measureTabs, children]);
+    }, [measureTabs, tabCount]);
 
     // Wrap handlers to track isMouseInside
     const handleMouseMove = useCallback(
       (e: React.MouseEvent) => {
         isMouseInside.current = true;
-        setMouseInside(true);
         handlers.onMouseMove(e);
       },
       [handlers]
@@ -108,7 +115,6 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
 
     const handleMouseLeave = useCallback(() => {
       isMouseInside.current = false;
-      setMouseInside(false);
       handlers.onMouseLeave();
     }, [handlers]);
 
@@ -119,7 +125,24 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       hoveredIndex !== null ? tabRects[hoveredIndex] : null;
     const focusRect = focusedIndex !== null ? tabRects[focusedIndex] : null;
     const isHoveringSelected = hoveredIndex === selectedIndex;
-    const isHovering = hoveredIndex !== null && !isHoveringSelected;
+    // The hover pill never travels out of, or across, the selected tab: a
+    // hover that starts from nothing or from the selected tab, or that
+    // lands on the far side of it (a fast pointer can skip the selected tab
+    // without ever hovering it), gets a new pill, which fades in on the tab
+    // under the pointer. Between two unselected tabs on the same side the
+    // same pill glides.
+    const [lastHovered, setLastHovered] = useState(hoveredIndex);
+    const [hoverRun, setHoverRun] = useState(0);
+    if (lastHovered !== hoveredIndex) {
+      setLastHovered(hoveredIndex);
+      const crossesSelected =
+        lastHovered !== null &&
+        hoveredIndex !== null &&
+        Math.min(lastHovered, hoveredIndex) < selectedIndex &&
+        selectedIndex < Math.max(lastHovered, hoveredIndex);
+      if (lastHovered === null || lastHovered === selectedIndex || crossesSelected)
+        setHoverRun((run) => run + 1);
+    }
 
     const root = (
       <TabsContext.Provider
@@ -186,7 +209,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
                   width: selectedRect.width,
                   top: selectedRect.top,
                   height: selectedRect.height,
-                  opacity: isHovering ? 0.8 : 1,
+                  opacity: 1,
                 }}
                 transition={{
                   ...spring.moderate,
@@ -197,14 +220,15 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
 
             {/* Hover pill */}
             <AnimatePresence>
-              {hoverRect && !isHoveringSelected && selectedRect && (
+              {hoverRect && !isHoveringSelected && (
                 <motion.div
+                  key={hoverRun}
                   className={cn("absolute bg-active pointer-events-none", shape.bg)}
                   initial={{
-                    left: selectedRect.left,
-                    width: selectedRect.width,
-                    top: selectedRect.top,
-                    height: selectedRect.height,
+                    left: hoverRect.left,
+                    width: hoverRect.width,
+                    top: hoverRect.top,
+                    height: hoverRect.height,
                     opacity: 0,
                   }}
                   animate={{
@@ -214,18 +238,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
                     height: hoverRect.height,
                     opacity: 0.4,
                   }}
-                  exit={
-                    !mouseInside && selectedRect
-                      ? {
-                          left: selectedRect.left,
-                          width: selectedRect.width,
-                          top: selectedRect.top,
-                          height: selectedRect.height,
-                          opacity: 0,
-                          transition: { ...spring.moderate, opacity: { duration: 0.06 } },
-                        }
-                      : { opacity: 0, transition: spring.fast.exit }
-                  }
+                  exit={{ opacity: 0, transition: spring.fast.exit }}
                   transition={{
                     ...spring.fast,
                     opacity: { duration: 0.08 },

@@ -1278,7 +1278,8 @@
         "popup",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1331,7 +1332,8 @@
         "popup",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -2290,6 +2292,7 @@
         "reveal",
         "combobox",
         "date-picker",
+        "dialog",
         "command-menu",
         "elevated",
         "badge",

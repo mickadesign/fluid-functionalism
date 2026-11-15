@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
 import { InputCopy } from "@/registry/default/input-copy";
 import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
+import { StarterPromptButton } from "@/app/components/starter-install";
 
 export default function DocsIndex() {
   const ArrowRight = useIcon("arrow-right");
@@ -25,7 +27,7 @@ export default function DocsIndex() {
             Introduction
           </h1>
           <p className="text-site-body text-muted-foreground">
-            Why these components feel different.
+            Fluid motion, functional form.
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -50,147 +52,86 @@ export default function DocsIndex() {
       </div>
 
       <section className="flex flex-col gap-6 text-site-body text-muted-foreground">
-        <div className="flex flex-col gap-2">
-          <h3
-            className="text-site-title text-foreground leading-none"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Motion that communicates
-          </h3>
-          <p>
-            Every animation here points at something. When two list items
-            merge their backgrounds, the component tells you they belong
-            together. The hover highlight follows your cursor before you
-            click, so the row you&apos;re about to land on confirms
-            itself first. Motion has a job to create meaning.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <h3
-            className="text-site-title text-foreground leading-none"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Hover as preview
-          </h3>
-          <p>
-            The interaction starts before you click. The closest
-            interactive thing to your cursor gets a faint highlight;
-            buttons gain a little weight as you approach. By the time
-            your finger lands, you&apos;ve had a moment to reconsider,
-            which is mostly the point.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <h3
-            className="text-site-title text-foreground leading-none"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Spring physics, not durations
-          </h3>
-          <p>
-            Animations use springs, not fixed-duration eases. Toggle a
-            switch and immediately toggle it back: the spring picks up
-            wherever it was and reverses, instead of finishing the first
-            animation before starting the second. Three presets, named
-            fast, moderate, and slow, cover most of the library.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <h3
-            className="text-site-title text-foreground leading-none"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Drop-in compatible
-          </h3>
-          <p>
-            Built on shadcn/ui. Each component comes in two flavors,
-            Radix or Base UI, so you can match whichever primitive
-            library you&apos;ve already chosen. Your theme tokens
-            (colors, radii, fonts) work as-is. One CLI command installs
-            a component along with whatever it needs.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <h3
-            className="text-site-title text-foreground leading-none"
-            style={{ fontVariationSettings: fontWeights.semibold }}
-          >
-            Customize using the right panel
-          </h3>
-          <p>
-            The panel on the right lets you change things on the fly.
-            Switch between light and dark mode, set the corner radius to
-            rounded, pill or sharp, cycle through different icon libraries,
-            or pick whether the install command grabs the Radix flavor or
-            the Base UI one. Press T, R, or I to flip the first three
-            from the keyboard. The icon switcher is a preview tool that
-            lives on this site — installed components ship with Lucide
-            only, and you can swap in your own icons (see Icons below).
-          </p>
-        </div>
+        <IntroSection
+          title="Fluid"
+          lead={
+            <>
+              Components move with continuity and predictability, so you never lose your place.
+              <br />
+              Interfaces feel fast and reactive. You never wait.
+            </>
+          }
+        />
+        <IntroSection
+          title="Functionalism"
+          lead="Components are stripped down to their essence and their function. Interfaces stay simple and accessible."
+        />
+        <IntroSection
+          title="Built with"
+          lead={
+            <ul className="flex list-disc flex-col gap-1 pl-5 marker:text-border">
+              <li>shadcn/ui</li>
+              <li>Radix UI or Base UI</li>
+              <li>Motion</li>
+              <li>Tailwind CSS v4</li>
+              <li>React 19</li>
+            </ul>
+          }
+        />
+        <IntroSection
+          title="Open source"
+          lead={
+            <>
+              Make them yours with the right panel, then copy the install prompt. MIT licensed, on{" "}
+              <a
+                href="https://github.com/mickadesign/fluid-functionalism"
+                className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground transition-[text-decoration-color] duration-80"
+              >
+                GitHub
+              </a>
+              .
+            </>
+          }
+        />
       </section>
 
       <hr className="border-border/60 my-8" />
       <div className="flex flex-col gap-3 mb-4">
-        <h2
-          className="text-site-title text-foreground leading-none"
-          style={{ fontVariationSettings: fontWeights.semibold }}
-        >
-          Installation
-        </h2>
-        <div className="flex flex-col gap-2 mt-2">
-          <p className="text-site-body text-muted-foreground flex items-center gap-2 ml-1">
-            <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-muted text-muted-foreground text-[11px] leading-3.5 shrink-0" style={{ fontVariationSettings: fontWeights.normal }}>1</span>
-            Add the registry to your project:
-          </p>
-          <InputCopy value="npx shadcn@latest registry add @fluid" align="left" className="w-fit" />
+        {/* The prompt leads, as on every component page: title and note on
+            the left, the copy button on the right. The CLI steps follow. */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <h2
+              className="text-site-title text-foreground leading-none"
+              style={{ fontVariationSettings: fontWeights.semibold }}
+            >
+              Installation
+            </h2>
+            <p className="text-site-body text-muted-foreground">
+              Paste it in your coding agent.
+            </p>
+          </div>
+          <StarterPromptButton />
         </div>
-        <div className="flex flex-col gap-2 mt-2">
-          <p className="text-site-body text-muted-foreground flex items-center gap-2 ml-1">
-            <span className="inline-flex items-center justify-center size-[18px] rounded-full bg-muted text-muted-foreground text-[11px] leading-3.5 shrink-0" style={{ fontVariationSettings: fontWeights.normal }}>2</span>
-            Install any component:
-          </p>
-          <InputCopy value="npx shadcn@latest add @fluid/button" align="left" className="w-fit" />
-        </div>
-        <hr className="border-border/60 mt-4" />
-        <p className="text-site-body text-muted-foreground">
-          Or install directly without adding the registry:
-        </p>
-        <InputCopy value="npx shadcn@latest add https://www.fluidfunctionalism.com/r/button.json" align="left" className="w-fit" />
-        <p className="text-site-body text-muted-foreground">
-          Dependencies and shared utilities are resolved automatically.
-          Font weight animations require the Inter variable font.
-        </p>
+        <p className="mt-4 text-site-body text-muted-foreground">Or add the registry, then any component:</p>
+        <InputCopy value="npx shadcn@latest registry add @fluid" align="left" className="w-fit" />
+        <InputCopy value="npx shadcn@latest add @fluid/button" align="left" className="w-fit" />
       </div>
+    </div>
+  );
+}
 
-      <hr className="border-border/60 my-8" />
-      <div className="flex flex-col gap-3 mb-4">
-        <h2
-          className="text-site-title text-foreground leading-none"
-          style={{ fontVariationSettings: fontWeights.semibold }}
-        >
-          Icons
-        </h2>
-        <p className="text-site-body text-muted-foreground">
-          Components render their icons through named slots with Lucide
-          defaults, so lucide-react is the only icon dependency an
-          install adds. To use another icon library, wrap your app in
-          the installed IconProvider and override any slot — names you
-          leave out keep their Lucide default:
-        </p>
-        <pre className="text-site-caption text-muted-foreground bg-muted/60 rounded-lg px-4 py-3 overflow-x-auto w-fit max-w-full">
-          <code>{`import { IconProvider } from "@/lib/icon-context";
-import { CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
-
-<IconProvider icons={{ "chevron-right": CaretRight, "search": MagnifyingGlass }}>
-  <App />
-</IconProvider>`}</code>
-        </pre>
-      </div>
+/** One intro block: a title over its content. */
+function IntroSection({ title, lead }: { title: string; lead: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3
+        className="text-site-title text-foreground leading-none"
+        style={{ fontVariationSettings: fontWeights.semibold }}
+      >
+        {title}
+      </h3>
+      {typeof lead === "string" ? <p>{lead}</p> : <div>{lead}</div>}
     </div>
   );
 }

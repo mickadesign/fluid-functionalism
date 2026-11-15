@@ -60,7 +60,7 @@ Every component that touches a primitive has both a Radix and a Base UI flavor. 
 npx shadcn@latest add @fluid/base/button
 ```
 
-The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Breadcrumb, Calendar, CodeBlock, ColorPicker, CommandMenu, Confirmation, ContextMenu, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
+The URL form is `https://www.fluidfunctionalism.com/r/base/button.json`. Dependencies follow the flavor you pick, so a Base UI dialog pulls in the Base UI button. Components built on top of a flavored one (AskUserQuestions, Banner, Breadcrumb, Calendar, CodeBlock, ColorPicker, CommandMenu, Confirmation, ContextMenu, DataTable, InputCopy, InputMessage, and the blocks) accept `base/` too. Everything else has one source and installs from the bare name in either kind of project. The tables below list the names.
 
 ### Overwrite the stock files
 
@@ -126,6 +126,7 @@ Install with `npx shadcn@latest add @fluid/<name>`. A second name means the comp
 | [Combobox](https://www.fluidfunctionalism.com/docs/combobox) | `combobox` · `base/combobox` | Type-to-filter field with keyboard highlight, fluid hover, chips for multiple selection, and a create-from-query row |
 | [CommandMenu](https://www.fluidfunctionalism.com/docs/command-menu) | `command-menu` · `base/command-menu` | Type to filter a list of actions, arrow through them, press Enter: groups, shortcut caps, suggestions, and a dialog shell on ⌘K |
 | [ContextMenu](https://www.fluidfunctionalism.com/docs/context-menu) | `context-menu` · `base/context-menu` | The Dropdown opened where you right-click: the same items, submenus, and keys, with a filter for which elements open it |
+| [DataTable](https://www.fluidfunctionalism.com/docs/data-table) | `data-table` · `base/data-table` | A table that works like a spreadsheet: sort, filter, select and edit rows in place, all from the keyboard |
 | [DatePicker](https://www.fluidfunctionalism.com/docs/date-picker) | `date-picker` · `base/date-picker` | Outline or ghost trigger for a date, a range, or a date and a time, with range presets and time slot lists that show each duration |
 | [Dialog](https://www.fluidfunctionalism.com/docs/dialog) | `dialog` · `base/dialog` | Modal with spring enter/exit and overlay in 3 widths, the largest a canvas for a sidebar |
 | [Dropdown](https://www.fluidfunctionalism.com/docs/dropdown) | `dropdown` · `base/dropdown` | Menu-style dropdown with fluid hover, animated selection, submenus that hold their row across the safe area, and an optional search field in the popup |

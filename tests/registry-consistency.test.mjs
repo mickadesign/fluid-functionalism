@@ -540,6 +540,22 @@ describe("fluid hover highlight", () => {
     }
   });
 
+  // A selected item takes no part in hover (motion-guidelines.md): the
+  // highlight is never born on the selected item to slide out of it, and the
+  // selected fill never dims while another item is hovered.
+  it("no hover starts from, or dims, the selected item", () => {
+    // Heuristics, not proof: `from` fed by anything named after a selection
+    // (the calendar's `pickStart` range preview is the allowed kind), and an
+    // opacity that drops to a fraction on a hover-named condition.
+    const FROM_SELECTED = /\bfrom=\{[^}]*(checked|selected|active|open)[^}]*\}/i;
+    const DIMS_ON_HOVER = /opacity:[^,\n]*hover[^,\n]*\?\s*0?\.\d/i;
+    for (const rel of registrySources(join(ROOT, "registry"))) {
+      const source = readFileSync(join(ROOT, rel), "utf-8");
+      expect(FROM_SELECTED.test(source), `${rel} starts the hover on its selected item`).toBe(false);
+      expect(DIMS_ON_HOVER.test(source), `${rel} dims a fill while another item is hovered`).toBe(false);
+    }
+  });
+
   it("every listed file still carries the copy (drop entries as you migrate)", () => {
     for (const rel of HAND_ROLLED_OVERLAYS) {
       expect(

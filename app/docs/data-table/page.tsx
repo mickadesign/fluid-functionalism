@@ -18,8 +18,17 @@ import {
   filesCode,
   ChangelogTable,
   changelogCode,
+  ReorderTable,
+  reorderCode,
+  FrozenTable,
+  frozenCode,
+  FiltersTable,
+  filtersCode,
+  ColumnsTable,
+  columnsCode,
 } from "./capability-demos";
 import { SortableTable, SearchTable, LoadingTable } from "./demo-data";
+import { KeyboardShortcuts } from "./keyboard";
 
 const sortCode = `import { useDataTable, DataTable, DataTableColumnHeader, type ColumnDef } from "./components";
 
@@ -47,9 +56,10 @@ const searchCode = `import { useDataTable, DataTable, DataTableSearch } from "./
 const table = useDataTable({ data: payments, columns });
 
 <div className="flex flex-col gap-3">
-  {/* No column: the field searches every column. */}
+  {/* No column: the field searches every column. collapsible={false}
+      keeps it open; without it, an empty search folds to a button. */}
   <div className="flex justify-end">
-    <DataTableSearch table={table} placeholder="Search payments…" />
+    <DataTableSearch table={table} placeholder="Search payments…" collapsible={false} />
   </div>
   <DataTable
     table={table}
@@ -81,6 +91,7 @@ function DataTablePlaygroundSection() {
           preview={
             <ComponentPreview
               code={code}
+              hideTabs
               padding="none"
               align="top"
               playbackButton={
@@ -101,7 +112,7 @@ export default function DataTableDoc() {
     <DocPage
       title="DataTable"
       slug="data-table"
-      description="A table you can sort, search, select from and edit in place. Turn on only the parts you need."
+      description="A table that works like a spreadsheet: sort, filter, select and edit rows in place, all from the keyboard. Add only the parts you use."
     >
       <DocSection title="Playground">
         <DataTablePlaygroundSection />
@@ -115,6 +126,16 @@ export default function DataTableDoc() {
         </p>
         <ComponentPreview code={teamCode}>
           <TeamTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Filters">
+        <p className="text-site-body text-muted-foreground">
+          4 kinds of filter, one per kind of column: text, a few values, a number range, a range of
+          days. Each filter is a chip above the table: click a part to change it, or the × to remove it.
+        </p>
+        <ComponentPreview code={filtersCode}>
+          <FiltersTable />
         </ComponentPreview>
       </DocSection>
 
@@ -135,6 +156,38 @@ export default function DataTableDoc() {
         </p>
         <ComponentPreview code={tasksCode}>
           <TasksTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Resizing and reordering columns">
+        <p className="text-site-body text-muted-foreground">
+          Drag a column&apos;s right edge to resize it, and drag a header to move it. From the keyboard:
+          ← / → on a focused edge steps its width by 16px, Alt + ← / → on a focused header moves its
+          column.
+        </p>
+        <ComponentPreview code={columnsCode}>
+          <ColumnsTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Frozen columns">
+        <p className="text-site-body text-muted-foreground">
+          Scroll sideways: the boxes and the first column stay on the left, the row menus on the
+          right. A hairline marks each frozen edge while content passes under it. Open a header&apos;s
+          menu to freeze the columns up to it.
+        </p>
+        <ComponentPreview code={frozenCode}>
+          <FrozenTable />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Reordering rows">
+        <p className="text-site-body text-muted-foreground">
+          Drag a row by its handle, or press Alt + ↑ / ↓ on the row under the pointer or holding focus. Select a few and drag one
+          to move them together: every row you carry shows in the drag, where it was. While a column sorts the table, dropping a row (or pressing the keys) asks whether to remove the sort first.
+        </p>
+        <ComponentPreview code={reorderCode}>
+          <ReorderTable />
         </ComponentPreview>
       </DocSection>
 
@@ -163,9 +216,7 @@ export default function DataTableDoc() {
           over instead of swapping.
         </p>
         <ComponentPreview code={sortCode}>
-          <div className="w-full">
-            <SortableTable />
-          </div>
+          <SortableTable />
         </ComponentPreview>
       </DocSection>
 
@@ -183,32 +234,25 @@ export default function DataTableDoc() {
         <p className="text-site-body text-muted-foreground">
           While a request runs, each cell holds a skeleton the size of its text. When the data lands,
           every skeleton fades out as its cell fades in, so nothing jumps and no cell sits empty.
-          Requests that finish within 160ms never show one.
+          Requests that finish within 160ms never show one. This table is held in loading: press
+          Finish loading to land its rows.
         </p>
         <ComponentPreview code={loadingCode}>
           <LoadingTable />
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Keyboard">
-        <p className="text-site-body text-muted-foreground">
-          The rows work like a spreadsheet&apos;s. A row under the pointer counts as focused, so you can point
-          at one and carry on from the keyboard.
-        </p>
-        <ul className="text-site-body text-muted-foreground flex list-disc flex-col gap-1 pl-5">
-          <li>↓ from the search or a header steps into the first row; ↑ / ↓ and Home / End move between rows.</li>
-          <li>X or Enter selects or clears a row; Shift + ↑ / ↓ grows or shrinks the selection from where it started.</li>
-          <li>⌘A / Ctrl+A selects every row, on every page; Esc clears the selection.</li>
-          <li>With sub-rows, → opens a row or steps into it and ← closes it or steps back to its parent. Without a selection column or onRowClick, Enter or Space opens and closes it too.</li>
-          <li>Rows take focus whenever they can be selected, opened or expanded, so the keys work without a selection column.</li>
-          <li>In an editable cell, Enter or Esc leaves the field and keeps what you typed; F2 edits a link.</li>
-          <li>With a selection, ⌘K opens its actions.</li>
-          <li>Alt + ← / → on a focused header moves its column; ← / → on a focused resize handle steps its width by 16px.</li>
-        </ul>
+      {/* The heading sits on the table's own toolbar row, with its search. */}
+      <DocSection>
+        <KeyboardShortcuts
+          title="Keyboard"
+          description="The rows work like a spreadsheet's: 20 shortcuts, grouped by what they act on."
+        />
       </DocSection>
 
-      <DocSection title="API Reference">
-        <PropsTable groups={apiReference} />
+      {/* The heading sits on the table's own toolbar row, with its search. */}
+      <DocSection>
+        <PropsTable groups={apiReference} title="API Reference" />
       </DocSection>
     </DocPage>
   );

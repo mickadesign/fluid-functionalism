@@ -179,7 +179,6 @@ const NavMenu = forwardRef<HTMLElement, NavMenuProps>(
           {/* Hover background */}
           <FluidHoverHighlight
             hover={hover}
-            from={activeRouteRect}
             className={shape.bg}
           />
 
