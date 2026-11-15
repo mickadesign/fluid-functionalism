@@ -12,4 +12,9 @@ export interface PropDef {
 export interface ApiTable {
   title: string;
   props: PropDef[];
+  /** On the page only (the Markdown always lists every group): set, the
+   *  group's heading opens and closes it, and `true` starts it closed.
+   *  For a long reference: the parts everyone needs open, the rest a
+   *  click away. Unset, the group is always open. */
+  collapsed?: boolean;
 }
