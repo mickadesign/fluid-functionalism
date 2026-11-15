@@ -1,12 +1,14 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useRef } from "react";
+import { useDataTable, DataTable, type ColumnDef } from "@/components/ui/data-table";
 import { KeyCaps } from "@/lib/key-cap";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 
 // The DataTable page's keys, grouped by what they act on. Each row is its
-// keys as caps (the one key cap design) and what they do, so the section
-// reads as a reference to scan rather than a paragraph to parse.
+// keys as caps (the one key cap design) and what they do, in a DataTable
+// whose groups are rows over their shortcuts, so the section reads as a
+// reference to scan rather than a paragraph to parse.
 //
 // A shortcut is a list of combos that do the same thing; a combo is a list
 // of keys pressed together. [["↑"], ["↓"]] reads "↑ / ↓"; [["Shift", "↑"]]
@@ -73,39 +75,91 @@ const GROUPS: { title: string; where: string; shortcuts: Shortcut[] }[] = [
   },
 ];
 
+/** A row of the table: a group with its shortcuts under it, or one
+ *  shortcut. */
+interface KeyRow {
+  id: string;
+  /** A group's title; empty on a shortcut. */
+  title: string;
+  keys: string[][];
+  /** A group's context line, or what a shortcut does. */
+  does: string;
+  /** Every key as text, so a search or a reader finds "Shift". */
+  text: string;
+  children?: KeyRow[];
+}
+
+const ROWS: KeyRow[] = GROUPS.map((group) => ({
+  id: group.title,
+  title: group.title,
+  keys: [],
+  does: group.where,
+  text: group.title,
+  children: group.shortcuts.map((shortcut, i) => ({
+    id: `${group.title}/${i}`,
+    title: "",
+    keys: shortcut.keys,
+    does: shortcut.does,
+    text: shortcut.keys.map((combo) => combo.join(" ")).join(" / "),
+  })),
+}));
+
+const columns: ColumnDef<KeyRow>[] = [
+  {
+    accessorKey: "text",
+    header: "Keys",
+    cell: ({ row }) =>
+      row.original.children ? (
+        <span className="text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
+          {row.original.title}
+        </span>
+      ) : (
+        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          {row.original.keys.map((combo, c) => (
+            <Fragment key={c}>
+              {c > 0 && <span className="text-site-caption text-muted-foreground">/</span>}
+              <KeyCaps keys={combo} />
+            </Fragment>
+          ))}
+        </span>
+      ),
+    meta: { filter: false, className: "min-w-52 whitespace-nowrap" },
+  },
+  {
+    accessorKey: "does",
+    header: "What it does",
+    meta: { filter: false, lines: "wrap", className: "w-full text-muted-foreground" },
+  },
+];
+
+/** The page's keys as the table they belong to: each group a row that
+ *  opens into its shortcuts (sub-rows), all open, in one column of rows.
+ *  (Six lists side by side in two columns read as two unrelated halves.) */
 export function KeyboardShortcuts() {
+  const table = useDataTable({
+    data: ROWS,
+    columns,
+    getRowId: (row) => row.id,
+    getSubRows: (row) => row.children,
+    pageSize: ROWS.length,
+    enableSorting: false,
+    enableColumnPinning: false,
+    initialState: { expanded: true },
+  });
+  const rootRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="flex flex-col gap-6">
-      {/* Two groups a row from the tablet width up: 6 short lists read
-          faster side by side than as one long column. */}
-      <div className="grid gap-x-10 gap-y-6 md:grid-cols-2">
-        {GROUPS.map((group) => (
-          <section key={group.title} className="flex flex-col">
-            <h3
-              className="text-site-body text-foreground"
-              style={{ fontVariationSettings: fontWeights.semibold }}
-            >
-              {group.title}
-            </h3>
-            <p className="pb-2 text-site-caption text-muted-foreground">{group.where}</p>
-            <dl className="flex flex-col border-t border-border/60">
-              {group.shortcuts.map((shortcut, i) => (
-                <div key={i} className="flex items-start gap-3 border-b border-border/60 py-2">
-                  <dt className="flex w-28 shrink-0 flex-wrap items-center gap-x-1.5 gap-y-1 pt-px">
-                    {shortcut.keys.map((combo, c) => (
-                      <Fragment key={c}>
-                        {c > 0 && <span className="text-site-caption text-muted-foreground">/</span>}
-                        <KeyCaps keys={combo} />
-                      </Fragment>
-                    ))}
-                  </dt>
-                  <dd className="text-site-body text-muted-foreground">{shortcut.does}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ))}
-      </div>
+    <div ref={rootRef} className="flex flex-col gap-4">
+      <DataTable
+        table={table}
+        // A group opens and closes from anywhere on its row, through its
+        // own chevron, so it moves the way the table opens rows.
+        onRowClick={(row) => {
+          if (!row.getCanExpand()) return;
+          rootRef.current
+            ?.querySelector<HTMLElement>(`tbody tr[data-row-id="${CSS.escape(row.id)}"] button[aria-expanded]`)
+            ?.click();
+        }}
+      />
       <p className="text-site-caption text-muted-foreground">
         ⌘ is Ctrl on Windows and Linux. A row under the pointer counts as focused, so you can point at
         one and carry on from the keyboard.
