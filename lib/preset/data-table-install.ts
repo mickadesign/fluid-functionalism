@@ -554,6 +554,10 @@ function dataTableDemoFile(p: DataTablePreset): string {
       o.push(`        )}`);
       o.push(`      </AnimatePresence>`);
       o.push(`    </div>`);
+    } else if (!p.title) {
+      // No title and no views: the same share of the row, empty, pushes the
+      // tools to the right end.
+      o.push(`    <div className="min-w-0 flex-1" />`);
     } else o.push(`    <span className="ml-auto" />`);
     // Two icons or more share one tooltip bubble that glides between them.
     const tool: string[] = [];

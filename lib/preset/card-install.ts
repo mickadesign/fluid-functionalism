@@ -113,7 +113,14 @@ function cardSectionFile(p: CardPreset): string {
     l.push(`            onClick={() => setSelected(i)}`);
     l.push(`          >`);
   } else {
-    l.push(`          <Card key={item.title}>`);
+    // Always a click target, as in the playground: without one the fluid
+    // hover has nothing to light.
+    l.push(`          <Card`);
+    l.push(`            key={item.title}`);
+    l.push(`            label={item.title}`);
+    l.push(`            // Replace with what a click on the card does.`);
+    l.push(`            onClick={() => {}}`);
+    l.push(`          >`);
   }
 
   const mediaLine =
