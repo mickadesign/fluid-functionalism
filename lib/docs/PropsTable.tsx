@@ -3,6 +3,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { ScrollArea } from "@/registry/base/scroll-area";
 import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 import { ApiReferenceTable } from "@/lib/docs/ApiReferenceTable";
+import { Description } from "@/lib/docs/api/description";
 
 export type { PropDef };
 
@@ -17,20 +18,6 @@ type PropsTableProps =
        *  the table's toolbar row with its search. */
       title?: string;
     };
-
-/** A description's `code` spans as inline code (the same text the .md
- *  pages render as Markdown), the rest as plain text. */
-export function Description({ text }: { text: string }) {
-  return text.split(/(`[^`]+`)/).map((part, i) =>
-    part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
-      <code key={i} className="font-mono text-site-caption text-foreground">
-        {part.slice(1, -1)}
-      </code>
-    ) : (
-      part
-    )
-  );
-}
 
 function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean }) {
   return (

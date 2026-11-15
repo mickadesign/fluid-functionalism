@@ -3798,12 +3798,6 @@ SelectHit.displayName = "SelectHit";
 const SELECT_SNAP =
   "group-[:not(:hover,:focus-within)]/row:[&_[role=checkbox]]:duration-0 group-data-snap-rules/table:duration-0";
 
-// What a row shows under the pointer (its box, its handle) follows the
-// row's highlight (`is-active`), not `:hover`: the highlight moves to the
-// row under the pointer as the table scrolls, while the browser updates
-// `:hover` only once the pointer moves again, which left the box and the
-// handle on the row that had scrolled away. The header row has no
-// highlight of its own, so its box still follows `:hover`.
 // The selection bar, out of sight: 8px under its place, a little smaller.
 const BAR_SHOWN = { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
 const BAR_HIDDEN = { opacity: 0, y: 8, scale: 0.96, filter: "blur(4px)" };
@@ -3879,6 +3873,12 @@ function RollingCount({ value }: { value: number }) {
   );
 }
 
+// What a row shows under the pointer (its box, its handle) follows the
+// row's highlight (`is-active`), not `:hover`: the highlight moves to the
+// row under the pointer as the table scrolls, while the browser updates
+// `:hover` only once the pointer moves again, which left the box and the
+// handle on the row that had scrolled away. The header row has no
+// highlight of its own, so its box still follows `:hover`.
 /** One block of rows in the drag's copy: the page background under the
  *  rows and the --active fill over them. */
 const GHOST_BLOCK =
@@ -4221,6 +4221,7 @@ const PIN_CSS = `
 [data-ff-table][data-text-editing] .table-row-highlight, [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
 [data-ff-table][data-no-row-hover] .table-row-highlight { background-color: transparent !important; }
 [data-ff-table][data-no-row-hover] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-no-row-hover] tbody tr.is-active > td.text-muted-foreground { color: var(--muted-foreground); }
 [data-ff-table][data-text-editing] tbody td[data-column-id=select] [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
@@ -6922,11 +6923,17 @@ function DataTableFilterChips<TData>({
   const places = useRef(new Map<string, { left: number; top: number }>());
   const reduceMotion = useReducedMotion();
   const order = active.map((f) => f.id).join("\n");
+  const lastOrder = useRef(order);
+  // Read on every commit, so the places are the ones just before a change
+  // (a chip's own width springs as its value changes, and what follows it
+  // moves with it); only a change to which chips there are slides anything.
   useLayoutEffect(() => {
     const row = rowRef.current;
     const before = places.current;
     const next = new Map<string, { left: number; top: number }>();
     places.current = next;
+    const changed = lastOrder.current !== order;
+    lastOrder.current = order;
     if (!row) return;
     row.querySelectorAll<HTMLElement>("[data-reveal-item]").forEach((el) => {
       // One on its way out is out of the flow, where it was.
@@ -6934,7 +6941,7 @@ function DataTableFilterChips<TData>({
       const at = { left: el.offsetLeft, top: el.offsetTop };
       next.set(el.dataset.revealItem!, at);
       const old = before.get(el.dataset.revealItem!);
-      if (!old || reduceMotion) return;
+      if (!changed || !old || reduceMotion) return;
       const dx = old.left - at.left;
       const dy = old.top - at.top;
       if (!dx && !dy) return;
@@ -6945,7 +6952,7 @@ function DataTableFilterChips<TData>({
         el.style.transform = "";
       });
     });
-  }, [order, hidden, reduceMotion]);
+  });
 
   return (
     <RowReveal show={active.length > 0 && !hidden}>
@@ -6987,7 +6994,8 @@ function DataTableFilterChips<TData>({
               ];
             })}
           </AnimatePresence>
-          {/* After the chips: the + ends the run. */}
+          {/* After the chips: the + ends the run. (Its id starts with a
+              space, as the one after it: no column's id can be the same.) */}
           <RevealItem id=" add" order={active.length} after>
             <DataTableFilters table={table} size={size} add />
           </RevealItem>

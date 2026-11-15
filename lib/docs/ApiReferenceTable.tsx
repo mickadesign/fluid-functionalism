@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import { useDataTable, DataTable, DataTableSearch, type ColumnDef } from "@/components/ui/data-table";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import type { ApiTable } from "@/lib/docs/api/types";
-import { Description } from "@/lib/docs/PropsTable";
+import { Description } from "@/lib/docs/api/description";
 import { DocSectionTitle } from "@/lib/docs/DocPage";
 
 /** A row of the reference: a group (a component, a hook) with its props
