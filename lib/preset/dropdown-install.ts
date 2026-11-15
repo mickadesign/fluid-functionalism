@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
-import type { PresetGenerator } from "./generators";
+import type { PresetGenerator } from "./light-generators";
 import {
   type DropdownPreset,
   deriveDropdown,

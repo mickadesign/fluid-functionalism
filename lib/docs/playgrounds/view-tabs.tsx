@@ -2,9 +2,9 @@
 
 // Saved views as tabs you can rename, delete and reorder: the playground's
 // and the Saved views demo's. Docs code, built from the library's Tabs.
-import { useLayoutEffect, useRef, useState } from "react";
+import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { animate, motion } from "motion/react";
+import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
 import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
 import { useIcons } from "@/lib/icon-context";
@@ -92,11 +92,14 @@ export function ViewTabs({
     height: number;
     weight: string;
   } | null>(null);
+  // Naming ends from an event (Enter, Esc, a blur, the ×): the place read
+  // for it goes with it, so the next field waits for its own.
+  const endNaming = () => {
+    setNaming(null);
+    setNameBox(null);
+  };
   useLayoutEffect(() => {
-    if (!naming) {
-      setNameBox(null);
-      return;
-    }
+    if (!naming) return;
     const box = tabsRef.current;
     const tab = box?.querySelectorAll<HTMLElement>("[role=tab]")[naming.at + 1];
     const label = tab?.querySelector<HTMLElement>("span > span:not([aria-hidden])");
@@ -113,13 +116,17 @@ export function ViewTabs({
     };
     setNameBox((old) => (old && JSON.stringify(old) === JSON.stringify(next) ? old : next));
   }, [naming]);
-  // A view saved this render gets its field once its tab is there.
+  // A view saved this render gets its field with its tab: the request is
+  // taken as it arrives (while rendering, not in an effect, so the tab and
+  // its field come in the same commit), then answered.
+  const [asked, setAsked] = useState<number | null>(null);
+  if (nameRequest !== asked) {
+    setAsked(nameRequest);
+    if (nameRequest !== null) setNaming({ at: nameRequest - 1, draft: views[nameRequest - 1]?.name ?? "" });
+  }
   useLayoutEffect(() => {
-    if (nameRequest === null) return;
-    nameView(nameRequest, views[nameRequest - 1]?.name ?? "");
-    onNameRequested?.();
-    // nameView reads the tabs just rendered; it runs once per request.
-  }, [nameRequest]);
+    if (nameRequest !== null) onNameRequested?.();
+  }, [nameRequest, onNameRequested]);
   // The field takes focus with its name selected, once per opening.
   const nameRef = useRef<HTMLInputElement>(null);
   // (The field mounts once its place is read, a render after naming starts.)
@@ -134,7 +141,7 @@ export function ViewTabs({
     if (!naming) return;
     const name = naming.draft.trim();
     if (name) onRename(naming.at, name);
-    setNaming(null);
+    endNaming();
   };
   // (The tabs fire no change for the tab already open: its own click does.)
   const renameView = (i: number) => {
@@ -313,7 +320,7 @@ export function ViewTabs({
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") commitName();
-              if (e.key === "Escape") setNaming(null);
+              if (e.key === "Escape") endNaming();
             }}
             style={{ fontVariationSettings: nameBox.weight }}
             // 16px on touch screens, so iOS doesn't zoom into the field.
@@ -326,7 +333,7 @@ export function ViewTabs({
               aria-label="Delete view"
               onClick={() => {
                 const at = naming.at;
-                setNaming(null);
+                endNaming();
                 onDelete(at);
               }}
               // Fades in as the tab turns editable.
@@ -342,4 +349,67 @@ export function ViewTabs({
       )}
     </div>
   );
+}
+
+/** The views' tab row as it comes and goes (the first saved view, the
+ *  last deleted): its height springs from 0 and back, measured, never
+ *  "auto", with the column's gap folded in, so the table glides. The same
+ *  reveal DataTableFilterChips gives its row. */
+export function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
+  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
+}
+
+function RowRevealPart({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isPresent, safeToRemove] = usePresence();
+  const initial = useContext(PresenceContext)?.initial;
+  const reduceMotion = useReducedMotion();
+  // What the effect below reads as of the render it runs for: it runs as
+  // the row enters and as it leaves, not when one of these changes.
+  const latest = useRef({ initial, reduceMotion, safeToRemove });
+  useLayoutEffect(() => {
+    latest.current = { initial, reduceMotion, safeToRemove };
+  });
+  useLayoutEffect(() => {
+    const { initial, reduceMotion, safeToRemove } = latest.current;
+    const el = ref.current;
+    if (!el) return;
+    if (isPresent && initial === false) return;
+    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
+    const height = el.offsetHeight;
+    if (reduceMotion) {
+      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
+      if (!isPresent) fade.then(() => safeToRemove?.());
+      return () => fade.stop();
+    }
+    // clip, not hidden: hidden makes the row a scroll container, and a
+    // field focused inside it as it grows (a new chip's input, a view's
+    // name) scrolled the row to show it, shifting its content, which then
+    // jumped back when the clip came off.
+    el.style.overflow = "clip";
+    // The start, set before this frame paints: animate() only applies its
+    // first keyframe on the next one, which showed the row whole for a frame.
+    if (isPresent) {
+      el.style.height = "0px";
+      el.style.marginTop = `${-gap}px`;
+      el.style.opacity = "0";
+    }
+    const run = isPresent
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
+      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+    const clear = () => {
+      el.style.height = "";
+      el.style.marginTop = "";
+      el.style.overflow = "";
+      el.style.opacity = "";
+    };
+    run.then(() => (isPresent ? clear() : safeToRemove?.()));
+    // Stopped early (a re-run, Strict Mode's double effect): back to its
+    // natural size, so the next run measures the real height.
+    return () => {
+      run.stop();
+      if (isPresent) clear();
+    };
+  }, [isPresent]);
+  return <div ref={ref}>{children}</div>;
 }

@@ -8,6 +8,7 @@
 // and cross-checks it against the snippet generator's load-bearing classes.
 // ---------------------------------------------------------------------------
 
+import { SIDEBAR_ITEMS, SIDEBAR_THREADS } from "@/app/components/demo-data";
 import {
   type SidebarPreset,
   ROW_ACTION_SET,
@@ -31,6 +32,12 @@ const DIR = "components/sidebar-preset";
 /** Icon-context keys the generated files may reference — kept to keys that
  *  exist in the shipped icon-context (guarded by tests). */
 export const PRESET_ICON_KEYS = [
+  "play",
+  "home",
+  "inbox",
+  "calendar",
+  "bell",
+  "star",
   "plus",
   "pencil",
   "users",
@@ -91,40 +98,21 @@ function navDataFile(p: SidebarPreset): string {
     l.push(`  {`);
     l.push(`    label: ${JSON.stringify(section)},`);
     l.push(`    items: [`);
+    // The playground's own rows (app/components/demo-data), split the
+    // way it splits them: three in the first section, the rest in the next.
+    const part = <T,>(rows: readonly T[]) => rows.slice(si === 0 ? 0 : 3, si === 0 ? 3 : 5);
     if (p.l1Primary === "threads") {
-      const rows =
-        si === 0
-          ? [
-              ["New pricing page exploration", "active", "2"],
-              ["Component library audit", "idle", "5"],
-              ["Dark mode token pass", "unread", "3"],
-            ]
-          : [
-              ["Scrollbar fade regression", "idle", "1"],
-              ["Registry deploy pipeline", "unread", "4"],
-            ];
-      for (const [label, status, badge] of rows) {
+      for (const t of part(SIDEBAR_THREADS)) {
         l.push(
-          `    { label: ${JSON.stringify(label)}, status: ${JSON.stringify(status)}${p.l1Badges ? `, badge: ${JSON.stringify(badge)}` : ""} },`
+          `    { label: ${JSON.stringify(t.label)}, status: ${JSON.stringify(t.status)}${p.l1Badges && t.badge ? `, badge: ${JSON.stringify(t.badge)}` : ""} },`
         );
       }
     } else {
-      const rows =
-        si === 0
-          ? [
-              ["Home", "star", "3", true],
-              ["Inbox", "users", "12", false],
-              ["Calendar", "settings", "5", false],
-            ]
-          : [
-              ["Notifications", "moon", "3", false],
-              ["Members", "user", "", false],
-            ];
-      for (const [label, icon, badge, active] of rows) {
+      for (const row of part(SIDEBAR_ITEMS)) {
         l.push(
           item(
-            label as string,
-            `, icon: ${JSON.stringify(icon)}${p.l1Badges && badge ? `, badge: ${JSON.stringify(badge)}` : ""}${active ? `, active: true` : ""}`
+            row.label,
+            `, icon: ${JSON.stringify(row.icon)}${p.l1Badges && row.badge ? `, badge: ${JSON.stringify(row.badge)}` : ""}${row.active ? `, active: true` : ""}`
           )
         );
       }
@@ -229,6 +217,9 @@ function appSidebarFile(p: SidebarPreset): string {
     (headerHorizontal && p.headerActions > 0) || (p.footerStack === "horizontal" && p.footerActions > 1);
   if (needsTooltip)
     l.push(`import { Tooltip${needsTooltipGroup ? ", TooltipGroup" : ""} } from "@/components/ui/tooltip";`);
+  // The icon buttons of a one-row header or footer.
+  if (headerHorizontal || (p.footerStack === "horizontal" && p.footerActions > 0))
+    l.push(`import { Button } from "@/components/ui/button";`);
   if (!headerHorizontal && p.headerActions > 0) l.push(`import { KeyCaps } from "@/lib/key-cap";`);
   if (needsDropdown) {
     l.push(
@@ -266,18 +257,23 @@ function appSidebarFile(p: SidebarPreset): string {
   l.push(``);
 
   if (hasCallout) {
-    l.push(`const CALLOUTS = [`);
-    l.push(`  { id: 1, title: "Aurora 2 is here", desc: "Longer context, faster agents" },`);
+    l.push(`const CALLOUTS: { id: number; icon: "panel-left" | "star" | "play"; title: string; desc: string }[] = [`);
+    l.push(`  { id: 1, icon: "panel-left", title: "Aurora 2 is here", desc: "Longer context, faster agents" },`);
     if (p.footerCalloutStacked) {
-      l.push(`  { id: 2, title: "New workspace roles", desc: "Owner, editor, viewer" },`);
-      l.push(`  { id: 3, title: "Dark mode shipped", desc: "Follows your system" },`);
+      l.push(`  { id: 2, icon: "star", title: "New workspace roles", desc: "Owner, editor, viewer" },`);
+      l.push(`  { id: 3, icon: "play", title: "Dark mode shipped", desc: "Follows your system" },`);
     }
     l.push(`];`);
+    if (p.footerCalloutStacked && p.footerCallout === "inline") {
+      l.push(`// The pile reads as one family with depth: each card's tile is a step`);
+      l.push(`// of the same tint, the front one the strongest.`);
+      l.push(`const CALLOUT_TILE_TINTS = ["bg-[#6B97FF]/25", "bg-[#6B97FF]/[0.08]", "bg-[#6B97FF]/15"];`);
+    }
     l.push(``);
   }
 
   l.push(`export function AppSidebar(props: Omit<SidebarProps, "children">) {`);
-  if (menuRows) l.push(`  const [active, setActive] = useState("${p.l1Primary === "threads" ? "New pricing page exploration" : "Home"}");`);
+  if (menuRows) l.push(`  const [active, setActive] = useState("${p.l1Primary === "threads" ? "" : "Home"}");`);
   if (nests) {
     l.push(`  // Nested rows start open; keys are row labels.`);
     l.push(`  const [closedRows, setClosedRows] = useState<Record<string, boolean>>({});`);
@@ -314,7 +310,7 @@ function appSidebarFile(p: SidebarPreset): string {
   }
   if (p.footerActions > 0) l.push(`  const FooterSettingsIcon = icons.settings;`);
   if (p.footerActions > 1) l.push(`  const MoonIcon = icons.moon;`);
-  if (hasCallout && p.footerCallout === "inline") l.push(`  const CalloutIcon = icons["panel-left"];`);
+  if (hasCallout && p.footerCallout === "inline" && !p.footerCalloutStacked) l.push(`  const CalloutIcon = icons["panel-left"];`);
   if (headerHorizontal) l.push(`  const SearchIcon = icons.search;`);
   l.push(``);
   l.push(`  return (`);
@@ -358,22 +354,20 @@ function appSidebarFile(p: SidebarPreset): string {
     const hi = headerGrouped ? `            ` : `          `;
     if (headerGrouped) l.push(`          <TooltipGroup>`);
     l.push(`${hi}<Tooltip content="Search" shortcut="${SEARCH_SHORTCUT}" side="bottom">`);
-    l.push(`${hi}  <button type="button" aria-label="Search"`);
-    l.push(`${hi}    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
-    l.push(`${hi}      outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
-    l.push(`${hi}      focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
-    l.push(`${hi}    <SearchIcon size={16} strokeWidth={1.5} />`);
-    l.push(`${hi}  </button>`);
+    // The library's own ghost Button, as in the playground: its press
+    // and hover are the component's.
+    l.push(`${hi}  <Button variant="ghost" size="icon-compact" aria-label="Search" className="size-6 shrink-0">`);
+    l.push(`${hi}    <SearchIcon />`);
+    l.push(`${hi}  </Button>`);
     l.push(`${hi}</Tooltip>`);
     for (const a of HEADER_ACTION_SET.slice(0, p.headerActions)) {
       const Icon = a.icon === "plus" ? "PlusIcon" : "UsersIcon";
       l.push(`${hi}<Tooltip content="${a.label}" shortcut="${a.shortcut}" side="bottom">`);
-      l.push(`${hi}  <button type="button" aria-label="${a.label}"`);
-      l.push(`${hi}    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
-      l.push(`${hi}      outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
-      l.push(`${hi}      focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
-      l.push(`${hi}    <${Icon} size={16} strokeWidth={1.5} />`);
-      l.push(`${hi}  </button>`);
+      // The library's own ghost Button, as in the playground: its press
+      // and hover are the component's.
+      l.push(`${hi}  <Button variant="ghost" size="icon-compact" aria-label="${a.label}" className="size-6 shrink-0">`);
+      l.push(`${hi}    <${Icon} />`);
+      l.push(`${hi}  </Button>`);
       l.push(`${hi}</Tooltip>`);
     }
     if (headerGrouped) l.push(`          </TooltipGroup>`);
@@ -381,10 +375,10 @@ function appSidebarFile(p: SidebarPreset): string {
   } else {
     l.push(...brand(`        `));
     l.push(`        {/* search + action rows are ONE block on the menu rows' rhythm */}`);
-    l.push(`        <div className="flex flex-col gap-0.5">`);
+    l.push(`        <div className="flex flex-col">`);
     l.push(`          <SidebarSearchField />`);
     if (p.headerActions > 0) {
-      l.push(`          <SidebarMenu>`);
+      l.push(`          <SidebarMenu aria-label="Actions">`);
       for (const a of HEADER_ACTION_SET.slice(0, p.headerActions)) {
         const Icon = a.icon === "plus" ? "PlusIcon" : "UsersIcon";
         l.push(`            <SidebarMenuItem>`);
@@ -424,8 +418,9 @@ function appSidebarFile(p: SidebarPreset): string {
   }
   l.push(`            <SidebarMenu>`);
   if (loading) {
-    l.push(`              {section.items.map((item) => (`);
-    l.push(`                <SidebarMenuSkeleton key={item.label} showIcon />`);
+    // Four rows of skeleton, whatever the section will hold.
+    l.push(`              {Array.from({ length: 4 }, (_, i) => (`);
+    l.push(`                <SidebarMenuSkeleton key={i} showIcon />`);
     l.push(`              ))}`);
   } else {
     l.push(`              {section.items.map((item) => (`);
@@ -556,12 +551,11 @@ function appSidebarFile(p: SidebarPreset): string {
         for (const a of FOOTER_ACTION_SET.slice(0, p.footerActions)) {
           const Icon = a.icon === "settings" ? "FooterSettingsIcon" : "MoonIcon";
           l.push(`${fi}<Tooltip content="${a.label}" side="top">`);
-          l.push(`${fi}  <button type="button" aria-label="${a.label}"`);
-          l.push(`${fi}    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground`);
-          l.push(`${fi}      outline-none hover:bg-hover hover:text-foreground transition-colors duration-80`);
-          l.push(`${fi}      focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">`);
-          l.push(`${fi}    <${Icon} size={16} strokeWidth={1.5} />`);
-          l.push(`${fi}  </button>`);
+          // The library's own ghost Button, as in the playground: its press
+          // and hover are the component's.
+          l.push(`${fi}  <Button variant="ghost" size="icon-compact" aria-label="${a.label}" className="size-6 shrink-0">`);
+          l.push(`${fi}    <${Icon} />`);
+          l.push(`${fi}  </Button>`);
           l.push(`${fi}</Tooltip>`);
         }
         if (footerGrouped) l.push(`          </TooltipGroup>`);
@@ -570,7 +564,7 @@ function appSidebarFile(p: SidebarPreset): string {
     } else {
       if (p.footerActions > 0) {
         l.push(`        {/* vertical: actions stack above the user row */}`);
-        l.push(`        <SidebarMenu>`);
+        l.push(`        <SidebarMenu aria-label="Footer actions">`);
         for (const a of FOOTER_ACTION_SET.slice(0, p.footerActions)) {
           const Icon = a.icon === "settings" ? "FooterSettingsIcon" : "MoonIcon";
           l.push(`          <SidebarMenuItem>`);
@@ -594,16 +588,25 @@ function appSidebarFile(p: SidebarPreset): string {
 function calloutLines(p: SidebarPreset): string[] {
   const inline = p.footerCallout === "inline";
   const l: string[] = [];
-  const cardClass = (ind: string) => [
-    `${ind}  label="Aurora 2 is here — longer context, faster agents"`,
-    `${ind}  className={\`rounded-xl overflow-hidden min-h-0 transition-[background-color,box-shadow]`,
+  const cardClass = (ind: string, stacked = false) => [
+    `${ind}  // Where the callout leads: the whole card is the link.`,
+    `${ind}  href="#"`,
+    stacked ? `${ind}  label={\`\${c.title}: \${c.desc}\`}` : `${ind}  label="Aurora 2 is here: longer context, faster agents"`,
+    // The icon row drops the card's 60px floor and tightens its inset:
+    // there is one line of text beside the icon, nothing to give room to.
+    `${ind}  className={\`rounded-xl overflow-hidden transition-[background-color,box-shadow]`,
     `${ind}    duration-80 \${surfaceClasses(level, 2)} \${surfaceHoverClasses(level + 1, 3)}`,
-    `${ind}    shadow-[var(--shadow-2-inset)] hover:shadow-[var(--shadow-3-inset)]${inline ? " pl-2.5" : ""}\`}`,
+    // A card in the pile drops the floor either way: the pile's height is
+    // the front card's.
+    `${ind}    shadow-[var(--shadow-2-inset)] hover:shadow-[var(--shadow-3-inset)]${stacked ? " min-h-0" : ""}${inline ? (stacked ? " pl-2.5" : " min-h-0 pl-2.5") : ""}\`}`,
   ];
-  const media = (ind: string) =>
+  const media = (ind: string, stacked = false) =>
     p.footerCallout === "banner"
       ? `${ind}  {/* swap for your artwork */}\n${ind}  <CardImage src="/banner.png" className="aspect-[2/1] max-h-28" />`
-      : `${ind}  <CardMedia icon={CalloutIcon} size={18} className="[&_svg]:text-[#6B97FF]" />`;
+      : stacked
+        ? // Full color on the glyph; the tinted tile carries the step.
+          `${ind}  <CardMedia icon={icons[c.icon]} size={18} className={\`\${CALLOUT_TILE_TINTS[CALLOUTS.findIndex((x) => x.id === c.id)] ?? CALLOUT_TILE_TINTS[2]} [&_svg]:text-[#6B97FF]\`} />`
+        : `${ind}  <CardMedia icon={CalloutIcon} size={18} />`;
   const header = (ind: string, dynamic: boolean) => [
     inline ? `${ind}  <CardHeader className="gap-[2px] py-3">` : `${ind}  <CardHeader className="gap-0 pt-3">`,
     `${ind}    <CardTitle className="truncate">${dynamic ? "{c.title}" : "Aurora 2 is here"}</CardTitle>`,
@@ -656,9 +659,9 @@ function calloutLines(p: SidebarPreset): string[] {
   if (inline) l.push(`                <CardGroup orientation="inline" fluidHover={false}>`);
   const ind = inline ? `                ` : `              `;
   l.push(`${ind}  <Card size="compact" dismissible onDismiss={() => dismiss(c.id)}`);
-  l.push(...cardClass(ind));
+  l.push(...cardClass(ind, true));
   l.push(`${ind}  >`);
-  l.push(media(ind));
+  l.push(media(ind, true));
   l.push(...header(ind, true));
   l.push(`${ind}  </Card>`);
   if (inline) l.push(`                </CardGroup>`);
@@ -757,6 +760,7 @@ export function presetRegistryDeps(p: SidebarPreset): string[] {
     deps.add("springs");
   }
   if (p.l1Primary === "menu" && p.l1Children) deps.add("springs");
+  if (p.headerStack === "horizontal" || (p.footerStack === "horizontal" && p.footerActions > 0)) deps.add("button");
   if (p.shape !== "rounded") deps.add("shape-context");
   return [...deps];
 }

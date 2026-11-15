@@ -19,6 +19,7 @@ import {
   generateDataTablePresetFiles,
   dataTablePresetRegistryDeps,
 } from "../lib/preset/data-table-install.ts";
+import { UNDO_TOAST_SOURCE, VIEW_TABS_SOURCE } from "../lib/preset/data-table-sources.generated.ts";
 
 // Deterministic PRNG (mulberry32) — seeded, so failures reproduce.
 function rng(seed) {
@@ -253,7 +254,14 @@ describe("data table preset codec", () => {
 
 // ── Install generator: compile guard ────────────────────────────────────────
 
-const typecheck = createPresetTypechecker();
+// The demo imports its helper files by alias: they resolve to the virtual
+// copies, as they will to the installed ones.
+const typecheck = createPresetTypechecker({
+  paths: {
+    "@/components/data-table-view-tabs": ["./__preset__/components/data-table-view-tabs.tsx"],
+    "@/components/undo-toast": ["./__preset__/components/undo-toast.tsx"],
+  },
+});
 
 function typecheckPreset(preset) {
   return typecheck(generateDataTablePresetFiles(preset));
@@ -281,9 +289,30 @@ const MATRIX = [
   { rowReorder: true, editable: true, expandable: true },
   { rowReorder: true, selection: false, pinRight: false },
   { rowReorder: true, pinning: false, filters: false },
+  // The parts that bring helper files, on and off.
+  { views: false },
+  { views: false, selection: false, rowActions: false },
+  { headerIcons: true, selection: false },
+  { title: false, headerIcons: true, shape: "sharp", size: "compact" },
+  { rowHover: "off", editable: true, expandable: true, headerIcons: true, lines: "wrap" },
 ];
 
 describe("data table preset install generator", () => {
+  // The helper files ship as text kept in a generated module: stale, an
+  // install gets an older view-tabs or undo-toast than the site runs.
+  it("the shipped helper sources match the files they copy", () => {
+    const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf-8");
+    expect(VIEW_TABS_SOURCE, "run `npm run preset:sources`").toBe(read("lib/docs/playgrounds/view-tabs.tsx"));
+    expect(UNDO_TOAST_SOURCE, "run `npm run preset:sources`").toBe(read("lib/docs/undo-toast.tsx"));
+  });
+
+  it("the first file is the one to render, and the helpers come with what uses them", () => {
+    const files = (over) => generateDataTablePresetFiles({ ...DEFAULT_DATA_TABLE_PRESET, ...over }).map((f) => f.target);
+    expect(files({})).toEqual(["components/data-table-demo.tsx", "components/data-table-view-tabs.tsx", "components/undo-toast.tsx"]);
+    expect(files({ views: false })).toEqual(["components/data-table-demo.tsx", "components/undo-toast.tsx"]);
+    expect(files({ views: false, selection: false, rowActions: false })).toEqual(["components/data-table-demo.tsx"]);
+  });
+
   for (const [i, partial] of MATRIX.entries()) {
     it(`matrix ${i} typechecks: ${JSON.stringify(partial)}`, () => {
       const diags = typecheckPreset({ ...DEFAULT_DATA_TABLE_PRESET, ...partial });
@@ -335,5 +364,15 @@ describe("data table preset install generator", () => {
         expect(file.content).not.toContain("—");
       }
     }
+  });
+});
+
+// The rows an install ships are the catalog's: a component without its day
+// shows an empty Added cell in the playground and in every install.
+describe("data table rows", () => {
+  it("every listed component has the day it was added", async () => {
+    const { ADDED } = await import("../lib/docs/playgrounds/data-table-rows.ts");
+    const { componentList } = await import("../lib/docs/components.ts");
+    for (const { slug } of componentList) expect(ADDED[slug], `add "${slug}" to ADDED in data-table-rows.ts`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

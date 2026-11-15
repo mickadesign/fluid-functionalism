@@ -2,7 +2,7 @@ import { componentEntries, systemList } from "@/lib/docs/components";
 import { installUrl, DUAL_FLAVOR_SLUGS, FLUID_HOVER_SLUGS, type Base } from "@/lib/install-url";
 import { PROMPT_ENTRIES, type PromptEntry } from "@/lib/docs/prompt-entries";
 import { decodePreset, type PresetComponentDef } from "@/lib/preset/components";
-import { PRESET_GENERATORS } from "@/lib/preset/generators";
+import { PRESET_OUTLINES } from "@/lib/preset/outlines";
 import { SETTING_LABELS, describeSettings } from "@/lib/starter/install";
 import { starterSlug, type StarterSettings } from "@/lib/starter/settings";
 import type { HeadingFont, HoverMode } from "@/lib/docs/site-settings";
@@ -121,10 +121,11 @@ export function buildPresetPrompt({ def, code, base, hover = "fluid" }: BuildPre
   const details = PROMPT_ENTRIES[slug];
   const dual = DUAL_FLAVOR_SLUGS.has(slug);
 
-  // The generator is pure, so the exact file list is available client-side.
+  // The outline is pure and light, so the exact file list is available
+  // client-side without the generators' data.
   const decoded = decodePreset(code);
-  const generator = PRESET_GENERATORS[def.tag];
-  const files = decoded.ok && generator ? generator.files(decoded.preset) : [];
+  const outline = decoded.ok ? PRESET_OUTLINES[def.tag]?.(decoded.preset) : undefined;
+  const files = outline?.files ?? [];
 
   const lines: string[] = [];
   lines.push(`Add the ${name} I configured on Fluid Functionalism to my React app.`);
@@ -137,16 +138,21 @@ export function buildPresetPrompt({ def, code, base, hover = "fluid" }: BuildPre
     lines.push("");
     lines.push("Usage:");
     for (const file of files) {
-      const exportName = file.content.match(/export (?:default )?function (\w+)/)?.[1];
+      if (file.helper) {
+        // A file the one above imports: nothing to render.
+        lines.push(`- ${file.target} supports it. Leave it as installed.`);
+        continue;
+      }
       lines.push(
-        exportName
-          ? `- ${file.target} exports ${exportName}. Import it and render it where the ${name.toLowerCase()} belongs.`
+        file.exportName
+          ? `- ${file.target} exports ${file.exportName}. Import it and render it where the ${name.toLowerCase()} belongs.`
           : `- ${file.target}`,
       );
     }
     lines.push(
       `The block already composes the ${name} with the options I picked. Change props in that file, not in components/ui.`,
     );
+    if (outline?.note) lines.push(outline.note);
   }
 
   if (details?.props?.length) {

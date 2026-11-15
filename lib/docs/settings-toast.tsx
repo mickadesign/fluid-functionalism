@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { Toaster, toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { KeyCap, KeyCaps } from "@/lib/key-cap";
+import { KeyCap } from "@/lib/key-cap";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape, useShapeContext } from "@/lib/shape-context";
@@ -14,7 +14,6 @@ import { useSizeContext } from "@/lib/size-context";
 import { useThemeContext } from "@/registry/default/lib/theme-context";
 import { useIconLibrary, iconLibraryLabels } from "@/lib/docs/icon-playground";
 import { useIcon } from "@/lib/icon-context";
-import { useIsMac } from "@/registry/default/command-menu";
 
 /** Which right-panel setting each global shortcut key drives. */
 const shortcutSettings = {
@@ -77,48 +76,9 @@ export function showSuccessToast(message: string) {
   });
 }
 
-/** Surface an action that can be taken back (a delete): the same inverted
- *  shell, the message, and an Undo button. Its own slot, held longer than
- *  the others so there's time to reach the button. */
-export function showUndoToast(message: string, onUndo: () => void) {
-  toast.custom((id) => <UndoToast message={message} onUndo={() => {
-    onUndo();
-    toast.dismiss(id);
-  }} />, {
-    id: "site-undo",
-    duration: 6000,
-    style: { width: "100%" },
-  });
-}
-
-function UndoToast({ message, onUndo }: { message: string; onUndo: () => void }) {
-  const shapeClasses = useShape();
-  const mac = useIsMac();
-  return (
-    <div
-      role="status"
-      className={cn(
-        "mx-auto flex h-9 w-max items-center gap-3 bg-foreground pl-3 pr-1 text-site-body text-background",
-        shapeClasses.bg
-      )}
-      style={{ fontVariationSettings: fontWeights.normal }}
-    >
-      <span className="[text-box:trim-both_cap_alphabetic]">{message}</span>
-      <button
-        type="button"
-        onClick={onUndo}
-        className={cn(
-          "inline-flex h-7 cursor-pointer items-center gap-1.5 px-2 text-background outline-none transition-colors duration-80 hover:bg-background/15 focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
-          shapeClasses.input
-        )}
-        style={{ fontVariationSettings: fontWeights.semibold }}
-      >
-        Undo
-        <KeyCaps keys={mac ? ["⌘", "Z"] : ["Ctrl", "Z"]} tone="inverted" />
-      </button>
-    </div>
-  );
-}
+// An action that can be taken back (a delete) has its own toast, shared
+// with the DataTable preset's install: see lib/docs/undo-toast.tsx.
+export { showUndoToast } from "@/lib/docs/undo-toast";
 
 function SuccessToast({ message }: { message: string }) {
   const shapeClasses = useShape();
