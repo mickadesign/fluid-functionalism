@@ -1,8 +1,8 @@
 "use client";
 
 import { demoToday } from "@/lib/demo-today";
-import { startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
   useDataTable,
@@ -36,26 +36,19 @@ import {
   PlaySelect,
   PlaygroundPanel,
 } from "@/lib/docs/playground";
-import { componentList } from "@/lib/docs/components";
-import { API_REFERENCE } from "@/lib/docs/api";
-import {
-  DUAL_FLAVOR_SLUGS,
-  FLAVORED_SINGLE_SOURCE_SLUGS,
-  FLUID_HOVER_SLUGS,
-} from "@/lib/dual-flavor-slugs.mjs";
+import { buildRows, type ComponentRow } from "./data-table-rows";
 import { useIcons } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
 import { useSize, typeClass } from "@/lib/size-context";
 import type { PlaygroundProps } from "./types";
-import { ViewTabs } from "./view-tabs";
+import { RowReveal, ViewTabs } from "./view-tabs";
 import {
   DATA_TABLE_DEFAULT_CODE,
   DATA_TABLE_PAGE_SIZES,
   DEFAULT_DATA_TABLE_PRESET,
   DATA_TABLE_PROPS_OPTIONS,
   DATA_TABLE_TAG_OPTIONS,
-  dataTableTagsFor,
   DATA_TABLE_PRESET_DEF,
   DEFAULT_DATA_TABLE_STATE,
   decodeDataTablePreset,
@@ -75,101 +68,7 @@ import type { BadgeColor } from "@/registry/default/badge";
 // installs on, whether it uses fluid hover, and the day it was added. The
 // controls switch each optional part on and off.
 
-/** The day each component first landed in the repo (its first registry
- *  file in git history). Snapshot: add a row when a component ships. */
-const ADDED: Record<string, string> = {
-  accordion: "2026-02-27",
-  "ask-user-questions": "2026-05-16",
-  badge: "2026-03-09",
-  banner: "2026-09-29",
-  button: "2026-02-16",
-  calendar: "2026-10-19",
-  card: "2026-07-20",
-  "carousel-dots": "2026-09-25",
-  "chat-message": "2026-05-28",
-  checkbox: "2026-11-04",
-  "checkbox-group": "2026-02-16",
-  "color-picker": "2026-04-24",
-  combobox: "2026-09-06",
-  "command-menu": "2026-09-08",
-  "data-table": "2026-11-08",
-  "date-picker": "2026-10-19",
-  dialog: "2026-02-16",
-  dropdown: "2026-02-16",
-  field: "2026-11-04",
-  input: "2026-11-04",
-  "input-copy": "2026-04-03",
-  "input-group": "2026-02-16",
-  "input-message": "2026-05-16",
-  "radio-group": "2026-02-16",
-  select: "2026-03-09",
-  sidebar: "2026-08-17",
-  slider: "2026-03-06",
-  switch: "2026-02-16",
-  table: "2026-02-16",
-  tabs: "2026-04-05",
-  textarea: "2026-11-04",
-  "thinking-indicator": "2026-02-16",
-  "thinking-steps": "2026-04-08",
-  tooltip: "2026-03-06",
-};
-
-type Primitives = "Radix + Base UI" | "None";
-
-export type ComponentRow = {
-  slug: string;
-  name: string;
-  summary: string;
-  website: string;
-  primitives: Primitives;
-  props: number;
-  fluidHover: boolean;
-  added: string;
-  tags: string[];
-  /** The component's parts (its API tables), with sub-rows on. */
-  subRows?: ComponentRow[];
-};
-
-const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
-// Built on both primitives through other parts: the same tag as a
-// component with a file per flavor.
-const flavoredSingle = new Set<string>(FLAVORED_SINGLE_SOURCE_SLUGS);
-const fluid = new Set<string>(FLUID_HOVER_SLUGS);
-
-export function buildRows(): ComponentRow[] {
-  return componentList.map(({ slug, name, description }) => ({
-    slug,
-    name,
-    summary: description,
-    website: `fluidfunctionalism.com/docs/${slug}`,
-    primitives: dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None",
-    props: (API_REFERENCE[slug] ?? []).reduce((sum, table) => sum + table.props.length, 0),
-    fluidHover: fluid.has(slug),
-    added: ADDED[slug] ?? "",
-    tags: dataTableTagsFor(slug),
-    subRows: partsOf(slug, name),
-  }));
-}
-
-/** A component's parts, from the same API tables the docs render: one row
- *  per table (DropdownMenu, DropdownTrigger…), when it has more than one. */
-function partsOf(slug: string, name: string): ComponentRow[] | undefined {
-  const tables = API_REFERENCE[slug] ?? [];
-  if (tables.length < 2) return undefined;
-  const fluidHover = fluid.has(slug);
-  const primitives: Primitives = dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None";
-  return tables.map((t) => ({
-    slug: `${slug}/${t.title}`,
-    name: t.title,
-    summary: `Part of ${name}.`,
-    website: `fluidfunctionalism.com/docs/${slug}`,
-    primitives,
-    props: t.props.length,
-    fluidHover,
-    added: ADDED[slug] ?? "",
-    tags: [],
-  }));
-}
+export { buildRows, type ComponentRow };
 
 // Formatted by hand, not with the viewer's time zone: an ISO day read as a
 // local Date can land on the previous day and break hydration. The date
@@ -825,62 +724,6 @@ const START_VIEW: SavedView["state"] = {
 };
 
 // ── Playground ───────────────────────────────────────────
-
-/** The views' tab row as it comes and goes (the first saved view, the
- *  last deleted): its height springs from 0 and back, measured, never
- *  "auto", with the column's gap folded in, so the table glides. The same
- *  reveal DataTableFilterChips gives its row. */
-function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
-  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
-}
-
-function RowRevealPart({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isPresent, safeToRemove] = usePresence();
-  const initial = useContext(PresenceContext)?.initial;
-  const reduceMotion = useReducedMotion();
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (isPresent && initial === false) return;
-    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
-    const height = el.offsetHeight;
-    if (reduceMotion) {
-      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
-      if (!isPresent) fade.then(() => safeToRemove?.());
-      return () => fade.stop();
-    }
-    // clip, not hidden: hidden makes the row a scroll container, and a
-    // field focused inside it as it grows (a new chip's input, a view's
-    // name) scrolled the row to show it, shifting its content, which then
-    // jumped back when the clip came off.
-    el.style.overflow = "clip";
-    // The start, set before this frame paints: animate() only applies its
-    // first keyframe on the next one, which showed the row whole for a frame.
-    if (isPresent) {
-      el.style.height = "0px";
-      el.style.marginTop = `${-gap}px`;
-      el.style.opacity = "0";
-    }
-    const run = isPresent
-      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
-      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
-    const clear = () => {
-      el.style.height = "";
-      el.style.marginTop = "";
-      el.style.overflow = "";
-      el.style.opacity = "";
-    };
-    run.then(() => (isPresent ? clear() : safeToRemove?.()));
-    // Stopped early (a re-run, Strict Mode's double effect): back to its
-    // natural size, so the next run measures the real height.
-    return () => {
-      run.stop();
-      if (isPresent) clear();
-    };
-  }, [isPresent]); // runs as it enters and as it leaves
-  return <div ref={ref}>{children}</div>;
-}
 
 export function DataTablePlayground({
   children,

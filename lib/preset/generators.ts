@@ -28,6 +28,12 @@ export interface PresetGenerator {
   files(preset: Record<string, string | number | boolean>): PresetFile[];
   registryDeps(preset: Record<string, string | number | boolean>): string[];
   npmDeps(preset: Record<string, string | number | boolean>): string[];
+  /** Targets of the files that only support another (helpers the main
+   *  file imports): the Copy prompt lists them without telling the agent
+   *  to render them. */
+  helpers?(preset: Record<string, string | number | boolean>): string[];
+  /** A line the Copy prompt adds about what the block comes with. */
+  note?: string;
 }
 
 export const PRESET_GENERATORS: Record<string, PresetGenerator> = {

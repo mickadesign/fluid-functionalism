@@ -136,7 +136,13 @@ export function buildPresetPrompt({ def, code, base, hover = "fluid" }: BuildPre
   if (files.length) {
     lines.push("");
     lines.push("Usage:");
+    const helpers = new Set(decoded.ok ? (generator?.helpers?.(decoded.preset) ?? []) : []);
     for (const file of files) {
+      if (helpers.has(file.target)) {
+        // A file the one above imports: nothing to render.
+        lines.push(`- ${file.target} supports it. Leave it as installed.`);
+        continue;
+      }
       const exportName = file.content.match(/export (?:default )?function (\w+)/)?.[1];
       lines.push(
         exportName
@@ -147,6 +153,7 @@ export function buildPresetPrompt({ def, code, base, hover = "fluid" }: BuildPre
     lines.push(
       `The block already composes the ${name} with the options I picked. Change props in that file, not in components/ui.`,
     );
+    if (generator?.note) lines.push(generator.note);
   }
 
   if (details?.props?.length) {
