@@ -13,11 +13,12 @@ import { dataTableTagsFor } from "@/lib/preset/data-table-options";
 
 /** The day each component first landed in the repo (its first registry
  *  file in git history). Snapshot: add a row when a component ships. */
-const ADDED: Record<string, string> = {
+export const ADDED: Record<string, string> = {
   accordion: "2026-02-27",
   "ask-user-questions": "2026-05-16",
   badge: "2026-03-09",
   banner: "2026-09-29",
+  breadcrumb: "2026-11-08",
   button: "2026-02-16",
   calendar: "2026-10-19",
   card: "2026-07-20",
@@ -28,6 +29,7 @@ const ADDED: Record<string, string> = {
   "color-picker": "2026-04-24",
   combobox: "2026-09-06",
   "command-menu": "2026-09-08",
+  "context-menu": "2026-11-10",
   "data-table": "2026-11-08",
   "date-picker": "2026-10-19",
   dialog: "2026-02-16",

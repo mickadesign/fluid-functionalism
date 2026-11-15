@@ -110,10 +110,17 @@ const settle = async () => {
     await tick();
     await tick();
     const now = document.body.innerHTML.length + ":" + document.body.textContent?.length;
-    same = now === last ? same + 1 : 0;
+    // A table handing its skeletons over to the rows is mid-change even
+    // when two reads agree: its swap ends on a timer and a transition,
+    // which a loaded machine can hold back past a few ticks.
+    const swapping = document.querySelector("[class*='animate-[reveal-out']") !== null;
+    same = now === last && !swapping ? same + 1 : 0;
     if (same >= 2) return;
     last = now;
   }
+  // Still changing after 60 rounds: comparing it would compare a moment,
+  // not the page. A failure of its own, not a difference.
+  throw new Error("the page never settled: it was still changing after 3.6s");
 };
 
 /** Classes only the site has (its heading font setting): an install can't

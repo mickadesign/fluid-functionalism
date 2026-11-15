@@ -343,7 +343,8 @@ function buildColumns(o: {
                 label="Copy install command"
                 onSelect={() =>
                   navigator.clipboard?.writeText(
-                    `npx shadcn@latest add ${INSTALL_URL}/${row.original.slug}.json`
+                    // A part (a sub-row) installs with its component.
+                    `npx shadcn@latest add ${INSTALL_URL}/${row.original.slug.split("/")[0]}.json`
                   )
                 }
               />
@@ -669,7 +670,8 @@ function selectionActions(
       icon: icons.copy,
       onSelect: () =>
         navigator.clipboard?.writeText(
-          `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
+          // Each component once: parts (sub-rows) install with theirs.
+          `npx shadcn@latest add ${[...new Set(rows.map((r) => r.original.slug.split("/")[0]))].map((slug) => `${INSTALL_URL}/${slug}.json`).join(" ")}`
         ),
     },
     {

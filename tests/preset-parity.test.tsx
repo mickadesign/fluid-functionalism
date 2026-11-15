@@ -67,7 +67,8 @@ const CASES: ParityCase[] = [
 // (flavor, shape, size) stay at their defaults: both sides are drawn inside
 // the same providers, and those are the site's to set.
 const GLOBAL_KEYS = new Set(["flavor", "shape", "size"]);
-const VARIANTS = 12;
+// The full sweep runs in CI; locally a few variants keep the suite quick.
+const VARIANTS = process.env.CI ? 12 : 4;
 
 function rng(seed: number) {
   let a = seed;
@@ -98,9 +99,7 @@ function variants(c: ParityCase, seed: number): ParityCase[] {
   return [...codes].map((code) => ({ ...c, code }));
 }
 
-// retry: a real difference fails every time; a page read a moment too
-// early on a loaded machine does not.
-describe("preset parity: the install draws what the playground draws", { retry: 2 }, () => {
+describe("preset parity: the install draws what the playground draws", () => {
   for (const [i, c] of CASES.entries()) {
     for (const each of [c, ...variants(c, 100 + i)]) {
       it(`${each.slug} ${each.code}`, async () => {

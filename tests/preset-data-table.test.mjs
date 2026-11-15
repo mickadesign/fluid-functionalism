@@ -366,3 +366,13 @@ describe("data table preset install generator", () => {
     }
   });
 });
+
+// The rows an install ships are the catalog's: a component without its day
+// shows an empty Added cell in the playground and in every install.
+describe("data table rows", () => {
+  it("every listed component has the day it was added", async () => {
+    const { ADDED } = await import("../lib/docs/playgrounds/data-table-rows.ts");
+    const { componentList } = await import("../lib/docs/components.ts");
+    for (const { slug } of componentList) expect(ADDED[slug], `add "${slug}" to ADDED in data-table-rows.ts`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});

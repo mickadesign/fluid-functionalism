@@ -11,8 +11,15 @@
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
-import type { PresetGenerator } from "./generators";
-import { type DataTablePreset, DATA_TABLE_PROPS_OPTIONS, DATA_TABLE_PAGE_SIZES, DATA_TABLE_TAG_OPTIONS } from "./data-table-options";
+import type { PresetGenerator } from "./light-generators";
+import {
+  type DataTablePreset,
+  DATA_TABLE_PROPS_OPTIONS,
+  DATA_TABLE_PAGE_SIZES,
+  DATA_TABLE_PRESET_NOTE,
+  DATA_TABLE_TAG_OPTIONS,
+  dataTablePresetHelpers,
+} from "./data-table-options";
 import { buildRows, type ComponentRow } from "@/lib/docs/playgrounds/data-table-rows";
 import { UNDO_TOAST_SOURCE, VIEW_TABS_SOURCE } from "./data-table-sources.generated";
 
@@ -402,7 +409,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
     c.push(`    <MenuItem`);
     c.push(`      index={1}`);
     c.push(`      label="Copy install command"`);
-    c.push(`      onSelect={() => navigator.clipboard?.writeText(\`npx shadcn@latest add \${SITE}/r/\${row.original.slug}.json\`)}`);
+    c.push(`      // A part (a sub-row) installs with its component.`);
+    c.push(`      onSelect={() => navigator.clipboard?.writeText(\`npx shadcn@latest add \${SITE}/r/\${row.original.slug.split("/")[0]}.json\`)}`);
     c.push(`    />`);
     c.push(`    <MenuItem`);
     c.push(`      index={2}`);
@@ -666,7 +674,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
     o.push(`        icon: icons.copy,`);
     o.push(`        onSelect: () =>`);
     o.push(`          navigator.clipboard?.writeText(`);
-    o.push(`            \`npx shadcn@latest add \${picked.map((r) => \`\${SITE}/r/\${r.original.slug}.json\`).join(" ")}\``);
+    o.push(`            // Each component once: parts (sub-rows) install with theirs.`);
+    o.push(`            \`npx shadcn@latest add \${[...new Set(picked.map((r) => r.original.slug.split("/")[0]))].map((slug) => \`\${SITE}/r/\${slug}.json\`).join(" ")}\``);
     o.push(`          ),`);
     o.push(`      },`);
     o.push(`      {`);
@@ -695,8 +704,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
 }
 
 export function generateDataTablePresetFiles(p: DataTablePreset): PresetFile[] {
-  const views = p.views && p.filters;
-  const toast = p.rowActions || p.selection || views;
+  const { views, toast } = dataTablePresetHelpers(p);
   return [
     // First: the file to import and render. The rest support it.
     {
@@ -764,6 +772,5 @@ export const DATA_TABLE_PRESET_GENERATOR: PresetGenerator = {
     generateDataTablePresetFiles(p as unknown as DataTablePreset)
       .slice(1)
       .map((file) => file.target),
-  note:
-    "It is the playground's table as I left it, on its sample rows. Swap ROWS and the columns for my data and keep the rest as it is.",
+  note: DATA_TABLE_PRESET_NOTE,
 };

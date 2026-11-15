@@ -319,3 +319,29 @@ const TAGS: Record<string, readonly string[]> = {
 export function dataTableTagsFor(slug: string): string[] {
   return [...(TAGS[slug] ?? [])];
 }
+
+// ── What the install holds, in outline ──────────────────────────────────────
+// Here, with the options, so the Copy prompt can name the files without
+// loading the generator (see lib/preset/outlines.ts). The generator builds
+// its files from the same two flags.
+
+/** The install's helper files: the views' tabs, the undo toast. */
+export function dataTablePresetHelpers(p: DataTablePreset) {
+  const views = p.views && p.filters;
+  return { views, toast: p.rowActions || p.selection || views };
+}
+
+export const DATA_TABLE_PRESET_NOTE =
+  "It is the playground's table as I left it, on its sample rows. Swap ROWS and the columns for my data and keep the rest as it is.";
+
+export function dataTablePresetOutline(p: DataTablePreset) {
+  const { views, toast } = dataTablePresetHelpers(p);
+  return {
+    files: [
+      { target: "components/data-table-demo.tsx", exportName: "DataTableDemo" },
+      ...(views ? [{ target: "components/data-table-view-tabs.tsx", exportName: "ViewTabs", helper: true }] : []),
+      ...(toast ? [{ target: "components/undo-toast.tsx", exportName: "showUndoToast", helper: true }] : []),
+    ],
+    note: DATA_TABLE_PRESET_NOTE,
+  };
+}

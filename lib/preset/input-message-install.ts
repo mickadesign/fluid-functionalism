@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
-import type { PresetGenerator } from "./generators";
+import type { PresetGenerator } from "./light-generators";
 import {
   type InputMessagePreset,
   IM_SUGGESTIONS,
@@ -21,6 +21,10 @@ import {
 
 export type { PresetFile };
 
+// The one hand copy left of ChatMessage's user bubble (registry/default/
+// chat-message.tsx): the bubble mid-morph out of the queue, which needs a
+// layoutId on its own element. The parity test reads the first render only,
+// so it won't see this drift: when ChatMessage's bubble changes, change this.
 const USER_BUBBLE_CLASS =
   "whitespace-pre-wrap break-words px-3.5 py-2 text-[14px] text-pretty bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] text-foreground";
 
