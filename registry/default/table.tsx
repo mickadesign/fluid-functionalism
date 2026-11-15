@@ -77,6 +77,10 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Hides the header cells' fluid hover highlight, e.g. while a header
    *  is dragged. */
   hideHeadHighlight?: boolean;
+  /** The header cell (its `hoverIndex`) holding an open popup, such as a
+   *  column menu: its fill stays on it, pressed, wherever the pointer
+   *  goes, as a button stays pressed while its menu is open. */
+  heldHeadIndex?: number | null;
   /** A mark that rides the row highlight, for the body row at `index`:
    *  drawn inside the fill, so it glides from row to row with it. */
   hoverMarker?: (index: number) => ReactNode;
@@ -97,7 +101,7 @@ const NO_SELECTION: readonly number[] = [];
 const TABLE_HIGHLIGHT_EVENT = "fluid-table-highlight";
 
 const Table = forwardRef<HTMLTableElement, TableProps>(
-  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, hoverMarker, onHighlightFrame, selectionMirrors, className, ...props }, ref) => {
+  ({ children, size, selectedIndices = NO_SELECTION, snapKey, hideHeadHighlight = false, heldHeadIndex = null, hoverMarker, onHighlightFrame, selectionMirrors, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const sizeClasses = useSize(size);
 
@@ -286,10 +290,10 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       [hideCoveredRules]
     );
 
+    // The cell holding an open popup keeps the fill; else the hovered one.
+    const shownHead = heldHeadIndex ?? headHover.activeIndex;
     const headCell =
-      !hideHeadHighlight && headHover.isMeasured && headHover.activeIndex !== null
-        ? headHover.itemRects[headHover.activeIndex]
-        : undefined;
+      !hideHeadHighlight && headHover.isMeasured && shownHead !== null ? headHover.itemRects[shownHead] : undefined;
     const headRect = headCell ? { ...headCell, height: headCell.height - 1 } : null;
     // A header cell in the gliding scope held down, while the pointer is
     // still on it: its fill shows pressed. Slid onto a neighbor before
@@ -373,8 +377,15 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           {/* Hover background, rounded by the shape setting like the
               selection under it. */}
           <FluidHoverHighlight
-            hover={hover}
-            className={shape.bg}
+            // In a snap the rows were just measured, before paint (above),
+            // while the hook still counts them unmeasured until its own
+            // pass a frame later (rows came or went). Taken at its word,
+            // the fill under the pointer left and faded back in: a flicker
+            // on the row whose sub-rows were opened or closed.
+            hover={snap.on ? { ...hover, isMeasured: true } : hover}
+            // Named, so a table can tell the rows' fill from the header's
+            // (DataTable hides this one while a cell's text is edited).
+            className={cn(shape.bg, "table-row-highlight")}
             transition={repeating || snap.on ? false : undefined}
             onFrame={onHighlightBox}
           >
@@ -386,7 +397,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           <FluidHoverHighlight
             rect={headRect}
             session={headHover.session}
-            className={cn(shape.bg, "transition-[background-color] duration-80", headPressed && "bg-active")}
+            className={cn(shape.bg, "transition-[background-color] duration-80", (headPressed || heldHeadIndex !== null) && "bg-active")}
           />
 
           <table

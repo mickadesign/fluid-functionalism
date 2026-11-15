@@ -96,6 +96,7 @@ export const menuItemProps: PropDef[] = [
   { name: "disabled", type: "boolean", default: "false", description: "Disables the row." },
   { name: "closeOnClick", type: "boolean", default: "true", description: "Popup only: close on select. Defaults to false under checkedIndices." },
   { name: "leading", type: "ReactNode", description: "Content before the icon, e.g. a drag handle. Its clicks don't activate the item." },
+  { name: "shortcut", type: "string | string[]", description: "The row's keyboard shortcut, shown as key caps at its end. Display only." },
 ];
 
 /** The page's tables in page order, titled as on the page. */

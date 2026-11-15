@@ -380,6 +380,26 @@ function useDataTable<TData>({
     const last = Math.max(0, table.getPageCount() - 1);
     if (pageIndex > last) table.setPageIndex(last);
   });
+  // A saved column order names every column there was when it was made.
+  // One that came later (the row handles or the boxes turned on, a column
+  // added) would follow TanStack's rule and land after all of them: the
+  // handles at the far end, where they don't show. The control columns
+  // hold their ends whatever the saved order says, and a new data column
+  // goes before the row menus.
+  const savedOrder = state.columnOrder;
+  const leafIds = table.getAllLeafColumns().map((c) => c.id).join();
+  useLayoutEffect(() => {
+    if (savedOrder.length === 0) return;
+    const all = leafIds.split(",");
+    const data = (id: string) => !UTILITY_COLUMNS.has(id);
+    const next = [
+      ...LEADING_COLUMNS.filter((id) => all.includes(id)),
+      ...savedOrder.filter(data),
+      ...all.filter((id) => data(id) && !savedOrder.includes(id)),
+      ...(all.includes("actions") ? ["actions"] : []),
+    ];
+    if (next.join() !== savedOrder.join()) table.setColumnOrder(next);
+  }, [table, savedOrder, leafIds]);
   // A fresh view of the same table on every state change (its methods are
   // closures, so the prototype chain serves them unchanged). A parent built
   // with the React Compiler then re-renders the parts it passes it to.
@@ -405,6 +425,9 @@ function useDataTable<TData>({
   // One function for the table's life: the chips register in an effect
   // keyed on it, which a new one per view would re-run on every change.
   const registerChips = useCallback((mounted: boolean) => setChipsMounted((n) => n + (mounted ? 1 : -1)), []);
+  // One function for the table's life too: effects keyed on it (the
+  // selection bar watching the table) must not re-run on every change.
+  const getRootElement = useCallback(() => rootRef.current(), []);
   // The chips row tucked away by its button (DataTableFilters, which
   // toggles the row while filters are set). The filters stay on.
   const [filtersHidden, setFiltersHidden] = useState(startFiltersHidden);
@@ -423,7 +446,7 @@ function useDataTable<TData>({
         _registerRoot: (get: () => HTMLElement | null) => {
           rootRef.current = get;
         },
-        getRootElement: () => rootRef.current(),
+        getRootElement,
         filterRequest,
         _registerChips: registerChips,
         filtersHidden,
@@ -532,6 +555,12 @@ interface DataTableProps<TData> {
    *  stop: ↑ / ↓ and Home / End move between them, Enter or Space opens
    *  one. */
   onRowClick?: (row: Row<TData>) => void;
+  /** Whether the row under the pointer takes the gliding hover fill.
+   *  Unset, it follows the table: on where a row answers a click (it
+   *  opens, selects, has a menu, moves, opens sub-rows, or its cells
+   *  edit), off on a table that is only read, where a fill would promise
+   *  a click that does nothing. The header keeps its own. */
+  rowHover?: boolean;
   /** Adds a handle on each header's right edge: drag it, or focus it and
    *  press ← / →, to set the column's width. Columns start at the widths the
    *  table lays out on its own (or their `size`); the last resizable one takes the
@@ -679,6 +708,12 @@ const PRESS_RADIUS = {
   pill: "after:rounded-[20px]",
   sharp: "after:rounded-[1px]",
 } as const;
+// The same corners on a frozen header, whose fill is an element of its own.
+const PRESS_RADIUS_PINNED = {
+  rounded: "rounded-lg",
+  pill: "rounded-[20px]",
+  sharp: "rounded-[1px]",
+} as const;
 
 // A drag starts once the pointer has travelled this far, so a plain click
 // on a header still sorts.
@@ -745,15 +780,58 @@ const ADDED_COLUMN_WIDTH = 166;
 const HeaderMenuContext = createContext<{
   table: TanStackTable<unknown>;
   reorder: boolean;
+  /** A column's menu opened or closed: its header stays pressed meanwhile. */
+  onMenuOpenChange: (columnId: string, open: boolean) => void;
 } | null>(null);
 
 // The table last clicked or focused, for the page-level undo keys.
 let lastUsedTable: HTMLElement | null = null;
 
 /** Data columns (with an accessor) move; selection and action columns hold
- *  their place at the ends, and pinned columns at theirs. */
+ *  their place at the ends, and columns pinned right at theirs. A column
+ *  frozen on the left moves too: the freeze belongs to the place, not the
+ *  column (see setOrderKeepingFrozen), so any column can be made the first. */
 const canReorder = <TData,>(column: Column<TData, unknown>) =>
-  column.accessorFn !== undefined && !column.getIsPinned();
+  column.accessorFn !== undefined && column.getIsPinned() !== "right";
+
+/** Every column in the order the table draws them: the left pins, the rest
+ *  in their saved order, the right pins. */
+function drawnOrderOf<TData>(table: TanStackTable<TData>) {
+  const order = columnOrderOf(table);
+  const pin = table.getState().columnPinning;
+  const left = (pin.left ?? []).filter((id) => order.includes(id));
+  const right = (pin.right ?? []).filter((id) => order.includes(id));
+  const held = new Set([...left, ...right]);
+  return [...left, ...order.filter((id) => !held.has(id)), ...right];
+}
+
+/** Sets the column order, and keeps the left freeze where it was: as many
+ *  data columns frozen as before, now the first ones of the new order.
+ *  A column dropped ahead of the frozen one takes its place there, as
+ *  freezing "the first column" means in a spreadsheet. */
+function setOrderKeepingFrozen<TData>(table: TanStackTable<TData>, order: string[]) {
+  table.setColumnOrder(order);
+  const pin = table.getState().columnPinning;
+  const left = pin.left ?? [];
+  // Looked up here, not with table.getColumn: the pin list names the
+  // select and drag columns whether or not the table has them, and
+  // getColumn logs an error for an id that is not there.
+  const byId = new Map(table.getAllLeafColumns().map((c) => [c.id, c]));
+  const isData = (id: string) => byId.get(id)?.accessorFn !== undefined;
+  // Counted among the visible ones, like the places below: a frozen
+  // column that is hidden would otherwise freeze one more visible column.
+  const frozen = left.filter((id) => isData(id) && byId.get(id)?.getIsVisible()).length;
+  if (frozen === 0) return;
+  const right = new Set(pin.right ?? []);
+  // Only columns that may be frozen take a frozen place.
+  const first = order
+    .filter((id) => isData(id) && !right.has(id) && byId.get(id)?.getIsVisible() && byId.get(id)?.getCanPin())
+    .slice(0, frozen);
+  // Hidden frozen columns keep their pin for when they are shown again.
+  const hidden = left.filter((id) => isData(id) && !byId.get(id)?.getIsVisible());
+  const next = [...left.filter((id) => !isData(id)), ...first, ...hidden];
+  if (next.join() !== left.join()) table.setColumnPinning((old) => ({ ...old, left: next }));
+}
 
 /** Moves `id` before or after `refId` among the reorderable columns, leaving
  *  every other column in its slot. */
@@ -765,14 +843,14 @@ function moveColumn<TData>(
 ) {
   if (id === refId) return;
   const all = table.getAllLeafColumns();
-  const order = columnOrderOf(table);
+  const order = drawnOrderOf(table);
   const movable = new Set(all.filter(canReorder).map((c) => c.id));
   const slots = order.filter((c) => movable.has(c) && c !== id);
   const at = slots.indexOf(refId);
   if (at === -1) return;
   slots.splice(place === "before" ? at : at + 1, 0, id);
   let next = 0;
-  table.setColumnOrder(order.map((c) => (movable.has(c) ? slots[next++] : c)));
+  setOrderKeepingFrozen(table, order.map((c) => (movable.has(c) ? slots[next++] : c)));
 }
 
 function DataTable<TData>({
@@ -790,6 +868,7 @@ function DataTable<TData>({
   onUndo,
   onRedo,
   onRowReorder,
+  rowHover,
   className,
 }: DataTableProps<TData>) {
   "use no memo";
@@ -891,18 +970,22 @@ function DataTable<TData>({
   const headRowRef = useRef<HTMLTableRowElement>(null);
   const sizeClasses = useSize(size);
   const shape = useShape();
-  // A copy of the dragged header that follows the pointer, at 80%. Its position is
-  // written straight to the element, so a drag doesn't re-render the table
-  // on every move, only when the landing spot changes.
+  // A copy of the dragged header that follows the pointer at 80%, as a
+  // dragged row's copy does: the column it left, header and cells, stays
+  // in place, stepped back. Its position is written straight to the
+  // element, so a drag doesn't re-render the table on every move, only
+  // when the landing spot changes.
   const [ghost, setGhost] = useState<{
-    label: string;
-    icon?: IconComponent;
+    id: string;
     top: number;
     left: number;
     width: number;
     height: number;
+    /** The column's height in view: the drop line runs down it. */
+    column: number;
   } | null>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
+  const columnLineRef = useRef<HTMLDivElement>(null);
 
   const dropTarget = (x: number, id: string) => {
     const heads = Array.from(
@@ -1049,14 +1132,76 @@ function DataTable<TData>({
     };
   }, [fill, wrapEl]);
 
-  // Opening and closing sub-rows: rows below jump to their new places in
-  // one frame, with the selection fill and the highlight (Table snaps them
-  // on a new snapKey), and only the rows that appear fade in. A slide here
-  // left the fills, keyed by position, springing apart from the rows.
+  // Opening and closing sub-rows, in 120ms. The layout changes at once,
+  // with the selection fill and the highlight (Table snaps them on a new
+  // snapKey), and then plays from where things were: the rows below slide
+  // to their new places, uncovering the rows that appear and covering the
+  // rows that went (a copy of them, left where they were). The fills under
+  // the rows that slide take the same offset, as `translate`, apart from
+  // the transform their own animation writes: sliding the rows alone left
+  // the fills, keyed by position, a row's height away from them.
   const [expandTick, setExpandTick] = useState(0);
-  const fadeFrom = useRef<Set<string> | null>(null);
+  const expandFrom = useRef<{
+    tops: Map<string, number>;
+    height: number;
+    /** A copy of the rows a close removes, and where they were. */
+    ghost: HTMLElement | null;
+  } | null>(null);
+  // The copy still on the page from the last close, if its 120ms aren't up.
+  const liveGhost = useRef<HTMLElement | null>(null);
+  // placeFadeBands, declared further down.
+  const placeBandsRef = useRef<() => void>(() => {});
   const toggleExpanded = (row: Row<TData>, open?: boolean) => {
-    fadeFrom.current = new Set(rows.map((r) => r.id));
+    // A second toggle inside those 120ms: the old copy goes now, or it
+    // would fade over the rows about to be uncovered in its place.
+    liveGhost.current?.remove();
+    liveGhost.current = null;
+    const wrap = wrapRef.current;
+    const tableNode = wrap?.querySelector<HTMLTableElement>("table");
+    if (wrap && tableNode && !reduceMotion) {
+      const tops = new Map<string, number>();
+      const trs = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]"));
+      trs.forEach((tr) => tops.set(tr.dataset.rowId!, tr.offsetTop));
+      let ghost: HTMLElement | null = null;
+      const closing = row.getIsExpanded() && open !== true;
+      const at = rows.findIndex((r) => r.id === row.id);
+      if (closing && at !== -1) {
+        // The rows under it, at any depth: what the close takes away.
+        const going: HTMLElement[] = [];
+        for (let i = at + 1; i < rows.length && rows[i].depth > row.depth; i++) {
+          const tr = trs.find((el) => el.dataset.rowId === rows[i].id);
+          if (tr) going.push(tr);
+        }
+        const host = tableNode.parentElement;
+        if (going.length && host) {
+          const copy = tableNode.cloneNode(false) as HTMLTableElement;
+          copy.removeAttribute("id");
+          // Out of the tab order and the accessibility tree, ids and all.
+          copy.inert = true;
+          copy.style.cssText = `position:absolute;left:0;top:${going[0].getBoundingClientRect().top - host.getBoundingClientRect().top}px;width:${tableNode.offsetWidth}px;table-layout:fixed;pointer-events:none;margin:0`;
+          // The copy has no header row to take its columns' widths from:
+          // a col per cell holds each to the width it has in the table.
+          // (Widths set on the copied cells lost to the cells' own
+          // classes, and the copy's columns landed out of line.)
+          const cols = document.createElement("colgroup");
+          Array.from(going[0].children).forEach((cell) => {
+            const col = document.createElement("col");
+            col.style.width = `${(cell as HTMLElement).offsetWidth}px`;
+            cols.append(col);
+          });
+          const body = document.createElement("tbody");
+          for (const tr of going) {
+            const clone = tr.cloneNode(true) as HTMLElement;
+            clone.classList.remove("is-active");
+            clone.removeAttribute("data-row-id");
+            body.append(clone);
+          }
+          copy.append(cols, body);
+          ghost = copy;
+        }
+      }
+      expandFrom.current = { tops, height: wrap.offsetHeight, ghost };
+    }
     setExpandTick((t) => t + 1);
     row.toggleExpanded(open);
   };
@@ -1065,16 +1210,91 @@ function DataTable<TData>({
     toggleRef.current = toggleExpanded;
   });
   useLayoutEffect(() => {
-    const seen = fadeFrom.current;
-    if (!seen) return;
-    fadeFrom.current = null;
-    if (reduceMotion) return;
-    wrapRef.current?.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
-      if (seen.has(tr.dataset.rowId!)) return;
-      animate(tr, { opacity: [0, 1] }, spring.moderate).then(() => {
-        tr.style.opacity = "";
-      });
+    const from = expandFrom.current;
+    const wrap = wrapRef.current;
+    if (!from || !wrap) return;
+    expandFrom.current = null;
+    const slide = { duration: 120, easing: "cubic-bezier(0.23, 1, 0.32, 1)" };
+    let shift = 0;
+    let boundary = Infinity;
+    const fresh: HTMLElement[] = [];
+    // Read every row first, then write: an animation started between two
+    // reads makes the next read lay the table out again, once per row.
+    const moved: { tr: HTMLElement; dy: number }[] = [];
+    wrap.querySelectorAll<HTMLElement>("tbody tr[data-row-id]").forEach((tr) => {
+      const old = from.tops.get(tr.dataset.rowId!);
+      if (old === undefined) {
+        fresh.push(tr);
+        return;
+      }
+      const dy = old - tr.offsetTop;
+      if (!dy) return;
+      shift = dy;
+      boundary = Math.min(boundary, tr.getBoundingClientRect().top);
+      moved.push({ tr, dy });
     });
+    const reveal = fresh.map((tr) => ({ tr, top: tr.offsetTop, height: tr.offsetHeight }));
+    const fills = shift
+      ? Array.from(wrap.querySelectorAll<HTMLElement>("[data-slot=selection-fill]")).filter(
+          (el) => el.getBoundingClientRect().top >= boundary - 1
+        )
+      : [];
+    for (const { tr, dy } of moved) tr.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], slide);
+    // The rows that appear are uncovered by the rows sliding down off
+    // them, never under them: each is cut at the sliding rows' top edge,
+    // on the slide's own clock (the keyframes are placed where that edge
+    // reaches the row, and the easing is the slide's). Faded in under the
+    // sliding rows instead, two rows' text showed through each other.
+    if (reveal.length) {
+      const top = reveal[0].top;
+      const last = reveal[reveal.length - 1];
+      const span = last.top + last.height - top;
+      for (const row of reveal) {
+        const start = Math.min(1, Math.max(0, (row.top - top) / span));
+        const end = Math.min(1, Math.max(start, (row.top + row.height - top) / span));
+        const frames = [
+          { clipPath: "inset(0 0 100% 0)", opacity: 0, offset: 0 },
+          ...(start > 0 ? [{ clipPath: "inset(0 0 100% 0)", opacity: 0, offset: start }] : []),
+          ...(end < 1 ? [{ clipPath: "inset(0 0 0 0)", opacity: 1, offset: end }] : []),
+          { clipPath: "inset(0 0 0 0)", opacity: 1, offset: 1 },
+        ];
+        // On the cells: a table row takes no clip of its own.
+        Array.from(row.tr.children).forEach((cell) => cell.animate(frames, slide));
+      }
+    }
+    // The selection's fills (and their copies over the frozen columns)
+    // under the rows that moved.
+    for (const el of fills) el.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], slide);
+    const host = wrap.querySelector("table")?.parentElement;
+    if (from.ghost && host) {
+      const ghost = from.ghost;
+      host.append(ghost);
+      liveGhost.current = ghost;
+      // Covered from the bottom up by the rows sliding over it, the same
+      // way: cut at their top edge as it fades, so its text never shows
+      // through theirs.
+      const gone = ghost.animate(
+        [
+          { clipPath: "inset(0 0 0 0)", opacity: 1 },
+          { clipPath: "inset(0 0 100% 0)", opacity: 0 },
+        ],
+        { ...slide, fill: "forwards" }
+      );
+      const done = () => {
+        ghost.remove();
+        if (liveGhost.current === ghost) liveGhost.current = null;
+        // The copy kept the scroll box as tall as before the close. With
+        // it gone the box is shorter, and nothing else says so (no render,
+        // no resize of the table itself): what rides the scroll (the
+        // frozen columns' fills) is told here, or it sat off its row.
+        placeBandsRef.current();
+      };
+      gone.finished.then(done, done);
+    }
+    // A filled box's height is its parent's; a free one follows the rows,
+    // so what sits under the table (the pagination) glides with them.
+    const height = wrap.offsetHeight;
+    if (!fill && from.height !== height) wrap.animate([{ height: `${from.height}px` }, { height: `${height}px` }], slide);
   });
   const [stableToggle] = useState(() => (row: Row<unknown>, open?: boolean) =>
     toggleRef.current(row as Row<TData>, open)
@@ -1129,10 +1349,9 @@ function DataTable<TData>({
       .querySelectorAll<HTMLElement>("th[data-column-id], td[data-column-id]")
       .forEach((el) => {
         const id = el.dataset.columnId!;
-        // A dropped column's header lands from where it was let go; its
-        // cells never left their slot, so they travel from there.
-        const dropped = before.dropped?.id === id;
-        const old = dropped && el.tagName === "TH" ? before.dropped!.left : before.lefts.get(id);
+        // A dropped column's header lands from where its copy was let go;
+        // its cells never left their slot, so they travel from there.
+        const old = before.dropped?.id === id && el.tagName === "TH" ? before.dropped.left : before.lefts.get(id);
         if (old === undefined) {
           animate(el, { opacity: [0, 1] }, spring.moderate).then(() => {
             el.style.opacity = "";
@@ -1142,12 +1361,9 @@ function DataTable<TData>({
         const th = wrap.querySelector<HTMLElement>(`thead th[data-column-id="${CSS.escape(id)}"]`);
         const dx = th ? old - th.offsetLeft : 0;
         if (!dx) return;
-        // A drop settles on the fast tier: the header was carried most of
-        // the way, and the neighbors step aside one column's width. The
-        // dropped column's cells cross the distance it was dragged, which
-        // the moderate tier is for.
-        const quick = before.dropped && !(dropped && el.tagName === "TD");
-        animate(el, { x: [dx, 0] }, quick ? spring.fast : spring.moderate).then(() => {
+        // One spring for all of it: the column landing and its neighbors
+        // stepping aside read as one move.
+        animate(el, { x: [dx, 0] }, spring.moderate).then(() => {
           el.style.transform = "";
         });
       });
@@ -1212,16 +1428,39 @@ function DataTable<TData>({
     }
   });
 
+  // The carried header's copy: the cell as it looks right now (its icon,
+  // its sort arrow), in a one-cell table with the real one's classes.
+  const ghostId = ghost?.id;
+  useLayoutEffect(() => {
+    const host = ghostRef.current?.querySelector<HTMLElement>("[data-column-ghost]");
+    const source = wrapRef.current?.querySelector("table");
+    if (ghostId === undefined || !host || !source) return;
+    const head = source.querySelector<HTMLElement>(`thead th[data-column-id="${CSS.escape(ghostId)}"]`);
+    const from = head?.parentElement;
+    if (!head || !from) return;
+    const { width, height } = head.getBoundingClientRect();
+    const copy = document.createElement("table");
+    copy.className = source.className;
+    copy.style.cssText = `table-layout:fixed;min-width:0;width:${width}px;--table-cell-py:${getComputedStyle(from).getPropertyValue("--table-cell-py")}`;
+    const part = document.createElement("thead");
+    const row = from.cloneNode(false) as HTMLElement;
+    row.style.height = `${height}px`;
+    const cell = head.cloneNode(true) as HTMLElement;
+    cell.removeAttribute("data-dragging");
+    // In the flow of its own table: a frozen cell's place and hairline
+    // belong to the table it left.
+    cell.style.cssText += `;box-sizing:border-box;position:relative;left:auto;right:auto;width:${width}px;min-width:${width}px;max-width:${width}px;--ff-pin:0`;
+    row.append(cell);
+    part.append(row);
+    copy.append(part);
+    host.replaceChildren(copy);
+  }, [ghostId]);
+
   // A drag's window listeners, removed if the table goes away mid-drag.
   const dragCleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => dragCleanup.current?.(), []);
 
-  const startDrag = (
-    e: PointerEvent<HTMLTableCellElement>,
-    id: string,
-    label: string,
-    icon: IconComponent | undefined
-  ) => {
+  const startDrag = (e: PointerEvent<HTMLTableCellElement>, id: string) => {
     // A press in the header's menu (portalled, but bubbling here through
     // React) isn't one on the cell.
     if (!e.currentTarget.contains(e.target as Node)) return;
@@ -1237,18 +1476,34 @@ function DataTable<TData>({
       "[data-slot=scroll-area-viewport]"
     );
     const scrolledAtStart = viewport?.scrollLeft ?? 0;
+    const marked: HTMLElement[] = [];
     // Places the ghost for a pointer x and finds where it would land.
     const place = (clientX: number) => {
       // The ghost stays within the table's visible box: it stops at the left
-      // and right edges, and the landing spot follows where it stopped.
+      // and right edges.
       const box = wrapRef.current?.getBoundingClientRect();
       let dx = clientX - startX;
       if (box) dx = Math.min(Math.max(dx, box.left - rect.left), box.right - rect.right);
       lastDx = dx;
       if (ghostRef.current) ghostRef.current.style.transform = `translateX(${dx}px)`;
-      const next = dropTarget(startX + dx, id);
+      // The landing spot follows the pointer, not where the ghost stopped:
+      // held at the left edge, a wide header's ghost never got its middle
+      // past a narrower first column's, so nothing could be dropped first.
+      const next = dropTarget(clientX, id);
       if (!target || next.refId !== target.refId || next.place !== target.place) setDrag(next);
       target = next;
+      // The line where it would land, the column's height, as a row's
+      // is the table's width.
+      const line = columnLineRef.current;
+      const ref = headRowRef.current?.querySelector<HTMLElement>(`th[data-column-id="${CSS.escape(next.refId)}"]`);
+      if (!line) return;
+      const shown = !!ref && !!box && next.refId !== id;
+      line.style.display = shown ? "block" : "none";
+      if (!shown) return;
+      const edge = ref.getBoundingClientRect();
+      const x = next.place === "before" ? edge.left : edge.right;
+      // Kept inside the table's box: past it the edge has scrolled away.
+      line.style.left = `${Math.min(Math.max(x, box.left), box.right) - 1}px`;
     };
     // Near an edge of a table that scrolls sideways, the table scrolls that
     // way, so a column can be carried to one that's out of view (narrow
@@ -1275,7 +1530,30 @@ function DataTable<TData>({
       if (!moved && Math.abs(ev.clientX - startX) < DRAG_THRESHOLD) return;
       if (!moved) {
         moved = true;
-        setGhost({ label, icon, top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+        const wrap = wrapRef.current;
+        const tableNode = wrap?.querySelector("table");
+        // The column's foot: the last row, or the box's bottom where the
+        // rows scroll inside it.
+        const bottom =
+          wrap && tableNode
+            ? Math.min(wrap.getBoundingClientRect().bottom, tableNode.getBoundingClientRect().bottom)
+            : rect.bottom;
+        // Marked before the copy renders, as carried rows are: the column
+        // steps back while its copy is out.
+        tableNode?.querySelectorAll<HTMLElement>(`tbody td[data-column-id="${CSS.escape(id)}"]`).forEach((cell) => {
+          cell.setAttribute("data-column-dragging", "");
+          marked.push(cell);
+        });
+        flushSync(() =>
+          setGhost({
+            id,
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            column: Math.max(rect.height, bottom - rect.top),
+          })
+        );
         frame = requestAnimationFrame(edgeScroll);
       }
       lastX = ev.clientX;
@@ -1286,6 +1564,7 @@ function DataTable<TData>({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      marked.forEach((cell) => cell.removeAttribute("data-column-dragging"));
       dragCleanup.current = null;
     };
     const onUp = () => {
@@ -1756,6 +2035,7 @@ function DataTable<TData>({
   // After every render (a selection, a sort, a page turn), and when the
   // rows change size or the table scrolls up and down inside its box.
   useLayoutEffect(() => {
+    placeBandsRef.current = placeFadeBands;
     placeFadeBands();
   });
   useEffect(() => {
@@ -1793,6 +2073,11 @@ function DataTable<TData>({
   // row counts as focused while nothing else is (see below).
   const hasSelection = table.getAllLeafColumns().some((c) => c.id === "select");
   const rowsFocusable = hasSelection || !!onRowClick || !!onRowReorder || table.getCanSomeRowsExpand();
+  // The hover fill says "this row does something". Where nothing does (no
+  // click, no box, no menu, no handle, no sub-rows, no editors), there is
+  // none. Only the fill goes: what rides the highlight (the box, the
+  // handle) and the keyboard's place still follow it.
+  const rowHoverOn = rowHover ?? (rowsFocusable || !!onCellEdit || actionsShown);
   // Whether rows can move right now, for the window key listener below
   // (set once the handles are known to show, further down).
   const canMoveRows = useRef(false);
@@ -2497,9 +2782,18 @@ function DataTable<TData>({
   const boxAt =
     boxColumn === 0 ? 8 : boxColumn === 1 && visible[0].id === "drag" ? HANDLE_WIDTH + 8 : -1;
 
+  // The column whose header menu is open. Its header stays pressed, as
+  // every trigger does while its popup is open: the layer under the menu
+  // takes the pointer off the table, and the header's hover fill went
+  // out with it, leaving the menu hanging from an unmarked header.
+  const [heldHead, setHeldHead] = useState<string | null>(null);
+  const onMenuOpenChange = useCallback(
+    (columnId: string, open: boolean) => setHeldHead((old) => (open ? columnId : old === columnId ? null : old)),
+    []
+  );
   const headerMenu = useMemo(
-    () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns }),
-    [table, reorderColumns]
+    () => ({ table: table as TanStackTable<unknown>, reorder: reorderColumns, onMenuOpenChange }),
+    [table, reorderColumns, onMenuOpenChange]
   );
   // The row a right-click opened the menu for.
   const rowMenu = table.getAllLeafColumns().find((c) => c.columnDef.meta?.rowMenu)?.columnDef.meta?.rowMenu;
@@ -2507,6 +2801,10 @@ function DataTable<TData>({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRow = menuRowId ? table.getCoreRowModel().rowsById[menuRowId] : undefined;
 
+  // Where that header sits in the header row's gliding fill (a filled
+  // table's headers draw their own, marked `data-held`).
+  const heldAt = heldHead && !fill ? (table.getHeaderGroups().at(-1)?.headers.findIndex((h) => h.column.id === heldHead) ?? -1) : -1;
+  const heldHeadIndex = heldAt >= 0 ? heldAt : null;
   const tableEl = (
     <EditContext.Provider value={stableEditing}>
     <Table
@@ -2517,6 +2815,7 @@ function DataTable<TData>({
       selectedIndices={rows.flatMap((row, i) => (row.getIsSelected() && !rowGhost?.ids.includes(row.id) ? [i] : []))}
       snapKey={expandTick}
       hideHeadHighlight={!!drag}
+      heldHeadIndex={heldHeadIndex}
       // The handles' and the boxes' columns, leading: one grip and one
       // empty box ride the highlight.
       onHighlightFrame={placeHoverFade}
@@ -2560,6 +2859,9 @@ function DataTable<TData>({
         // Important: a row keeps an inline opacity from its last animation,
         // which a plain rule here lost to (the rows stayed at full strength).
         "[&_tr[data-row-dragging]]:opacity-40!",
+        // And a carried column's cells. A frozen cell dims its content
+        // only: its own surface still has to cover what scrolls under it.
+        "[&_td[data-column-dragging]:not(.sticky)]:opacity-40 [&_td.sticky[data-column-dragging]>*:not([aria-hidden])]:opacity-40",
         "[&[data-measuring]_:is(th,td)]:!w-auto [&[data-measuring]_:is(th,td)]:!max-w-none [&[data-measuring]_*]:!whitespace-nowrap",
         // The sub-row guides start from the first column's left padding.
         sizeClasses.variant === "compact" ? "[--expander-pl:10px]" : "[--expander-pl:12px]",
@@ -2589,6 +2891,16 @@ function DataTable<TData>({
               const meta = column.columnDef.meta;
               const sorted = column.getIsSorted();
               const movable = reorderColumns && !header.isPlaceholder && canReorder(column);
+              // A header takes the hover (the fill, the pointer, the lifted
+              // label) only where a click on it does something: it moves,
+              // sorts, or its menu has a filter or a freeze to offer. A
+              // data column with none of those is a label.
+              const acts =
+                movable ||
+                column.getCanSort() ||
+                (!!column.accessorFn &&
+                  ((!!(table as Partial<DataTableExtras>).canOpenFilter?.() && column.getCanFilter()) ||
+                    (column.getCanPin() && column.getIsPinned() !== "right")));
               // The flex column has a handle too: its width is the least it
               // takes, so dragging it wider grows the table.
               const resizable = resizeColumns && column.getCanResize();
@@ -2601,7 +2913,8 @@ function DataTable<TData>({
                   // Headers that act join the header row's gliding fill (a
                   // filled table's sticky headers paint over it, so they
                   // keep a fill of their own).
-                  hoverIndex={!fill && (movable || column.getCanSort() || !!column.accessorFn) ? headerIndex : undefined}
+                  hoverIndex={!fill && acts ? headerIndex : undefined}
+                  data-held={heldHead === column.id || undefined}
                   aria-sort={
                     sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
                   }
@@ -2609,7 +2922,7 @@ function DataTable<TData>({
                   data-reorderable={movable || undefined}
                   data-drop={dropSide}
                   data-dragging={drag?.id === column.id || undefined}
-                  onPointerDown={movable ? (e) => startDrag(e, column.id, label, meta?.icon) : undefined}
+                  onPointerDown={movable ? (e) => startDrag(e, column.id) : undefined}
                   onKeyDown={movable ? (e) => moveByKey(e, column.id) : undefined}
                   // The whole cell opens the header's menu, padding and the
                   // space past the label included: a click anywhere else in
@@ -2661,27 +2974,28 @@ function DataTable<TData>({
                       "group-data-scrolled/scroll:border-b-foreground/[0.08]!",
                     ],
                     movable && "touch-none select-none",
-                    // The dragged header's label lifts out into the ghost, so
-                    // its slot shows empty; a 2px accent bar marks where it
-                    // lands.
-                    "data-dragging:[&>*:not([data-resize-handle])]:invisible",
-                    "before:pointer-events-none before:absolute before:inset-y-1.5 before:w-0.5 before:rounded-full before:bg-[var(--fluid-accent,#6B97FF)] before:opacity-0",
-                    "data-[drop=before]:before:-left-px data-[drop=before]:before:opacity-100",
-                    "data-[drop=after]:before:-right-px data-[drop=after]:before:opacity-100",
+                    // The dragged header steps back with its column while
+                    // their copy is out (see the cells' rule on the table).
+                    "data-dragging:[&>*:not([data-resize-handle],[aria-hidden])]:opacity-40",
                     // A header that sorts or moves behaves like a ghost
                     // Button: its label lifts from muted to foreground on
                     // hover. Its fill is the header row's gliding one,
                     // which Table turns --active while pressed: one surface.
-                    (movable || column.getCanSort() || !!column.accessorFn) &&
+                    acts &&
                       "cursor-pointer hover:text-foreground transition-colors duration-80",
                     // Filled, the sticky header paints over that fill, so
                     // the cell draws its own, the same way: --hover, then
                     // --active, clear of the header's bottom line. Once it
                     // drags, the ghost takes over and the slot stays empty.
+                    // A frozen header's own surface would cover it: that
+                    // one draws the fill in its pin layers below.
                     fill &&
-                      (movable || column.getCanSort() || !!column.accessorFn) && [
+                      !pins[column.id] &&
+                      acts && [
                         "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
                         "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
+                        // Its menu open: pressed until it closes.
+                        "data-held:after:bg-active!",
                         PRESS_RADIUS[shape.variant],
                       ],
                     meta?.className
@@ -2691,12 +3005,14 @@ function DataTable<TData>({
                     <PinLayers pin={pins[column.id]}>
                       {/* Opaque, a pinned header covers the row's gliding
                           fill: it draws its own, the same way. */}
-                      {!fill && (movable || column.getCanSort() || !!column.accessorFn) && (
+                      {acts && (
                         <span
                           className={cn(
                             "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
                             "group-hover/th:bg-hover group-active/th:bg-active",
-                            shape.bg
+                            // Its menu open: pressed until it closes.
+                            "group-data-held/th:bg-active!",
+                            fill ? PRESS_RADIUS_PINNED[shape.variant] : shape.bg
                           )}
                         />
                       )}
@@ -2860,6 +3176,7 @@ function DataTable<TData>({
         // isolate: its own stacking context, so the selection's fade bands
         // (placeFadeBands) can sit behind the rows without leaving the box.
         data-ff-table=""
+        data-no-row-hover={rowHoverOn ? undefined : ""}
         className={cn("group/pin isolate w-full", fill && "group/scroll min-h-0 flex-1")}
         // Content fades while there's more to a side, at the line where it
         // meets the pinned columns (the box's own edge when none are):
@@ -2922,7 +3239,7 @@ function DataTable<TData>({
             <div className="ff-ride absolute inset-0">
             <div ref={fadeHostRef} />
             {/* The hovered row's band: one pair, moved with the highlight. */}
-            <div ref={hoverFadeRef} className="absolute inset-x-0 top-0 opacity-0">
+            <div ref={hoverFadeRef} data-row-hover="" className="absolute inset-x-0 top-0 opacity-0">
               <div
                 className="ff-fade-l absolute inset-y-0 left-(--pin-l,0px) w-(--ff-fade,48px)"
                 style={{ background: "linear-gradient(to right, var(--hover), transparent)" }}
@@ -2975,7 +3292,7 @@ function DataTable<TData>({
             {/* Cut off at the header's bottom, which the rows scroll under. */}
             <div className="absolute inset-0 [clip-path:inset(var(--ff-head,0px)_0_0_0)]">
             <div className="ff-ride absolute inset-0">
-            <div ref={pinHoverRef} className="absolute inset-x-0 top-0 opacity-0">
+            <div ref={pinHoverRef} data-row-hover="" className="absolute inset-x-0 top-0 opacity-0">
               <div
                 className={cn(
                   "ff-pinhover-l absolute inset-y-0 left-(--ff-inset-l,0px) w-[calc(var(--pin-l,0px)-var(--ff-inset-l,0px))] bg-hover",
@@ -3075,30 +3392,28 @@ function DataTable<TData>({
         )}
       {ghost &&
         createPortal(
-          <div
-            ref={ghostRef}
-            aria-hidden
-            className={cn(
-              // The pressed header, lifted: the same --active fill over the
-              // page background (opaque, so the table doesn't show through
-              // the 80%), no border, no shadow.
-              "pointer-events-none fixed z-[var(--z-popover,60)] flex items-center bg-background bg-[linear-gradient(var(--active),var(--active))] text-foreground opacity-80",
-              sizeClasses.variant === "compact" ? "px-2.5" : "px-3",
-              sizeClasses.text,
-              shape.item
-            )}
-            style={{
-              top: ghost.top,
-              left: ghost.left,
-              width: ghost.width,
-              height: ghost.height,
-              fontVariationSettings: fontWeights.semibold,
-            }}
-          >
-            <span className="min-w-0 truncate">
-              <HeaderLabel icon={ghost.icon} title={ghost.label} />
-            </span>
-          </div>,
+          <>
+            {/* Over the page while a column is carried, as for a row: the
+                grabbing cursor everywhere, and nothing lights under it. */}
+            <div aria-hidden className="fixed inset-0 z-[var(--z-popover,60)] cursor-grabbing" />
+            <div
+              ref={ghostRef}
+              aria-hidden
+              inert
+              // The carried header at 80%, on the lifted surface a carried
+              // row has (GHOST_BLOCK).
+              className="pointer-events-none fixed z-[var(--z-popover,60)] overflow-hidden opacity-80"
+              style={{ top: ghost.top, left: ghost.left, width: ghost.width, height: ghost.height }}
+            >
+              <div data-column-ghost="" className={cn(GHOST_BLOCK, "inset-y-0", shape.bg)} />
+            </div>
+            <div
+              ref={columnLineRef}
+              aria-hidden
+              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+              style={{ top: ghost.top, height: ghost.column }}
+            />
+          </>,
           document.body
         )}
     </>
@@ -3202,12 +3517,21 @@ function DataTableColumnHeader<TData, TValue>({
 }: DataTableColumnHeaderProps<TData, TValue>) {
   "use no memo";
   const icons = useIcons();
+  const alt = useIsMac() ? "\u2325" : "Alt";
   const shape = useShape();
   const Arrow = icons["arrow-up"];
   const ctx = useContext(HeaderMenuContext);
   const table = ctx?.table as TanStackTable<TData> | undefined;
   const [menuOpen, setMenuOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  // The table keeps this header pressed while its menu is open.
+  const reportOpen = ctx?.onMenuOpenChange;
+  const columnId = column.id;
+  useEffect(() => {
+    if (!menuOpen || !reportOpen) return;
+    reportOpen(columnId, true);
+    return () => reportOpen(columnId, false);
+  }, [menuOpen, reportOpen, columnId]);
 
   const icon = column.columnDef.meta?.icon;
   const col = column as unknown as Column<TData, unknown>;
@@ -3260,7 +3584,7 @@ function DataTableColumnHeader<TData, TValue>({
     table.setColumnPinning((old) => ({ ...old, left: ids.slice(0, ids.indexOf(column.id) + 1) }));
   };
 
-  const items: { label: string; icon?: IconComponent; onSelect: () => void; disabled?: boolean }[] = [];
+  const items: { label: string; icon?: IconComponent; onSelect: () => void; disabled?: boolean; shortcut?: string[] }[] = [];
   if (canSort) {
     items.push(
       { label: "Sort ascending", icon: icons["arrow-up"], onSelect: () => column.toggleSorting(false) },
@@ -3271,8 +3595,9 @@ function DataTableColumnHeader<TData, TValue>({
   if (canFilter) items.push({ label: "Filter", icon: icons.filter, onSelect: () => (table as Partial<DataTableExtras>).openFilter?.(column.id) });
   if (movable) {
     items.push(
-      { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0 },
-      { label: "Move right", icon: icons["arrow-right"], onSelect: () => move("after"), disabled: at === -1 || at >= order.length - 1 }
+      // The keys that do the same from the focused header.
+      { label: "Move left", icon: icons["arrow-left"], onSelect: () => move("before"), disabled: at <= 0, shortcut: [alt, "\u2190"] },
+      { label: "Move right", icon: icons["arrow-right"], onSelect: () => move("after"), disabled: at === -1 || at >= order.length - 1, shortcut: [alt, "\u2192"] }
     );
   }
   if (canPin) items.push({ label: frozenHere ? "Unfreeze columns" : "Freeze up to here", icon: icons["panel-left"], onSelect: freeze });
@@ -3365,6 +3690,7 @@ function DataTableColumnHeader<TData, TValue>({
               label={item.label}
               disabled={item.disabled}
               onSelect={item.onSelect}
+              shortcut={item.shortcut}
             />
           ))}
         </DropdownContent>
@@ -3471,6 +3797,81 @@ SelectHit.displayName = "SelectHit";
  *  with the fill. */
 const SELECT_SNAP =
   "group-[:not(:hover,:focus-within)]/row:[&_[role=checkbox]]:duration-0 group-data-snap-rules/table:duration-0";
+
+// The selection bar, out of sight: 8px under its place, a little smaller.
+const BAR_SHOWN = { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
+const BAR_HIDDEN = { opacity: 0, y: 8, scale: 0.96, filter: "blur(4px)" };
+
+// A digit on its way in or out: half a line up or down, by which way the
+// count went.
+const DIGIT = {
+  enter: (dir: number) => ({ y: `${dir * 0.5}em`, opacity: 0, filter: "blur(2px)" }),
+  shown: { y: "0em", opacity: 1, filter: "blur(0px)" },
+  exit: (dir: number) => ({ y: `${dir * -0.5}em`, opacity: 0, filter: "blur(2px)" }),
+};
+
+/** A count whose digits roll when it changes: the ones that changed slide
+ *  out and the new ones in, upward as the count grows and downward as it
+ *  shrinks, and its box springs to the new width (9 to 10), so what
+ *  follows glides. Use inside `tabular-nums`. Purely visual: give the
+ *  number to screen readers some other way. */
+function RollingCount({ value }: { value: number }) {
+  const reduceMotion = useReducedMotion();
+  // Which way it went, kept from the last change.
+  const [last, setLast] = useState(value);
+  const [dir, setDir] = useState(1);
+  if (value !== last) {
+    setDir(value > last ? 1 : -1);
+    setLast(value);
+  }
+  const text = String(value);
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const width = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return;
+    const next = inner.offsetWidth;
+    const from = width.current;
+    width.current = next;
+    if (from === null || from === next || reduceMotion) return;
+    // Measured, never "auto"; set before paint so the first frame holds
+    // the old width.
+    box.style.width = `${from}px`;
+    const run = animate(box, { width: [from, next] }, spring.moderate);
+    run.then(() => {
+      box.style.width = "";
+    });
+    return () => run.stop();
+  }, [text.length, reduceMotion]);
+  return (
+    <span ref={boxRef} className="inline-flex justify-end align-bottom">
+      <span ref={innerRef} className="inline-flex">
+        {text.split("").map((char, i) => (
+          // Keyed from the right: the units stay the units when a digit
+          // is added in front.
+          <span key={text.length - i} className="relative inline-flex">
+            <AnimatePresence initial={false} mode="popLayout" custom={dir}>
+              <motion.span
+                key={char}
+                custom={dir}
+                variants={DIGIT}
+                initial={reduceMotion ? false : "enter"}
+                animate="shown"
+                exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : "exit"}
+                transition={spring.moderate}
+                className="inline-block"
+              >
+                {char}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
 
 // What a row shows under the pointer (its box, its handle) follows the
 // row's highlight (`is-active`), not `:hover`: the highlight moves to the
@@ -3816,6 +4217,12 @@ const PIN_CSS = `
 @keyframes ff-ride { from { transform: translateY(0) } to { transform: translateY(calc(-1 * var(--ff-scroll-y, 0px))) } }
 @keyframes ff-fade-off { from { opacity: 1 } to { opacity: 0 } }
 [data-ff-table] { --ff-fade: 48px; --ff-inset-l: 0px; --ff-inset-r: 0px; --ff-head: 0px; }
+[data-ff-table] [data-slot=scroll-area-viewport][data-scroll-held] { overflow: hidden !important; }
+[data-ff-table][data-text-editing] .table-row-highlight, [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-no-row-hover] .table-row-highlight { background-color: transparent !important; }
+[data-ff-table][data-no-row-hover] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-no-row-hover] tbody tr.is-active > td.text-muted-foreground { color: var(--muted-foreground); }
+[data-ff-table][data-text-editing] tbody td[data-column-id=select] [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
 @supports (timeline-scope: --ff-table-x) {
   [data-slot=scroll-area][data-ff-table] { timeline-scope: --ff-table-x, --ff-table-y; }
@@ -5166,6 +5573,35 @@ function CellTextEditor({
     el.setSelectionRange(el.value.length, el.value.length);
     measure(el);
   }, []);
+  // While the field is open the table holds still, both ways: the field
+  // hangs from its cell, and scrolled, it slid under the frozen columns
+  // and the header with the text still being typed. A mark the table's
+  // styles read (PIN_CSS), not an inline style: the scroll box rewrites
+  // its own on every render.
+  useEffect(() => {
+    const box = ref.current?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!box) return;
+    // And no row lights up: the fill under a field being typed in (or
+    // under whichever row the pointer rests on meanwhile) reads as
+    // something to click. The same kind of mark, on the table's root.
+    const root = box.closest<HTMLElement>("[data-ff-table]");
+    // Counted: the next cell's field can open before this one closes,
+    // and its marks must outlast this one's cleanup.
+    const open = (Number(box.dataset.textEditors) || 0) + 1;
+    box.dataset.textEditors = String(open);
+    box.setAttribute("data-scroll-held", "");
+    root?.setAttribute("data-text-editing", "");
+    return () => {
+      const left = (Number(box.dataset.textEditors) || 1) - 1;
+      if (left > 0) {
+        box.dataset.textEditors = String(left);
+        return;
+      }
+      delete box.dataset.textEditors;
+      box.removeAttribute("data-scroll-held");
+      root?.removeAttribute("data-text-editing");
+    };
+  }, []);
   // The raised field's height follows its wrapped text.
   useLayoutEffect(() => {
     const el = ref.current;
@@ -6290,10 +6726,38 @@ function DataTableFilters<TData>({
   );
 }
 
-/** A row above the table that comes and goes (the filter chips): its
- *  height springs open from 0 and back, measured rather than "auto", with
- *  the parent's gap folded in so the table below glides instead of
- *  jumping. On the page's first render it is simply there. */
+/** What a revealed row tells the items in it as they mount. */
+const RowRevealContext = createContext<{
+  /** The item mounts with its row, not into a row already there. */
+  withRow: () => boolean;
+  /** The page's first render: the row and its items are simply there. */
+  still: () => boolean;
+} | null>(null);
+/** How long a new item's own popup should wait: until the item is in. */
+const RevealWaitContext = createContext(0);
+
+// An item coming in: the library's enter (fade, a touch of blur clearing,
+// a slight scale up from its leading edge).
+const ITEM_SHOWN = { opacity: 1, scale: 1, filter: "blur(0px)" };
+const ITEM_HIDDEN = { opacity: 0, scale: 0.96, filter: "blur(4px)" };
+// Items that arrive with their row come in left to right, 40ms apart, the
+// last ones together: five take no longer than three.
+const ITEM_STAGGER = 0.04;
+const ITEM_STAGGER_CAP = 0.08;
+// Items that arrive with their row wait for it to open most of the way:
+// the row is not clipped, and an item showing sooner sat over the table's
+// header while that was still sliding out from under it. (Clipped
+// instead, the items were cut off by the row's edge as they came in.)
+const ITEM_ROW_WAIT = 0.06;
+// A new item's popup opens once the item has landed.
+const ITEM_POPUP_WAIT = 150;
+
+/** A row above the table that comes and goes (the filter chips). The row
+ *  only makes room: its height springs open from 0 and back, measured
+ *  rather than "auto", with the parent's gap folded in so the table below
+ *  glides instead of jumping. What is in it enters on its own (RevealItem),
+ *  and blurs out as the row closes. On the page's first render it is
+ *  simply there. */
 function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
   return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
 }
@@ -6303,7 +6767,15 @@ function RowRevealPart({ children }: { children: ReactNode }) {
   const [isPresent, safeToRemove] = usePresence();
   const initial = useContext(PresenceContext)?.initial;
   const reduceMotion = useReducedMotion();
+  // Whether the row has been through its first commit: items rendered
+  // before it has are arriving with the row.
+  const mounted = useRef(false);
+  const items = useMemo(
+    () => ({ withRow: () => !mounted.current, still: () => !mounted.current && initial === false }),
+    [initial]
+  );
   useLayoutEffect(() => {
+    mounted.current = true;
     const el = ref.current;
     if (!el) return;
     if (isPresent && initial === false) return;
@@ -6320,32 +6792,84 @@ function RowRevealPart({ children }: { children: ReactNode }) {
       if (!isPresent) fade.then(() => safeToRemove?.());
       return () => fade.stop();
     }
-    // Clipped only while it moves: at rest a chip's focus ring shows.
-    // clip, not hidden: hidden makes the row a scroll container, and a
-    // field focused inside it as it grows (a new chip's input, a view's
-    // name) scrolled the row to show it, shifting its content, which then
-    // jumped back when the clip came off.
-    el.style.overflow = "clip";
+    // Never clipped: the items time themselves to the room (they come in
+    // once it is there, and are gone before it closes).
     // The start, set before this frame paints: animate() only applies its
     // first keyframe on the next one, which showed the row whole for a frame.
     if (isPresent) {
       el.style.height = "0px";
       el.style.marginTop = `${-gap}px`;
-      el.style.opacity = "0";
     }
     const run = isPresent
-      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
-      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0] }, { ...spring.moderate })
+      : // The room closes once the items have gone (their 60ms, below).
+        animate(el, { height: [height, 0], marginTop: [0, -gap] }, { ...spring.moderate, ...spring.moderate.exit, delay: spring.fast.exit.duration });
+    // Leaving, the items go together, no stagger, and first: on the fast
+    // tier's exit, so they are gone before the table reaches them.
+    const parts = isPresent ? [] : Array.from(el.querySelectorAll<HTMLElement>("[data-reveal-item] > *"));
+    const out = parts.length
+      ? animate(parts, { opacity: 0, filter: "blur(4px)" }, { ...spring.fast.exit, ease: "easeIn" })
+      : null;
     run.then(() => (isPresent ? clear() : safeToRemove?.()));
     // Stopped early (a re-run, Strict Mode's double effect): back to its
     // natural size, so the next run measures the real height.
     return () => {
       run.stop();
+      out?.stop();
       if (isPresent) clear();
     };
   }, [isPresent]); // eslint-disable-line react-hooks/exhaustive-deps -- runs as it enters and as it leaves
-  return <div ref={ref}>{children}</div>;
+  return (
+    <RowRevealContext.Provider value={items}>
+      {/* The items answer to the row, not to its presence: left under it,
+          each one's own exit joined the row's and the row, waiting on
+          them, never left the page. They go out with the row above. */}
+      <PresenceContext.Provider value={null}>
+        <div ref={ref}>{children}</div>
+      </PresenceContext.Provider>
+    </RowRevealContext.Provider>
+  );
 }
+
+/** One thing in a revealed row (a chip, the + after them). It enters on
+ *  its own when it arrives, with its row or into one already there, and
+ *  blurs out when removed (inside an AnimatePresence). The outer box is
+ *  the one that slides when its neighbors come and go; the inner one
+ *  carries the enter, so the two never write the same transform. */
+const RevealItem = forwardRef<
+  HTMLSpanElement,
+  { id: string; order?: number; /** What closes the row (the +): one step after the last item. */ after?: boolean; children: ReactNode }
+>(
+  function RevealItem({ id, order = 0, after = false, children }, ref) {
+    const row = useContext(RowRevealContext);
+    const reduceMotion = useReducedMotion();
+    // Read once, as it mounts.
+    const [start] = useState(() => ({ still: !row || row.still(), withRow: !!row?.withRow() }));
+    // The cap holds for the items; what closes the row still comes one
+    // step after the last of them, so it reads as the end of the run.
+    const stagger = after
+      ? Math.min(Math.max(order - 1, 0) * ITEM_STAGGER, ITEM_STAGGER_CAP) + ITEM_STAGGER
+      : Math.min(order * ITEM_STAGGER, ITEM_STAGGER_CAP);
+    const delay = start.withRow ? ITEM_ROW_WAIT + stagger : 0;
+    const [landed, setLanded] = useState(start.still);
+    return (
+      <span ref={ref} data-reveal-item={id} className="inline-flex min-w-0 max-w-full">
+        <motion.span
+          className="inline-flex min-w-0 max-w-full origin-left"
+          initial={start.still || reduceMotion ? false : ITEM_HIDDEN}
+          animate={ITEM_SHOWN}
+          exit={reduceMotion ? { opacity: 0 } : { ...ITEM_HIDDEN, transition: { ...spring.moderate.exit, ease: "easeIn" } }}
+          transition={{ ...spring.moderate, delay }}
+          onAnimationComplete={() => setLanded(true)}
+        >
+          <RevealWaitContext.Provider value={landed || reduceMotion ? 0 : ITEM_POPUP_WAIT + delay * 1000}>
+            {children}
+          </RevealWaitContext.Provider>
+        </motion.span>
+      </span>
+    );
+  }
+);
 
 /** The filters set on the table, one chip each (the column, what it
  *  matches, the value, and × to remove it), on a row of their own between
@@ -6393,40 +6917,94 @@ function DataTableFilterChips<TData>({
   // data column's text.
   const gutter = leadingGutter(table);
 
+  // A chip added or removed: the ones after it, and the +, slide to their
+  // new places from where they were (offsets, which ignore transforms).
+  const rowRef = useRef<HTMLDivElement>(null);
+  const places = useRef(new Map<string, { left: number; top: number }>());
+  const reduceMotion = useReducedMotion();
+  const order = active.map((f) => f.id).join("\n");
+  const lastOrder = useRef(order);
+  // Read on every commit, so the places are the ones just before a change
+  // (a chip's own width springs as its value changes, and what follows it
+  // moves with it); only a change to which chips there are slides anything.
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const before = places.current;
+    const next = new Map<string, { left: number; top: number }>();
+    places.current = next;
+    const changed = lastOrder.current !== order;
+    lastOrder.current = order;
+    if (!row) return;
+    row.querySelectorAll<HTMLElement>("[data-reveal-item]").forEach((el) => {
+      // One on its way out is out of the flow, where it was.
+      if (el.dataset.motionPopId !== undefined) return;
+      const at = { left: el.offsetLeft, top: el.offsetTop };
+      next.set(el.dataset.revealItem!, at);
+      const old = before.get(el.dataset.revealItem!);
+      if (!changed || !old || reduceMotion) return;
+      const dx = old.left - at.left;
+      const dy = old.top - at.top;
+      if (!dx && !dy) return;
+      // The start, set before this frame paints: animate() applies its
+      // first keyframe on the next one, which showed it in place for a frame.
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      animate(el, { x: [dx, 0], y: [dy, 0] }, spring.moderate).then(() => {
+        el.style.transform = "";
+      });
+    });
+  });
+
   return (
     <RowReveal show={active.length > 0 && !hidden}>
       <div
+        ref={rowRef}
         data-slot="data-table-filter-chips"
         // Past a selection column the chips start where the first data
         // column does, 28px in (past the boxes), like the title: the edge
         // they share with the table when there are no boxes.
-        className={cn("flex flex-wrap items-center gap-1", gutter, className)}
+        // Positioned: a chip on its way out is lifted out of the flow
+        // against this box.
+        className={cn("relative flex flex-wrap items-center gap-1", gutter, className)}
       >
         {/* One bubble for the row: it glides from chip to chip. */}
         <TooltipGroup>
-          {active.map((f) => {
-            const entry = filterable.find(({ column }) => column.id === f.id);
-            if (!entry) return null;
-            // The chip asked for opens its editor; the count remounts it if it
-            // was already there.
-            const asked = request?.id === f.id;
-            return (
-              <FilterChip
-                key={asked ? `${f.id}:${request.n}` : f.id}
-                label={columnLabel(entry.column)}
-                filter={entry.filter}
-                value={f.value as Exclude<DataTableFilterValue, string>}
-                autoOpen={asked}
-                compact={compact}
-                size={size}
-                onChange={(value) => set(entry.column, value)}
-                onRemove={() => set(entry.column, undefined)}
-              />
-            );
-          })}
-          <DataTableFilters table={table} size={size} add />
+          {/* popLayout: a removed chip leaves the flow at once and blurs
+              out where it was, while the rest slide into its room. */}
+          <AnimatePresence mode="popLayout">
+            {active.flatMap((f, i) => {
+              const entry = filterable.find(({ column }) => column.id === f.id);
+              if (!entry) return [];
+              // The chip asked for opens its editor; the count remounts it if it
+              // was already there.
+              const asked = request?.id === f.id;
+              return [
+                <RevealItem key={f.id} id={f.id} order={i}>
+                  <FilterChip
+                    key={asked ? `${f.id}:${request.n}` : f.id}
+                    label={columnLabel(entry.column)}
+                    filter={entry.filter}
+                    value={f.value as Exclude<DataTableFilterValue, string>}
+                    autoOpen={asked}
+                    compact={compact}
+                    size={size}
+                    onChange={(value) => set(entry.column, value)}
+                    onRemove={() => set(entry.column, undefined)}
+                  />
+                </RevealItem>,
+              ];
+            })}
+          </AnimatePresence>
+          {/* After the chips: the + ends the run. (Its id starts with a
+              space, as the one after it: no column's id can be the same.) */}
+          <RevealItem id=" add" order={active.length} after>
+            <DataTableFilters table={table} size={size} add />
+          </RevealItem>
         </TooltipGroup>
-        {children}
+        {children && (
+          <RevealItem id=" more" order={active.length} after>
+            {children}
+          </RevealItem>
+        )}
       </div>
     </RowReveal>
   );
@@ -6483,7 +7061,17 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const X = icons.x;
   const shape = useShape();
   const sizeClasses = useSize(size);
-  const [open, setOpen] = useState(autoOpen);
+  // A chip that is still coming in opens its editor once it has landed,
+  // not while it moves.
+  const wait = useContext(RevealWaitContext);
+  const [open, setOpen] = useState(autoOpen && wait === 0);
+  useEffect(() => {
+    if (!autoOpen || wait === 0) return;
+    const id = setTimeout(() => setOpen(true), wait);
+    return () => clearTimeout(id);
+    // Once, as it mounts: the wait ends when the chip lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [typing, setTyping] = useState(false);
   // The DatePicker field's recipe: a hairline box, its parts 2px inside
   // with corners nested in its radius (8 - 3 = 5px, 20 - 3 = 17px), and one
@@ -6520,6 +7108,9 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
     // 4px around the word and the value (the × keeps its square).
     "px-1",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+    // The part whose menu is open stays pressed until it closes, as any
+    // trigger does: the pointer has left it for the menu.
+    "transition-[background-color] duration-80 aria-expanded:bg-active",
     innerRadius
   );
 
@@ -6889,13 +7480,13 @@ function columnOrderOf<TData>(table: TanStackTable<TData>) {
 /** Puts the given columns in this order, leaving every other column (the
  *  selection and action columns, any not listed) in its slot. */
 function reorderColumns<TData>(table: TanStackTable<TData>, ids: string[]) {
-  const order = columnOrderOf(table);
+  const order = drawnOrderOf(table);
   const listed = new Set(ids);
   let next = 0;
   const reordered = order.map((c) => (listed.has(c) ? ids[next++] : c));
   if (reordered.join() === order.join()) return;
   (table as Partial<DataTableExtras>).captureLayout?.();
-  table.setColumnOrder(reordered);
+  setOrderKeepingFrozen(table, reordered);
 }
 
 interface ColumnMenuRowProps<TData> {
@@ -6991,7 +7582,7 @@ function DataTableViewOptions<TData>({
   const Sliders = icons["sliders-horizontal"];
   const compact = useSize(size).variant === "compact";
   // In the table's display order, so the list reads like the header row.
-  const order = columnOrderOf(table);
+  const order = drawnOrderOf(table);
   const columns = table
     .getAllLeafColumns()
     .filter((column) => column.accessorFn !== undefined && column.getCanHide())
@@ -7349,7 +7940,10 @@ function DataTableSelectionBar<TData>({
       observer.disconnect();
       // Unknown again until the next selection's observer reports: the
       // table may have left the screen meanwhile, and the old answer
-      // would flash the bar for it.
+      // would flash the bar for it. This only runs when the selection
+      // empties: `getRoot` is one function for the table's life (see
+      // useDataTable). A new one per state change re-ran this on every
+      // row picked, and the bar went down and came up again each time.
       setInView(false);
     };
   }, [count > 0, getRoot]); // eslint-disable-line react-hooks/exhaustive-deps -- watched while rows are selected
@@ -7419,21 +8013,25 @@ function DataTableSelectionBar<TData>({
         <motion.div
           key="bar"
           ref={barRef}
-          // The toast's entrance: it slides up by its own height and fades,
-          // no scale. The slide springs (spring.moderate); the fade is a
-          // short ease-out tween, so the bar doesn't creep the last few
-          // percent of its opacity the way a spring would. It leaves the way
-          // it came, quicker, slide and fade together.
-          className="pointer-events-auto fixed z-[var(--z-sticky,30)] -translate-x-1/2 -translate-y-full"
-          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: "100%" }}
-          animate={{ opacity: 1, y: 0 }}
+          // It appears in place, like the library's other floating
+          // surfaces: a short rise (8px), a slight scale up from its
+          // bottom center, where it is anchored, and a touch of blur
+          // clearing. A toast's entrance (a slide by its own height) read
+          // as the bar travelling across the rows it floats over. The
+          // move springs (spring.moderate); the fade is a short ease-out
+          // tween, so the bar doesn't creep the last few percent of its
+          // opacity the way a spring would. It leaves the way it came,
+          // quicker.
+          className="pointer-events-auto fixed z-[var(--z-sticky,30)] origin-bottom -translate-x-1/2 -translate-y-full"
+          initial={reduceMotion ? { opacity: 0 } : BAR_HIDDEN}
+          animate={BAR_SHOWN}
           exit={
             reduceMotion
               ? { opacity: 0, transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
-              : { opacity: 0, y: "100%", transition: { type: "tween", ease: "easeOut", ...spring.moderate.exit } }
+              : { ...BAR_HIDDEN, transition: { type: "tween", ease: "easeIn", ...spring.moderate.exit } }
           }
           transition={{
-            y: spring.moderate,
+            ...spring.moderate,
             opacity: { type: "tween", ease: "easeOut", ...spring.moderate.exit },
           }}
           onKeyDown={(e) => {
@@ -7480,7 +8078,11 @@ function DataTableSelectionBar<TData>({
               )}
             >
             <span aria-live="polite" className="tabular-nums text-foreground">
-              {shown} selected
+              {/* Read as one phrase; the digits that roll are for the eye. */}
+              <span className="sr-only">{shown} selected</span>
+              <span aria-hidden>
+                <RollingCount value={shown} /> selected
+              </span>
             </span>
             {items.length > 0 && (
               <Button

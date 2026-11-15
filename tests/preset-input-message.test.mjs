@@ -137,6 +137,7 @@ const typecheck = createPresetTypechecker({
   paths: {
     "@/components/chat-composer": ["./__preset__/components/chat-composer.tsx"],
     "@/components/queued-stack": ["./registry/blocks/queued-stack.tsx"],
+    "@/components/ui/chat-message": ["./registry/default/chat-message.tsx"],
   },
 });
 

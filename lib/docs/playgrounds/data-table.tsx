@@ -1,7 +1,8 @@
 "use client";
 
-import { startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, PresenceContext, animate, motion, usePresence, useReducedMotion } from "motion/react";
+import { demoToday } from "@/lib/demo-today";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
   useDataTable,
@@ -35,26 +36,19 @@ import {
   PlaySelect,
   PlaygroundPanel,
 } from "@/lib/docs/playground";
-import { componentList } from "@/lib/docs/components";
-import { API_REFERENCE } from "@/lib/docs/api";
-import {
-  DUAL_FLAVOR_SLUGS,
-  FLAVORED_SINGLE_SOURCE_SLUGS,
-  FLUID_HOVER_SLUGS,
-} from "@/lib/dual-flavor-slugs.mjs";
+import { buildRows, type ComponentRow } from "./data-table-rows";
 import { useIcons } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { useShape } from "@/lib/shape-context";
 import { useSize, typeClass } from "@/lib/size-context";
 import type { PlaygroundProps } from "./types";
-import { ViewTabs } from "./view-tabs";
+import { RowReveal, ViewTabs } from "./view-tabs";
 import {
   DATA_TABLE_DEFAULT_CODE,
   DATA_TABLE_PAGE_SIZES,
   DEFAULT_DATA_TABLE_PRESET,
   DATA_TABLE_PROPS_OPTIONS,
   DATA_TABLE_TAG_OPTIONS,
-  dataTableTagsFor,
   DATA_TABLE_PRESET_DEF,
   DEFAULT_DATA_TABLE_STATE,
   decodeDataTablePreset,
@@ -74,109 +68,20 @@ import type { BadgeColor } from "@/registry/default/badge";
 // installs on, whether it uses fluid hover, and the day it was added. The
 // controls switch each optional part on and off.
 
-/** The day each component first landed in the repo (its first registry
- *  file in git history). Snapshot: add a row when a component ships. */
-const ADDED: Record<string, string> = {
-  accordion: "2026-02-27",
-  "ask-user-questions": "2026-05-16",
-  badge: "2026-03-09",
-  banner: "2026-09-29",
-  button: "2026-02-16",
-  calendar: "2026-10-19",
-  card: "2026-07-20",
-  "carousel-dots": "2026-09-25",
-  "chat-message": "2026-05-28",
-  checkbox: "2026-11-04",
-  "checkbox-group": "2026-02-16",
-  "color-picker": "2026-04-24",
-  combobox: "2026-09-06",
-  "command-menu": "2026-09-08",
-  "data-table": "2026-11-08",
-  "date-picker": "2026-10-19",
-  dialog: "2026-02-16",
-  dropdown: "2026-02-16",
-  field: "2026-11-04",
-  input: "2026-11-04",
-  "input-copy": "2026-04-03",
-  "input-group": "2026-02-16",
-  "input-message": "2026-05-16",
-  "radio-group": "2026-02-16",
-  select: "2026-03-09",
-  sidebar: "2026-08-17",
-  slider: "2026-03-06",
-  switch: "2026-02-16",
-  table: "2026-02-16",
-  tabs: "2026-04-05",
-  textarea: "2026-11-04",
-  "thinking-indicator": "2026-02-16",
-  "thinking-steps": "2026-04-08",
-  tooltip: "2026-03-06",
-};
-
-type Primitives = "Radix + Base UI" | "None";
-
-export type ComponentRow = {
-  slug: string;
-  name: string;
-  summary: string;
-  website: string;
-  primitives: Primitives;
-  props: number;
-  fluidHover: boolean;
-  added: string;
-  tags: string[];
-  /** The component's parts (its API tables), with sub-rows on. */
-  subRows?: ComponentRow[];
-};
-
-const dual = new Set<string>(DUAL_FLAVOR_SLUGS);
-// Built on both primitives through other parts: the same tag as a
-// component with a file per flavor.
-const flavoredSingle = new Set<string>(FLAVORED_SINGLE_SOURCE_SLUGS);
-const fluid = new Set<string>(FLUID_HOVER_SLUGS);
-
-export function buildRows(): ComponentRow[] {
-  return componentList.map(({ slug, name, description }) => ({
-    slug,
-    name,
-    summary: description,
-    website: `fluidfunctionalism.com/docs/${slug}`,
-    primitives: dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None",
-    props: (API_REFERENCE[slug] ?? []).reduce((sum, table) => sum + table.props.length, 0),
-    fluidHover: fluid.has(slug),
-    added: ADDED[slug] ?? "",
-    tags: dataTableTagsFor(slug),
-    subRows: partsOf(slug, name),
-  }));
-}
-
-/** A component's parts, from the same API tables the docs render: one row
- *  per table (DropdownMenu, DropdownTrigger…), when it has more than one. */
-function partsOf(slug: string, name: string): ComponentRow[] | undefined {
-  const tables = API_REFERENCE[slug] ?? [];
-  if (tables.length < 2) return undefined;
-  const fluidHover = fluid.has(slug);
-  const primitives: Primitives = dual.has(slug) || flavoredSingle.has(slug) ? "Radix + Base UI" : "None";
-  return tables.map((t) => ({
-    slug: `${slug}/${t.title}`,
-    name: t.title,
-    summary: `Part of ${name}.`,
-    website: `fluidfunctionalism.com/docs/${slug}`,
-    primitives,
-    props: t.props.length,
-    fluidHover,
-    added: ADDED[slug] ?? "",
-    tags: [],
-  }));
-}
+export { buildRows, type ComponentRow };
 
 // Formatted by hand, not with the viewer's time zone: an ISO day read as a
-// local Date can land on the previous day and break hydration.
+// local Date can land on the previous day and break hydration. The date
+// editor's own format (Wed Nov 4, the year only outside this one), so a
+// date reads the same whether its cell can be edited or not.
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function formatDay(iso: string) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
-  return `${MONTHS[m - 1]} ${d}, ${y}`;
+  const day = DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  const year = y === demoToday().getFullYear() ? "" : `, ${y}`;
+  return `${day} ${MONTHS[m - 1]} ${d}${year}`;
 }
 
 export const PRIMITIVE_COLOR = { "Radix + Base UI": "blue", None: "gray" } as const;
@@ -342,7 +247,10 @@ function buildColumns(o: {
           cell: ({ row }) => formatDay(String(row.original[c.id] ?? "")),
           meta: {
             label: c.label,
-            className: "tabular-nums whitespace-nowrap",
+            // A floor of 112px: short of room a column gives up width
+            // down to its header, and "Added" is narrower than a date,
+            // which was then cut to "Nov 4, …".
+            className: "min-w-28 tabular-nums whitespace-nowrap",
             icon: icon(c.icon),
             editor: o.editable ? "date" : undefined,
           },
@@ -435,7 +343,8 @@ function buildColumns(o: {
                 label="Copy install command"
                 onSelect={() =>
                   navigator.clipboard?.writeText(
-                    `npx shadcn@latest add ${INSTALL_URL}/${row.original.slug}.json`
+                    // A part (a sub-row) installs with its component.
+                    `npx shadcn@latest add ${INSTALL_URL}/${row.original.slug.split("/")[0]}.json`
                   )
                 }
               />
@@ -586,9 +495,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `  {`,
     `    accessorKey: "added",`,
     `    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,`,
-    ...(o.headerIcons || o.editable
-      ? [`    meta: { ${[o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`]
-      : []),
+    // min-w-28: the column never gets narrower than a whole date.
+    `    meta: { ${[`className: "min-w-28 tabular-nums whitespace-nowrap"`, o.headerIcons && "icon: Calendar", o.editable && `editor: "date"`].filter(Boolean).join(", ")} },`,
     `  },`,
     `  {`,
     `    accessorKey: "tags",`,
@@ -706,7 +614,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(held
       ? [
           `  <DataTable`,
-          `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}`,
+          `    table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}${o.rowHover === "on" ? " rowHover" : o.rowHover === "off" ? " rowHover={false}" : ""}`,
           ...(o.editable
             ? [
                 `    // Each edit writes back to your data; the table shows what it holds.`,
@@ -724,7 +632,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
           `  />`,
         ]
       : [
-          `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""} />`,
+          `  <DataTable table={table}${o.resize ? " resizeColumns" : ""}${o.reorder ? " reorderColumns" : ""}${o.align !== "auto" ? ` cellAlign="${o.align}"` : ""}${o.rowHover === "on" ? " rowHover" : o.rowHover === "off" ? " rowHover={false}" : ""} />`,
         ]),
     ...(o.pagination ? [`  <DataTablePagination table={table} pageSizes={[${DATA_TABLE_PAGE_SIZES.join(", ")}]} />`] : []),
     ...(o.selection
@@ -762,7 +670,8 @@ function selectionActions(
       icon: icons.copy,
       onSelect: () =>
         navigator.clipboard?.writeText(
-          `npx shadcn@latest add ${rows.map((r) => `${INSTALL_URL}/${r.original.slug}.json`).join(" ")}`
+          // Each component once: parts (sub-rows) install with theirs.
+          `npx shadcn@latest add ${[...new Set(rows.map((r) => r.original.slug.split("/")[0]))].map((slug) => `${INSTALL_URL}/${slug}.json`).join(" ")}`
         ),
     },
     {
@@ -817,62 +726,6 @@ const START_VIEW: SavedView["state"] = {
 };
 
 // ── Playground ───────────────────────────────────────────
-
-/** The views' tab row as it comes and goes (the first saved view, the
- *  last deleted): its height springs from 0 and back, measured, never
- *  "auto", with the column's gap folded in, so the table glides. The same
- *  reveal DataTableFilterChips gives its row. */
-function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
-  return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
-}
-
-function RowRevealPart({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isPresent, safeToRemove] = usePresence();
-  const initial = useContext(PresenceContext)?.initial;
-  const reduceMotion = useReducedMotion();
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (isPresent && initial === false) return;
-    const gap = Number.parseFloat(getComputedStyle(el.parentElement ?? el).rowGap) || 0;
-    const height = el.offsetHeight;
-    if (reduceMotion) {
-      const fade = animate(el, { opacity: isPresent ? [0, 1] : 0 }, { duration: 0.12 });
-      if (!isPresent) fade.then(() => safeToRemove?.());
-      return () => fade.stop();
-    }
-    // clip, not hidden: hidden makes the row a scroll container, and a
-    // field focused inside it as it grows (a new chip's input, a view's
-    // name) scrolled the row to show it, shifting its content, which then
-    // jumped back when the clip came off.
-    el.style.overflow = "clip";
-    // The start, set before this frame paints: animate() only applies its
-    // first keyframe on the next one, which showed the row whole for a frame.
-    if (isPresent) {
-      el.style.height = "0px";
-      el.style.marginTop = `${-gap}px`;
-      el.style.opacity = "0";
-    }
-    const run = isPresent
-      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
-      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
-    const clear = () => {
-      el.style.height = "";
-      el.style.marginTop = "";
-      el.style.overflow = "";
-      el.style.opacity = "";
-    };
-    run.then(() => (isPresent ? clear() : safeToRemove?.()));
-    // Stopped early (a re-run, Strict Mode's double effect): back to its
-    // natural size, so the next run measures the real height.
-    return () => {
-      run.stop();
-      if (isPresent) clear();
-    };
-  }, [isPresent]); // runs as it enters and as it leaves
-  return <div ref={ref}>{children}</div>;
-}
 
 export function DataTablePlayground({
   children,
@@ -1031,8 +884,13 @@ export function DataTablePlayground({
     if (next.lines !== prev.lines)
       for (const c of COLUMNS)
         if (c.kind === "title" || c.kind === "link" || c.kind === "text") table.setColumnLines(c.id, undefined, animate);
-    table.setPageSize(next.pagination ? Number(next.pageSize) : EVERY_ROW);
-    table.setPageIndex(0);
+    // Only a change to the paging starts over on the first page: a switch
+    // flipped from the table's own menu (Wrap text) must not send the
+    // reader back there from page 3.
+    if (next.pagination !== prev.pagination || next.pageSize !== prev.pageSize) {
+      table.setPageSize(next.pagination ? Number(next.pageSize) : EVERY_ROW);
+      table.setPageIndex(0);
+    }
     setState(next);
   };
   const set = <K extends keyof PlayState>(key: K, value: PlayState[K]) =>
@@ -1049,6 +907,28 @@ export function DataTablePlayground({
     stateRef.current = next;
     setState(next);
   }, [tablePageSize]);
+
+  // The Columns menu's Wrap text is the same setting as the rail's Text
+  // wrap: the menu sets every text column's lines over its own, and that
+  // becomes the rail's setting (and the code's and the preset's), with
+  // the columns' own lines carrying it from then on.
+  const lineOverrides = table.columnLines;
+  useEffect(() => {
+    const now = stateRef.current;
+    // The columns the menu's switch sets: the listed ones with lines of
+    // their own.
+    const text = table
+      .getAllLeafColumns()
+      .filter((column) => column.accessorFn !== undefined && column.getCanHide() && column.columnDef.meta?.lines !== undefined);
+    const set = text.map((column) => lineOverrides[column.id]);
+    // One column set on its own is not the switch.
+    if (set.length === 0 || set.some((lines) => lines === undefined)) return;
+    const wrap = set.every((lines) => lines === "wrap");
+    if (wrap === (now.lines === "wrap") || (!wrap && set.some((lines) => lines === "wrap"))) return;
+    // The menu already animated the change; this only moves where it lives.
+    for (const id of Object.keys(lineOverrides)) table.setColumnLines(id, undefined, false);
+    apply({ ...now, lines: wrap ? "wrap" : "2" }, { animate: false });
+  }, [lineOverrides]);
 
   // ── Get code (presets) ─────────────────────────────────
   const globals = usePresetGlobals();
@@ -1084,6 +964,7 @@ export function DataTablePlayground({
       title: Math.random() > 0.3,
       views: Math.random() > 0.3,
       rowReorder: Math.random() > 0.7,
+      rowHover: pick(["auto", "auto", "auto", "on", "off"] as const),
     });
 
   // ── Saved views ────────────────────────────────────────
@@ -1257,6 +1138,7 @@ export function DataTablePlayground({
         resizeColumns={state.resize}
         reorderColumns={state.reorder}
         cellAlign={state.align}
+        rowHover={state.rowHover === "auto" ? undefined : state.rowHover === "on"}
         fill={expanded}
         loading={loading}
         // A screenful of skeletons, not one per row of a long page: a
@@ -1450,6 +1332,17 @@ export function DataTablePlayground({
             ]}
           />
         </PlayField>
+        <PlayField label="Row hover">
+          <PlaySelect
+            value={state.rowHover}
+            onChange={(v) => set("rowHover", v as PlayState["rowHover"])}
+            options={[
+              { value: "auto", label: "Auto" },
+              { value: "on", label: "On" },
+              { value: "off", label: "Off" },
+            ]}
+          />
+        </PlayField>
         <Switch
           label="Pagination"
           checked={state.pagination}
@@ -1482,9 +1375,29 @@ export function DataTablePlayground({
     [state, loading, presetCode]
   );
 
-  // Expanded, the table fills the layer's height. Its rows per page stay
-  // as set: the reader's choice holds on the page and in the larger view.
-  const onExpandedChange = (next: boolean) => setExpanded(next);
+  // Expanded, the table has the window's height: 10 rows a page becomes
+  // 20, and goes back to 10 on closing. Only that pair: a size picked by
+  // hand (before or while expanded) is left as it is.
+  const grewPage = useRef(false);
+  const onExpandedChange = (next: boolean) => {
+    setExpanded(next);
+    const now = stateRef.current;
+    if (!now.pagination) return;
+    // The page follows: the first row in view stays in view (a change of
+    // size otherwise starts over on page 1).
+    const first = table.getState().pagination.pageIndex * Number(now.pageSize);
+    if (next && now.pageSize === "10") {
+      grewPage.current = true;
+      set("pageSize", "20");
+      table.setPageIndex(Math.floor(first / 20));
+    } else if (!next && grewPage.current) {
+      grewPage.current = false;
+      if (now.pageSize === "20") {
+        set("pageSize", "10");
+        table.setPageIndex(Math.floor(first / 10));
+      }
+    }
+  };
 
   return children({
     onExpandedChange,

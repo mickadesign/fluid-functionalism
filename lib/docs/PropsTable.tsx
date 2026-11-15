@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { ScrollArea } from "@/registry/base/scroll-area";
 import type { ApiTable, PropDef } from "@/lib/docs/api/types";
+import { ApiReferenceTable } from "@/lib/docs/ApiReferenceTable";
+import { Description } from "@/lib/docs/api/description";
 
 export type { PropDef };
 
@@ -9,21 +11,13 @@ type PropsTableProps =
   | { props: PropDef[]; groups?: never }
   /** Several groups in ONE table, each under a heading row, so the columns
    *  line up from group to group (separate tables size theirs apart). */
-  | { groups: ApiTable[]; props?: never };
-
-/** A description's `code` spans as inline code (the same text the .md
- *  pages render as Markdown), the rest as plain text. */
-function Description({ text }: { text: string }) {
-  return text.split(/(`[^`]+`)/).map((part, i) =>
-    part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
-      <code key={i} className="font-mono text-site-caption text-foreground">
-        {part.slice(1, -1)}
-      </code>
-    ) : (
-      part
-    )
-  );
-}
+  | {
+      groups: ApiTable[];
+      props?: never;
+      /** For a reference that folds its groups: the section's heading, on
+       *  the table's toolbar row with its search. */
+      title?: string;
+    };
 
 function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean }) {
   return (
@@ -67,7 +61,15 @@ function PropRow({ prop, showDefault }: { prop: PropDef; showDefault: boolean })
   );
 }
 
-export function PropsTable({ props, groups }: PropsTableProps) {
+export function PropsTable(all: PropsTableProps) {
+  const { props, groups } = all;
+  // A reference long enough to fold its groups (ApiTable `collapsed`) is
+  // the library's own DataTable, each group a row with its props under it.
+  if (groups?.some((group) => group.collapsed !== undefined)) return <ApiReferenceTable groups={groups} title={all.title} />;
+  return <PlainPropsTable {...(groups ? { groups } : { props })} />;
+}
+
+function PlainPropsTable({ props, groups }: PropsTableProps) {
   const all = groups ? groups.flatMap((g) => g.props) : props;
   // Horizontal ScrollArea gives narrow viewports the shape-system scrollbar +
   // a scroll-fade-x edge; min-w keeps columns legible before it scrolls.
