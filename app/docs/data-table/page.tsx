@@ -242,11 +242,12 @@ export default function DataTableDoc() {
         </ComponentPreview>
       </DocSection>
 
-      <DocSection title="Keyboard">
-        <p className="text-site-body text-muted-foreground">
-          The rows work like a spreadsheet&apos;s: 20 shortcuts, grouped by what they act on.
-        </p>
-        <KeyboardShortcuts />
+      {/* The heading sits on the table's own toolbar row, with its search. */}
+      <DocSection>
+        <KeyboardShortcuts
+          title="Keyboard"
+          description="The rows work like a spreadsheet's: 20 shortcuts, grouped by what they act on."
+        />
       </DocSection>
 
       {/* The heading sits on the table's own toolbar row, with its search. */}

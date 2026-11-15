@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment, useRef } from "react";
-import { useDataTable, DataTable, type ColumnDef } from "@/components/ui/data-table";
+import { useDataTable, DataTable, DataTableSearch, type ColumnDef } from "@/components/ui/data-table";
+import { DocSectionTitle } from "@/lib/docs/DocPage";
 import { KeyCaps } from "@/lib/key-cap";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 
@@ -135,7 +136,7 @@ const columns: ColumnDef<KeyRow>[] = [
 /** The page's keys as the table they belong to: each group a row that
  *  opens into its shortcuts (sub-rows), all open, in one column of rows.
  *  (Six lists side by side in two columns read as two unrelated halves.) */
-export function KeyboardShortcuts() {
+export function KeyboardShortcuts({ title, description }: { title: string; description: string }) {
   const table = useDataTable({
     data: ROWS,
     columns,
@@ -149,8 +150,21 @@ export function KeyboardShortcuts() {
   const rootRef = useRef<HTMLDivElement>(null);
   return (
     <div ref={rootRef} className="flex flex-col gap-4">
+      {/* The section's heading is the table's title: on one row with the
+          search, as on the API reference. */}
+      <div className="-mb-2 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <DocSectionTitle>{title}</DocSectionTitle>
+          <span className="ml-auto" />
+          <DataTableSearch table={table} placeholder="Search shortcuts…" />
+        </div>
+        <p className="text-site-body text-muted-foreground">{description}</p>
+      </div>
       <DataTable
         table={table}
+        // A list to read: nothing lights under the pointer.
+        rowHover={false}
+        empty={{ title: "No shortcuts match" }}
         // A group opens and closes from anywhere on its row, through its
         // own chevron, so it moves the way the table opens rows.
         onRowClick={(row) => {

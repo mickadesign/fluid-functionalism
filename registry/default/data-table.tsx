@@ -2891,6 +2891,16 @@ function DataTable<TData>({
               const meta = column.columnDef.meta;
               const sorted = column.getIsSorted();
               const movable = reorderColumns && !header.isPlaceholder && canReorder(column);
+              // A header takes the hover (the fill, the pointer, the lifted
+              // label) only where a click on it does something: it moves,
+              // sorts, or its menu has a filter or a freeze to offer. A
+              // data column with none of those is a label.
+              const acts =
+                movable ||
+                column.getCanSort() ||
+                (!!column.accessorFn &&
+                  ((!!(table as Partial<DataTableExtras>).canOpenFilter?.() && column.getCanFilter()) ||
+                    (column.getCanPin() && column.getIsPinned() !== "right")));
               // The flex column has a handle too: its width is the least it
               // takes, so dragging it wider grows the table.
               const resizable = resizeColumns && column.getCanResize();
@@ -2903,7 +2913,7 @@ function DataTable<TData>({
                   // Headers that act join the header row's gliding fill (a
                   // filled table's sticky headers paint over it, so they
                   // keep a fill of their own).
-                  hoverIndex={!fill && (movable || column.getCanSort() || !!column.accessorFn) ? headerIndex : undefined}
+                  hoverIndex={!fill && acts ? headerIndex : undefined}
                   data-held={heldHead === column.id || undefined}
                   aria-sort={
                     sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
@@ -2971,7 +2981,7 @@ function DataTable<TData>({
                     // Button: its label lifts from muted to foreground on
                     // hover. Its fill is the header row's gliding one,
                     // which Table turns --active while pressed: one surface.
-                    (movable || column.getCanSort() || !!column.accessorFn) &&
+                    acts &&
                       "cursor-pointer hover:text-foreground transition-colors duration-80",
                     // Filled, the sticky header paints over that fill, so
                     // the cell draws its own, the same way: --hover, then
@@ -2981,7 +2991,7 @@ function DataTable<TData>({
                     // one draws the fill in its pin layers below.
                     fill &&
                       !pins[column.id] &&
-                      (movable || column.getCanSort() || !!column.accessorFn) && [
+                      acts && [
                         "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:bottom-px after:-z-10 after:bg-transparent after:transition-[background-color] after:duration-80",
                         "not-data-dragging:hover:after:bg-hover not-data-dragging:active:after:bg-active",
                         // Its menu open: pressed until it closes.
@@ -2995,7 +3005,7 @@ function DataTable<TData>({
                     <PinLayers pin={pins[column.id]}>
                       {/* Opaque, a pinned header covers the row's gliding
                           fill: it draws its own, the same way. */}
-                      {(movable || column.getCanSort() || !!column.accessorFn) && (
+                      {acts && (
                         <span
                           className={cn(
                             "absolute inset-x-0 top-0 bottom-px bg-transparent transition-[background-color] duration-80",
