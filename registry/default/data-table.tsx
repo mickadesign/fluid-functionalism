@@ -6625,10 +6625,33 @@ function DataTableFilters<TData>({
   );
 }
 
-/** A row above the table that comes and goes (the filter chips): its
- *  height springs open from 0 and back, measured rather than "auto", with
- *  the parent's gap folded in so the table below glides instead of
- *  jumping. On the page's first render it is simply there. */
+/** What a revealed row tells the items in it as they mount. */
+const RowRevealContext = createContext<{
+  /** The item mounts with its row, not into a row already there. */
+  withRow: () => boolean;
+  /** The page's first render: the row and its items are simply there. */
+  still: () => boolean;
+} | null>(null);
+/** How long a new item's own popup should wait: until the item is in. */
+const RevealWaitContext = createContext(0);
+
+// An item coming in: the library's enter (fade, a touch of blur clearing,
+// a slight scale up from its leading edge).
+const ITEM_SHOWN = { opacity: 1, scale: 1, filter: "blur(0px)" };
+const ITEM_HIDDEN = { opacity: 0, scale: 0.96, filter: "blur(4px)" };
+// Items that arrive with their row come in left to right, 40ms apart, the
+// last ones together: five take no longer than three.
+const ITEM_STAGGER = 0.04;
+const ITEM_STAGGER_CAP = 0.08;
+// A new item's popup opens once the item has landed.
+const ITEM_POPUP_WAIT = 150;
+
+/** A row above the table that comes and goes (the filter chips). The row
+ *  only makes room: its height springs open from 0 and back, measured
+ *  rather than "auto", with the parent's gap folded in so the table below
+ *  glides instead of jumping. What is in it enters on its own (RevealItem),
+ *  and blurs out as the row closes. On the page's first render it is
+ *  simply there. */
 function RowReveal({ show, children }: { show: boolean; children: ReactNode }) {
   return <AnimatePresence initial={false}>{show && <RowRevealPart key="row">{children}</RowRevealPart>}</AnimatePresence>;
 }
@@ -6638,7 +6661,15 @@ function RowRevealPart({ children }: { children: ReactNode }) {
   const [isPresent, safeToRemove] = usePresence();
   const initial = useContext(PresenceContext)?.initial;
   const reduceMotion = useReducedMotion();
+  // Whether the row has been through its first commit: items rendered
+  // before it has are arriving with the row.
+  const mounted = useRef(false);
+  const items = useMemo(
+    () => ({ withRow: () => !mounted.current, still: () => !mounted.current && initial === false }),
+    [initial]
+  );
   useLayoutEffect(() => {
+    mounted.current = true;
     const el = ref.current;
     if (!el) return;
     if (isPresent && initial === false) return;
@@ -6666,21 +6697,67 @@ function RowRevealPart({ children }: { children: ReactNode }) {
     if (isPresent) {
       el.style.height = "0px";
       el.style.marginTop = `${-gap}px`;
-      el.style.opacity = "0";
     }
     const run = isPresent
-      ? animate(el, { height: [0, height], marginTop: [-gap, 0], opacity: [0, 1] }, { ...spring.moderate })
-      : animate(el, { height: [height, 0], marginTop: [0, -gap], opacity: [1, 0] }, { ...spring.moderate, ...spring.moderate.exit });
+      ? animate(el, { height: [0, height], marginTop: [-gap, 0] }, { ...spring.moderate })
+      : animate(el, { height: [height, 0], marginTop: [0, -gap] }, { ...spring.moderate, ...spring.moderate.exit });
+    // Leaving, the items go together, no stagger, as the row closes.
+    const parts = isPresent ? [] : Array.from(el.querySelectorAll<HTMLElement>("[data-reveal-item] > *"));
+    const out = parts.length
+      ? animate(parts, { opacity: 0, filter: "blur(4px)" }, { ...spring.moderate.exit, ease: "easeIn" })
+      : null;
     run.then(() => (isPresent ? clear() : safeToRemove?.()));
     // Stopped early (a re-run, Strict Mode's double effect): back to its
     // natural size, so the next run measures the real height.
     return () => {
       run.stop();
+      out?.stop();
       if (isPresent) clear();
     };
   }, [isPresent]); // eslint-disable-line react-hooks/exhaustive-deps -- runs as it enters and as it leaves
-  return <div ref={ref}>{children}</div>;
+  return (
+    <RowRevealContext.Provider value={items}>
+      {/* The items answer to the row, not to its presence: left under it,
+          each one's own exit joined the row's and the row, waiting on
+          them, never left the page. They go out with the row above. */}
+      <PresenceContext.Provider value={null}>
+        <div ref={ref}>{children}</div>
+      </PresenceContext.Provider>
+    </RowRevealContext.Provider>
+  );
 }
+
+/** One thing in a revealed row (a chip, the + after them). It enters on
+ *  its own when it arrives, with its row or into one already there, and
+ *  blurs out when removed (inside an AnimatePresence). The outer box is
+ *  the one that slides when its neighbors come and go; the inner one
+ *  carries the enter, so the two never write the same transform. */
+const RevealItem = forwardRef<HTMLSpanElement, { id: string; order?: number; children: ReactNode }>(
+  function RevealItem({ id, order = 0, children }, ref) {
+    const row = useContext(RowRevealContext);
+    const reduceMotion = useReducedMotion();
+    // Read once, as it mounts.
+    const [start] = useState(() => ({ still: !row || row.still(), withRow: !!row?.withRow() }));
+    const delay = start.withRow ? Math.min(order * ITEM_STAGGER, ITEM_STAGGER_CAP) : 0;
+    const [landed, setLanded] = useState(start.still);
+    return (
+      <span ref={ref} data-reveal-item={id} className="inline-flex min-w-0 max-w-full">
+        <motion.span
+          className="inline-flex min-w-0 max-w-full origin-left"
+          initial={start.still || reduceMotion ? false : ITEM_HIDDEN}
+          animate={ITEM_SHOWN}
+          exit={reduceMotion ? { opacity: 0 } : { ...ITEM_HIDDEN, transition: { ...spring.moderate.exit, ease: "easeIn" } }}
+          transition={{ ...spring.moderate, delay }}
+          onAnimationComplete={() => setLanded(true)}
+        >
+          <RevealWaitContext.Provider value={landed || reduceMotion ? 0 : ITEM_POPUP_WAIT + delay * 1000}>
+            {children}
+          </RevealWaitContext.Provider>
+        </motion.span>
+      </span>
+    );
+  }
+);
 
 /** The filters set on the table, one chip each (the column, what it
  *  matches, the value, and × to remove it), on a row of their own between
@@ -6728,40 +6805,83 @@ function DataTableFilterChips<TData>({
   // data column's text.
   const gutter = leadingGutter(table);
 
+  // A chip added or removed: the ones after it, and the +, slide to their
+  // new places from where they were (offsets, which ignore transforms).
+  const rowRef = useRef<HTMLDivElement>(null);
+  const places = useRef(new Map<string, { left: number; top: number }>());
+  const reduceMotion = useReducedMotion();
+  const order = active.map((f) => f.id).join("\n");
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const before = places.current;
+    const next = new Map<string, { left: number; top: number }>();
+    places.current = next;
+    if (!row) return;
+    row.querySelectorAll<HTMLElement>("[data-reveal-item]").forEach((el) => {
+      // One on its way out is out of the flow, where it was.
+      if (el.dataset.motionPopId !== undefined) return;
+      const at = { left: el.offsetLeft, top: el.offsetTop };
+      next.set(el.dataset.revealItem!, at);
+      const old = before.get(el.dataset.revealItem!);
+      if (!old || reduceMotion) return;
+      const dx = old.left - at.left;
+      const dy = old.top - at.top;
+      if (!dx && !dy) return;
+      // The start, set before this frame paints: animate() applies its
+      // first keyframe on the next one, which showed it in place for a frame.
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      animate(el, { x: [dx, 0], y: [dy, 0] }, spring.moderate).then(() => {
+        el.style.transform = "";
+      });
+    });
+  }, [order, hidden, reduceMotion]);
+
   return (
     <RowReveal show={active.length > 0 && !hidden}>
       <div
+        ref={rowRef}
         data-slot="data-table-filter-chips"
         // Past a selection column the chips start where the first data
         // column does, 28px in (past the boxes), like the title: the edge
         // they share with the table when there are no boxes.
-        className={cn("flex flex-wrap items-center gap-1", gutter, className)}
+        // Positioned: a chip on its way out is lifted out of the flow
+        // against this box.
+        className={cn("relative flex flex-wrap items-center gap-1", gutter, className)}
       >
         {/* One bubble for the row: it glides from chip to chip. */}
         <TooltipGroup>
-          {active.map((f) => {
-            const entry = filterable.find(({ column }) => column.id === f.id);
-            if (!entry) return null;
-            // The chip asked for opens its editor; the count remounts it if it
-            // was already there.
-            const asked = request?.id === f.id;
-            return (
-              <FilterChip
-                key={asked ? `${f.id}:${request.n}` : f.id}
-                label={columnLabel(entry.column)}
-                filter={entry.filter}
-                value={f.value as Exclude<DataTableFilterValue, string>}
-                autoOpen={asked}
-                compact={compact}
-                size={size}
-                onChange={(value) => set(entry.column, value)}
-                onRemove={() => set(entry.column, undefined)}
-              />
-            );
-          })}
-          <DataTableFilters table={table} size={size} add />
+          {/* popLayout: a removed chip leaves the flow at once and blurs
+              out where it was, while the rest slide into its room. */}
+          <AnimatePresence mode="popLayout">
+            {active.flatMap((f, i) => {
+              const entry = filterable.find(({ column }) => column.id === f.id);
+              if (!entry) return [];
+              // The chip asked for opens its editor; the count remounts it if it
+              // was already there.
+              const asked = request?.id === f.id;
+              return [
+                <RevealItem key={f.id} id={f.id} order={i}>
+                  <FilterChip
+                    key={asked ? `${f.id}:${request.n}` : f.id}
+                    label={columnLabel(entry.column)}
+                    filter={entry.filter}
+                    value={f.value as Exclude<DataTableFilterValue, string>}
+                    autoOpen={asked}
+                    compact={compact}
+                    size={size}
+                    onChange={(value) => set(entry.column, value)}
+                    onRemove={() => set(entry.column, undefined)}
+                  />
+                </RevealItem>,
+              ];
+            })}
+          </AnimatePresence>
+          {/* With the first chip, not after the last. */}
+          <RevealItem id=" add">
+            <DataTableFilters table={table} size={size} add />
+          </RevealItem>
         </TooltipGroup>
-        {children}
+        {children && <RevealItem id=" more">{children}</RevealItem>}
       </div>
     </RowReveal>
   );
@@ -6818,7 +6938,17 @@ function FilterChip({ label, filter, value, autoOpen, compact, size, onChange, o
   const X = icons.x;
   const shape = useShape();
   const sizeClasses = useSize(size);
-  const [open, setOpen] = useState(autoOpen);
+  // A chip that is still coming in opens its editor once it has landed,
+  // not while it moves.
+  const wait = useContext(RevealWaitContext);
+  const [open, setOpen] = useState(autoOpen && wait === 0);
+  useEffect(() => {
+    if (!autoOpen || wait === 0) return;
+    const id = setTimeout(() => setOpen(true), wait);
+    return () => clearTimeout(id);
+    // Once, as it mounts: the wait ends when the chip lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [typing, setTyping] = useState(false);
   // The DatePicker field's recipe: a hairline box, its parts 2px inside
   // with corners nested in its radius (8 - 3 = 5px, 20 - 3 = 17px), and one
