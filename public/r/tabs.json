@@ -4,9 +4,9 @@
   "title": "Tabs",
   "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Radix flavor.",
   "dependencies": [
-    "@radix-ui/react-tabs",
-    "motion",
-    "lucide-react"
+    "@radix-ui/react-tabs@^1.2.1",
+    "motion@^14.14.0",
+    "lucide-react@^0.564.0"
   ],
   "registryDependencies": [
     "utils",
