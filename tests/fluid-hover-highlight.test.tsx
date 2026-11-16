@@ -87,7 +87,7 @@ describe("FluidHoverHighlight", () => {
     expect(el.style.height).toBe("36px");
   });
 
-  it("fades in from `from` when given, so a dropdown starts at its checked row", () => {
+  it("fades in from `from` when given, so a range preview starts at its first day", () => {
     const { container } = render(
       <FluidHoverHighlight rect={rowA} from={rowB} session={1} />
     );

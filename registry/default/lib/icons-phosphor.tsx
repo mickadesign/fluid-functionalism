@@ -72,6 +72,11 @@ import {
   WarningCircle as PhWarningCircle,
   File as PhFile,
   Minus as PhMinus,
+  ArrowsOutSimple as PhArrowsOutSimple,
+  ArrowsInSimple as PhArrowsInSimple,
+  DotsSixVertical as PhDotsSixVertical,
+  Tag as PhTag,
+  FunnelSimple as PhFunnelSimple,
   CalendarBlank as PhCalendarBlank,
   FolderSimple as PhFolderSimple,
 } from "@phosphor-icons/react";
@@ -160,4 +165,9 @@ export const phosphorIcons: Record<IconName, IconComponent> = {
   "circle-alert": phosphor(PhWarningCircle),
   "file": phosphor(PhFile),
   "minus": phosphor(PhMinus),
+  "maximize": phosphor(PhArrowsOutSimple),
+  "minimize": phosphor(PhArrowsInSimple),
+  "grip-vertical": phosphor(PhDotsSixVertical),
+  tag: phosphor(PhTag),
+  filter: phosphor(PhFunnelSimple),
 };

@@ -55,3 +55,6 @@ next-env.d.ts
 *.njsproj
 *.sln
 *.sw?
+
+# preset parity test: generated installs, written out to be imported
+/tests/.parity

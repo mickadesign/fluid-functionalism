@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { highlightCode } from "./highlight-client";
 import { routeKeyboardOnMouseDown } from "@/lib/click-to-focus";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { useShape } from "@/registry/default/lib/shape-context";
 import { useIcon } from "@/registry/default/lib/icon-context";
 import { Tabs, TabsItem } from "@/components/flavored/tabs";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { Switch } from "@/registry/radix/switch";
 import { AnimatePresence } from "motion/react";
 import { InspectOverlay } from "./InspectOverlay";
+import { usePreviewExpand } from "@/lib/docs/preview-expand";
 
 export interface PlaybackButton {
   icon: ReactNode;
@@ -61,6 +63,9 @@ interface ComponentPreviewProps {
   hideHeader?: boolean;
   /** Centered label rendered under the frame — the gallery rows' captions. */
   caption?: string;
+  /** No Preview / Code tabs: the demo hands its code out its own way (a
+   *  playground's Get code). */
+  hideTabs?: boolean;
   children: ReactNode;
 }
 
@@ -77,6 +82,7 @@ export function ComponentPreview({
   inspectRulers = true,
   hideHeader = false,
   caption,
+  hideTabs = false,
   children,
 }: ComponentPreviewProps) {
   const [tab, setTab] = useState(0);
@@ -89,6 +95,12 @@ export function ComponentPreview({
   const [codeWanted, setCodeWanted] = useState(false);
   const shape = useShape();
   const ReplayIcon = useIcon("rotate-ccw");
+  const ExpandIcon = useIcon("maximize");
+  const CollapseIcon = useIcon("minimize");
+  const expand = usePreviewExpand();
+  // The expand button always carries its dot (2026-11-13 user call): it
+  // marks that the preview has a larger view, used before or not.
+  const expandHint = !!expand && !expand.expanded;
   const previewRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -100,12 +112,16 @@ export function ComponentPreview({
 
   // Shiki (its grammars and regex engine) loads only for a reader who goes
   // for the code, never with the page: most visitors only use the Preview.
-  const codeNeeded = !!code && (codeWanted || tab === 1);
+  // Never without the tabs: there is no code view to open.
+  const codeNeeded = !!code && !hideTabs && (codeWanted || tab === 1);
   useEffect(() => {
     if (!codeNeeded || !code) return;
     let cancelled = false;
-    import("./highlight")
-      .then(({ highlight }) => highlight(code))
+    // Colored in a worker (highlight-client): a playground rewrites its
+    // sample on every setting, and coloring each one on the main thread
+    // stalled the very transition the setting started (the preview
+    // expanding, rows arriving).
+    highlightCode(code)
       .then((html) => {
         if (!cancelled) setHighlighted({ code, html });
       })
@@ -131,11 +147,16 @@ export function ComponentPreview({
       // The Copy-prompt sweep screenshots this frame as its reference for
       // what the component looks like (evals/copy-prompts/grade.mjs).
       data-component-preview=""
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
       // `isolate` scopes the frame's internal z ladder (the z-[70] tab bar,
       // the inspect overlay's layers) to its own stacking context, so a
       // portalled dialog's z-50 overlay dims the WHOLE frame instead of
       // sliding underneath the header.
-      className={`relative isolate flex flex-col gap-0 w-full border border-border/60 transition-[border-color] duration-150 ease-out focus-within:border-foreground/40 ${shape.container}`}
+      // Expanded, the frame is exactly the layer's height: the header keeps
+      // its size and the content takes the rest (a long preview scrolls
+      // inside itself, not the layer).
+      className={`relative isolate flex flex-col gap-0 w-full border border-border/60 transition-[border-color] duration-150 ease-out focus-within:border-foreground/40 ${shape.container} ${expand?.expanded ? "h-full" : ""}`}
     >
       {/* Tab bar — min-height reserves the playback button's height (h-10 + pt-3)
           so the header doesn't shift when the button mounts/unmounts. A hairline
@@ -157,11 +178,16 @@ export function ComponentPreview({
             {title}
           </span>
         )}
-        <Tabs selectedIndex={tab} onSelect={setTab}>
-          <TabsItem index={0} label="Preview" />
-          <TabsItem index={1} label="Code" />
-        </Tabs>
+        {!hideTabs && (
+          <Tabs selectedIndex={tab} onSelect={setTab}>
+            <TabsItem index={0} label="Preview" />
+            <TabsItem index={1} label="Code" />
+          </Tabs>
+        )}
         <div className="ml-auto flex items-center gap-1">
+          {/* The header's icons (the playground pen, replay, expand) share
+              one tooltip bubble that glides between them. */}
+          <TooltipGroup>
           {inspectable && tab === 0 && (
             // Toggling Inspect must not dismiss whatever the preview has open
             // (a dropdown, a popover) — inspecting THAT state is the point.
@@ -188,6 +214,7 @@ export function ComponentPreview({
               />
             </span>
           )}
+          {expand?.expanded && expand.menu}
           {showButton && (
             <Tooltip content={playbackButton?.tooltip ?? "Replay animation"} side="top">
               <button
@@ -199,6 +226,32 @@ export function ComponentPreview({
               </button>
             </Tooltip>
           )}
+          {/* Expand last, at the far right, after the replay. */}
+          {expand && (
+            <Tooltip
+              content={expand.expanded ? "Collapse" : "Expand"}
+              shortcut={expand.expanded ? "Esc" : undefined}
+              side="top"
+            >
+              <button
+                type="button"
+                onClick={expand.toggle}
+                aria-label={expand.expanded ? "Collapse preview" : "Expand preview"}
+                aria-pressed={expand.expanded}
+                className={`relative w-10 h-10 flex items-center justify-center ${shape.button} text-muted-foreground hover:text-foreground hover:bg-hover transition-colors duration-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]`}
+              >
+                {expand.expanded ? <CollapseIcon size={16} strokeWidth={1.5} /> : <ExpandIcon size={16} strokeWidth={1.5} />}
+                {/* Desktop only: on a phone the preview already fills the width. */}
+                {expandHint && (
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute right-1.5 bottom-1.5 hidden size-1.5 rounded-full bg-[var(--fluid-accent,#6B97FF)] lg:block"
+                  />
+                )}
+              </button>
+            </Tooltip>
+          )}
+          </TooltipGroup>
         </div>
       </div>
       )}
@@ -211,7 +264,11 @@ export function ComponentPreview({
           shape is active, and leaves the top corners square (the tab
           bar sits above, well below the outer's curved top edge). */}
       <div
-        className="overflow-hidden"
+        // An expandable preview is a flex column from the start: switching
+        // `display` as it expands made the browser rebuild the layout tree
+        // of everything inside (the whole table) in the frame it starts
+        // to grow.
+        className={`overflow-hidden ${expand ? "flex flex-col" : ""} ${expand?.expanded ? "min-h-0 flex-1" : ""}`}
         // With no header above it, the content owns all four corners.
         style={
           hideHeader
@@ -225,11 +282,14 @@ export function ComponentPreview({
         {tab === 0 ? (
           <div
             ref={previewRef}
+            // The expandable playground's layer finds the demo through this
+            // while it moves (see PlaygroundLayout).
+            data-preview-stage=""
             // Focus target for empty-space clicks (see routeKeyboardOnMouseDown)
             // — holds keyboard scope for the demo without ringing any control.
             tabIndex={-1}
             onMouseDown={handlePreviewMouseDown}
-            className={`relative flex outline-none ${
+            className={`relative flex outline-none ${expand?.expanded ? "min-h-0 flex-1 [&>*]:max-h-full" : ""} ${
               align === "bottom"
                 ? "items-end"
                 : align === "top"

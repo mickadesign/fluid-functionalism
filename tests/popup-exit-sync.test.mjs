@@ -12,6 +12,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 
 const COPIES = [
   "registry/base/dialog.tsx",
+  "registry/base/date-picker.tsx",
   "registry/base/dropdown.tsx",
   "registry/base/mobile-drawer.tsx",
   "registry/base/tooltip.tsx",
@@ -44,6 +45,23 @@ describe("usePopupExit copies", () => {
 
   it.each(COPIES.slice(1))("%s matches registry/base/dialog.tsx", (path) => {
     expect(hookSource(path)).toBe(canonical);
+  });
+});
+
+// TooltipGroup's bubble is the same code in both flavors, for the same
+// reason: one file per install.
+describe("TooltipGroup bubble copies", () => {
+  const block = (path) => {
+    const source = readFileSync(join(ROOT, path), "utf-8");
+    const start = source.indexOf("const GROUP_HOLD_MS");
+    const end = source.indexOf("\n}\n", source.indexOf("function GroupBubble(", start));
+    return start === -1 ? null : source.slice(start, end + 2);
+  };
+
+  it("registry/base/tooltip.tsx matches registry/radix/tooltip.tsx", () => {
+    const radix = block("registry/radix/tooltip.tsx");
+    expect(radix).toContain("function GroupBubble(");
+    expect(block("registry/base/tooltip.tsx")).toBe(radix);
   });
 });
 

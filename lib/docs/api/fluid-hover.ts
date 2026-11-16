@@ -24,7 +24,7 @@ export const hookReturn: PropDef[] = [
 export const highlightProps: PropDef[] = [
   { name: "hover", type: "ReturnType<typeof useFluidHover>", description: "The hook. The highlight reads what it needs from it." },
   { name: "hidden", type: "boolean", default: "false", description: "Show nothing, keep the state. A closed popup." },
-  { name: "from", type: "ItemRect | null", description: "Where a fresh entry fades in from. Dropdowns pass the checked row when the pointer enters." },
+  { name: "from", type: "ItemRect | null", description: "Where a fresh entry fades in from. Defaults to the item itself. Not for a selected item: hover appears on the item under the pointer. The calendar passes the start of the range being picked." },
   { name: "fadeIn", type: "boolean", default: "true", description: "false starts a fresh entry opaque. For a `from` under a filled item, so the highlight slides out of it." },
   { name: "className", type: "string", description: "Radius and z-index. The container must be position: relative." },
   { name: "transition", type: "Transition | false", default: "spring.fast", description: "The travel. false snaps in place after a reflow." },

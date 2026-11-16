@@ -18,6 +18,7 @@ import { CheckboxGroup as CheckboxGroupPrimitive } from "@base-ui/react/checkbox
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { Field } from "@base-ui/react/field";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
@@ -1547,9 +1548,8 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
                                 state. ⌘↵ on macOS, ⌃↵ elsewhere. Desktop-only:
                                 mobile has no physical keyboard to trigger it. */}
                             <span className="hidden sm:contents">
-                              <ShortcutChip shape={shape} tone="inverted">
-                                {isMac ? "⌘" : "⌃"}
-                                {"↵"}
+                              <ShortcutChip tone="inverted">
+                                {isMac ? "⌘↵" : "⌃↵"}
                               </ShortcutChip>
                             </span>
                           </span>
@@ -1579,31 +1579,16 @@ AskUserQuestions.displayName = "AskUserQuestions";
 // sits on the dark primary button; the default reads on quiet ghost buttons.
 // suppressHydrationWarning: the ⌘/⌃ glyph is platform-detected in a lazy
 // initializer (see isMac), so the server always renders ⌃ while a Mac client
-// renders ⌘ — a benign one-character text mismatch on hydration.
+// renders ⌘ — a benign one-character text mismatch on hydration. KeyCaps
+// passes the flag down to each cap, where the differing text lives.
 function ShortcutChip({
   children,
-  tone = "muted",
-  shape,
+  tone = "default",
 }: {
-  children: React.ReactNode;
-  tone?: "muted" | "inverted";
-  shape: ReturnType<typeof useShape>;
+  children: string;
+  tone?: "default" | "inverted";
 }) {
-  return (
-    <kbd
-      aria-hidden
-      suppressHydrationWarning
-      className={cn(
-        "inline-flex items-center justify-center gap-0.5 px-1 min-w-[18px] h-[18px] text-[length:var(--fs-micro,11px)] leading-none font-sans",
-        tone === "inverted"
-          ? "bg-background/15 text-background"
-          : "bg-foreground/10 text-muted-foreground",
-        shape.bg
-      )}
-    >
-      {children}
-    </kbd>
-  );
+  return <KeyCaps aria-hidden suppressHydrationWarning keys={children} tone={tone} />;
 }
 
 // ── Row sub-component ─────────────────────────────────────────

@@ -52,6 +52,22 @@ import {
 } from "@/registry/default/breadcrumb";
 import { BREADCRUMB_MENU_CLASS, EllipsisMenu } from "@/lib/docs/playgrounds/breadcrumb";
 import {
+  useDataTable,
+  DataTable,
+  DataTableColumnHeader,
+  DataTableSearch,
+  DataTableViewOptions,
+  DataTablePagination,
+  selectColumn,
+  type ColumnDef,
+} from "@/registry/default/data-table";
+import {
+  buildRows,
+  formatDay,
+  PRIMITIVE_COLOR,
+  type ComponentRow,
+} from "@/lib/docs/playgrounds/data-table";
+import {
   DropdownMenu as FlavoredDropdownMenu,
   DropdownTrigger as FlavoredDropdownTrigger,
   DropdownContent as FlavoredDropdownContent,
@@ -144,6 +160,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { BentoTileContext } from "@/app/components/bento-card";
 import { usePreviewPlayback } from "@/lib/docs/preview-playback";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { useShape } from "@/lib/shape-context";
 import { Slider } from "@/registry/radix/slider";
 import { Switch } from "@/registry/radix/switch";
@@ -169,7 +186,7 @@ import {
   ThinkingStepSources,
   ThinkingStepSource,
 } from "@/components/flavored/thinking-steps";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import {
   AskUserQuestions,
   type AskUserQuestion,
@@ -639,7 +656,7 @@ function TablePreview() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {/* 4 rows fit a medium tile's stage; the /demo stage and the
+          {/* 4 rows fit a tile's stage; the /demo stage and the
               /compare pair keep all 7, matching the shadcn original. */}
           {(inTile ? TABLE_ROWS.slice(0, 4) : TABLE_ROWS).map((row, i) => (
             <TableRow key={row[0]} index={i}>
@@ -650,6 +667,68 @@ function TablePreview() {
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+// The library listing itself, as on the DataTable docs page: newest first,
+// with search, the columns menu, selection, and pages.
+const DATA_TABLE_COLUMNS: ColumnDef<ComponentRow>[] = [
+  selectColumn<ComponentRow>(),
+  {
+    accessorKey: "name",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Component" />,
+    meta: { label: "Component" },
+    enableHiding: false,
+  },
+  {
+    accessorKey: "primitives",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Primitives" />,
+    cell: ({ row }) => (
+      <span className="flex h-[1lh] items-center">
+        <Badge variant="ghost" color={PRIMITIVE_COLOR[row.original.primitives]}>
+          {row.original.primitives}
+        </Badge>
+      </span>
+    ),
+    meta: { label: "Primitives" },
+  },
+  {
+    accessorKey: "props",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Props" />,
+    meta: { label: "Props", className: "tabular-nums" },
+  },
+  {
+    accessorKey: "added",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Added" />,
+    cell: ({ row }) => formatDay(row.original.added),
+    meta: { label: "Added", className: "tabular-nums whitespace-nowrap w-full" },
+  },
+];
+
+function DataTablePreview() {
+  const [data] = useState(buildRows);
+  const table = useDataTable({
+    data,
+    columns: DATA_TABLE_COLUMNS,
+    pageSize: 8,
+    getRowId: (row) => row.slug,
+    initialState: { sorting: [{ id: "added", desc: true }] },
+  });
+  return (
+    <div className="flex w-full max-w-[640px] flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <TooltipGroup>
+          <DataTableSearch table={table} column="name" placeholder="Search components…" />
+          <DataTableViewOptions table={table} className="ml-auto" />
+        </TooltipGroup>
+      </div>
+      <DataTable
+        table={table}
+        reorderColumns
+        empty={{ title: "No components match", description: "Try a name like Dialog or Tabs." }}
+      />
+      <DataTablePagination table={table} pageSizes={[8, 16, 32]} />
     </div>
   );
 }
@@ -955,9 +1034,10 @@ function SidebarPreview() {
                     aria-label="Search threads"
                     className="pl-8 pr-11"
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-sans text-site-caption text-muted-foreground opacity-0 transition-opacity duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100">
-                    ⌘K
-                  </kbd>
+                  <KeyCaps
+                    keys="⌘K"
+                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100"
+                  />
                 </div>
 
                 <SidebarMenu size="compact" aria-label="Create">
@@ -965,7 +1045,7 @@ function SidebarPreview() {
                     <SidebarMenuButton icon={icons.plus}>
                       New thread
                       <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80 group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">
-                        <kbd className="font-sans text-site-caption text-muted-foreground">⌘N</kbd>
+                        <KeyCaps keys="⌘N" />
                       </span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -1045,6 +1125,7 @@ export const previewMap: Record<string, React.FC> = {
   slider: SliderPreview,
   switch: SwitchPreview,
   table: TablePreview,
+  "data-table": DataTablePreview,
   "tabs": TabsPreview,
   "thinking-indicator": ThinkingIndicatorPreview,
   "thinking-steps": ThinkingStepsPreview,

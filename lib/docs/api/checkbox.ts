@@ -5,6 +5,7 @@ import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 export const checkboxProps: PropDef[] = [
   { name: "checked", type: "boolean", description: "Controlled state. Pair it with onCheckedChange." },
   { name: "defaultChecked", type: "boolean", default: "false", description: "Initial state when uncontrolled." },
+  { name: "indeterminate", type: "boolean", default: "false", description: "Draws a dash instead of the check, for a box that stands for a partly selected set. Clicking it reports true." },
   { name: "onCheckedChange", type: "(checked: boolean) => void", description: "Called on every toggle, by a click, Space, or its FieldLabel." },
   { name: "size", type: '"default" | "compact"', description: "Pins the box to one step of the size ladder (16px or 14px). Omitted, it follows the surrounding SizeProvider." },
   { name: "id", type: "string", description: "Lets a FieldLabel name and toggle it through htmlFor." },

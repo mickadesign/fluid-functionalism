@@ -28,9 +28,27 @@ export const actionProps: PropDef[] = [
   { name: "onClick", type: "(event) => void", description: "Called on click." },
 ];
 
+// Confirmation is a Banner that asks a yes or no question; it installs as
+// `confirmation` and is documented on this page.
+export const confirmationProps: PropDef[] = [
+  { name: "title", type: "ReactNode", description: "The question, phrased so Approve and Deny answer it: \"Run pnpm build?\"." },
+  { name: "description", type: "ReactNode", description: "What approving does, or why it is being asked." },
+  { name: "icon", type: "IconName", default: "the Banner's info icon", description: "Icon naming the action." },
+  { name: "state", type: '"requested" | "approved" | "denied"', default: '"requested"', description: "`requested` shows the buttons. `approved` and `denied` show the answer in their place." },
+  { name: "onApprove", type: "() => void", description: "Called when Approve is pressed." },
+  { name: "onDeny", type: "() => void", description: "Called when Deny is pressed." },
+  { name: "approveLabel", type: "string", default: '"Approve"', description: "Label of the primary button." },
+  { name: "denyLabel", type: "string", default: '"Deny"', description: "Label of the ghost button." },
+  { name: "approvedLabel", type: "string", default: '"Approved"', description: "Text shown once approved." },
+  { name: "deniedLabel", type: "string", default: '"Denied"', description: "Text shown once denied." },
+  { name: "...props", type: "BannerProps", description: "Everything else goes to the Banner: `status`, `contrast`, `className`." },
+  { name: "size", type: '"default" | "compact"', default: "from SizeProvider", description: "Step on the size ladder (see /docs/sizes)." },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "Banner", props: bannerProps },
   { title: "Parts", props: partProps },
   { title: "BannerAction", props: actionProps },
+  { title: "Confirmation", props: confirmationProps },
 ];

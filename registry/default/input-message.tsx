@@ -18,6 +18,7 @@ import {
 } from "react";
 import { AnimatePresence, motion, Reorder, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { KeyCap } from "@/lib/key-cap";
 import { fontWeights } from "@/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { omit } from "@/lib/omit";
@@ -29,7 +30,7 @@ import { SurfaceProvider } from "@/lib/surface-context";
 import { useFluidHover, useRegisterFluidHoverItem } from "@/hooks/use-fluid-hover";
 import { FileThumbnail } from "@/registry/default/file-thumbnail";
 import { Button } from "@/registry/radix/button";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 
 const useIsoLayoutEffect =
@@ -88,6 +89,11 @@ function useIsTouch() {
 }
 
 const DEFAULT_ACCEPT = "image/png,image/jpeg,application/pdf";
+
+// Queue item keys. A counter with a time prefix is unique within a page and,
+// unlike the Web Crypto UUID helper, also works on plain-HTTP origins.
+let queuedMessageCount = 0;
+const nextQueuedId = () => `q-${Date.now().toString(36)}-${(queuedMessageCount++).toString(36)}`;
 
 interface InputMessageSlotContext {
   /** Opens the native file picker via the hidden `<input type="file">`.
@@ -177,11 +183,16 @@ interface InputMessageProps
     TextareaHTMLAttributes<HTMLTextAreaElement>,
     "value" | "onChange" | "onKeyDown" | "disabled" | "placeholder"
   >;
-  /** Assistant response state. When `"streaming"`, the send button becomes a
-   *  Stop control (empty draft) or a Queue action (non-empty draft); on the
-   *  `streaming → idle` edge the next queued message auto-dispatches via `onSend`.
-   *  Leave undefined to keep the legacy send-immediately behavior. */
-  status?: "idle" | "streaming";
+  /** Assistant response state. While it is busy (`"streaming"`, or
+   *  `"submitted"`: sent, nothing back yet), the send button becomes a Stop
+   *  control (empty draft) or a Queue action (non-empty draft); when it goes
+   *  back to `"idle"` or `"ready"` the next queued message auto-dispatches via
+   *  `onSend`. `"error"` is not busy and holds the queue: a failed reply never
+   *  sends the next message by itself. Clearing the error (back to `"idle"`
+   *  or `"ready"`) releases it, so queued messages still go out in order. The 4 values of the AI SDK's `useChat`
+   *  status pass straight through. Leave undefined to keep the legacy
+   *  send-immediately behavior. */
+  status?: "idle" | "streaming" | "submitted" | "ready" | "error";
   /** Fired when the Stop control is pressed (streaming, empty draft). The
    *  consumer should halt the current response and flip `status` to `"idle"`,
    *  which immediately dispatches the next queued message. */
@@ -546,7 +557,8 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       queueRef.current = queueArr;
     });
     const supportsQueue = status !== undefined && onQueueChange !== undefined;
-    const streaming = status === "streaming";
+    // Busy: a reply is on its way or arriving.
+    const streaming = status === "streaming" || status === "submitted";
     const [liveMsg, setLiveMsg] = useState("");
 
     // Sent-message history navigation (readline-style). `historyIndex` is null
@@ -680,7 +692,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
       // then clear the composer and keep focus.
       if (streaming && supportsQueue) {
         const item: QueuedMessage = {
-          id: crypto.randomUUID(),
+          id: nextQueuedId(),
           text: trimmed,
           files: filesArr,
         };
@@ -710,12 +722,20 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
     // finished on its own or the user pressed Stop), fire the head of the
     // queue and drop it. The consumer is expected to set status back to
     // "streaming" inside onSend, which re-arms this for the next item.
+    const prevBusyRef = useRef(streaming);
     const prevStatusRef = useRef(status);
     useEffect(() => {
-      const prev = prevStatusRef.current;
+      const wasBusy = prevBusyRef.current;
+      const wasError = prevStatusRef.current === "error";
+      prevBusyRef.current = streaming;
       prevStatusRef.current = status;
       if (!supportsQueue) return;
-      if (prev === "streaming" && status === "idle" && queueArr.length > 0) {
+      // Released when a reply ends, and when an error is cleared: otherwise
+      // the queue stayed parked after an error and the next typed message
+      // went out ahead of the older queued ones.
+      const released =
+        !streaming && status !== "error" && (wasBusy || wasError);
+      if (released && queueArr.length > 0) {
         const [next, ...rest] = queueArr;
         onQueueChange?.(rest);
         onSend?.(next.text, next.files, { queuedId: next.id });
@@ -723,7 +743,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
           `Message sent.${rest.length ? ` ${rest.length} still queued.` : ""}`
         );
       }
-    }, [status, supportsQueue, queueArr, onQueueChange, onSend]);
+    }, [status, streaming, supportsQueue, queueArr, onQueueChange, onSend]);
 
     // ── Queue item actions ────────────────────────────────────────────
     const editQueued = useCallback(
@@ -949,7 +969,10 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
 
     const matchesAccept = useCallback(
       (file: File) =>
+        // An empty accept, like the native attribute, takes any file.
+        acceptTokens.length === 0 ||
         acceptTokens.some((token) => {
+          if (token === "*/*") return true;
           if (token.endsWith("/*")) return file.type.startsWith(token.slice(0, -1));
           if (token.startsWith(".")) return file.name.toLowerCase().endsWith(token.toLowerCase());
           return file.type === token;
@@ -1116,17 +1139,20 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                 className="overflow-hidden"
               >
                 <div ref={filesRegionRef} className="flex flex-wrap gap-2 pb-1">
-                  <AnimatePresence initial={false} mode="popLayout">
-                    {filesArr.map((file, i) => (
-                      <FilePreviewTile
-                        key={`${file.name}-${file.size}-${file.lastModified}`}
-                        file={file}
-                        onRemove={() => removeFile(i)}
-                        size={filePreviewSize}
-                        isTouch={isTouch}
-                      />
-                    ))}
-                  </AnimatePresence>
+                  {/* One "Remove" bubble glides from tile to tile. */}
+                  <TooltipGroup>
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {filesArr.map((file, i) => (
+                        <FilePreviewTile
+                          key={`${file.name}-${file.size}-${file.lastModified}`}
+                          file={file}
+                          onRemove={() => removeFile(i)}
+                          size={filePreviewSize}
+                          isTouch={isTouch}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </TooltipGroup>
                 </div>
               </motion.div>
             )}
@@ -1257,14 +1283,7 @@ const InputMessage = forwardRef<HTMLDivElement, InputMessageProps>(
                     and the Tab chip never gets cut. */}
                 <span className="flex max-w-full items-center gap-1.5">
                   <span className="min-w-0 truncate">{placeholderSuggestion}</span>
-                  <kbd
-                    className={cn(
-                      "inline-flex shrink-0 -translate-y-px items-center rounded-[5px] border border-border bg-background px-1 font-sans text-muted-foreground",
-                      compactStep ? "h-4 text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)]" : "h-[18px] text-[length:var(--fs-micro,11px)] leading-[var(--lh-micro,14px)]"
-                    )}
-                  >
-                    Tab
-                  </kbd>
+                  <KeyCap className="-translate-y-px">Tab</KeyCap>
                 </span>
               </div>
             )}

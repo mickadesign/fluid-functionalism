@@ -18,6 +18,11 @@ export const tooltipProps: PropDef[] = [
     description: "The trigger element. Must accept a ref.",
   },
   {
+    name: "shortcut",
+    type: "string | string[]",
+    description: "A keystroke shown after the label, one key cap per key. The tooltip keeps the height of one without it. A key with a space in its name goes in an array: [\"Page Up\"].",
+  },
+  {
     name: "side",
     type: '"top" | "right" | "bottom" | "left"',
     default: '"top"',
@@ -41,6 +46,12 @@ export const tooltipProps: PropDef[] = [
     description: "Track the cursor along one axis while hovering the trigger; the other axis stays anchored by side. Used by the Sidebar rail.",
   },
   {
+    name: "hoverable",
+    type: "boolean",
+    default: "true",
+    description: "Whether the pointer can move onto the bubble and keep it open. Pass false where the bubble covers something else to reach, as over the next row of a list: the pointer passes through and the tooltip closes with its trigger.",
+  },
+  {
     name: "className",
     type: "string",
     description: "Additional classes applied to the tooltip content container.",
@@ -52,7 +63,28 @@ export const tooltipProps: PropDef[] = [
   },
 ];
 
+export const tooltipGroupProps: PropDef[] = [
+  {
+    name: "children",
+    type: "ReactNode",
+    description: "The row of triggers, each in its own Tooltip, all on the same side. They share one bubble.",
+  },
+  {
+    name: "delayDuration",
+    type: "number",
+    default: "200",
+    description: "Milliseconds to wait before the first tooltip of the group opens.",
+  },
+  {
+    name: "skipDelayDuration",
+    type: "number",
+    default: "300",
+    description: "After a tooltip closes, the others in the group open without the delay for this many milliseconds.",
+  },
+];
+
 /** The page's tables in page order, titled as on the page. */
 export const apiReference: ApiTable[] = [
   { title: "Tooltip", props: tooltipProps },
+  { title: "TooltipGroup", props: tooltipGroupProps },
 ];

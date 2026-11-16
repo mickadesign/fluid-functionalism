@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import {
   createContext,
   useContext,
@@ -9,16 +10,20 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
+import { PreviewExpandContext } from "@/lib/docs/preview-expand";
+import { InPlaygroundMenuContext, PlaygroundMenu } from "@/app/components/playground-menu";
 import { Shuffle } from "lucide-react";
 import { animate } from "motion/react";
 import { spring } from "@/registry/default/lib/springs";
 import { cn } from "@/lib/utils";
+import { KeyCap } from "@/lib/key-cap";
 import { fontWeights } from "@/registry/default/lib/font-weight";
 import { RailHairline, useRightRailNode } from "@/lib/right-rail";
 import { Tooltip } from "@/registry/radix/tooltip";
 import { showShortcutToast } from "@/lib/docs/settings-toast";
 import { useShape } from "@/lib/shape-context";
+import { useIcon } from "@/lib/icon-context";
 import { useFluidHover } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import {
@@ -95,6 +100,7 @@ export function PlaySection({ label }: { label: string }) {
   // headings of the list rather than a smaller muted caption.
   return (
     <div
+      data-play-section=""
       className="px-2 pb-1 pt-2 text-site-body text-foreground"
       style={{ fontVariationSettings: fontWeights.semibold }}
     >
@@ -116,7 +122,75 @@ export function PlaygroundOverlay({ children }: { children: ReactNode }) {
 
 /** Hairline between two control groups, inset like the group label's. */
 export function PlayDivider() {
-  return <div aria-hidden className="my-2 mx-2 h-px shrink-0 bg-border" />;
+  return <div aria-hidden data-play-divider="" className="my-2 mx-2 h-px shrink-0 bg-border" />;
+}
+
+// A panel with at least this many controls gets a search field: under it,
+// every option is already in view.
+const SEARCH_FROM = 8;
+
+/** Shows the controls that match `query` and hides the rest. Playgrounds
+ *  build their rows freely (library switches, fields, their own wrappers),
+ *  so the rows are read off the DOM: every child of the list that isn't a
+ *  section title or a divider is one control, matched on its text (its
+ *  label, and a select's current value). A section title that matches keeps
+ *  all of its controls; a title with none left goes, and so does a divider
+ *  that would open or close the list or sit next to another. A child with
+ *  no control in it (the Copy prompt button under the list) is not an
+ *  option: it stays, with its divider, while any control shows. Returns
+ *  how many controls there are and how many are showing. */
+function filterControls(list: HTMLElement, query: string) {
+  const q = query.trim().toLowerCase();
+  let section = "";
+  let title: HTMLElement | null = null;
+  let titleUsed = false;
+  let divider: HTMLElement | null = null;
+  let shownBefore = false;
+  let total = 0;
+  let shown = 0;
+  const extras: { el: HTMLElement; divider: HTMLElement | null }[] = [];
+  const closeTitle = () => {
+    if (title) title.hidden = !titleUsed;
+  };
+  for (const el of Array.from(list.children) as HTMLElement[]) {
+    if (el.hasAttribute("data-play-divider")) {
+      closeTitle();
+      title = null;
+      section = "";
+      el.hidden = true;
+      divider = el;
+      continue;
+    }
+    if (el.hasAttribute("data-play-section")) {
+      closeTitle();
+      title = el;
+      titleUsed = false;
+      section = (el.textContent ?? "").toLowerCase();
+      continue;
+    }
+    if (!el.matches(".play-row") && !el.querySelector(".play-row")) {
+      extras.push({ el, divider });
+      divider = null;
+      continue;
+    }
+    total++;
+    const match = !q || section.includes(q) || (el.textContent ?? "").toLowerCase().includes(q);
+    el.hidden = !match;
+    if (!match) continue;
+    shown++;
+    titleUsed = true;
+    // The divider waiting above this group shows once both sides have a
+    // control on show.
+    if (divider && shownBefore) divider.hidden = false;
+    divider = null;
+    shownBefore = true;
+  }
+  closeTitle();
+  for (const extra of extras) {
+    extra.el.hidden = shown === 0;
+    if (extra.divider) extra.divider.hidden = shown === 0;
+  }
+  return { total, shown };
 }
 
 // True when PlaygroundLayout renders the controls under the preview instead
@@ -137,6 +211,7 @@ export function PlaygroundPanel({
   // small label with the shuffle on its right, a hairline under it.
   const shape = useShape();
   const inline = useContext(InlinePlaygroundContext);
+  const inMenu = useContext(InPlaygroundMenuContext);
 
   // X shuffles, like the settings' single-key shortcuts and with their
   // guards: not while typing, not from inside a menu or a dialog.
@@ -147,11 +222,29 @@ export function PlaygroundPanel({
   });
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "x" && e.key !== "X") return;
+      // Keys typed in a preview belong to the component in it. Not "/":
+      // the search it opens is the preview's own controls, so it works
+      // with focus on the component too (a table row), short of a field,
+      // which keeps the character.
+      const slash = e.key === "/";
+      if (inKeyboardScope(e.target) && !slash) return;
+      if (e.key !== "x" && e.key !== "X" && !slash) return;
+      // A key the preview already used (X selects a focused table row).
+      if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
       if (target?.closest('[role="listbox"], [role="menu"], [role="dialog"], [role="combobox"], [role="option"]')) return;
+      if (slash) {
+        // "/" puts the cursor in the options' search, where there is one
+        // on show (the rail's; the pen menu opens on the same key).
+        const search = searchRef.current;
+        if (!search || !search.offsetParent) return;
+        e.preventDefault();
+        search.focus();
+        search.select();
+        return;
+      }
       e.preventDefault();
       shuffleRef.current();
       showShortcutToast("X", "Playground shuffled");
@@ -170,6 +263,31 @@ export function PlaygroundPanel({
       clearTimeout(release);
     };
   }, []);
+
+  // The search: filters the controls below by their labels.
+  const searchRef = useRef<HTMLInputElement>(null);
+  const SearchIcon = useIcon("search");
+  const ClearIcon = useIcon("x");
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
+  const [counts, setCounts] = useState({ total: 0, shown: 0 });
+  // After every render: a setting can add or drop a control (a row that
+  // only exists while another is on), and it has to take the filter too.
+  useLayoutEffect(() => {
+    const rows = rowsRef.current;
+    if (!rows) return;
+    const next = filterControls(rows, query);
+    setCounts((old) => (old.total === next.total && old.shown === next.shown ? old : next));
+  });
+  const searchable = counts.total >= SEARCH_FROM;
+  // In the pen menu the field takes focus as the menu opens: type to find
+  // an option straight away. Not on touch, where focus raises the keyboard
+  // over the menu; not in the rail, which is part of the page.
+  useEffect(() => {
+    if (!inMenu || !searchable) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+    searchRef.current?.focus({ preventScroll: true });
+  }, [inMenu, searchable]);
 
   // One fluid hover across the controls, as in the settings group: every
   // select trigger and switch row (marked play-row) is a stop, in page order.
@@ -209,7 +327,8 @@ export function PlaygroundPanel({
     // double the sidebar's 16px between groups. Under the preview there is no
     // group above, and -mx-2 hangs the rows' 8px inset outside the column, so
     // the labels, chevrons and hairline line up with the preview's edges.
-    <div className={cn("w-full", inline ? "-mx-2 w-auto" : "pt-8")}>
+    // In the pen menu, the menu's own 8px padding is the whole frame.
+    <div className={cn("w-full", inline ? "-mx-2 w-auto" : !inMenu && "pt-8")}>
       <div className="flex h-8 items-center justify-between pl-2">
         <h2 className="text-site-caption text-foreground">{title}</h2>
         {/* The X key chip, then the icon: px-1.5 + mr-0.5 end the icon 8px
@@ -228,18 +347,73 @@ export function PlaygroundPanel({
             )}
           >
             {/* The settings' key chip; hidden on touch, where there is no X. */}
-            <kbd
+            <KeyCap
               ref={keyRef}
               aria-hidden
-              className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-mono text-site-micro leading-none text-muted-foreground rounded-[2px] pointer-coarse:hidden"
+              className="pointer-coarse:hidden"
             >
               X
-            </kbd>
+            </KeyCap>
             <Shuffle size={16} strokeWidth={1.5} />
           </button>
         </Tooltip>
       </div>
       <RailHairline />
+      {searchable && (
+        // A row of the list's own height and inset, the icon over the
+        // labels' left edge and the clear button under the chevrons.
+        <div className="flex h-8 items-center gap-2 pl-2 pr-0.5 text-muted-foreground focus-within:text-foreground">
+          <SearchIcon size={16} strokeWidth={1.5} aria-hidden className="shrink-0 transition-colors duration-80" />
+          <input
+            ref={searchRef}
+            data-play-search=""
+            aria-keyshortcuts="/"
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            spellCheck={false}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Esc empties the field first; a second one closes the menu
+              // (or collapses the preview) as before.
+              if (e.key !== "Escape" || !query) return;
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              setQuery("");
+            }}
+            placeholder="Search"
+            aria-label="Search the playground's options"
+            // 16px on touch: under it iOS zooms the page on focus.
+            className="h-full min-w-0 flex-1 bg-transparent text-site-body text-foreground outline-none placeholder:text-muted-foreground pointer-coarse:text-[16px]"
+          />
+          {/* The key that brings the cursor here, until there is something
+              to clear; hidden on touch, where there is no "/". */}
+          {!query && (
+            <KeyCap aria-hidden className="mr-2 shrink-0 pointer-coarse:hidden">
+              /
+            </KeyCap>
+          )}
+          {query && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
+              aria-label="Clear the search"
+              className={cn(
+                "flex size-7 shrink-0 cursor-pointer items-center justify-center text-muted-foreground outline-none transition-colors duration-80 hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
+                shape.input
+              )}
+            >
+              <ClearIcon size={16} strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+      )}
       {/* Triggers drop their own hover fill: the gliding one replaces it. */}
       <div
         ref={listRef}
@@ -247,7 +421,16 @@ export function PlaygroundPanel({
         {...handlers}
       >
         <FluidHoverHighlight hover={hover} className={shape.input} />
-        {children}
+        {/* `contents`: the rows lay out as the list's own, and the filter
+            reads them apart from the highlight. */}
+        <div ref={rowsRef} className="contents">
+          {children}
+        </div>
+        {searchable && counts.shown === 0 && (
+          <p role="status" className="px-2 py-2 text-site-body text-muted-foreground">
+            No option matches.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -273,9 +456,22 @@ function useIsXl() {
 export function PlaygroundLayout({
   preview,
   controls,
+  expandable = false,
+  label = "Playground controls",
+  onExpandedChange,
 }: {
   preview: ReactNode;
   controls: ReactNode;
+  /** Adds an expand button to the preview's header: the preview lifts into
+   *  a layer over the whole window (both side columns hidden, like /demo),
+   *  with the controls in a pen menu. Esc or the button brings it back. */
+  expandable?: boolean;
+  /** The pen menu's accessible name while expanded. */
+  label?: string;
+  /** Called as the preview expands (true, before it grows) and once it has
+   *  settled back in place (false), e.g. to show more rows while there's
+   *  room for them. */
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   // Park the controls in the right rail on wide screens; inline below the
   // preview otherwise. `mounted` gates the first paint so desktop doesn't flash
@@ -301,10 +497,262 @@ export function PlaygroundLayout({
     return () => io.disconnect();
   }, []);
 
+  // ── Expand ──────────────────────────────────────────────
+  // The preview's own box moves (no remount, so its state survives): it
+  // turns fixed and springs from where it sat on the page to the window
+  // inset 24px, over a page-colored backdrop that hides both side columns.
+  // A placeholder keeps the page from collapsing under it. Collapsing runs
+  // the same spring back to the placeholder's box.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const placeholderRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [placeholderHeight, setPlaceholderHeight] = useState<number | null>(null);
+  const [backdrop, setBackdrop] = useState(false);
+  // From the start of a collapse to its landing: the rail's controls come
+  // back then, so they fade in with the page as the backdrop clears
+  // instead of popping in once the box has landed.
+  const [collapsing, setCollapsing] = useState(false);
+  const fromRect = useRef<DOMRect | null>(null);
+  const tableToWidth = useRef<number | null>(null);
+  const animating = useRef(false);
+
+  // While the layer moves, a table in the demo keeps its expanded width:
+  // the box's width springs through every value, and a table that fills
+  // its scroll box would hand each frame's width to its one free column,
+  // re-wrapping its text (rows jumping between one and two lines) and
+  // flipping its sticky columns' surfaces as the overflow came and went.
+  // Held at the expanded width, only the scroll box follows the box: the
+  // sticky columns ride its edges and nothing inside re-lays out. Released
+  // once the layer lands (see globals.css, [data-preview-moving]).
+  const demo = () =>
+    frameRef.current?.querySelector<HTMLElement>("[data-preview-stage]")?.firstElementChild as HTMLElement | null;
+  const demoTable = () => {
+    const table = demo()?.querySelector<HTMLTableElement>("[data-slot=scroll-area-viewport] table");
+    const viewport = table?.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    return table && viewport ? { table, viewport } : null;
+  };
+  const holdTable = (width: number) => {
+    const el = demo();
+    if (!el) return;
+    el.style.setProperty("--preview-table-w", `${width}px`);
+    el.setAttribute("data-preview-moving", "");
+  };
+  const releaseTable = () => {
+    const el = demo();
+    if (!el) return;
+    el.style.removeProperty("--preview-table-w");
+    el.removeAttribute("data-preview-moving");
+  };
+
+  const target = () => {
+    const m = 24;
+    return { top: m, left: m, width: window.innerWidth - 2 * m, height: window.innerHeight - 2 * m };
+  };
+
+  // The latest callbacks, for listeners and spring callbacks set up in an
+  // earlier render (the Esc listener lives for a whole expansion; a
+  // collapse settles a spring later).
+  const onExpandedChangeRef = useRef(onExpandedChange);
+  const closeRef = useRef<() => void>(() => {});
+  const settleCollapseRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    onExpandedChangeRef.current = onExpandedChange;
+  });
+
+  const open = () => {
+    const el = frameRef.current;
+    if (!el || animating.current) return;
+    fromRect.current = el.getBoundingClientRect();
+    // The table's expanded width, read in the page (once the box turns
+    // fixed, and before it's sized, it shrink-wraps): its scroll box grows
+    // with the box, and the table fills it or keeps its columns' total.
+    const held = demoTable();
+    const to = target();
+    tableToWidth.current = held
+      ? Math.max(parseFloat(getComputedStyle(held.table).minWidth) || 0, held.viewport.clientWidth + (to.width - fromRect.current.width))
+      : null;
+    setPlaceholderHeight(fromRect.current.height);
+    setBackdrop(true);
+    setExpanded(true);
+    onExpandedChangeRef.current?.(true);
+  };
+
+  const close = () => {
+    const el = frameRef.current;
+    const home = placeholderRef.current?.getBoundingClientRect();
+    if (!el || !home || animating.current) return;
+    animating.current = true;
+    const held = demoTable();
+    if (held) holdTable(held.table.offsetWidth);
+    setBackdrop(false);
+    setCollapsing(true);
+    // The content keeps its expanded form while the box shrinks, scrolled
+    // back to its top: a filled table at the slot's height shows exactly
+    // the rows its page form will, so the swap at the end barely shows.
+    // (Swapping first snapped 20 rows down to 10 in the large box.)
+    // On the collapse's own tween, so the scroll lands with the box (a
+    // browser smooth scroll can outlast it).
+    el.querySelectorAll<HTMLElement>("[data-slot=scroll-area-viewport]").forEach((viewport) => {
+      if (!viewport.scrollTop) return;
+      animate(viewport.scrollTop, 0, {
+        type: "tween",
+        ease: "easeOut",
+        ...spring.slow.exit,
+        onUpdate: (top) => {
+          viewport.scrollTop = top;
+        },
+      });
+    });
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      settleCollapseRef.current = null;
+      // Stops a stalled spring too, so it can't write over the cleared box.
+      motionCtrl.stop();
+      animating.current = false;
+      // Back in the page first, then the box's inline size goes: cleared
+      // while the box was still fixed, it shrink-wrapped the demo at full
+      // width for a frame.
+      flushSync(() => {
+        onExpandedChangeRef.current?.(false);
+        setCollapsing(false);
+        setExpanded(false);
+        setPlaceholderHeight(null);
+      });
+      releaseTable();
+      el.removeAttribute("style");
+      // Motion commits a finished tween's last values to the inline style
+      // after its promise resolves; clear once more after that lands.
+      requestAnimationFrame(() => {
+        if (!settleCollapseRef.current && !animating.current) el.removeAttribute("style");
+      });
+    };
+    // A dismissal is the tier's exit: a tween with no bounce, so the box
+    // can't overshoot its slot on the page and settle back.
+    const motionCtrl = animate(
+      el,
+      { top: home.top, left: home.left, width: home.width, height: home.height },
+      { type: "tween", ease: "easeOut", ...spring.slow.exit }
+    );
+    motionCtrl.then(settle);
+    // The spring aims at the placeholder's box as it was; a resize moves
+    // that box, so one ends the collapse in place instead.
+    settleCollapseRef.current = settle;
+    // A background tab can stall the spring's frames; the collapse still
+    // lands, a beat after the spring would have.
+    setTimeout(settle, Math.round(spring.slow.exit.duration * 1000) + 150);
+  };
+
+  useEffect(() => {
+    closeRef.current = close;
+  });
+
+  useLayoutEffect(() => {
+    const el = frameRef.current;
+    const from = fromRect.current;
+    if (!expanded || !el || !from) return;
+    fromRect.current = null;
+    animating.current = true;
+    const to = target();
+    if (tableToWidth.current) holdTable(tableToWidth.current);
+    Object.assign(el.style, {
+      top: `${from.top}px`,
+      left: `${from.left}px`,
+      width: `${from.width}px`,
+      height: `${from.height}px`,
+    });
+    const land = () => {
+      animating.current = false;
+      releaseTable();
+    };
+    animate(el, to, spring.slow).then(land);
+    // Same guard as the collapse: don't stay locked if frames stall.
+    setTimeout(land, Math.round(spring.slow.duration * 1000) + 150);
+  }, [expanded]);
+
+  // While expanded: the window's size drives the layer's, the page stops
+  // scrolling under it, and Esc collapses it (after any open menu, which
+  // claims that Esc for itself).
+  useEffect(() => {
+    if (!expanded) return;
+    const onResize = () => {
+      if (settleCollapseRef.current) {
+        settleCollapseRef.current();
+        return;
+      }
+      const el = frameRef.current;
+      if (!el || animating.current) return;
+      const to = target();
+      Object.assign(el.style, {
+        top: `${to.top}px`,
+        left: `${to.left}px`,
+        width: `${to.width}px`,
+        height: `${to.height}px`,
+      });
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector("[role=menu], [role=listbox], [role=dialog]")) return;
+      closeRef.current();
+    };
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    window.addEventListener("resize", onResize);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      root.style.overflow = overflow;
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
+
+  const expandValue = expandable
+    ? {
+        expanded,
+        toggle: expanded ? close : open,
+        // Gone once a collapse starts: the rail's controls are back then, and
+        // the same switches shouldn't exist twice.
+        menu: collapsing ? null : <PlaygroundMenu label={label} large>{controls}</PlaygroundMenu>,
+      }
+    : null;
+
+  const framed = expandable ? (
+    <PreviewExpandContext.Provider value={expandValue}>
+      <div ref={placeholderRef} style={placeholderHeight ? { height: placeholderHeight } : undefined}>
+        <div
+          ref={frameRef}
+          className={cn(
+            // Above the page and its sticky chrome, below every overlay:
+            // an expanded preview is still the page, so a dialog's or the
+            // command menu's dimmed backdrop covers it like the rest. (At
+            // the modal step it sat over those backdrops, undimmed.)
+            expanded &&
+              "fixed z-[calc(var(--z-sticky,30)+3)] bg-background"
+          )}
+        >
+          {preview}
+        </div>
+      </div>
+      {mounted &&
+        createPortal(
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-0 z-[calc(var(--z-sticky,30)+2)] bg-background transition-opacity duration-[160ms]"
+            style={{ opacity: backdrop ? 1 : 0, visibility: expanded ? "visible" : "hidden" }}
+          />,
+          document.body
+        )}
+    </PreviewExpandContext.Provider>
+  ) : (
+    preview
+  );
+
   return (
     <div ref={playgroundRef}>
-      {preview}
-      {mounted && inRail && (
+      {framed}
+      {mounted && inRail && (!expanded || collapsing) && (
         // Kept mounted so it can cross-fade (the same fade the side panels use)
         // as the playground scrolls in and out of view, rather than snapping.
         createPortal(

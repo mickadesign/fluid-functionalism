@@ -73,6 +73,11 @@ import {
   IconAlertCircle,
   IconFile,
   IconMinus,
+  IconArrowsDiagonal,
+  IconArrowsDiagonalMinimize2,
+  IconGripVertical,
+  IconTag,
+  IconFilter,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import type { IconComponent, IconComponentProps, IconName } from "@/lib/icon-context";
@@ -148,4 +153,9 @@ export const tablerIcons: Record<IconName, IconComponent> = {
   "circle-alert": tabler(IconAlertCircle),
   "file": tabler(IconFile),
   "minus": tabler(IconMinus),
+  "maximize": tabler(IconArrowsDiagonal),
+  "minimize": tabler(IconArrowsDiagonalMinimize2),
+  "grip-vertical": tabler(IconGripVertical),
+  tag: tabler(IconTag),
+  filter: tabler(IconFilter),
 };

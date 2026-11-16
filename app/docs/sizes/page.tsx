@@ -147,6 +147,8 @@ function CompactRegionDemo() {
     // Same stripped frame as the token inspector below: the header holds a
     // Default/Compact toggle instead of the Preview/Code + Inspect chrome.
     <div
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
       className={`relative flex flex-col w-full border border-border/60 ${shape.container}`}
     >
       <div
@@ -316,6 +318,8 @@ function TokenInspectorDemo() {
     // clickable while the content is frozen — same ladder as ComponentPreview.
     <div
       ref={frameRef}
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
       className={`relative flex flex-col w-full border border-border/60 ${shape.container}`}
     >
       <div

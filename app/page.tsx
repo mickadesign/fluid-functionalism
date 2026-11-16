@@ -38,7 +38,7 @@ export default function Page() {
             <Button variant="ghost" size={iconSize} disabled aria-label="No previous page">
               <ArrowRight className="rotate-180" />
             </Button>
-            <Tooltip content={<span>Introduction &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
+            <Tooltip content="Introduction" shortcut="→">
               <Link href="/docs" aria-label="Next: Introduction" className="outline-none" tabIndex={-1}>
                 <Button variant="ghost" size={iconSize}>
                   <ArrowRight />

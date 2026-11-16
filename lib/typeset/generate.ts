@@ -121,6 +121,15 @@ const BLOCKS = "p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tab
 
 const ANY_HEADING = "h1, h2, h3, h4, h5, h6";
 
+/** What can come after a heading or a rule, named rather than `*`. A
+ *  sibling selector ending in a bare `*` (`h2 + *`) has nothing for the
+ *  browser to narrow its invalidation by: every child added to or removed
+ *  from <body> (each menu, popover and tooltip, portalled there) restyled
+ *  the whole page. Named, only an element that really follows a heading or
+ *  a rule is looked at again. Divs and the other flow containers are in it
+ *  too, so everything spaced under a heading still is. */
+const FOLLOWERS = `${BLOCKS}, .not-typeset, ${ANY_HEADING}, hr, div, section, aside, dl, details, nav, header, footer, form`;
+
 const v = (name: string) => `var(--typeset-${name})`;
 
 /** The sheet's own variables at one step: each role's size and line height
@@ -194,10 +203,10 @@ export function typesetRules(scale: TypeScaleData): Rule[] {
     // More room above a heading than between paragraphs, less below it.
     [el("* + :is(h1, h2)"), { "margin-top": v("space-section") }],
     [el("* + :is(h3, h4, h5, h6)"), { "margin-top": v("space-subsection") }],
-    [flowEl(`:is(${ANY_HEADING}) + *`), { "margin-top": v("space-heading") }],
+    [flowEl(`:is(${ANY_HEADING}) + :is(${FOLLOWERS})`), { "margin-top": v("space-heading") }],
     // A rule takes the same room on both sides.
     [el("hr"), { border: "0", "border-top": `1px solid ${BORDER}`, "margin-top": v("space-rule") }],
-    [flowEl("hr + *"), { "margin-top": v("space-rule") }],
+    [flowEl(`hr + :is(${FOLLOWERS})`), { "margin-top": v("space-rule") }],
 
     [el(ANY_HEADING), { color: FOREGROUND, "font-variation-settings": SEMIBOLD }],
     [

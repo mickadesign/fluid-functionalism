@@ -17,6 +17,7 @@ import {
   formatDuration,
   formatRangeLabel,
   formatTime,
+  parseDateInput,
   nearestSlotIndex,
   parseTime,
   resolveHourCycle,
@@ -282,6 +283,30 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
     expect(trigger().textContent).toContain("Oct 23");
   });
 
+  it("stays mounted through its exit after a pick", async () => {
+    render(<Single />);
+    await act(async () => {
+      fireEvent.click(trigger());
+    });
+    const day = await screen.findByRole("button", { name: /October 23rd, 2026/ });
+    let mountedAtClose: boolean | null = null;
+    const observer = new MutationObserver(() => {
+      if (mountedAtClose === null && trigger().getAttribute("aria-expanded") === "false") {
+        mountedAtClose = popup() !== null;
+      }
+    });
+    observer.observe(trigger(), { attributes: true, attributeFilter: ["aria-expanded"] });
+    await act(async () => {
+      fireEvent.click(day);
+    });
+    await waitFor(() => expect(trigger().getAttribute("aria-expanded")).toBe("false"), {
+      timeout: 1000,
+    });
+    observer.disconnect();
+    expect(mountedAtClose).toBe(true);
+    await waitFor(() => expect(popup()).toBeNull(), { timeout: 1000 });
+  });
+
   it("commits a typed time on Enter", async () => {
     let value: string | null = "11:00";
     function Timed() {
@@ -344,5 +369,49 @@ describe.each(flavors)("%s flavor", (_name, mod) => {
       fireEvent.keyDown(end, { key: "Escape" });
     });
     expect(hidden()).toBe(false);
+  });
+});
+
+
+describe("parseDateInput", () => {
+  const now = new Date(2026, 10, 11); // Wed Nov 11 2026
+  const day = (d: Date | null | undefined) =>
+    d ? `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` : null;
+  const one = (text: string, locale = "en-US") => day(parseDateInput(text, "single", locale, now) as Date | null);
+
+  it("reads words, numbers, ISO and the label itself", () => {
+    expect(one("today")).toBe("2026-11-11");
+    expect(one("yesterday")).toBe("2026-11-10");
+    expect(one("tomorrow")).toBe("2026-11-12");
+    expect(one("2026-02-03")).toBe("2026-2-3");
+    expect(one("Nov 4")).toBe("2026-11-4");
+    expect(one("4 november 2025")).toBe("2025-11-4");
+    expect(one("Wed Nov 4")).toBe("2026-11-4");
+    expect(one("Nov 4th, 2027")).toBe("2027-11-4");
+    expect(one("11/4")).toBe("2026-11-4");
+    expect(one("11/4/25")).toBe("2025-11-4");
+  });
+
+  it("follows the locale's day and month order", () => {
+    expect(one("4/11", "en-GB")).toBe("2026-11-4");
+  });
+
+  it("rejects what isn't a day", () => {
+    expect(one("")).toBeNull();
+    expect(one("Feb 30")).toBeNull();
+    expect(one("hello")).toBeNull();
+    expect(one("13/40")).toBeNull();
+  });
+
+  it("reads ranges in either order, and one day as a one-day range", () => {
+    const range = (text: string) => {
+      const r = parseDateInput(text, "range", "en-US", now) as { from: Date; to: Date } | null;
+      return r ? `${day(r.from)}..${day(r.to)}` : null;
+    };
+    expect(range("Nov 4 → Nov 11")).toBe("2026-11-4..2026-11-11");
+    expect(range("Nov 11 to Nov 4")).toBe("2026-11-4..2026-11-11");
+    expect(range("2026-11-04 - 2026-11-11")).toBe("2026-11-4..2026-11-11");
+    expect(range("Nov 4")).toBe("2026-11-4..2026-11-4");
+    expect(range("Nov 4 → nonsense")).toBeNull();
   });
 });
