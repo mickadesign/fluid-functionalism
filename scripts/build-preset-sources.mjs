@@ -14,6 +14,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCES = {
   VIEW_TABS_SOURCE: "lib/docs/playgrounds/view-tabs.tsx",
   UNDO_TOAST_SOURCE: "lib/docs/undo-toast.tsx",
+  NEW_ITEM_DIALOG_SOURCE: "lib/docs/playgrounds/new-item-dialog.tsx",
 };
 const out = join(root, "lib/preset/data-table-sources.generated.ts");
 

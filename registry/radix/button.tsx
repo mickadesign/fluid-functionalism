@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { omit } from "@/lib/omit";
 import { useShape } from "@/lib/shape-context";
 import { useSizeVariant } from "@/lib/size-context";
+import { KeyCaps } from "@/lib/key-cap";
 
 const buttonVariants = cva(
   [
@@ -106,6 +107,10 @@ interface ButtonProps
   loading?: boolean;
   leadingIcon?: IconComponent;
   trailingIcon?: IconComponent;
+  /** A keyboard shortcut shown at the right end as key caps ("⌘↵",
+   *  ["Ctrl", "Enter"]), spaced like a trailing icon. Shows only: bind the
+   *  keys yourself. */
+  shortcut?: string | readonly string[];
   /** Force the visual pressed/held state. Useful when the button drives an
    *  external open piece of UI (a popover, dropdown, etc.) so it reads as
    *  engaged while the menu is showing. */
@@ -181,6 +186,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       leadingIcon: LeadingIcon,
       trailingIcon: TrailingIcon,
+      shortcut,
       active = false,
       disabled,
       children,
@@ -222,6 +228,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const isCompact =
       resolvedSize === "compact" || resolvedSize === "icon-compact";
     const iconSize = isCompact ? 14 : 16;
+    const hasShortcut = !isIconOnly && shortcut != null && shortcut.length > 0;
+    // The caps sit on the button's own fill: light on a primary button,
+    // the usual tint on the others.
+    const shortcutCaps = hasShortcut ? (
+      <KeyCaps keys={shortcut} tone={(variant ?? "primary") === "primary" ? "inverted" : "default"} />
+    ) : null;
     const shape = useShape();
     // The trigger of an open popup holds the pressed look: the pointer has
     // left it for the popup, so :hover and :active can't. A dialog is not
@@ -257,6 +269,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 {TrailingIcon && !isIconOnly && (
                   <TrailingIcon size={iconSize} strokeWidth={2} />
                 )}
+                {shortcutCaps}
               </span>
               <span className="absolute inset-0 flex items-center justify-center">
                 {/* Two arcs on one eased lap per second: they stretch while
@@ -309,6 +322,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
               )}
+              {shortcutCaps}
             </>
           )}
         </span>
@@ -323,7 +337,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             variant,
             size: resolvedSize,
             iconLeft: !isIconOnly && !!LeadingIcon,
-            iconRight: !isIconOnly && !!TrailingIcon,
+            // Key caps at the end take a trailing icon's tighter padding.
+            iconRight: !isIconOnly && (!!TrailingIcon || hasShortcut),
           }),
           shape.button,
           className

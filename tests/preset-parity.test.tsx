@@ -47,6 +47,7 @@ function placeholderIdentity(signature: string): string {
 
 const CASES: ParityCase[] = [
   { slug: "data-table", code: encodeDataTablePreset({}), main: "components/data-table-demo.tsx", exportName: "DataTableDemo" },
+  { slug: "data-table", code: encodeDataTablePreset({ newItem: true }), main: "components/data-table-demo.tsx", exportName: "DataTableDemo" },
   { slug: "calendar", code: CALENDAR_DEFAULT_CODE, main: "components/calendar-demo.tsx", exportName: "CalendarDemo" },
   { slug: "card", code: CARD_DEFAULT_CODE, main: "components/card-section.tsx", exportName: "CardSection" },
   { slug: "ask-user-questions", code: AUQ_DEFAULT_CODE, main: "components/question-flow.tsx", exportName: "QuestionFlow" },
