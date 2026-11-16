@@ -636,7 +636,6 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
                   `    {/* Opens a form for one row (every field optional); Add hands it to addRow. */}`,
                   `    <NewItemDialog`,
                   `      title="New component"`,
-                  `      description="It goes at the top of the table."`,
                   `      primitiveOptions={PRIMITIVE_COLOR}`,
                   `      // The fields follow the columns as they're arranged now.`,
                   `      order={[...table.getLeftLeafColumns(), ...table.getCenterLeafColumns(), ...table.getRightLeafColumns()].map((c) => c.id)}`,
@@ -1193,7 +1192,6 @@ export function DataTablePlayground({
         {state.newItem && (
           <NewItemDialog
             title="New component"
-            description="It goes at the top of the table."
             primitiveOptions={PRIMITIVE_COLOR}
             tagOptions={DATA_TABLE_TAG_OPTIONS}
             order={columnIds(table)}

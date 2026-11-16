@@ -610,7 +610,6 @@ function dataTableDemoFile(p: DataTablePreset): string {
       // a dialog with a Name field.
       o.push(`      <NewItemDialog`);
       o.push(`        title="New component"`);
-      o.push(`        description="It goes at the top of the table."`);
       o.push(`        primitiveOptions={PRIMITIVE_COLOR}`);
       o.push(`        // The fields follow the columns as they're arranged now.`);
       o.push(`        order={[...table.getLeftLeafColumns(), ...table.getCenterLeafColumns(), ...table.getRightLeafColumns()].map((c) => c.id)}`);
