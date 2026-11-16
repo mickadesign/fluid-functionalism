@@ -67,41 +67,30 @@ function SidebarSheet({ side, open, onClose, children }: SidebarSheetProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const substrate = useSurface();
   const level = Math.min(substrate + 2, 8);
+  // The primitive tears its portal down the moment it closes, so the dialog
+  // is held open through the exit: `open` drives the slide, and `held` keeps
+  // the root mounted until the spring lands.
+  const [held, setHeld] = useState(open);
+  if (open && !held) setHeld(true);
+  const visible = open;
+  const exiting = !open && held;
 
-  // The primitive tears its portal down the moment it closes — an outside
-  // press would snap the panel away with no exit. So the dialog is held OPEN
-  // through the exit: `closing` slides the panel offscreen first, and only
-  // when the spring lands does the real close propagate.
-  const [closing, setClosing] = useState(false);
-  const visible = open && !closing;
-
-  const finishClose = useCallback(() => {
-    setClosing(false);
-    onClose();
-  }, [onClose]);
-
-  // A parent-driven close (trigger, shortcut, route change) gets the same
-  // exit as a primitive-driven one.
-  const wasOpen = useRef(open);
-  useEffect(() => {
-    if (wasOpen.current && !open) setClosing(true);
-    wasOpen.current = open;
-  }, [open]);
+  const finishClose = useCallback(() => setHeld(false), []);
 
   // Fallback: rAF-driven animation callbacks stall in throttled tabs.
   useEffect(() => {
-    if (!closing) return;
+    if (!exiting) return;
     const id = setTimeout(finishClose, exitFallbackMs(spring.moderate));
     return () => clearTimeout(id);
-  }, [closing, finishClose]);
+  }, [exiting, finishClose]);
 
   const offscreen = side === "left" ? "-100%" : "100%";
 
   return (
     <DialogPrimitive.Root
-      open={open || closing}
+      open={open || held}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) setClosing(true);
+        if (!nextOpen) onClose();
       }}
     >
       <DialogPrimitive.Portal>
@@ -167,7 +156,7 @@ function SidebarSheet({ side, open, onClose, children }: SidebarSheetProps) {
                 animate={{ x: visible ? 0 : offscreen }}
                 transition={reduceMotion ? { duration: 0 } : visible ? spring.moderate : spring.moderate.exit}
                 onAnimationComplete={() => {
-                  if (closing) finishClose();
+                  if (exiting) finishClose();
                 }}
               >
                 <SurfaceProvider value={level}>{children}</SurfaceProvider>

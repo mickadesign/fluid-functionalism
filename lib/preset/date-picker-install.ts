@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
-import type { PresetGenerator } from "./generators";
+import type { PresetGenerator } from "./light-generators";
 import { CALENDAR_BOOKED_OFFSETS } from "./calendar-options";
 import {
   type DatePickerPreset,

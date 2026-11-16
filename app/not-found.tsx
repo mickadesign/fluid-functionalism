@@ -30,6 +30,9 @@ export default function NotFound() {
       aria-labelledby="not-found-title"
       className="flex min-h-svh w-full items-center justify-center px-6 pt-20 pb-32 sm:pb-40"
     >
+      {/* No settings panel beside a 404. A rule that lives and dies with
+          this page, so the layout needs no `:has()` to know it's here. */}
+      <style>{"[data-site-right-panel]{display:none}"}</style>
       <motion.div
         className="flex flex-col items-center text-center"
         initial={false}

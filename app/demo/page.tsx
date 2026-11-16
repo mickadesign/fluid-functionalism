@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { CarouselDots } from "@/registry/default/carousel-dots";
 import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,8 +9,9 @@ import { motion } from "motion/react";
 import { componentList } from "@/lib/docs/components";
 import { useReleaseMarks } from "@/lib/changelog/marks";
 import { previewMap } from "@/app/components/bento-previews";
-import { playgroundMap } from "@/lib/docs/playgrounds";
+import { demoPlaygroundMap as playgroundMap } from "@/lib/docs/playgrounds";
 import { BentoCard } from "@/app/components/bento-card";
+import { cn } from "@/lib/utils";
 import { PlaygroundMenu } from "@/app/components/playground-menu";
 import { PlaygroundOverlay } from "@/lib/docs/playground";
 import { SettingsContent } from "@/app/components/right-panel";
@@ -18,7 +20,7 @@ import { fontWeights } from "@/registry/default/lib/font-weight";
 import { spring } from "@/lib/springs";
 import { useIcon } from "@/lib/icon-context";
 import { useSizeVariant } from "@/lib/size-context";
-import { Tooltip, TooltipPortalContainer } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup, TooltipPortalContainer } from "@/registry/radix/tooltip";
 import { ColorPickerPortalContainer } from "@/registry/default/color-picker";
 
 const SETTINGS_SLUG = "settings";
@@ -70,6 +72,7 @@ function DemoPageInner() {
     "input-group",
     "switch",
     "table",
+    "data-table",
     "card",
     "tabs",
     "thinking-indicator",
@@ -140,6 +143,8 @@ function DemoPageInner() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
 
       const tag = (e.target as HTMLElement).tagName;
@@ -189,9 +194,11 @@ function DemoPageInner() {
   // The scaling stage, shared by every slide type. A plain helper (not a
   // component) so it inlines into the same tree on each render — a nested
   // component would be a new type every render and remount the slide.
-  const stage = (children: ReactNode, maxWidth = 420) => (
+  const stage = (children: ReactNode, maxWidth = 420, align: "center" | "top" = "center") => (
     <motion.div
       ref={setScaleEl}
+      // Keys typed in the slide reach its component, not the site's shortcuts.
+      data-keyboard-scope=""
       className="w-full mx-auto flex justify-center relative"
       // Springs between the two scales on toggle instead of snapping, and
       // chases the resize-driven scale closely enough to feel immediate.
@@ -200,7 +207,8 @@ function DemoPageInner() {
       initial={false}
       animate={{ scale: scaleOn ? scale : 1 }}
       transition={spring.moderate}
-      style={{ transformOrigin: "center", maxWidth }}
+      // Top-aligned, it scales from its top edge so it stays put up there.
+      style={{ transformOrigin: align === "top" ? "top center" : "center", maxWidth }}
     >
       <TooltipPortalContainer value={scaleEl}>
         <ColorPickerPortalContainer value={scaleEl}>
@@ -254,28 +262,31 @@ function DemoPageInner() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip content={prevSlide ? <span>{prevSlide.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span> : "No previous"}>
-              <Button
-                variant="ghost"
-                size={iconSize}
-                onClick={() => goTo(currentIndex - 1)}
-                disabled={!prevSlide}
-                aria-label="Previous slide"
-              >
-                <ArrowRight className="rotate-180" />
-              </Button>
-            </Tooltip>
-            <Tooltip content={nextSlide ? <span>{nextSlide.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span> : "No next"}>
-              <Button
-                variant="ghost"
-                size={iconSize}
-                onClick={() => goTo(currentIndex + 1)}
-                disabled={!nextSlide}
-                aria-label="Next slide"
-              >
-                <ArrowRight />
-              </Button>
-            </Tooltip>
+            {/* Prev and next share one gliding tooltip. */}
+            <TooltipGroup>
+              <Tooltip content={prevSlide ? prevSlide.name : "No previous"} shortcut={prevSlide ? "←" : undefined}>
+                <Button
+                  variant="ghost"
+                  size={iconSize}
+                  onClick={() => goTo(currentIndex - 1)}
+                  disabled={!prevSlide}
+                  aria-label="Previous slide"
+                >
+                  <ArrowRight className="rotate-180" />
+                </Button>
+              </Tooltip>
+              <Tooltip content={nextSlide ? nextSlide.name : "No next"} shortcut={nextSlide ? "→" : undefined}>
+                <Button
+                  variant="ghost"
+                  size={iconSize}
+                  onClick={() => goTo(currentIndex + 1)}
+                  disabled={!nextSlide}
+                  aria-label="Next slide"
+                >
+                  <ArrowRight />
+                </Button>
+              </Tooltip>
+            </TooltipGroup>
           </div>
         </div>
       </div>
@@ -299,7 +310,7 @@ function DemoPageInner() {
             </BentoCard>
           ) : Playground ? (
             <Playground key={current.slug}>
-              {({ demoPreview, demoMaxWidth, controls, overlay }) => (
+              {({ demoPreview, demoMaxWidth, demoAlign, controls, overlay }) => (
                 <BentoCard
                   slug={current.slug}
                   name={current.name}
@@ -307,14 +318,14 @@ function DemoPageInner() {
                   style={{ height: "100%" }}
                   // Anchors the playground overlay to the preview area,
                   // above the footer and outside the stage's scaling.
-                  previewClassName="relative"
+                  previewClassName={cn("relative", demoAlign === "top" && "items-start")}
                   action={cardActions(
                     <PlaygroundMenu label={`Customize ${current.name}`}>
                       {controls}
                     </PlaygroundMenu>
                   )}
                 >
-                  {stage(demoPreview, demoMaxWidth)}
+                  {stage(demoPreview, demoMaxWidth, demoAlign)}
                   <PlaygroundOverlay>{overlay}</PlaygroundOverlay>
                 </BentoCard>
               )}

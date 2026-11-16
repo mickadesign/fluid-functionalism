@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import {
   createContext,
   useCallback,
@@ -174,6 +175,8 @@ export function HeadingFontShortcut() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "f" && e.key !== "F") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target instanceof HTMLElement ? e.target : null;

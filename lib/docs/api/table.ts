@@ -4,10 +4,12 @@ import type { ApiTable, PropDef } from "@/lib/docs/api/types";
 
 export const tableProps: PropDef[] = [
   { name: "children", type: "ReactNode", description: "TableHeader and TableBody children." },
+  { name: "selectedIndices", type: "number[]", description: "Selected body rows, by index. Contiguous ones share one merged background, drawn like CheckboxGroup's under the hover highlight, and the rules through and above them step aside." },
 ];
 
 export const rowProps: PropDef[] = [
   { name: "index", type: "number", description: "Row index for fluid hover. Omit for header rows." },
+  { name: "keepRule", type: "boolean", default: "false", description: "On a header row: keeps its rule when the first body row is selected. For a sticky header." },
   { name: "children", type: "ReactNode", description: "TableCell or TableHead children." },
 ];
 

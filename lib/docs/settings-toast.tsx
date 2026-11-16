@@ -1,10 +1,12 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Toaster, toast } from "sonner";
 
 import { cn } from "@/lib/utils";
+import { KeyCap } from "@/lib/key-cap";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape, useShapeContext } from "@/lib/shape-context";
@@ -73,6 +75,10 @@ export function showSuccessToast(message: string) {
     style: { width: "100%" },
   });
 }
+
+// An action that can be taken back (a delete) has its own toast, shared
+// with the DataTable preset's install: see lib/docs/undo-toast.tsx.
+export { showUndoToast } from "@/lib/docs/undo-toast";
 
 function SuccessToast({ message }: { message: string }) {
   const shapeClasses = useShape();
@@ -147,15 +153,9 @@ function ShortcutToast({
       )}
       style={{ fontVariationSettings: fontWeights.normal }}
     >
-      <kbd
-        aria-hidden
-        className={cn(
-          "inline-flex h-[18px] min-w-[18px] items-center justify-center bg-background/15 px-1 font-mono text-[11px] leading-none text-background",
-          shapeClasses.bg
-        )}
-      >
+      <KeyCap aria-hidden tone="inverted">
         {keyLabel}
-      </kbd>
+      </KeyCap>
       <span className="[text-box:trim-both_cap_alphabetic]">{message}</span>
     </motion.div>
   );
@@ -182,6 +182,8 @@ export function SettingsToast() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       const setting =
         shortcutSettings[e.key.toLowerCase() as keyof typeof shortcutSettings];
       if (!setting) return;

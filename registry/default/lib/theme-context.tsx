@@ -102,6 +102,9 @@ function ThemeProvider({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      // Focus inside a keyboard scope (an embedded preview marked
+      // data-keyboard-scope): the keys belong to what's in it.
+      if ((e.target as Element | null)?.closest?.("[data-keyboard-scope]")) return;
       e.preventDefault();
       // Just advance the state — the [theme] effect above applies the DOM.
       setThemeState((prev) => themeOrder[(themeOrder.indexOf(prev) + 1) % themeOrder.length]);

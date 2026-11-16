@@ -77,6 +77,7 @@ export const CUSTOM_ITEMS = new Set([
   "elevated",
   "popup",
   "omit",
+  "key-cap",
   "use-keyboard-nav-gate",
   // themes (cssVars/css-only items: the elevation surface ladder and the
   // shared interaction/focus tokens)
@@ -100,8 +101,12 @@ export const CUSTOM_ITEMS = new Set([
   "calendar",
   "carousel-dots",
   "chat-message",
+  "code-block",
   "color-picker",
   "command-menu",
+  "confirmation",
+  "context-menu",
+  "data-table",
   "dropdown",
   "field",
   "file-thumbnail",
@@ -109,6 +114,7 @@ export const CUSTOM_ITEMS = new Set([
   "input-copy",
   "input-group",
   "input-message",
+  "message-scroller",
   "select",
   "table",
   "tabs",

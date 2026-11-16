@@ -17,7 +17,7 @@ import {
   type InputHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { motion, AnimatePresence, animate, useMotionValue, type MotionValue } from "framer-motion";
+import { motion, AnimatePresence, animate, useMotionValue, type MotionValue } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
@@ -40,6 +40,7 @@ import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -473,6 +474,8 @@ function Combobox<
             <input type="hidden" name={name} value={values[0] ?? ""} required={required} />
           ))}
       </PopoverPrimitive.Root>
+      {/* The field stays live under the open list: typing, chips, clear. */}
+      <PopupShield open={open} anchor={anchorRef} />
     </ComboboxHighlightContext.Provider>
     </ComboboxContext.Provider>
   );
@@ -779,7 +782,10 @@ function useChipRowHeight(padY: number) {
         if (height.get() === "auto") height.set(target);
         else if (height.get() !== target) animate(height, target, spring.fast);
       };
-      measure();
+      // The observer reports the row once on observing, before the next
+      // paint: the first measure rides that. Read here instead, in the
+      // ref, each field forced a layout of its own as it mounted (a table
+      // of tag cells, one per row).
       const ro = new ResizeObserver(measure);
       ro.observe(el);
       roRef.current = ro;
@@ -1040,10 +1046,15 @@ interface ComboboxContentProps {
   side?: ContentPrimitiveProps["side"];
   align?: ContentPrimitiveProps["align"];
   sideOffset?: number;
+  /** Keeps the popup inside this element's box rather than the window's
+   *  (a table's, a panel's): it shifts or flips to stay within. */
+  collisionBoundary?: Element | null;
+  /** Space kept from the boundary's edges, in px. @default 0 */
+  collisionPadding?: number;
 }
 
 const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
-  ({ className, children, side = "bottom", align = "start", sideOffset = 6 }, ref) => {
+  ({ className, children, side = "bottom", align = "start", sideOffset = 6, collisionBoundary, collisionPadding }, ref) => {
     const { open, anchorRef } = useComboboxContext();
     const shape = usePopupShape();
 
@@ -1085,6 +1096,8 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
           side={side}
           align={align}
           sideOffset={sideOffset}
+          collisionBoundary={collisionBoundary}
+          collisionPadding={collisionPadding}
           // The listbox inside is the semantic surface; the wrapper is chrome.
           role="presentation"
           // Focus never leaves the input — the listbox is driven through
@@ -1181,7 +1194,7 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
     // glide must survive) and holds until the rects measured from that row
     // set land — measurement coalesces on a rAF, one render behind.
     const rowsSig = useMemo(
-      () => filteredItems.map(itemValue).join(" "),
+      () => filteredItems.map(itemValue).join("\u0000"),
       [filteredItems]
     );
     // `armedRects` holds the rects of the old row set while armed; the flag

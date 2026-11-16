@@ -39,6 +39,7 @@ import { usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -212,7 +213,6 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           {/* Hover background */}
           <FluidHoverHighlight
             hover={hover}
-            from={checkedRect}
             className={shape.bg}
           />
 
@@ -344,11 +344,20 @@ function DropdownMenu({
   // Whether the last open came from hovering an openOnHover trigger: such a
   // menu leaves focus where it was instead of moving it to its first row.
   const openedByHoverRef = useRef(false);
+  // The same fact for rendering: a hover-opened menu gets no shield, since
+  // the pointer leaving it is what closes it.
+  const [openedByHover, setOpenedByHover] = useState(false);
+  // Closed by any route, a parent's own `open` included: the next open
+  // starts as a clicked one until Base UI reports a hover.
+  if (!open && openedByHover) setOpenedByHover(false);
   const handleOpenChange = (
     next: boolean,
     details: { preventUnmountOnClose: () => void; reason?: string }
   ) => {
-    if (next) openedByHoverRef.current = details.reason === "trigger-hover";
+    if (next) {
+      openedByHoverRef.current = details.reason === "trigger-hover";
+      setOpenedByHover(openedByHoverRef.current);
+    }
     exitOnOpenChange(next, details);
   };
 
@@ -372,6 +381,7 @@ function DropdownMenu({
       >
         {children}
       </Menu.Root>
+      <PopupShield open={open && !openedByHover} />
     </DropdownMenuContext.Provider>
   );
 
@@ -422,6 +432,11 @@ interface DropdownContentProps {
   sideOffset?: number;
   /** Shift along the trigger edge, in px. */
   alignOffset?: number;
+  /** Keeps the popup inside this element's box rather than the window's
+   *  (a table's, a panel's): it shifts or flips to stay within. */
+  collisionBoundary?: Element | null;
+  /** Space kept from the boundary's edges, in px. @default 0 */
+  collisionPadding?: number;
 }
 
 const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
@@ -435,6 +450,8 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
       align = "start",
       sideOffset = 6,
       alignOffset = 0,
+      collisionBoundary,
+      collisionPadding,
     },
     ref
   ) => {
@@ -517,28 +534,16 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     const multiple = checkedIndices != null;
     const checkedRect =
       !multiple && checkedIndex != null ? itemRects[checkedIndex] : null;
-    // What lights the highlight: the open itself (its first-row focus), the
-    // pointer, or the keyboard. A highlight that appears from nothing fades
-    // in at `from` and glides to its row. That suits the pointer entering the
-    // list (it rises from the checked row toward the cursor), not a row lit
-    // by the open or by arrowing in from the search field: those would slide
-    // over from the checked row, so they fade in where they are.
-    // The handlers read the ref: a key press updates it before the focus it
-    // moves arrives, in the same event. The render reads the state, which
-    // the highlight's `from` depends on. Each open starts over as "open".
+    // What lit the highlight: the open itself (its first-row focus), the
+    // pointer, or the keyboard. The handlers read it as a ref: a key press
+    // updates it before the focus it moves arrives, in the same event.
+    // Each open starts over as "open".
     const litByRef = useRef<LitBy>("open");
-    const [litBy, setLitBy] = useState<LitBy>("open");
-    const [litByOpen, setLitByOpen] = useState(open);
-    if (litByOpen !== open) {
-      setLitByOpen(open);
-      if (open) setLitBy("open");
-    }
     useEffect(() => {
       if (open) litByRef.current = "open";
     }, [open]);
     const markLitBy = (by: LitBy) => {
       litByRef.current = by;
-      setLitBy(by);
     };
     // Multiple: one merged block per contiguous run of checked rows.
     const runs = useSelectionRuns(checkedIndices ?? []);
@@ -629,6 +634,8 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
           align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
+          collisionBoundary={collisionBoundary ?? undefined}
+          collisionPadding={collisionPadding}
           className="z-[var(--z-popover,60)] outline-none"
         >
           <motion.div
@@ -768,7 +775,6 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                 {/* Hover background */}
                 <FluidHoverHighlight
                   hover={hover}
-                  from={litBy === "pointer" ? checkedRect : null}
                   className={shape.bg}
                 />
 
