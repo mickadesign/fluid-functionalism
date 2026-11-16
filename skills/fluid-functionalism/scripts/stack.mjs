@@ -47,6 +47,7 @@ export const FF_MODULES = [
 export const FF_PARTS = [
   "popup",
   "omit",
+  "key-cap",
   "menu-item",
   "dropdown-search",
   "dropdown-sub",

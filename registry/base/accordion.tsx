@@ -274,8 +274,6 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
             })
           );
 
-    const isHoveringNonOpen =
-      activeIndex !== null && !openItemRects.has(activeIndex);
     const shape = useShape();
 
     const htmlProps = omit(rest as Record<string, unknown>, [
@@ -436,7 +434,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
                         left: rect.left,
                         width: rect.width,
                         height: rect.height,
-                        opacity: isHoveringNonOpen ? 0.7 : 1,
+                        opacity: 1,
                       }}
                       exit={{ opacity: 0, transition: spring.moderate.exit }}
                       transition={{

@@ -7,15 +7,18 @@ import { spring } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
 import { useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { useTouchPrimary } from "@/hooks/use-touch-primary";
-import { FileThumbnail } from "@/registry/default/file-thumbnail";
+import { FileThumbnail, type RemoteFile } from "@/registry/default/file-thumbnail";
 
 interface ChatMessageProps
   extends Omit<HTMLMotionProps<"div">, "children"> {
   /** Who sent the message. Drives alignment and bubble colour:
    *  `user` → right-aligned accent bubble, `assistant` → left-aligned plain text. */
   from: "user" | "assistant";
-  /** Optional attachments rendered as square thumbnails above the bubble. */
-  files?: File[];
+  /** Optional attachments rendered as square thumbnails above the bubble:
+   *  Files from the composer, or `{ url, mediaType, filename? }` for files
+   *  that live at a URL (a saved conversation, an image the assistant made).
+   *  The second shape is the AI SDK's file part, so those pass straight in. */
+  files?: (File | RemoteFile)[];
   /** Side length of each attachment thumbnail in pixels. Defaults to 64. */
   thumbnailSize?: number;
   /** Timestamp shown in the hover-revealed meta row, before the actions.
@@ -82,7 +85,11 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
           >
             {files.map((file, i) => (
               <FileThumbnail
-                key={`${file.name}-${file.size}-${file.lastModified}-${i}`}
+                key={
+                  "url" in file
+                    ? `${file.url}-${i}`
+                    : `${file.name}-${file.size}-${file.lastModified}-${i}`
+                }
                 file={file}
                 size={thumbnailSize}
               />
@@ -146,5 +153,5 @@ const ChatMessage = forwardRef<HTMLDivElement, ChatMessageProps>(
 ChatMessage.displayName = "ChatMessage";
 
 export { ChatMessage };
-export type { ChatMessageProps };
+export type { ChatMessageProps, RemoteFile as ChatMessageFile };
 export default ChatMessage;

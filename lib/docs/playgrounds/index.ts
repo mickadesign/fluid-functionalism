@@ -7,6 +7,7 @@ import { CalendarPlayground } from "./calendar";
 import { CardPlayground } from "./card";
 import { ComboboxPlayground } from "./combobox";
 import { CommandMenuPlayground } from "./command-menu";
+import { DataTableDemoPlayground, DataTablePlayground } from "./data-table";
 import { DatePickerPlayground } from "./date-picker";
 import { DropdownPlayground } from "./dropdown";
 import { InputMessagePlayground } from "./input-message";
@@ -36,8 +37,17 @@ export const playgroundMap: Record<string, PlaygroundComponent> = {
   card: CardPlayground,
   combobox: ComboboxPlayground,
   "command-menu": CommandMenuPlayground,
+  "data-table": DataTablePlayground,
   "date-picker": DatePickerPlayground,
   dropdown: DropdownPlayground,
   "input-message": InputMessagePlayground,
   sidebar: SidebarPlayground,
+};
+
+/** What the /demo deck renders: the same playgrounds, with a card-sized
+ *  variant where the docs one runs past the card. playgroundMap stays the
+ *  docs playgrounds, which the preset parity tests compare installs with. */
+export const demoPlaygroundMap: Record<string, PlaygroundComponent> = {
+  ...playgroundMap,
+  "data-table": DataTableDemoPlayground,
 };

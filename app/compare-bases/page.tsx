@@ -164,7 +164,11 @@ function PrimitiveToggle() {
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border">
+    <div
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
+      className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border"
+    >
       <div className="text-site-subtitle text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
         {label}
       </div>
@@ -176,7 +180,11 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 // Row for single-source components: one demo spanning both primitive columns.
 function SingleRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border">
+    <div
+      // Keys typed in here reach the component, not the site's shortcuts.
+      data-keyboard-scope=""
+      className="grid grid-cols-[180px_1fr_1fr] gap-6 items-start py-8 border-t border-border"
+    >
       <div className="text-site-subtitle text-foreground" style={{ fontVariationSettings: fontWeights.semibold }}>
         {label}
       </div>

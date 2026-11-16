@@ -178,6 +178,8 @@ export default [
       "next-env.d.ts",
       "node_modules/**",
       "public/r/**",
+      // Generated installs the parity test writes out to import.
+      "tests/.parity/**",
     ],
   },
   {

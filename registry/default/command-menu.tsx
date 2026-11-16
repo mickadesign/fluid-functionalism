@@ -23,6 +23,7 @@ import {
 } from "react";
 import { animate, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { KeyCaps } from "@/lib/key-cap";
 import { spring } from "@/lib/springs";
 import { useIcons, type IconComponent } from "@/lib/icon-context";
 import { usePopupShape } from "@/lib/shape-context";
@@ -87,6 +88,9 @@ export interface CommandMenuItemData {
    *  item appears in; ungrouped items form an unlabelled section. */
   group?: string;
   disabled?: boolean;
+  /** An action that destroys something (Delete): the row reads in the
+   *  destructive color. */
+  destructive?: boolean;
   /** Runs when the row is picked, before the root's `onSelect`. */
   onSelect?: () => void;
 }
@@ -1209,30 +1213,17 @@ export interface CommandMenuShortcutProps extends HTMLAttributes<HTMLElement> {
 const CommandMenuShortcut = forwardRef<HTMLElement, CommandMenuShortcutProps>(
   ({ keys, className, ...props }, ref) => {
     const mac = useIsMac();
-    const compact = useSize().variant === "compact";
     const caps = (typeof keys === "string" ? [keys] : keys).flatMap((k) =>
       formatShortcut(k, mac)
     );
     return (
-      <kbd
+      <KeyCaps
         ref={ref}
+        keys={caps}
         data-slot="command-menu-shortcut"
-        className={cn("ml-auto inline-flex shrink-0 items-center gap-0.5 align-middle font-sans", className)}
+        className={cn("ml-auto align-middle", className)}
         {...props}
-      >
-        {caps.map((cap, i) => (
-          <span
-            key={`${cap}-${i}`}
-            className={cn(
-              "flex items-center justify-center rounded-[5px] bg-hover text-muted-foreground",
-              compact ? "h-4 min-w-4 px-1" : "h-5 min-w-5 px-1",
-              typeClass("micro", compact ? "compact" : "default")
-            )}
-          >
-            {cap}
-          </span>
-        ))}
-      </kbd>
+      />
     );
   }
 );
@@ -1329,7 +1320,13 @@ const CommandMenuItem = memo(forwardRef<HTMLDivElement, CommandMenuItemProps>(
           sizeClasses.text,
           listShape.item,
           "transition-[color] duration-80",
-          isActive ? "text-foreground" : "text-muted-foreground",
+          item.destructive
+            ? isActive
+              ? "text-destructive"
+              : "text-destructive/80"
+            : isActive
+              ? "text-foreground"
+              : "text-muted-foreground",
           item.disabled && "opacity-50 pointer-events-none",
           className
         )}
@@ -1516,6 +1513,9 @@ function CommandMenuDialog({
   // which dialog answers a shared combo with each click.
   const openRef = useRef(open);
   const scopeRef = useRef(shortcutScope);
+  // Where the dialog sits in the page (its content is portalled), so an
+  // app-wide palette can tell a keyboard scope it's outside of.
+  const anchorRef = useRef<HTMLSpanElement>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   const controlledRef = useRef(openProp !== undefined);
   useIsoLayoutEffect(() => {
@@ -1540,7 +1540,12 @@ function CommandMenuDialog({
       isOpen: () => openRef.current,
       inScope: () => {
         const scope = scopeRef.current?.current;
-        return !scope || scope.contains(document.activeElement);
+        if (scope) return scope.contains(document.activeElement);
+        // Without a scope it answers everywhere, except inside a keyboard
+        // scope (an embedded preview marked data-keyboard-scope) it sits
+        // outside of: there the keys belong to what's in the scope.
+        const keyScope = document.activeElement?.closest("[data-keyboard-scope]");
+        return !keyScope || !!(anchorRef.current && keyScope.contains(anchorRef.current));
       },
     };
     mountedDialogs.push(entry);
@@ -1567,6 +1572,8 @@ function CommandMenuDialog({
   const dialogCtx = useMemo(() => ({ close: () => setOpen(false) }), [setOpen]);
 
   return (
+    <>
+      <span ref={anchorRef} hidden />
     <Dialog open={open} onOpenChange={setOpen} modal={modal}>
       <DialogContent
         size="lg"
@@ -1589,6 +1596,7 @@ function CommandMenuDialog({
         </CommandMenuDialogContext.Provider>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 

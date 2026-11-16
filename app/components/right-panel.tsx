@@ -1,5 +1,6 @@
 "use client";
 
+import { inKeyboardScope } from "@/lib/keyboard-scope";
 import {
   createContext,
   useContext,
@@ -38,6 +39,7 @@ import {
 } from "@/lib/docs/icon-playground";
 import { RailHairline, RightRailTarget } from "@/lib/right-rail";
 import { cn } from "@/lib/utils";
+import { KeyCap } from "@/lib/key-cap";
 import { useFluidHover } from "@/hooks/use-fluid-hover";
 import { FluidHoverHighlight } from "@/components/ui/fluid-hover-highlight";
 import { showShortcutToast } from "@/lib/docs/settings-toast";
@@ -361,14 +363,14 @@ function SettingRow({
         {shortcut &&
           trigger &&
           createPortal(
-            <kbd
+            <KeyCap
               ref={keyRef}
               aria-hidden
               data-shortcut=""
-              className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center bg-[light-dark(rgb(23_23_23/0.08),rgb(245_245_245/0.08))] px-1 font-mono text-site-micro leading-none text-muted-foreground rounded-[2px] pointer-coarse:hidden"
+              className="pointer-coarse:hidden"
             >
               {shortcut}
-            </kbd>,
+            </KeyCap>,
             trigger
           )}
       </span>
@@ -835,6 +837,8 @@ export function RightPanel() {
   openRef.current = open;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Keys typed in a preview belong to the component in it.
+      if (inKeyboardScope(e.target)) return;
       if (e.key !== "]") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Below xl the panel doesn't render — a shortcut that visibly does
@@ -890,16 +894,8 @@ export function RightPanel() {
           >
             <Tooltip
               side="left"
-              content={
-                <span className="flex items-center gap-2">
-                  <span className="[text-box:trim-both_cap_alphabetic]">
-                    Expand properties panel
-                  </span>
-                  <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[10px] text-background">
-                    ]
-                  </kbd>
-                </span>
-              }
+              content="Expand properties panel"
+              shortcut="]"
             >
               <Button
                 variant="ghost"

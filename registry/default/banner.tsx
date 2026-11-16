@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Children,
   forwardRef,
+  isValidElement,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -435,6 +437,12 @@ const Banner = forwardRef<HTMLDivElement, BannerProps>(
     // set as an outline at its usual 1.5 stroke; the colored statuses get
     // their filled glyph.
     const OutlineIcon = Icon ?? (status === "default" ? InfoIcon : undefined);
+    // Read from the children rather than a `:has()` rule: a group-has
+    // selector made Chrome restyle the whole page on every DOM insertion
+    // anywhere (each menu opening, about 25ms on a long page).
+    const described = Children.toArray(children).some(
+      (child) => isValidElement(child) && child.type === BannerDescription
+    );
 
     const body = (
       <div
@@ -446,11 +454,12 @@ const Banner = forwardRef<HTMLDivElement, BannerProps>(
         data-status={status}
         data-contrast={contrast}
         data-variant={variant}
+        data-described={described ? "" : undefined}
         className={cn(
           "group/banner @container/banner relative grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center text-foreground",
           // With a description the icon and ✕ hold to the title line instead
           // of centring on the whole block.
-          "has-data-[slot=banner-description]:items-start",
+          "data-described:items-start",
           // Even inset on all 4 sides: 16px, 12px compact.
           compact ? "p-3" : "p-4",
           // A fixed bar runs edge to edge: square corners, no frame.
@@ -594,10 +603,10 @@ const BannerActions = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>
           "col-start-3 row-start-1 flex flex-wrap items-center gap-2",
           compact ? "-my-[5px] ml-2.5" : "-my-1 ml-3",
           // With a description
-          "group-has-data-[slot=banner-description]/banner:col-start-2 group-has-data-[slot=banner-description]/banner:row-start-3 group-has-data-[slot=banner-description]/banner:my-0 group-has-data-[slot=banner-description]/banner:ml-0",
+          "group-data-described/banner:col-start-2 group-data-described/banner:row-start-3 group-data-described/banner:my-0 group-data-described/banner:ml-0",
           compact
-            ? "group-has-data-[slot=banner-description]/banner:mt-1.5"
-            : "group-has-data-[slot=banner-description]/banner:mt-2",
+            ? "group-data-described/banner:mt-1.5"
+            : "group-data-described/banner:mt-2",
           // Narrow banner
           "@max-sm/banner:col-start-2 @max-sm/banner:row-start-3 @max-sm/banner:my-0 @max-sm/banner:ml-0",
           compact ? "@max-sm/banner:mt-1.5" : "@max-sm/banner:mt-2",
@@ -627,10 +636,10 @@ type BannerActionVariant = "primary" | "secondary" | "ghost";
 // first.
 const BANNER_ACTION_ORDER: Record<BannerActionVariant, string> = {
   primary:
-    "order-3 group-has-data-[slot=banner-description]/banner:order-1 @max-sm/banner:order-1",
+    "order-3 group-data-described/banner:order-1 @max-sm/banner:order-1",
   secondary: "order-2",
   ghost:
-    "order-1 group-has-data-[slot=banner-description]/banner:order-3 @max-sm/banner:order-3",
+    "order-1 group-data-described/banner:order-3 @max-sm/banner:order-3",
 };
 
 interface BannerActionProps

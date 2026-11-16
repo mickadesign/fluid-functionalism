@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
-import type { PresetGenerator } from "./generators";
+import type { PresetGenerator } from "./light-generators";
 import {
   type InputMessagePreset,
   IM_SUGGESTIONS,
@@ -21,6 +21,10 @@ import {
 
 export type { PresetFile };
 
+// The one hand copy left of ChatMessage's user bubble (registry/default/
+// chat-message.tsx): the bubble mid-morph out of the queue, which needs a
+// layoutId on its own element. The parity test reads the first render only,
+// so it won't see this drift: when ChatMessage's bubble changes, change this.
 const USER_BUBBLE_CLASS =
   "whitespace-pre-wrap break-words px-3.5 py-2 text-[14px] text-pretty bg-[color-mix(in_oklab,var(--accent),var(--background)_45%)] text-foreground";
 
@@ -33,14 +37,13 @@ function composerFile(p: InputMessagePreset): string {
   l.push(`"use client";`);
   l.push(``);
   l.push(`import { useEffect, useRef, useState } from "react";`);
-  if (queueOn) l.push(`import { motion } from "motion/react";`);
+  l.push(`import { AnimatePresence${queueOn ? ", motion" : ""} } from "motion/react";`);
   l.push(
     `import { InputMessage${queueOn ? ", type QueuedMessage" : ""} } from "@/components/ui/input-message";`
   );
   if (slots) l.push(`import { Button } from "@/components/ui/button";`);
   if (p.leftSlot) l.push(`import { Tooltip } from "@/components/ui/tooltip";`);
-  if (filesOn)
-    l.push(`import { FileThumbnail } from "@/components/ui/file-thumbnail";`);
+  l.push(`import { ChatMessage } from "@/components/ui/chat-message";`);
   if (queueOn) {
     l.push(`import {`);
     l.push(`  QueuedStack,`);
@@ -49,7 +52,7 @@ function composerFile(p: InputMessagePreset): string {
     l.push(`} from "@/components/queued-stack";`);
   }
   if (slots) l.push(`import { useIcons } from "@/lib/icon-context";`);
-  l.push(`import { useShape } from "@/lib/shape-context";`);
+  if (queueOn) l.push(`import { useShape } from "@/lib/shape-context";`);
   if (queueOn) l.push(`import { spring } from "@/lib/springs";`);
   l.push(``);
 
@@ -71,7 +74,7 @@ function composerFile(p: InputMessagePreset): string {
   l.push(``);
 
   l.push(`export function ChatComposer() {`);
-  l.push(`  const shape = useShape();`);
+  if (queueOn) l.push(`  const shape = useShape();`);
   if (slots) l.push(`  const icons = useIcons();`);
   if (p.leftSlot) l.push(`  const PlusIcon = icons.plus;`);
   if (p.rightSlot) l.push(`  const ChevronDownIcon = icons["chevron-down"];`);
@@ -215,34 +218,16 @@ function composerFile(p: InputMessagePreset): string {
       : `          style={{ paddingBottom: inputH + 8 }}`
   );
   l.push(`        >`);
-  const filesBlock = (ind: string) => [
-    `${ind}{m.files.length > 0 && (`,
-    `${ind}  <div className="flex flex-wrap justify-end gap-1.5">`,
-    `${ind}    {m.files.map((file, fi) => (`,
-    "" + ind + "      <FileThumbnail key={`${file.name}-${fi}`} file={file} size={64} />",
-    `${ind}    ))}`,
-    `${ind}  </div>`,
-    `${ind})}`,
+  // A sent message is the library's ChatMessage, as in the playground: its
+  // bubble, its files and its entrance are the component's own.
+  const userBubble = (ind: string, key: string) => [
+    `${ind}<ChatMessage ${key} from="user"${filesOn ? " files={m.files}" : ""}>`,
+    `${ind}  {m.text}`,
+    `${ind}</ChatMessage>`,
   ];
-  const userBubble = (ind: string, key: string) => {
-    const out: string[] = [];
-    out.push(
-      `${ind}<div ${key} className="flex max-w-[80%] flex-col items-end gap-1.5 self-end">`
-    );
-    if (filesOn) out.push(...filesBlock(`${ind}  `));
-    if (filesOn) out.push(`${ind}  {m.text !== "" && (`);
-    const bInd = filesOn ? `${ind}    ` : `${ind}  `;
-    out.push(`${bInd}<div`);
-    out.push(
-      "" + bInd + "  className={`" + USER_BUBBLE_CLASS + " ${shape.bg}`}"
-    );
-    out.push(`${bInd}>`);
-    out.push(`${bInd}  {m.text}`);
-    out.push(`${bInd}</div>`);
-    if (filesOn) out.push(`${ind}  )}`);
-    out.push(`${ind}</div>`);
-    return out;
-  };
+  l.push(`          {/* The seeded message is already sent: initial={false} skips its`);
+  l.push(`              entrance, and messages sent from the composer animate in. */}`);
+  l.push(`          <AnimatePresence initial={false}>`);
   if (!queueOn) {
     l.push(`          {messages.map((m, i) => (`);
     l.push(...userBubble(`            `, `key={i}`));
@@ -279,6 +264,7 @@ function composerFile(p: InputMessagePreset): string {
     l.push(`            )`);
     l.push(`          )}`);
   }
+  l.push(`          </AnimatePresence>`);
   l.push(`        </div>`);
   l.push(`      </div>`);
   if (queueOn) {
@@ -451,9 +437,7 @@ export function inputMessagePresetRegistryDeps(
   p: InputMessagePreset
 ): string[] {
   const queueOn = p.status !== "off";
-  const filesOn = p.leftSlot || p.attachments;
-  const deps = new Set<string>(["utils", "input-message", "shape-context"]);
-  if (filesOn) deps.add("file-thumbnail");
+  const deps = new Set<string>(["utils", "input-message", "chat-message", "shape-context"]);
   if (p.leftSlot || p.rightSlot) {
     deps.add("icon-context");
     deps.add("button");
@@ -468,10 +452,8 @@ export function inputMessagePresetRegistryDeps(
 }
 
 /** npm dependencies beyond what registryDependencies pull transitively. */
-export function inputMessagePresetNpmDeps(p: InputMessagePreset): string[] {
-  const deps = new Set<string>(["lucide-react"]);
-  if (p.status !== "off") deps.add("motion");
-  return [...deps];
+export function inputMessagePresetNpmDeps(_p: InputMessagePreset): string[] {
+  return ["lucide-react", "motion"];
 }
 
 export const INPUT_MESSAGE_PRESET_GENERATOR: PresetGenerator = {
