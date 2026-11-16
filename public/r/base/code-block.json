@@ -4,8 +4,8 @@
   "title": "Code Block",
   "description": "Code or command output built from the library's own parts: a ghost icon Button with a Tooltip whose copy icon crossfades to a check that draws itself, and the ScrollArea scrollbar with scroll-fade edges. Line numbers, wrapping and a height cap. Ships no highlighter: pass highlighted markup as children and the plain string stays what gets copied.",
   "dependencies": [
-    "motion",
-    "lucide-react"
+    "motion@^14.14.0",
+    "lucide-react@^0.564.0"
   ],
   "registryDependencies": [
     "utils",

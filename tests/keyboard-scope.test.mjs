@@ -12,8 +12,9 @@ import { join, relative } from "node:path";
 import ts from "typescript";
 import { inKeyboardScope, KEYBOARD_SCOPE_SELECTOR } from "../lib/keyboard-scope.ts";
 
-// Under jsdom, Vite serves this file from a `/@fs` URL; strip that prefix.
-const repoRoot = new URL("..", import.meta.url).pathname.replace(/^\/@fs/, "");
+// Under jsdom, Vite rewrites `new URL(path, import.meta.url)` into a page
+// URL (Vite 8.3 turns ".." into the server root), so use the file's folder.
+const repoRoot = join(import.meta.dirname, "..");
 const SITE_DIRS = ["app", "lib", "components", "hooks"];
 const KEY_EVENTS = new Set(["keydown", "keyup", "keypress"]);
 const PAGE_TARGETS = new Set([
