@@ -751,7 +751,7 @@
       "title": "Icon Context",
       "description": "Named icon slots with a Lucide default set; swap any icon via IconProvider.",
       "dependencies": [
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "files": [
         {
@@ -770,7 +770,7 @@
       "title": "Tabler Icon Set",
       "description": "Tabler glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Tabler.",
       "dependencies": [
-        "@tabler/icons-react@^3.51.0"
+        "@tabler/icons-react@^3.52.0"
       ],
       "registryDependencies": [
         "icon-context"
@@ -816,7 +816,7 @@
       "dependencies": [
         "@hugeicons/react@^1.1.10",
         "@hugeicons/core-free-icons@^4.4.0",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "icon-context"
@@ -839,7 +839,7 @@
       "description": "Untitled UI glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Untitled UI.",
       "dependencies": [
         "@untitledui/icons@^0.0.23",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "icon-context"
@@ -861,7 +861,7 @@
       "title": "Fluid Provider",
       "description": "One wrapper for the whole system: reduced motion that follows the OS, the radius (rounded, pill or sharp), the size step (default or compact), and the icon set.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "shape-context",
@@ -885,7 +885,7 @@
       "title": "useFluidHover + FluidHoverHighlight",
       "description": "Fluid hover: the hook that tracks the item nearest the cursor within a container, and the one highlight component that springs between the rects it measures.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -993,9 +993,9 @@
       "title": "Accordion",
       "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and fluid hover in grouped mode. Built on Radix UI Accordion.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-accordion@^1.3.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1026,9 +1026,9 @@
       "title": "Accordion (Base UI)",
       "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and fluid hover in grouped mode. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1059,7 +1059,7 @@
       "title": "Ask User Questions",
       "description": "Stepped question flow with numbered options, keyboard shortcuts (1–9), single or multi-select, inline 'other' text input, optional skip, fluid hover, and multi-question navigation. Auto-advances on selection in single-select.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1119,7 +1119,7 @@
       "title": "Banner",
       "description": "Status message built from parts (Banner, BannerTitle, BannerDescription, BannerActions, BannerAction): 5 statuses (filled glyphs for info, success, warning and error; the icon set's outline info icon for default), low or high contrast, primary, secondary and ghost actions (the library Button) that trail a one-line banner (primary at the edge) and drop under a description (primary first), a dismiss that collapses its height, and a fixed variant that sticks full-bleed to the top of the page.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1160,10 +1160,10 @@
       "title": "Button",
       "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-slot@^1.5.0",
         "class-variance-authority@^0.7.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1210,10 +1210,10 @@
       "title": "Button (Base UI)",
       "description": "Animated button with variants (primary, secondary, tertiary, ghost), icon support, loading spinner, and fluid font-weight transitions on hover. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0",
         "class-variance-authority@^0.7.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1261,7 +1261,7 @@
       "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-dropdown-menu@^2.2.1",
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1315,7 +1315,7 @@
       "description": "Dropdown menu with fluid hover, animated selection indicator, inline panel or triggered popup with collision-aware positioning, typeahead, and close-on-select. Includes MenuItem, DropdownSearch (a search field inside the popup), submenus (DropdownSub) whose trigger row stays lit across the safe area, and multiple selection with merged backgrounds. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1368,7 +1368,7 @@
       "title": "Checkbox",
       "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Radix flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-checkbox@^1.4.1"
       ],
       "registryDependencies": [
@@ -1395,7 +1395,7 @@
       "title": "Checkbox (Base UI)",
       "description": "A single checkbox: a hairline square that darkens on hover and a check that draws itself. Pairs with Field. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1423,7 +1423,7 @@
       "title": "Checkbox Group",
       "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Built on Radix UI Checkbox.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-checkbox@^1.4.1"
       ],
       "registryDependencies": [
@@ -1454,7 +1454,7 @@
       "title": "Checkbox Group (Base UI)",
       "description": "Animated checkbox group with fluid hover, contiguous selection merging, and spring-animated check marks. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1486,7 +1486,7 @@
       "title": "Radio Group",
       "description": "Animated radio group with fluid hover, spring-animated selection dot, and optional Radix UI integration. Supports both controlled index and value-based APIs.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-radio-group@^1.5.1"
       ],
       "registryDependencies": [
@@ -1516,7 +1516,7 @@
       "title": "Radio Group (Base UI)",
       "description": "Animated radio group with fluid hover, spring-animated selection dot. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1546,9 +1546,9 @@
       "title": "Dialog",
       "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Built on Radix UI Dialog with overlay, header, footer, title, and description sub-components.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-dialog@^1.3.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1579,9 +1579,9 @@
       "title": "Dialog (Base UI)",
       "description": "Animated modal dialog with spring-based scale and opacity transitions in three widths (sm, lg, and an xl canvas for composed layouts such as a sidebar), plus a container prop to scope it to a region. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1614,7 +1614,7 @@
       "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-dialog@^1.3.1",
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "springs",
@@ -1641,7 +1641,7 @@
       "description": "Slide-in navigation drawer with scrim, focus trap, and scroll lock. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "springs",
@@ -1668,8 +1668,8 @@
       "title": "Input Copy",
       "description": "Read-only input with a copy-to-clipboard button and animated check feedback. Supports optional label and shape context.",
       "dependencies": [
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1698,7 +1698,7 @@
       "title": "Field",
       "description": "Compose a label, a control, helper text, and a validation message into one accessible field: fieldsets, legends, groups, separators, and vertical, horizontal, or responsive layouts.",
       "dependencies": [
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1728,7 +1728,7 @@
       "title": "Input",
       "description": "Single-line text field drawn like the Select trigger: a fixed hairline, a hover fill, and a neutral focus border; file inputs get an icon. Pairs with Field.",
       "dependencies": [
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1756,7 +1756,7 @@
       "title": "Breadcrumb",
       "description": "A trail of links to the current page with one fluid hover across every crumb. Steps can lead with an icon, open a Dropdown, or collapse behind an ellipsis.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1811,7 +1811,7 @@
       "title": "Input Group",
       "description": "Grouped input fields with fluid hover highlighting, animated label transitions, optional icons, and error states.",
       "dependencies": [
-        "lucide-react",
+        "lucide-react@^0.564.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -1841,7 +1841,7 @@
       "title": "Input Message",
       "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate. Ships with MessageScroller, the scroll position of the transcript above it.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1879,7 +1879,7 @@
       "title": "File Thumbnail",
       "description": "Read-only square preview of a File. Images render via object-cover; PDFs render their first page via pdfjs; a spinner shows while either resolves. Adapts its corner radius to the global shape setting. The pdf.js worker loads from jsDelivr by default; setPdfWorkerSrc() points it at a self-hosted copy for strict CSPs.",
       "dependencies": [
-        "pdfjs-dist"
+        "pdfjs-dist@^5.7.284"
       ],
       "registryDependencies": [
         "utils",
@@ -1902,8 +1902,8 @@
       "title": "Queued message stack",
       "description": "Sonner-style stack of queued composer messages: collapsed cards fan out on hover (tap on touch), drag to reorder, a gutter arrow counts the overflow, edit/remove per card, and a shared-layout morph into the sent message.",
       "dependencies": [
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "springs",
@@ -1933,7 +1933,7 @@
       "title": "Chat Message",
       "description": "A single chat transcript entry with baked-in entrance and layout motion. Right-aligned accent bubble for the user, left-aligned muted bubble for the assistant, with optional file attachments. Adapts to the global shape setting.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1961,8 +1961,8 @@
       "title": "Message Scroller",
       "description": "Scroll position for a chat transcript: follows a streamed reply while the reader is at the end, lets go on a manual scroll, glides a new user turn to the top of the view with the reply growing under it, and shows a button back to the latest message. Holds no messages and no chat state.",
       "dependencies": [
-        "motion",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -1988,8 +1988,8 @@
       "title": "Code Block",
       "description": "Code or command output built from the library's own parts: a ghost icon Button with a Tooltip whose copy icon crossfades to a check that draws itself, and the ScrollArea scrollbar with scroll-fade edges. Line numbers, wrapping and a height cap. Ships no highlighter: pass highlighted markup as children and the plain string stays what gets copied.",
       "dependencies": [
-        "motion",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2020,8 +2020,8 @@
       "title": "Confirmation",
       "description": "A yes or no question asked before something runs, such as an agent's tool call. Built on the Banner: its neutral fill, grid and actions, with Deny and Approve giving way to the answer in the same slot.",
       "dependencies": [
-        "motion",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2051,8 +2051,8 @@
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-tabs@^1.2.1",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2092,8 +2092,8 @@
       "description": "Horizontal tab navigation with fluid hover, animated pill selection indicator, and fluid font-weight transitions. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2132,7 +2132,7 @@
       "title": "Switch",
       "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Built on Radix UI Switch.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-switch@^1.4.1"
       ],
       "registryDependencies": [
@@ -2161,7 +2161,7 @@
       "title": "Switch (Base UI)",
       "description": "Animated toggle switch with spring-based thumb animation and fluid font-weight label transitions. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -2191,7 +2191,7 @@
       "title": "Carousel Dots",
       "description": "Carousel dots, static or on autoplay: fluid-hover click areas, and a current pill that fills over each slide's duration.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2217,7 +2217,7 @@
       "title": "Table",
       "description": "Animated table with fluid hover row highlighting and fluid border transitions. Includes TableHeader, TableBody, TableRow, TableHead, and TableCell sub-components.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2269,7 +2269,7 @@
       "description": "TanStack Table drawn with the library's Table: the fluid hover row highlight plus resizable, draggable columns, sorting headers with an animated sort glyph, a ghost search field with a magnifying glass, an icon Columns menu that shows and hides columns, a checkbox selection column with a select-all dash, a row actions menu, pagination with arrow buttons, and skeleton loading rows that hand over cell by cell. A useDataTable hook wires the row models; every part reads and sets TanStack state, so each one is optional.",
       "dependencies": [
         "@tanstack/react-table@^8.21.3",
-        "motion"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2316,7 +2316,7 @@
       "title": "Card",
       "description": "shadcn's compositional card (Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter) with the Fluid Functionalism layer: transparent substrate, weight-animated title, media/logo/feature/image slots, and a CardGroup that owns stacked, inline, and grid layouts plus 2-D fluid-hover highlighting.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -2347,8 +2347,8 @@
       "description": "Refined, composable app sidebar with offcanvas collapse, floating and inset variants, a mobile drawer, cookie-persisted state, keyboard shortcut, and fluid-hover menus with traveling selection, hover, and focus indicators. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-dialog@^1.3.1",
-        "motion@^14.11.1",
-        "lucide-react",
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0",
         "class-variance-authority@^0.7.1"
       ],
       "registryDependencies": [
@@ -2396,8 +2396,8 @@
       "description": "Refined, composable app sidebar with offcanvas collapse, floating and inset variants, a mobile drawer, cookie-persisted state, keyboard shortcut, and fluid-hover menus with traveling selection, hover, and focus indicators. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1",
-        "lucide-react",
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0",
         "class-variance-authority@^0.7.1"
       ],
       "registryDependencies": [
@@ -2623,7 +2623,7 @@
       "title": "Slider",
       "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Built on Radix UI Slider.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-slider@^1.6.1"
       ],
       "registryDependencies": [
@@ -2654,7 +2654,7 @@
       "title": "Slider (Base UI)",
       "description": "Animated slider with spring-snapped thumb, step dots, range mode, and click-to-edit value display. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -2685,7 +2685,7 @@
       "title": "Thinking Indicator",
       "description": "Animated loading indicator with morphing SVG path (circle to infinity loop) and shimmer text rotation. Cycles through customizable status words.",
       "dependencies": [
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3232,9 +3232,9 @@
       "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-select@^2.4.1",
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "class-variance-authority@^0.7.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3271,9 +3271,9 @@
       "description": "Animated select menu with collision-aware positioning, typeahead, fluid hover, spring-animated popover, and animated checkmark. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "class-variance-authority@^0.7.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3310,9 +3310,9 @@
       "description": "Type-to-filter combobox with single or multiple (chips, merged selection backgrounds) selection: a text field that filters a list as you type, with keyboard highlight, fluid hover, spring-animated popover, animated checkmark, and clear/chevron controls. Optional create-from-query row (onCreate) and hideSelected for chips fields. Radix flavor (Popover + hand-rolled listbox).",
       "dependencies": [
         "@radix-ui/react-popover@^1.3.1",
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "class-variance-authority@^0.7.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3351,9 +3351,9 @@
       "description": "Type-to-filter combobox with single or multiple (chips, merged selection backgrounds) selection: a text field that filters a list as you type, with keyboard highlight, fluid hover, spring-animated popover, animated checkmark, and clear/chevron controls. Optional create-from-query row (onCreate) and hideSelected for chips fields. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "class-variance-authority@^0.7.1",
-        "lucide-react"
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3390,8 +3390,8 @@
       "title": "Command Menu",
       "description": "Search field over a list of actions: type to filter, arrows to move the fluid hover highlight, Enter to run. Grouped rows with icons, descriptions, and shortcut caps; suggestions listed first while nothing is typed; tabs or a borderless filter bar under the field; and a dialog shell opened by a global shortcut (default ⌘K / Ctrl+K). The list needs no primitive; the dialog is the library's Dialog in either flavor.",
       "dependencies": [
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3429,8 +3429,8 @@
       "description": "Month grid on DayPicker v10 for a single day or a range: one fluid hover highlight across one or two months that follows keyboard focus, a range band that previews the end under the pointer, booked (struck through) and unavailable days, ISO week numbers, a cellSize prop and fill mode, and a direction-aware month slide.",
       "dependencies": [
         "@daypicker/react@~10.0.2",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3466,8 +3466,8 @@
       "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-popover@^1.3.1",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "calendar",
@@ -3510,8 +3510,8 @@
       "description": "Field or ghost trigger for a date, a range, or a date and a time: a calendar popover that opens on the selected day, optional range presets, and editable time fields with slot lists that show each duration. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "calendar",
@@ -3553,7 +3553,7 @@
       "title": "Tooltip",
       "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@radix-ui/react-tooltip@^1.4.1"
       ],
       "registryDependencies": [
@@ -3583,7 +3583,7 @@
       "title": "Tooltip (Base UI)",
       "description": "Floating tooltip with spring-based animations, configurable placement, and rich content support. Base UI flavor.",
       "dependencies": [
-        "motion@^14.11.1",
+        "motion@^14.14.0",
         "@base-ui/react@^1.9.0"
       ],
       "registryDependencies": [
@@ -3615,8 +3615,8 @@
       "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Radix flavor.",
       "dependencies": [
         "@radix-ui/react-collapsible@^1.2.1",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3666,8 +3666,8 @@
       "description": "Collapsible AI reasoning steps with animated expand/collapse, per-step icons, sources, and nested details. Base UI flavor.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1",
-        "lucide-react"
+        "motion@^14.14.0",
+        "lucide-react@^0.564.0"
       ],
       "registryDependencies": [
         "utils",
@@ -3718,7 +3718,7 @@
       "description": "Color picker with HEX, RGB, HSL, and OKLCH formats, alpha channel, optional swatches, and a popover trigger. Built on Base UI's Popover, Menu, and NumberField primitives with native EyeDropper support.",
       "dependencies": [
         "@base-ui/react@^1.9.0",
-        "motion@^14.11.1"
+        "motion@^14.14.0"
       ],
       "registryDependencies": [
         "utils",
