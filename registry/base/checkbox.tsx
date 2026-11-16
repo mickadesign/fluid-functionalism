@@ -21,6 +21,10 @@ interface CheckboxProps
   > {
   checked?: boolean;
   defaultChecked?: boolean;
+  /** Shows a dash instead of the check: some, not all, of what this box
+   *  stands for is on (a select-all over a partial selection). Clicking
+   *  it reports `true`. */
+  indeterminate?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   className?: string;
   /** Pins the box to one step of the size ladder (16px default, 14px
@@ -29,11 +33,13 @@ interface CheckboxProps
 }
 
 const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
-  ({ className, checked, defaultChecked = false, onCheckedChange, onKeyDown, size, ...props }, ref) => {
+  ({ className, checked, defaultChecked = false, indeterminate = false, onCheckedChange, onKeyDown, size, ...props }, ref) => {
     // Controlled or not, the check's enter and exit need the state in
     // render, so the uncontrolled value is mirrored here.
     const [uncontrolled, setUncontrolled] = useState(defaultChecked);
     const isChecked = checked ?? uncontrolled;
+    // The dash wins over the check, the way the primitives report it.
+    const glyph = indeterminate ? "dash" : isChecked ? "check" : null;
     const compact = useSize(size).variant === "compact";
     const sharp = useShape().variant === "sharp";
 
@@ -42,6 +48,7 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
         ref={ref}
         data-slot="checkbox"
         checked={isChecked}
+        indeterminate={indeterminate}
         onCheckedChange={(next) => {
           if (checked === undefined) setUncontrolled(next);
           onCheckedChange?.(next);
@@ -60,12 +67,20 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
         }}
         className={cn(
           "relative inline-block shrink-0 cursor-pointer border-[1.5px] border-solid border-border bg-transparent p-0 outline-none",
+          // Base UI's hidden form input is `position: fixed`, and every
+          // fixed element is a layer of its own that splits what paints
+          // around it into more: a box per row cut a 34-row table into 230
+          // layers (440MB) that painted a few at a time. Absolute, it is
+          // as hidden and costs nothing. Its fixed offsets go too, so it
+          // stays where it is in the flow: at the top left of a far
+          // ancestor, a label click that focuses it scrolled the page there.
+          "[&+input]:absolute! [&+input]:inset-auto!",
           "transition-[border-color] duration-80",
           // Hovering the box, or the Field row it sits in, darkens the
           // border; a checked box keeps it clear at rest and brings it back
           // on hover.
           "hover:not-data-checked:border-foreground/40 group-hover/field:not-data-checked:border-foreground/40",
-          "data-checked:border-transparent",
+          "data-checked:border-transparent data-indeterminate:border-transparent",
           "hover:data-checked:border-foreground/40 group-hover/field:not-data-disabled:data-checked:border-foreground/40",
           "aria-invalid:not-data-checked:border-destructive/50",
           "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -79,7 +94,7 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
         {/* keepMounted hands unmounting to AnimatePresence so the retract
             plays; initial={false} shows a box checked at mount finished. */}
         <AnimatePresence initial={false}>
-          {isChecked && (
+          {glyph && (
             <CheckboxPrimitive.Indicator
               keepMounted
               render={(indicatorProps) => {
@@ -109,10 +124,11 @@ const Checkbox = forwardRef<HTMLElement, CheckboxProps>(
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 1 }}
                   >
-                    {/* The check draws itself: pathLength 0 → 1 over 0.08s
+                    {/* The check (or dash) draws itself: pathLength 0 → 1 over 0.08s
                         easeOut, back to 0 over 0.04s easeIn. */}
                     <motion.path
-                      d="M6 12L10 16L18 8"
+                      key={glyph}
+                      d={glyph === "dash" ? "M7 12H17" : "M6 12L10 16L18 8"}
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: 1, transition: { duration: 0.08, ease: "easeOut" } }}
                       exit={{ pathLength: 0, transition: { duration: 0.04, ease: "easeIn" } }}

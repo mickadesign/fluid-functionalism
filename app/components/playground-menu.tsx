@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
   useEffect,
   useRef,
@@ -33,12 +34,20 @@ const PANEL_GAP = 8;
 // Breathing room between the panel and the viewport edge it grows toward.
 const VIEWPORT_MARGIN = 16;
 
+/** True inside the pen menu: PlaygroundPanel then drops the rail's top
+ *  break, and the menu pads it evenly. */
+export const InPlaygroundMenuContext = createContext(false);
+
 export function PlaygroundMenu({
   label,
+  large = false,
   children,
 }: {
   /** Accessible name for the button + panel, e.g. "Customize Card". */
   label: string;
+  /** The 40px button with a 16px icon, matching the preview header's
+   *  Reload and Collapse; the default is the small card-corner button. */
+  large?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -153,13 +162,41 @@ export function PlaygroundMenu({
     };
   }, [open]);
 
+  // "/" opens the preview header's menu with the cursor in its search (the
+  // panel focuses it as it mounts). Only the header's pen: a page of demo
+  // cards has a pen each. Guarded like the settings' single keys; and
+  // where a panel's search is already on show (the rail), the key is its.
+  useEffect(() => {
+    if (!large || open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.defaultPrevented) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // From inside the preview too: these are its own controls. A field
+      // in it keeps the character (below).
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+      if (target?.closest('[role="listbox"], [role="menu"], [role="dialog"], [role="combobox"], [role="option"]')) return;
+      const shown = [...document.querySelectorAll<HTMLElement>("[data-play-search]")].some((el) => el.offsetParent);
+      if (shown) return;
+      e.preventDefault();
+      setOpen(true);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [large, open]);
+
   return (
     <>
-      <div ref={buttonRef}>
-        <Tooltip content="Playground" side="top">
+      <div ref={buttonRef} className="relative">
+        <Tooltip
+          content="Change playground variant"
+          shortcut={large ? "/" : undefined}
+          side="top"
+        >
           <Button
             variant="ghost"
-            size="icon-compact"
+            size={large ? "icon" : "icon-compact"}
+            className={large ? "size-10 [&_svg]:size-4" : undefined}
             aria-label={label}
             aria-haspopup="dialog"
             aria-expanded={open}
@@ -169,6 +206,15 @@ export function PlaygroundMenu({
             <PencilIcon />
           </Button>
         </Tooltip>
+        {/* Always on: the pen is where the demo changes, and easy to miss
+            among the header's other icons. */}
+        <span
+          aria-hidden
+          className={
+            "pointer-events-none absolute size-1.5 rounded-full bg-[var(--fluid-accent,#6B97FF)] " +
+            (large ? "right-1.5 top-1.5" : "right-0.5 top-0.5")
+          }
+        />
       </div>
       {typeof document !== "undefined" &&
         createPortal(
@@ -220,7 +266,9 @@ export function PlaygroundMenu({
                     {/* Measured for the height above — must not be the
                         scrolling box itself, so its height stays
                         content-driven. */}
-                    <div ref={contentRef}>{children}</div>
+                    <div ref={contentRef} className="p-2">
+                      <InPlaygroundMenuContext.Provider value>{children}</InPlaygroundMenuContext.Provider>
+                    </div>
                   </ScrollArea>
                 </Elevated>
               </motion.div>

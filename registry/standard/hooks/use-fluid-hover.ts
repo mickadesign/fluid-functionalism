@@ -42,6 +42,12 @@ export interface UseFluidHoverOptions {
   gapClick?: boolean | { maxDistance?: number };
   /** Kept for API parity. Empty space never lights an item. */
   nearest?: boolean;
+  /**
+   * Whether the highlight goes to the item under the pointer when the items
+   * scroll under a pointer at rest. Off by default; for lists whose
+   * highlight is hover only (a table's rows).
+   */
+  followScroll?: boolean;
 }
 
 /** The highlighted index as a store rows subscribe to through
@@ -110,7 +116,7 @@ export function useFluidHover<T extends HTMLElement>(
   containerRef: RefObject<T | null>,
   options: UseFluidHoverOptions = {}
 ): UseFluidHoverReturn {
-  const { isItemDisabled } = options;
+  const { isItemDisabled, followScroll = false } = options;
   const itemsRef = useRef(new Map<number, HTMLElement>());
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activeIndexRef = useRef<number | null>(null);
@@ -252,12 +258,10 @@ export function useFluidHover<T extends HTMLElement>(
     [remeasure, getItemRo]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isOwnEvent(e)) return;
-      const target = e.target as Node;
-      // The item under the pointer, or none. Items can nest (a sidebar row's
-      // sub-rows sit inside it): the innermost one wins.
+  // The item holding a node, or none. Items can nest (a sidebar row's
+  // sub-rows sit inside it): the innermost one wins.
+  const itemAt = useCallback(
+    (target: Node): number | null => {
       let next: number | null = null;
       let hit: HTMLElement | null = null;
       for (const [index, el] of itemsRef.current) {
@@ -267,17 +271,68 @@ export function useFluidHover<T extends HTMLElement>(
           next = index;
         }
       }
-      setActiveIndex(next);
+      return next;
     },
     [isItemDisabled]
   );
+
+  // Where the pointer last moved inside the container, while the highlight
+  // is the pointer's (see followScroll).
+  const pointRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isOwnEvent(e)) return;
+      pointRef.current = { x: e.clientX, y: e.clientY };
+      setActiveIndex(itemAt(e.target as Node));
+    },
+    [itemAt]
+  );
+
+  // Items scrolling under a pointer at rest: the highlight goes to the one
+  // now under it, as the browser's own :hover does.
+  useEffect(() => {
+    if (!followScroll) return;
+    let frame: number | null = null;
+    const follow = () => {
+      frame = null;
+      const container = containerRef.current;
+      const point = pointRef.current;
+      if (!container || !point) return;
+      const target = document.elementFromPoint(point.x, point.y);
+      // Something else is over the container there: the highlight stays put.
+      if (!target || !container.contains(target)) return;
+      const next = itemAt(target);
+      if (next !== activeIndexRef.current) setActiveIndex(next);
+    };
+    const onScroll = () => {
+      // A touch screen has no pointer at rest.
+      if (!pointRef.current || frame !== null || window.matchMedia("(hover: none)").matches) return;
+      frame = requestAnimationFrame(follow);
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [containerRef, itemAt, followScroll]);
 
   const handleMouseEnter = useCallback(() => {
     sessionRef.current += 1;
     setSession(sessionRef.current);
   }, []);
 
-  const handleMouseLeave = useCallback(() => setActiveIndex(null), []);
+  const handleMouseLeave = useCallback(() => {
+    pointRef.current = null;
+    setActiveIndex(null);
+  }, []);
+
+  // Set from outside (the keyboard, focus), the highlight is no longer the
+  // pointer's: a scroll that follows must not hand it back.
+  const setActiveIndexFromOutside = useCallback<Dispatch<SetStateAction<number | null>>>((value) => {
+    pointRef.current = null;
+    setActiveIndex(value);
+  }, []);
 
   // Remeasure when the container resizes: a reflow moves items even though
   // the registered set is unchanged.
@@ -299,7 +354,7 @@ export function useFluidHover<T extends HTMLElement>(
 
   return {
     activeIndex,
-    setActiveIndex,
+    setActiveIndex: setActiveIndexFromOutside,
     activeStore,
     itemRects,
     isMeasured,

@@ -212,11 +212,11 @@ describe("TableEmpty", () => {
     expect(getByRole("button", { name: "Invite" })).toBeTruthy();
   });
 
-  it("holds its rows of height from the cells' own padding", () => {
+  it("holds its rows of height from the cells' own padding and borders", () => {
     const { container, unmount } = render(<Empty />);
     const hold = container.querySelector<HTMLElement>("[data-slot=table-empty] div")!;
     expect(hold.style.getPropertyValue("--table-empty-rows")).toBe("3");
-    expect(hold.className).toContain("min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)))]");
+    expect(hold.className).toContain("min-h-[calc(var(--table-empty-rows)*(1lh+2*var(--table-cell-py)+1px))]");
     // Cells and the empty state read the same variable, set per ladder step.
     expect(container.querySelector("table")!.className).toContain("[--table-cell-py:--spacing(2)]");
     expect(container.querySelector("th")!.className).toContain("py-(--table-cell-py)");

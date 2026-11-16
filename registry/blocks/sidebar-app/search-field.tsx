@@ -2,6 +2,7 @@
 
 import { type ComponentProps } from "react";
 import { SidebarInput } from "@/components/ui/sidebar";
+import { KeyCaps } from "@/lib/key-cap";
 import { useSize } from "@/lib/size-context";
 import { useIcons } from "@/lib/icon-context";
 
@@ -40,9 +41,10 @@ export function SidebarSearchField({
         {...props}
       />
       {shortcut && (
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-sans text-[length:var(--fs-micro,11px)] leading-[var(--lh-micro,14px)] text-muted-foreground opacity-0 transition-opacity duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100">
-          {shortcut}
-        </kbd>
+        <KeyCaps
+          keys={shortcut}
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-80 group-hover/search:opacity-100 group-focus-within/search:opacity-100"
+        />
       )}
     </div>
   );

@@ -14,7 +14,16 @@ import {
   SUGGESTIONS,
 } from "@/lib/docs/playgrounds/input-message";
 import { QueuedChatDemo } from "./queued-chat-demo";
-import { inputMessageProps } from "@/lib/docs/api/input-message";
+import { TranscriptDemo, aiSdkCode, transcriptCode } from "./transcript-demo";
+import { CodeBlock } from "@/registry/default/code-block";
+import { fontWeights } from "@/registry/default/lib/font-weight";
+import {
+  inputMessageProps,
+  scrollerButtonProps,
+  scrollerHookProps,
+  scrollerItemProps,
+  scrollerProps,
+} from "@/lib/docs/api/input-message";
 
 const basicCode = `import { useState } from "react";
 import { InputMessage } from "./components";
@@ -718,6 +727,27 @@ export default function InputMessageDoc() {
         <QueuedChatDemo code={queuedCode} />
       </DocSection>
 
+      <DocSection title="Transcript">
+        <p className="text-site-body text-muted-foreground mb-3">
+          The composer ships with MessageScroller, the scroll position of the
+          transcript above it. Send a message: it glides to the top and the
+          reply grows under it. Scroll up while the reply streams and the view
+          lets go; a button brings you back.
+        </p>
+        <ComponentPreview code={transcriptCode} padding="compact">
+          <TranscriptDemo />
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="With the AI SDK">
+        <p className="text-site-body text-muted-foreground mb-3">
+          useChat holds the messages and the status; the components render
+          them. Map message.parts, pass status to the composer as is, and
+          convert the composer&apos;s files to a FileList before sending.
+        </p>
+        <CodeBlock title="chat.tsx" code={aiSdkCode} maxHeight={480} />
+      </DocSection>
+
       <DocSection title="Left Slot Only">
         <ComponentPreview code={leftOnlyCode} minHeightClass="min-h-[280px]">
           <div className="w-full max-w-xl">
@@ -802,7 +832,20 @@ export default function InputMessageDoc() {
       </DocSection>
 
       <DocSection title="API Reference">
+        <h3 className="text-site-subtitle text-foreground mb-2 mt-4" style={{ fontVariationSettings: fontWeights.semibold }}>InputMessage</h3>
         <PropsTable props={inputMessageProps} />
+
+        <h3 className="text-site-subtitle text-foreground mb-2 mt-6" style={{ fontVariationSettings: fontWeights.semibold }}>MessageScroller</h3>
+        <PropsTable props={scrollerProps} />
+
+        <h3 className="text-site-subtitle text-foreground mb-2 mt-6" style={{ fontVariationSettings: fontWeights.semibold }}>MessageScrollerItem</h3>
+        <PropsTable props={scrollerItemProps} />
+
+        <h3 className="text-site-subtitle text-foreground mb-2 mt-6" style={{ fontVariationSettings: fontWeights.semibold }}>MessageScrollerButton</h3>
+        <PropsTable props={scrollerButtonProps} />
+
+        <h3 className="text-site-subtitle text-foreground mb-2 mt-6" style={{ fontVariationSettings: fontWeights.semibold }}>useMessageScroller</h3>
+        <PropsTable props={scrollerHookProps} />
       </DocSection>
     </DocPage>
   );

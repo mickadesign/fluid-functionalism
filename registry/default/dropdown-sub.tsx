@@ -131,7 +131,8 @@ export function useSubmenuHost(
   const holding = useCallback(() => openIndexRef.current !== null, []);
 
   // Entering the popup starts a fresh hover session, which re-keys the
-  // highlight to fade in from the checked row. A held highlight stays put.
+  // highlight to fade in on the row under the pointer. A held highlight
+  // stays put.
   const onMouseEnter = useCallback(() => {
     if (openIndexRef.current !== null) return;
     hoverEnter();

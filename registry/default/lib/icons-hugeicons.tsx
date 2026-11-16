@@ -72,6 +72,13 @@ import HiInfo from "@hugeicons/core-free-icons/InformationCircleIcon";
 import HiAlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
 import HiFile from "@hugeicons/core-free-icons/File01Icon";
 import HiMinus from "@hugeicons/core-free-icons/MinusSignIcon";
+import HiMaximize from "@hugeicons/core-free-icons/ArrowExpand01Icon";
+import HiMinimize from "@hugeicons/core-free-icons/ArrowShrink02Icon";
+import HiGripVertical from "@hugeicons/core-free-icons/DragDropVerticalIcon";
+import HiTag from "@hugeicons/core-free-icons/Tag01Icon";
+// The funnel, like the other libraries' filter: FilterHorizontalIcon is a
+// sliders glyph, next to the Columns button's sliders it read as a twin.
+import HiFilter from "@hugeicons/core-free-icons/FilterIcon";
 import { Play, Pause } from "lucide-react";
 import type { IconComponent, IconComponentProps, IconName } from "@/lib/icon-context";
 
@@ -154,4 +161,9 @@ export const hugeiconsIcons: Record<IconName, IconComponent> = {
   "circle-alert": hugeicons(HiAlertCircle),
   "file": hugeicons(HiFile),
   "minus": hugeicons(HiMinus),
+  "maximize": hugeicons(HiMaximize),
+  "minimize": hugeicons(HiMinimize),
+  "grip-vertical": hugeicons(HiGripVertical),
+  tag: hugeicons(HiTag),
+  filter: hugeicons(HiFilter),
 };

@@ -9,7 +9,7 @@ import { buildInstallPrompt } from "@/lib/docs/install-prompt";
 import { Button } from "@/registry/radix/button";
 import { useIcon } from "@/lib/icon-context";
 import { docOrder, systemList } from "@/lib/docs/components";
-import { Tooltip } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup } from "@/registry/radix/tooltip";
 import { useBase, DUAL_FLAVOR_SLUGS } from "@/lib/base-context";
 import { useHoverMode } from "@/lib/docs/hover-mode";
 
@@ -91,32 +91,35 @@ export function DocPage({
             // line box instead of stretching the row, so the description
             // stays 8px under the title at every size.
             <div className="flex items-center gap-1 shrink-0 -my-2">
-              {prev ? (
-                <Tooltip content={<span>{prev.name} &ensp;<kbd className="font-mono opacity-50">&larr;</kbd></span>}>
-                  <Button asChild variant="ghost" size={iconSize}>
-                    <Link href={prev.href} aria-label={`Previous: ${prev.name}`}>
-                      <ArrowRight className="rotate-180" />
-                    </Link>
+              {/* Prev and next share one gliding tooltip. */}
+              <TooltipGroup>
+                {prev ? (
+                  <Tooltip content={prev.name} shortcut="←">
+                    <Button asChild variant="ghost" size={iconSize}>
+                      <Link href={prev.href} aria-label={`Previous: ${prev.name}`}>
+                        <ArrowRight className="rotate-180" />
+                      </Link>
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Button variant="ghost" size={iconSize} disabled aria-label="No previous component">
+                    <ArrowRight className="rotate-180" />
                   </Button>
-                </Tooltip>
-              ) : (
-                <Button variant="ghost" size={iconSize} disabled aria-label="No previous component">
-                  <ArrowRight className="rotate-180" />
-                </Button>
-              )}
-              {next ? (
-                <Tooltip content={<span>{next.name} &ensp;<kbd className="font-mono opacity-50">&rarr;</kbd></span>}>
-                  <Button asChild variant="ghost" size={iconSize}>
-                    <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
-                      <ArrowRight />
-                    </Link>
+                )}
+                {next ? (
+                  <Tooltip content={next.name} shortcut="→">
+                    <Button asChild variant="ghost" size={iconSize}>
+                      <Link href={`/docs/${next.slug}`} aria-label={`Next: ${next.name}`}>
+                        <ArrowRight />
+                      </Link>
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Button variant="ghost" size={iconSize} disabled aria-label="No next component">
+                    <ArrowRight />
                   </Button>
-                </Tooltip>
-              ) : (
-                <Button variant="ghost" size={iconSize} disabled aria-label="No next component">
-                  <ArrowRight />
-                </Button>
-              )}
+                )}
+              </TooltipGroup>
             </div>
           )}
         </div>
@@ -144,12 +147,6 @@ export function DocPage({
                   ? "Base UI flavor. Switch in the right panel."
                   : "Radix flavor. Switch in the right panel."}
               </p>
-            ) : base === "base" ? (
-              // User has Base UI selected globally, but this component has no
-              // Base flavour. Surface that so the toggle doesn't feel inert.
-              <p className="text-site-body text-muted-foreground">
-                Same source under both flavors.
-              </p>
             ) : (
               <p className="text-site-body text-muted-foreground">
                 One prompt for your coding agent: install command, usage, props.
@@ -168,8 +165,22 @@ export function DocPage({
 }
 
 interface DocSectionProps {
-  title: string;
+  /** Omit it when what's inside carries the heading itself (a table with
+   *  the title on its toolbar's row: see DocSectionTitle). */
+  title?: string;
   children: ReactNode;
+}
+
+/** A section's heading, for content that places it itself. */
+export function DocSectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <h2
+      className={"text-site-title text-foreground leading-none" + (className ? ` ${className}` : "")}
+      style={{ fontVariationSettings: fontWeights.semibold }}
+    >
+      {children}
+    </h2>
+  );
 }
 
 export function DocSection({ title, children }: DocSectionProps) {
@@ -181,12 +192,7 @@ export function DocSection({ title, children }: DocSectionProps) {
   // below the description a fuller 16px.
   return (
     <div className="flex flex-col gap-4 pt-6">
-      <h2
-        className="-mb-2 text-site-title text-foreground leading-none"
-        style={{ fontVariationSettings: fontWeights.semibold }}
-      >
-        {title}
-      </h2>
+      {title !== undefined && <DocSectionTitle className="-mb-2">{title}</DocSectionTitle>}
       {children}
     </div>
   );

@@ -37,6 +37,7 @@ import { useShape, usePopupShape } from "@/lib/shape-context";
 import { SizeProvider, useSize, typeClass, type SizeVariant } from "@/lib/size-context";
 import { Elevated } from "@/lib/elevated";
 import {
+  PopupShield,
   popupMotionClass,
   popupScrollAreaClass,
   popupViewportClass,
@@ -278,12 +279,21 @@ function Combobox<
           nextValues = [...nextValues, itemValue(made)];
         }
       }
+      if (isMultiple) {
+        // The primitive only knows the values that have an item. A value
+        // whose item isn't loaded stays selected, in its place; new picks
+        // go last.
+        const pickedSet = new Set(nextValues);
+        const kept = values.filter((v) => !itemsByValue.has(v) || pickedSet.has(v));
+        const keptSet = new Set(kept);
+        nextValues = [...kept, ...nextValues.filter((v) => !keptSet.has(v))];
+      }
       if (value === undefined) setInternalValues(nextValues);
       onValueChange?.(
         (isMultiple ? nextValues : (nextValues[0] ?? "")) as ComboboxValue<Multiple>
       );
     },
-    [value, onValueChange, isMultiple]
+    [value, onValueChange, isMultiple, values, itemsByValue]
   );
 
   // The create row must survive the filter that hides every other miss.
@@ -356,6 +366,8 @@ function Combobox<
       >
         {children}
       </ComboboxPrimitive.Root>
+      {/* The field stays live under the open list: typing, chips, clear. */}
+      <PopupShield open={open} anchor={anchorRef} />
     </ComboboxHighlightContext.Provider>
     </ComboboxContext.Provider>
   );
@@ -603,7 +615,10 @@ function useChipRowHeight(padY: number) {
         if (height.get() === "auto") height.set(target);
         else if (height.get() !== target) animate(height, target, spring.fast);
       };
-      measure();
+      // The observer reports the row once on observing, before the next
+      // paint: the first measure rides that. Read here instead, in the
+      // ref, each field forced a layout of its own as it mounted (a table
+      // of tag cells, one per row).
       const ro = new ResizeObserver(measure);
       ro.observe(el);
       roRef.current = ro;
@@ -785,10 +800,15 @@ interface ComboboxContentProps {
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
   sideOffset?: number;
+  /** Keeps the popup inside this element's box rather than the window's
+   *  (a table's, a panel's): it shifts or flips to stay within. */
+  collisionBoundary?: Element | null;
+  /** Space kept from the boundary's edges, in px. @default 0 */
+  collisionPadding?: number;
 }
 
 const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
-  ({ className, children, side = "bottom", align = "start", sideOffset = 6 }, ref) => {
+  ({ className, children, side = "bottom", align = "start", sideOffset = 6, collisionBoundary, collisionPadding }, ref) => {
     const { open, actionsRef, anchorRef } = useComboboxContext();
     const shape = usePopupShape();
 
@@ -815,6 +835,8 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
           side={side}
           align={align}
           sideOffset={sideOffset}
+          collisionBoundary={collisionBoundary ?? undefined}
+          collisionPadding={collisionPadding}
           className="z-[var(--z-popover,60)] outline-none"
         >
           <motion.div

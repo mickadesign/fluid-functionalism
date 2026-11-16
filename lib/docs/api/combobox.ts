@@ -45,6 +45,8 @@ export const contentProps: PropDef[] = [
   { name: "side", type: '"top" | "bottom" | "left" | "right"', default: '"bottom"', description: "Side of the field the popup prefers." },
   { name: "align", type: '"start" | "center" | "end"', default: '"start"', description: "Alignment against the field." },
   { name: "sideOffset", type: "number", default: "6", description: "Gap to the field, in px." },
+  { name: "collisionBoundary", type: "Element | null", description: "Keeps the popup inside this element's box rather than the window's (a table, a panel): it shifts or flips to stay within." },
+  { name: "collisionPadding", type: "number", default: "0", description: "Space kept from the boundary's edges, in px." },
 ];
 
 export const listProps: PropDef[] = [
