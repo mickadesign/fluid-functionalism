@@ -16,6 +16,7 @@ import { API_REFERENCE } from "@/lib/docs/api";
 import { PROMPT_ENTRIES } from "@/lib/docs/prompt-entries";
 import { DUAL_FLAVOR_SLUGS } from "@/lib/install-url";
 import { docMetadata } from "@/lib/docs/metadata";
+import { UNLISTED_SLUGS } from "@/lib/docs/components";
 import { plainDescription } from "@/lib/docs/install-brief";
 import robots from "@/app/robots";
 
@@ -125,8 +126,12 @@ describe("llms.txt", () => {
     expect(txt).toContain("\n## Components\n");
   });
 
-  it("links every page's Markdown", () => {
-    for (const page of MARKDOWN_PAGES) expect(txt).toContain(`](${markdownUrl(page.slug)})`);
+  it("links every listed page's Markdown, and no unlisted one", () => {
+    for (const page of MARKDOWN_PAGES) {
+      const link = `](${markdownUrl(page.slug)})`;
+      if (UNLISTED_SLUGS.has(page.slug)) expect(txt).not.toContain(link);
+      else expect(txt).toContain(link);
+    }
   });
 
   it("points agents at the changelog, where updates and migrations live", () => {
@@ -148,9 +153,18 @@ describe("llms.txt", () => {
     expect(plain.split(": ").length - 1).toBeLessThanOrEqual(1);
   });
 
-  it("llms-full.txt carries every page", () => {
+  it("llms-full.txt carries every listed page; an unlisted one keeps only its own Markdown", () => {
     const full = llmsFullTxt();
-    for (const page of MARKDOWN_PAGES) expect(full).toContain(docMarkdown(page.slug)!.trimEnd());
+    for (const page of MARKDOWN_PAGES) {
+      const md = docMarkdown(page.slug)!.trimEnd();
+      if (UNLISTED_SLUGS.has(page.slug)) expect(full).not.toContain(md);
+      else expect(full).toContain(md);
+    }
+  });
+
+  it("keeps unlisted pages out of search", () => {
+    for (const slug of UNLISTED_SLUGS) expect(docMetadata(slug).robots).toEqual({ index: false, follow: false });
+    expect(docMetadata("button").robots).toBeUndefined();
   });
 });
 

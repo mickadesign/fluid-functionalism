@@ -108,8 +108,15 @@ describe("docs pages", () => {
   });
 
   it("every public docs page is listed; the skill page is navigation only", async () => {
-    const { componentList, systemList, systemNavList } = await import("../lib/docs/components.ts");
-    const listed = new Set([...componentList, ...systemList].map((e) => e.slug));
+    const { componentList, componentEntries, UNLISTED_SLUGS, systemList, systemNavList } = await import(
+      "../lib/docs/components.ts"
+    );
+    const listed = new Set([...componentEntries, ...systemList].map((e) => e.slug));
+    // An unlisted page has its entry but stays out of navigation.
+    for (const slug of UNLISTED_SLUGS) {
+      expect(listed.has(slug), `${slug} is unlisted but has no entry`).toBe(true);
+      expect(componentList.some((e) => e.slug === slug)).toBe(false);
+    }
     const pages = readdirSync(join(ROOT, "app/docs"), { withFileTypes: true })
       .filter((e) => e.isDirectory() && existsSync(join(ROOT, "app/docs", e.name, "page.tsx")))
       .map((e) => e.name);
@@ -120,7 +127,7 @@ describe("docs pages", () => {
     expect(listed.has("skill")).toBe(false);
     expect(systemNavList.some((e) => e.slug === "skill")).toBe(true);
     for (const page of pages.filter((slug) => slug !== "skill")) {
-      expect(listed.has(page), `app/docs/${page} is not in componentList/systemList`).toBe(true);
+      expect(listed.has(page), `app/docs/${page} is not in componentEntries/systemList`).toBe(true);
     }
   });
 });
@@ -279,10 +286,13 @@ describe("shipped CSS variables reach installers", () => {
       for (const file of payload.files ?? []) sources.push(file.content ?? "");
     }
     // 2. Assignments anywhere in the chain's shipped source: `--x:` (arbitrary
-    //    property syntax) or `"--x":` / `'--x':` (React style objects).
+    //    property syntax), `"--x":` / `'--x':` (React style objects), or
+    //    `style.setProperty("--x", …)` (set from an effect).
     const localAssign = /(--[\w-]+)["']?\s*:/g;
+    const setProperty = /setProperty\(\s*["'`](--[\w-]+)/g;
     for (const content of sources) {
       for (const m of content.matchAll(localAssign)) defined.add(m[1]);
+      for (const m of content.matchAll(setProperty)) defined.add(m[1]);
     }
 
     const payload = payloads.get(rel);
@@ -307,8 +317,9 @@ describe("shipped imports reach installers", () => {
   // install writes: the payload's own files plus everything its
   // registryDependencies chain installs. Files the installer's project already
   // has don't count (a stock components/ui/button.tsx would satisfy the import
-  // and quietly stand in for ours), except lib/utils.ts, which the plain
-  // "utils" dep installs from ui.shadcn.com.
+  // and quietly stand in for ours), except the stock shadcn items a payload
+  // names on purpose: lib/utils.ts from the plain "utils" dep, and shadcn's
+  // unchanged Skeleton from "skeleton" (installed with @fluid/reveal).
   //
   // The shadcn CLI (4.21: resolveFilePath, transformImport,
   // resolveModuleByProbablePath) resolves an import in three steps:
@@ -323,7 +334,10 @@ describe("shipped imports reach installers", () => {
   //     registry:component at components/fluid-hover-highlight.tsx.
   // Anything else is "Cannot find module" in the installer's tsc and build.
   const EXTENSIONS = [".tsx", ".ts", ".js", ".jsx", ".css"];
-  const SHADCN_DEFAULT_FILES = { utils: ["lib/utils.ts"] };
+  const SHADCN_DEFAULT_FILES = {
+    utils: ["lib/utils.ts"],
+    skeleton: ["components/ui/skeleton.tsx"],
+  };
   const TYPE_DIRS = { "registry:ui": "components/ui", "registry:lib": "lib", "registry:hook": "hooks" };
 
   function installPath(file) {
@@ -523,6 +537,22 @@ describe("fluid hover highlight", () => {
           `${rel} hand-rolls the hover overlay; use FluidHoverHighlight`
         ).toBe(true);
       }
+    }
+  });
+
+  // A selected item takes no part in hover (motion-guidelines.md): the
+  // highlight is never born on the selected item to slide out of it, and the
+  // selected fill never dims while another item is hovered.
+  it("no hover starts from, or dims, the selected item", () => {
+    // Heuristics, not proof: `from` fed by anything named after a selection
+    // (the calendar's `pickStart` range preview is the allowed kind), and an
+    // opacity that drops to a fraction on a hover-named condition.
+    const FROM_SELECTED = /\bfrom=\{[^}]*(checked|selected|active|open)[^}]*\}/i;
+    const DIMS_ON_HOVER = /opacity:[^,\n]*hover[^,\n]*\?\s*0?\.\d/i;
+    for (const rel of registrySources(join(ROOT, "registry"))) {
+      const source = readFileSync(join(ROOT, rel), "utf-8");
+      expect(FROM_SELECTED.test(source), `${rel} starts the hover on its selected item`).toBe(false);
+      expect(DIMS_ON_HOVER.test(source), `${rel} dims a fill while another item is hovered`).toBe(false);
     }
   });
 

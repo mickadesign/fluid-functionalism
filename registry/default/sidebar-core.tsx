@@ -31,7 +31,7 @@ import { useIcons } from "@/lib/icon-context";
 import { useSurface, SurfaceProvider } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Tooltip, TooltipGroup, TooltipShortcut } from "@/components/ui/tooltip";
 
 // SSR-safe layout effect (client components still server-render in Next).
 const useIsoLayoutEffect =
@@ -288,6 +288,11 @@ const SidebarProvider = forwardRef<HTMLDivElement, SidebarProviderProps>(
         // isn't enough: the innermost provider containing focus wins.
         const root = wrapperRef.current;
         if (!root) return;
+        // Focus inside a keyboard scope (an embedded preview marked
+        // data-keyboard-scope) that this provider sits outside: the keys
+        // belong to what's in the scope.
+        const scope = target.closest?.("[data-keyboard-scope]");
+        if (scope && !scope.contains(root)) return;
         if (root.contains(target)) {
           if (
             mountedProviders.some(
@@ -425,6 +430,53 @@ type SlotProps = {
 function assignRef<T>(target: Ref<T> | undefined, node: T | null) {
   if (typeof target === "function") target(node);
   else if (target) (target as React.MutableRefObject<T | null>).current = node;
+}
+
+/** Calls `onToggle` as a popup trigger opens and closes, read from the
+ *  attributes the primitives set on the trigger itself (Radix data-state,
+ *  Base UI data-popup-open, aria-expanded). Returns a ref callback for the
+ *  trigger. Watched on that one element on purpose: a `:has()` rule keyed
+ *  on those attributes made every menu anywhere on the page recalc the
+ *  whole document's style as it opened (about 25ms on a long page). */
+export function useTriggerOpen(onToggle: ((open: boolean) => void) | undefined) {
+  const toggleRef = useRef(onToggle);
+  useIsoLayoutEffect(() => {
+    toggleRef.current = onToggle;
+  });
+  const watch = useRef<{ el: HTMLElement | null; observer: MutationObserver | null; open: boolean }>({
+    el: null,
+    observer: null,
+    open: false,
+  });
+  useEffect(
+    () => () => {
+      const w = watch.current;
+      w.observer?.disconnect();
+      if (w.open) toggleRef.current?.(false);
+      watch.current = { el: null, observer: null, open: false };
+    },
+    []
+  );
+  // Slot templates hand the ref a fresh callback each render (null, then
+  // the same node): only a new element starts a new watch.
+  return useCallback((el: HTMLElement | null) => {
+    const w = watch.current;
+    if (!el || el === w.el || typeof MutationObserver === "undefined") return;
+    w.observer?.disconnect();
+    const read = () => {
+      const open =
+        el.getAttribute("data-state") === "open" ||
+        el.hasAttribute("data-popup-open") ||
+        el.getAttribute("aria-expanded") === "true";
+      if (open === w.open) return;
+      w.open = open;
+      toggleRef.current?.(open);
+    };
+    w.el = el;
+    w.observer = new MutationObserver(read);
+    w.observer.observe(el, { attributes: true, attributeFilter: ["data-state", "data-popup-open", "aria-expanded"] });
+    read();
+  }, []);
 }
 
 /** Resolves the element to clone: `render` wins, else `asChild`'s single
@@ -906,15 +958,6 @@ SidebarShell.displayName = "SidebarShell";
 
 export type SidebarTriggerProps = ButtonProps;
 
-/** Keystroke chip rendered inside the (inverted) tooltip surface. */
-function ShortcutKbd({ children }: { children: ReactNode }) {
-  return (
-    <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[length:var(--fs-micro-compact,10px)] leading-[var(--lh-micro-compact,12px)] text-background">
-      {children}
-    </kbd>
-  );
-}
-
 /** The tooltips always show the toggle keystroke, falling back to the
  *  side's default key even when the provider's binding is disabled. */
 function useShortcutKey(): string {
@@ -957,17 +1000,8 @@ const SidebarTrigger = forwardRef<HTMLButtonElement, SidebarTriggerProps>(
     return (
       <Tooltip
         side="bottom"
-        content={
-          <span className="flex items-center gap-1.5">
-            {/* A flex row escapes the surface's text-box trim, so the label
-                re-applies it — otherwise the shortcut row would sit taller
-                than a tooltip without a chip. */}
-            <span className="[text-box:trim-both_cap_alphabetic]">
-              {collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            </span>
-            <ShortcutKbd>{shortcutKey}</ShortcutKbd>
-          </span>
-        }
+        content={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        shortcut={shortcutKey}
       >
         <Button
           ref={ref}
@@ -1106,7 +1140,7 @@ const SidebarRail = forwardRef<HTMLButtonElement, SidebarRailProps>(
               <span className="[text-box:trim-both_cap_alphabetic]">
                 <span style={semibold}>Click</span> to collapse
               </span>
-              <ShortcutKbd>{shortcutKey}</ShortcutKbd>
+              <TooltipShortcut>{shortcutKey}</TooltipShortcut>
             </span>
           </span>
         }
@@ -1266,6 +1300,9 @@ interface SidebarGroupContextValue {
   /** How many header action buttons overlay the label's right edge — the
    *  collapsible label pads itself so its chevron clears them. */
   actionsCount: number;
+  /** True while a header action's popup is open: the chevron stays shown. */
+  actionOpen: boolean;
+  onActionToggle: (open: boolean) => void;
 }
 
 const SidebarGroupContext = createContext<SidebarGroupContextValue | null>(null);
@@ -1414,9 +1451,15 @@ const SidebarGroup = forwardRef<HTMLDivElement, SidebarGroupProps>(
       }
     }
 
+    const [openActions, setOpenActions] = useState(0);
+    const onActionToggle = useCallback(
+      (next: boolean) => setOpenActions((n) => Math.max(0, n + (next ? 1 : -1))),
+      []
+    );
+    const actionOpen = openActions > 0;
     const ctx = useMemo(
-      () => ({ open, toggle, contentId, actionsCount }),
-      [open, toggle, contentId, actionsCount]
+      () => ({ open, toggle, contentId, actionsCount, actionOpen, onActionToggle }),
+      [open, toggle, contentId, actionsCount, actionOpen, onActionToggle]
     );
 
     return (
@@ -1527,8 +1570,10 @@ const SidebarGroupLabel = forwardRef<HTMLDivElement, SidebarGroupLabelProps>(
             <span
               className={cn(
                 "ml-auto flex h-6 shrink-0 items-center justify-center overflow-hidden",
-                group.open
-                  ? "w-0 opacity-0 group-hover/group-header:w-6 group-hover/group-header:opacity-100 group-focus-within/group-header:w-6 group-focus-within/group-header:opacity-100 group-has-[[data-sidebar=group-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/group-header:w-6 group-has-[[data-sidebar=group-action]:is([data-state=open],[data-popup-open],[aria-expanded=true])]/group-header:opacity-100 pointer-coarse:w-6 pointer-coarse:opacity-100"
+                group.open && group.actionOpen
+                  ? "w-6 opacity-100"
+                  : group.open
+                  ? "w-0 opacity-0 group-hover/group-header:w-6 group-hover/group-header:opacity-100 group-focus-within/group-header:w-6 group-focus-within/group-header:opacity-100 pointer-coarse:w-6 pointer-coarse:opacity-100"
                   : "w-6 opacity-100"
               )}
             >
@@ -1585,12 +1630,18 @@ const SidebarGroupAction = forwardRef<HTMLButtonElement, SidebarGroupActionProps
     const shape = useShape();
     const sizeClasses = useSize();
     const inCluster = useContext(GroupActionsContext);
+    const group = useContext(SidebarGroupContext);
+    const watchOpen = useTriggerOpen(group?.onActionToggle);
     const { template, content } = resolveSlotTemplate(render, asChild, children);
     return (
       <SlotElement
         template={template}
         defaultTag="button"
-        elementRef={ref as Ref<HTMLElement>}
+        elementRef={(node: HTMLElement | null) => {
+          watchOpen(node);
+          if (typeof ref === "function") ref(node as HTMLButtonElement | null);
+          else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+        }}
         props={{
           type: template ? undefined : "button",
           "data-sidebar": "group-action",
@@ -1647,7 +1698,8 @@ const SidebarGroupActions = forwardRef<HTMLDivElement, SidebarGroupActionsProps>
         {...props}
       >
         <GroupActionsContext.Provider value={true}>
-          {children}
+          {/* One bubble for the cluster: it glides between the actions. */}
+          <TooltipGroup>{children}</TooltipGroup>
         </GroupActionsContext.Provider>
       </div>
     );

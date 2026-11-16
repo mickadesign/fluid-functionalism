@@ -270,7 +270,7 @@
           ":where(.typeset * + :is(h3, h4, h5, h6)):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
             "margin-top": "var(--typeset-space-subsection)"
           },
-          ":where(.typeset :is(h1, h2, h3, h4, h5, h6) + *):not(:where(.typeset .not-typeset *))": {
+          ":where(.typeset :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tableWrapper, img, video, .not-typeset, h1, h2, h3, h4, h5, h6, hr, div, section, aside, dl, details, nav, header, footer, form)):not(:where(.typeset .not-typeset *))": {
             "margin-top": "var(--typeset-space-heading)"
           },
           ":where(.typeset hr):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
@@ -278,7 +278,7 @@
             "border-top": "1px solid var(--border, color-mix(in oklab, currentColor 14%, transparent))",
             "margin-top": "var(--typeset-space-rule)"
           },
-          ":where(.typeset hr + *):not(:where(.typeset .not-typeset *))": {
+          ":where(.typeset hr + :is(p, ul, ol, pre, blockquote, figure, table, .typeset-scroll, .tableWrapper, img, video, .not-typeset, h1, h2, h3, h4, h5, h6, hr, div, section, aside, dl, details, nav, header, footer, form)):not(:where(.typeset .not-typeset *))": {
             "margin-top": "var(--typeset-space-rule)"
           },
           ":where(.typeset h1, .typeset h2, .typeset h3, .typeset h4, .typeset h5, .typeset h6):not(:where(.typeset .not-typeset, .typeset .not-typeset *))": {
@@ -650,7 +650,10 @@
       "name": "popup",
       "type": "registry:lib",
       "title": "Popup chrome",
-      "description": "Shared popup chrome for the dropdown, select, and combobox popups: side-aware enter/exit motion classes driven by the positioner's resolved data-side, the ScrollArea sizing the list scrolls inside, and the navigation-key list.",
+      "description": "Shared popup chrome for the dropdown, select, and combobox popups: side-aware enter/exit motion classes driven by the positioner's resolved data-side, the ScrollArea sizing the list scrolls inside, the navigation-key list, and the clear layer that keeps the page from reacting to the pointer while a popup is open.",
+      "registryDependencies": [
+        "tokens"
+      ],
       "files": [
         {
           "path": "registry/default/lib/popup.ts",
@@ -676,6 +679,26 @@
       "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
       "categories": [
         "lib"
+      ]
+    },
+    {
+      "name": "key-cap",
+      "type": "registry:lib",
+      "title": "Key Cap",
+      "description": "The one look for a keystroke: an 18px filled cap with no outline, in a default and an inverted tone. KeyCaps splits a combo into one cap per key.",
+      "files": [
+        {
+          "path": "registry/default/lib/key-cap.tsx",
+          "type": "registry:lib"
+        }
+      ],
+      "docs": "Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "lib"
+      ],
+      "registryDependencies": [
+        "utils",
+        "type-scale"
       ]
     },
     {
@@ -1050,7 +1073,8 @@
         "button",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1067,7 +1091,7 @@
       "name": "badge",
       "type": "registry:ui",
       "title": "Badge",
-      "description": "Compact label with solid and dot variants, Tailwind color palette, and three sizes.",
+      "description": "Compact label with solid, dot, and ghost variants, Tailwind color palette, and three sizes.",
       "dependencies": [
         "class-variance-authority"
       ],
@@ -1254,7 +1278,8 @@
         "popup",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1307,7 +1332,8 @@
         "popup",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1813,7 +1839,7 @@
       "name": "input-message",
       "type": "registry:ui",
       "title": "Input Message",
-      "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate.",
+      "description": "Chat-style message composer with auto-resizing textarea, drag-and-drop file attachments (PNG / JPEG / PDF), flexible left/right action slots, and a built-in send button on a Surface-2 substrate. Ships with MessageScroller, the scroll position of the transcript above it.",
       "dependencies": [
         "motion"
       ],
@@ -1828,11 +1854,13 @@
         "surface-context",
         "surface-classes",
         "file-thumbnail",
+        "message-scroller",
         "use-fluid-hover",
         "button",
         "tooltip",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1923,6 +1951,95 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/chat-message. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#chat-message.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "message-scroller",
+      "type": "registry:ui",
+      "title": "Message Scroller",
+      "description": "Scroll position for a chat transcript: follows a streamed reply while the reader is at the end, lets go on a manual scroll, glides a new user turn to the top of the view with the reply growing under it, and shows a button back to the latest message. Holds no messages and no chat state.",
+      "dependencies": [
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "icon-context",
+        "size-context",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/default/message-scroller.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live demo: https://www.fluidfunctionalism.com/docs/input-message. Craft notes, the scroll and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#input-message.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "code-block",
+      "type": "registry:ui",
+      "title": "Code Block",
+      "description": "Code or command output built from the library's own parts: a ghost icon Button with a Tooltip whose copy icon crossfades to a check that draws itself, and the ScrollArea scrollbar with scroll-fade edges. Line numbers, wrapping and a height cap. Ships no highlighter: pass highlighted markup as children and the plain string stays what gets copied.",
+      "dependencies": [
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "icon-context",
+        "shape-context",
+        "size-context",
+        "button",
+        "tooltip",
+        "scroll-area",
+        "type-scale",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/default/code-block.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/code-block. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#code-block.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "confirmation",
+      "type": "registry:ui",
+      "title": "Confirmation",
+      "description": "A yes or no question asked before something runs, such as an agent's tool call. Built on the Banner: its neutral fill, grid and actions, with Deny and Approve giving way to the answer in the same slot.",
+      "dependencies": [
+        "motion",
+        "lucide-react"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "size-context",
+        "icon-context",
+        "banner",
+        "button",
+        "type-scale",
+        "tokens"
+      ],
+      "files": [
+        {
+          "path": "registry/default/confirmation.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live demo: https://www.fluidfunctionalism.com/docs/banner. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#banner.",
       "categories": [
         "components"
       ]
@@ -2108,7 +2225,9 @@
         "font-weight",
         "use-fluid-hover",
         "size-context",
-        "tokens"
+        "tokens",
+        "shape-context",
+        "use-merge-split"
       ],
       "files": [
         {
@@ -2117,6 +2236,76 @@
         }
       ],
       "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/table. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#table.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "context-menu",
+      "type": "registry:ui",
+      "title": "Context Menu",
+      "description": "The Dropdown opened where you right-click: a zero-size trigger placed at the pointer, so the items are the Dropdown's own (MenuItem, submenus, search, labels, separators) with its fluid hover, keys and motion. A filter picks which elements open it, text fields keep the browser's menu, Shift + F10 or the Menu key opens it from the keyboard, and focus returns where it was on close.",
+      "dependencies": [],
+      "registryDependencies": [
+        "utils",
+        "dropdown",
+        "size-context"
+      ],
+      "files": [
+        {
+          "path": "registry/default/context-menu.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/context-menu.",
+      "categories": [
+        "components"
+      ]
+    },
+    {
+      "name": "data-table",
+      "type": "registry:ui",
+      "title": "Data Table",
+      "description": "TanStack Table drawn with the library's Table: the fluid hover row highlight plus resizable, draggable columns, sorting headers with an animated sort glyph, a ghost search field with a magnifying glass, an icon Columns menu that shows and hides columns, a checkbox selection column with a select-all dash, a row actions menu, pagination with arrow buttons, and skeleton loading rows that hand over cell by cell. A useDataTable hook wires the row models; every part reads and sets TanStack state, so each one is optional.",
+      "dependencies": [
+        "@tanstack/react-table@^8.21.3",
+        "motion"
+      ],
+      "registryDependencies": [
+        "utils",
+        "springs",
+        "icon-context",
+        "size-context",
+        "table",
+        "checkbox",
+        "input",
+        "button",
+        "dropdown",
+        "switch",
+        "select",
+        "tooltip",
+        "tokens",
+        "font-weight",
+        "shape-context",
+        "scroll-area",
+        "skeleton",
+        "reveal",
+        "combobox",
+        "date-picker",
+        "dialog",
+        "command-menu",
+        "elevated",
+        "badge",
+        "context-menu",
+        "use-fluid-hover"
+      ],
+      "files": [
+        {
+          "path": "registry/default/data-table.tsx",
+          "type": "registry:ui"
+        }
+      ],
+      "docs": "Docs & live playground: https://www.fluidfunctionalism.com/docs/data-table. Craft notes, the color, layout and motion decisions to keep when you change it: https://github.com/mickadesign/fluid-functionalism/blob/main/skills/fluid-functionalism/references/craft.md#data-table.",
       "categories": [
         "components"
       ]
@@ -2329,7 +2518,8 @@
         "size-context",
         "icon-context",
         "sidebar",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -2372,7 +2562,8 @@
         "sidebar-user-footer",
         "sidebar-search-field",
         "sidebar-inset-topbar",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -3217,7 +3408,8 @@
         "dialog",
         "tabs",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -3370,7 +3562,8 @@
         "font-weight",
         "shape-context",
         "type-scale",
-        "tokens"
+        "tokens",
+        "key-cap"
       ],
       "files": [
         {
@@ -3400,7 +3593,8 @@
         "font-weight",
         "shape-context",
         "type-scale",
-        "tokens"
+        "tokens",
+        "key-cap"
       ],
       "files": [
         {

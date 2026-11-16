@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PresetFile } from "./sidebar-install";
-import type { PresetGenerator } from "./generators";
+import type { PresetGenerator } from "./light-generators";
 import {
   type CardPreset,
   CARD_ITEMS,
@@ -113,7 +113,14 @@ function cardSectionFile(p: CardPreset): string {
     l.push(`            onClick={() => setSelected(i)}`);
     l.push(`          >`);
   } else {
-    l.push(`          <Card key={item.title}>`);
+    // Always a click target, as in the playground: without one the fluid
+    // hover has nothing to light.
+    l.push(`          <Card`);
+    l.push(`            key={item.title}`);
+    l.push(`            label={item.title}`);
+    l.push(`            // Replace with what a click on the card does.`);
+    l.push(`            onClick={() => {}}`);
+    l.push(`          >`);
   }
 
   const mediaLine =
@@ -183,5 +190,6 @@ export const CARD_PRESET_GENERATOR: PresetGenerator = {
     "A card group generated from a fluidfunctionalism.com playground configuration — the exact variant you built, installable.",
   files: (p) => generateCardPresetFiles(p as unknown as CardPreset),
   registryDeps: (p) => cardPresetRegistryDeps(p as unknown as CardPreset),
-  npmDeps: (p) => cardPresetNpmDeps(p as unknown as CardPreset),
+  npmDeps: (p) => cardPresetNpmDeps(p as unknown as CardPreset),  note:
+    "Each card is a click target with an empty onClick so the hover has something to light: give each card its click, or drop onClick and label where a card does nothing.",
 };

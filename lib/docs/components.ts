@@ -27,10 +27,12 @@ export const systemList: SystemEntry[] = [
   { slug: "typography", name: "Typography", description: "Bold rules that create consistency across the whole component library.", installSlug: "typography", installNote: "The 5 styles for any text, markdown included." },
 ];
 
-export const componentList: ComponentEntry[] = [
+/** Every component doc page, listed or not: for lookups by slug (page
+ *  metadata, install prompts, the page's own Markdown). */
+export const componentEntries: ComponentEntry[] = [
   { slug: "accordion", name: "Accordion", description: "Collapsible sections with animated expand/collapse and fluid hover in grouped mode.", gridSize: "medium" },
   { slug: "ask-user-questions", name: "AskUserQuestions", description: "Stepped question flow with single/multi-select, optional 'other' input, and skip.", gridSize: "large" },
-  { slug: "badge", name: "Badge", description: "Compact label with solid and dot variants, Tailwind color palette, and the two-step size ladder.", gridSize: "small" },
+  { slug: "badge", name: "Badge", description: "Compact label with solid, dot, and ghost variants, Tailwind color palette, and the two-step size ladder.", gridSize: "small" },
   { slug: "banner", name: "Banner", description: "Status message in 5 statuses and 2 contrasts: a status icon, a title, up to 3 actions, and a dismiss that collapses its height. Inline, or fixed full-bleed at the top of the page.", gridSize: "medium" },
   { slug: "breadcrumb", name: "Breadcrumb", description: "A trail of links to the current page: one fluid hover across every crumb, icons, a Dropdown on a step, and a collapsed middle.", gridSize: "small" },
   { slug: "button", name: "Button", description: "Versatile button with variants, sizes, loading state, and icon support.", gridSize: "small" },
@@ -40,9 +42,12 @@ export const componentList: ComponentEntry[] = [
   { slug: "chat-message", name: "ChatMessage", description: "Chat transcript bubble with baked-in motion, user/assistant alignment, and file attachments.", gridSize: "small" },
   { slug: "checkbox", name: "Checkbox", description: "A single checkbox: a hairline square that darkens on hover and a check that draws itself.", gridSize: "small" },
   { slug: "checkbox-group", name: "CheckboxGroup", description: "Checkbox group with merged backgrounds for contiguous selections.", gridSize: "small" },
+  { slug: "code-block", name: "CodeBlock", description: "Code or command output with a language header, a copy button whose check draws itself, line numbers, and a height cap.", gridSize: "small" },
   { slug: "color-picker", name: "ColorPicker", description: "Color picker with HEX/RGB/HSL/OKLCH formats, alpha, swatches, and popover trigger.", gridSize: "large" },
   { slug: "combobox", name: "Combobox", description: "Type-to-filter field with keyboard highlight, fluid hover, and a spring-animated list — items are data, rows are yours.", gridSize: "small" },
   { slug: "command-menu", name: "CommandMenu", description: "Type to filter a list of actions, arrow through them, press Enter to run: rows with shortcut caps, groups, suggestions, and a dialog shell on a global shortcut.", gridSize: "large" },
+  { slug: "context-menu", name: "ContextMenu", description: "The Dropdown, opened where you right-click.", gridSize: "small" },
+  { slug: "data-table", name: "DataTable", description: "A table that works like a spreadsheet: sort, filter, select and edit rows in place, all from the keyboard. Add only the parts you use.", gridSize: "large" },
   { slug: "date-picker", name: "DatePicker", description: "Outline or ghost trigger for a date, a range, or a date and a time: a calendar popover with presets, and time slot lists that show each duration.", gridSize: "small" },
   { slug: "dialog", name: "Dialog", description: "Modal dialog with smooth enter/exit animations and overlay — three widths, the largest a canvas for a sidebar.", gridSize: "small" },
   { slug: "dropdown", name: "Dropdown", description: "Menu-style dropdown with fluid hover, animated backgrounds, and an optional search field inside the popup.", gridSize: "small" },
@@ -56,13 +61,22 @@ export const componentList: ComponentEntry[] = [
   { slug: "sidebar", name: "Sidebar", description: "Refined, composable sidebar with offcanvas collapse, a drag-resize rail, and a mobile drawer.", gridSize: "large" },
   { slug: "slider", name: "Slider", description: "One slider, two ladder steps: the default pip/scrubber design and the compact design with range mode and value display.", gridSize: "small" },
   { slug: "switch", name: "Switch", description: "Toggle switch with animated thumb and label.", gridSize: "small" },
-  { slug: "table", name: "Table", description: "Data table with row hover effects and semantic markup.", gridSize: "medium" },
+  { slug: "table", name: "Table", description: "Data table with row hover effects and semantic markup.", gridSize: "small" },
   { slug: "tabs", name: "Tabs", description: "Tab navigation with smooth pill animations.", gridSize: "small" },
   { slug: "textarea", name: "Textarea", description: "A multi-line text field with the Input's hairline that grows with its content.", gridSize: "small" },
   { slug: "thinking-indicator", name: "ThinkingIndicator", description: "Animated status indicator with morphing SVG and cycling text.", gridSize: "small" },
   { slug: "thinking-steps", name: "ThinkingSteps", description: "Chain-of-thought display with sequential animation and collapsible steps.", gridSize: "large" },
   { slug: "tooltip", name: "Tooltip", description: "Floating tooltip with spring-based animations and configurable placement.", gridSize: "small" },
 ];
+
+/** Pages live at their URL but listed nowhere yet, so a link can go to a
+ *  few people before the launch: not in the sidebar, ⌘K, the Showcase,
+ *  /demo, prev/next, the changelog marks, the sitemap, llms.txt or the
+ *  README, and noindex. Delete a slug here to launch it. */
+export const UNLISTED_SLUGS: ReadonlySet<string> = new Set<string>([]);
+
+/** The listed components: what navigation, search and indexes show. */
+export const componentList: ComponentEntry[] = componentEntries.filter((c) => !UNLISTED_SLUGS.has(c.slug));
 
 /** The skill page. It sits with the systems in navigation but stays out of
  *  `systemList`: it is not a registry item, and `systemList` feeds the

@@ -27,7 +27,8 @@ import {
   SidebarMenuSubButton,
 } from "@/components/flavored/sidebar";
 import { Button } from "@/registry/radix/button";
-import { Tooltip, TooltipPortalContainer } from "@/registry/radix/tooltip";
+import { Tooltip, TooltipGroup, TooltipPortalContainer } from "@/registry/radix/tooltip";
+import { KeyCaps } from "@/lib/key-cap";
 import {
   DropdownMenu,
   DropdownTrigger,
@@ -278,21 +279,6 @@ function DemoHeaderRow() {
 
 const SEARCH_SHORTCUT = "⌘K";
 
-/** Tooltip content with the action's keystroke, on the same inverted surface
- *  treatment the sidebar trigger's tooltip uses. The label re-applies the
- *  surface's text-box trim (a flex row escapes it) and the chip pulls its
- *  box back with -my-1, so the tooltip keeps its single-line height. */
-function tipWithShortcut(label: string, shortcut: string) {
-  return (
-    <span className="flex items-center gap-2">
-      <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
-      <kbd className="-my-1 flex h-4 min-w-4 items-center justify-center rounded border border-background/30 px-1 font-sans text-[10px] text-background">
-        {shortcut}
-      </kbd>
-    </span>
-  );
-}
-
 /** The header's search row — the sidebar-search-field block with its default
  *  placeholder and shortcut chip. */
 function DemoSearch() {
@@ -313,7 +299,7 @@ function DemoHeader({ search = "below" }: { search?: "below" | "inline" }) {
           <div className="min-w-0 flex-1">
             <DemoHeaderRow />
           </div>
-          <Tooltip content={tipWithShortcut("Search", SEARCH_SHORTCUT)} side="bottom">
+          <Tooltip content="Search" shortcut={SEARCH_SHORTCUT} side="bottom">
             <Button
               variant="ghost"
               size="icon-compact"
@@ -1638,7 +1624,7 @@ function HeaderFooterPreview({ stack }: { stack: "vertical" | "horizontal" }) {
                     {/* Shortcut chip, revealed on row hover — a labeled row
                         wants no tooltip. */}
                     <span className="ml-auto inline-flex opacity-0 transition-opacity duration-80 group-hover/menu-item:opacity-100 group-focus-within/menu-item:opacity-100">
-                      <kbd className="font-sans text-[11px] leading-3.5 text-muted-foreground">⇧⌘O</kbd>
+                      <KeyCaps keys="⇧⌘O" />
                     </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -1650,16 +1636,18 @@ function HeaderFooterPreview({ stack }: { stack: "vertical" | "horizontal" }) {
             <div className="min-w-0 flex-1">
               <DemoHeaderRow />
             </div>
-            <Tooltip content={tipWithShortcut("Search", SEARCH_SHORTCUT)} side="bottom">
-              <Button variant="ghost" size="icon-compact" aria-label="Search" className="size-6 shrink-0">
-                {createElement(icons.search, {})}
-              </Button>
-            </Tooltip>
-            <Tooltip content={tipWithShortcut("New thread", "⇧⌘O")} side="bottom">
-              <Button variant="ghost" size="icon-compact" aria-label="New thread" className="size-6 shrink-0">
-                {createElement(icons.plus, {})}
-              </Button>
-            </Tooltip>
+            <TooltipGroup>
+              <Tooltip content="Search" shortcut={SEARCH_SHORTCUT} side="bottom">
+                <Button variant="ghost" size="icon-compact" aria-label="Search" className="size-6 shrink-0">
+                  {createElement(icons.search, {})}
+                </Button>
+              </Tooltip>
+              <Tooltip content="New thread" shortcut="⇧⌘O" side="bottom">
+                <Button variant="ghost" size="icon-compact" aria-label="New thread" className="size-6 shrink-0">
+                  {createElement(icons.plus, {})}
+                </Button>
+              </Tooltip>
+            </TooltipGroup>
           </div>
         )}
       </SidebarHeader>
