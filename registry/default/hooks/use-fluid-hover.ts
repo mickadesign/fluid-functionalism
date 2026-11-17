@@ -41,7 +41,8 @@ export interface UseFluidHoverOptions {
    * padding, past the last row) is routed to the highlighted item, so what
    * is lit is what a click hits. On by default: in a menu or a list the
    * highlight is a promise about the click. Without `nearest` nothing is lit
-   * between items, so there is nothing to route. Pass `false` where empty
+   * between items but across the seam between two rows (a few px), and only
+   * a click there is routed. Pass `false` where empty
    * space should stay
    * inert (rows with destructive actions, generous whitespace), or
    * `{ maxDistance }` to route only clicks within that many pixels of the
@@ -276,6 +277,18 @@ const useIsoLayoutEffect =
  */
 const measurementAttempts = 3;
 
+// Rows in a list sit a hairline apart (2px). A pointer crossing that seam
+// is still between two items, not in empty space: the item it just left
+// stays lit, so the highlight glides on instead of fading out and back, and
+// a click there goes to it.
+const SEAM = 4;
+
+function distanceToRect(r: DOMRect, point: { x: number; y: number }) {
+  const dx = Math.max(r.left - point.x, 0, point.x - r.right);
+  const dy = Math.max(r.top - point.y, 0, point.y - r.bottom);
+  return Math.hypot(dx, dy);
+}
+
 export function useFluidHover<T extends HTMLElement>(
   containerRef: RefObject<T | null>,
   options: UseFluidHoverOptions = {}
@@ -500,6 +513,28 @@ export function useFluidHover<T extends HTMLElement>(
     [remeasure, getItemRo]
   );
 
+  // The lit item, when the point sits in the seam between it and another
+  // item: within SEAM of both, inside neither.
+  const seamHold = useCallback(
+    (point: { x: number; y: number }): number | null => {
+      const active = activeIndexRef.current;
+      if (active === null) return null;
+      const activeEl = itemsRef.current.get(active);
+      if (!activeEl || isItemDisabled?.(activeEl)) return null;
+      const activeRect = activeEl.getBoundingClientRect();
+      const d = distanceToRect(activeRect, point);
+      if (d === 0 || d > SEAM) return null;
+      for (const [index, el] of itemsRef.current) {
+        if (index === active || el.contains(activeEl) || activeEl.contains(el)) continue;
+        if (isItemDisabled?.(el)) continue;
+        const r = el.getBoundingClientRect();
+        if (distanceToRect(r, point) > 0 && distanceToRect(r, point) <= SEAM) return active;
+      }
+      return null;
+    },
+    [isItemDisabled]
+  );
+
   // The item at a point: the one under it, or with `nearest` the closest.
   const itemAt = useCallback(
     (container: HTMLElement, point: { x: number; y: number }, target: Node): number | null => {
@@ -531,9 +566,16 @@ export function useFluidHover<T extends HTMLElement>(
           next = index;
         }
       }
+      // In the seam between the lit item and its neighbour (or in a parent
+      // row around sub-rows a seam apart), the lit item holds.
+      const held = seamHold(point);
+      if (held !== null && held !== next) {
+        const heldEl = itemsRef.current.get(held);
+        if (!hit || (heldEl && hit.contains(heldEl))) return held;
+      }
       return next;
     },
-    [axis, isItemDisabled, nearest]
+    [axis, isItemDisabled, nearest, seamHold]
   );
 
   // Where the pointer last moved inside the container, while the highlight
@@ -659,11 +701,12 @@ export function useFluidHover<T extends HTMLElement>(
         "input, textarea, select, button, a, summary, [contenteditable], [role='textbox'], [role='searchbox'], [role='button']"
       );
       if (control) return;
-      // Without nearest nothing is lit between items. The highlight updates a
-      // frame late, so one still lit from the item just left must not take
-      // a click that landed in the gap.
-      if (gapClick === false || !nearest) return;
-      const index = activeIndexRef.current;
+      if (gapClick === false) return;
+      // Without nearest nothing is lit between items, except across the
+      // seam between two rows, where the row just left holds. The highlight
+      // updates a frame late, so one still lit from further away must not
+      // take a click that landed in a wider gap.
+      const index = nearest ? activeIndexRef.current : seamHold({ x: e.clientX, y: e.clientY });
       if (index === null) return;
       const element = itemsRef.current.get(index);
       if (!element || isItemDisabled?.(element)) return;
@@ -677,7 +720,7 @@ export function useFluidHover<T extends HTMLElement>(
       // wrapping it, if any) run exactly as if the pointer had been inside.
       resolveActivator(element).click();
     },
-    [isItemDisabled, gapClick, gapClickMaxDistance, nearest]
+    [isItemDisabled, gapClick, gapClickMaxDistance, nearest, seamHold]
   );
 
   // Remeasure when the container resizes — a reflow moves items even though

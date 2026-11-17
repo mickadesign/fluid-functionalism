@@ -185,7 +185,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         role="radiogroup"
         // select-none keeps rapid clicks on rows from selecting the label text.
         className={cn(
-          "relative flex flex-col w-72 max-w-full select-none",
+          "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
           className
         )}
         {...props}

@@ -375,7 +375,7 @@ function appSidebarFile(p: SidebarPreset): string {
   } else {
     l.push(...brand(`        `));
     l.push(`        {/* search + action rows are ONE block on the menu rows' rhythm */}`);
-    l.push(`        <div className="flex flex-col">`);
+    l.push(`        <div className="flex flex-col gap-0.5">`);
     l.push(`          <SidebarSearchField />`);
     if (p.headerActions > 0) {
       l.push(`          <SidebarMenu aria-label="Actions">`);

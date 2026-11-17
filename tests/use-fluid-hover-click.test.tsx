@@ -216,6 +216,46 @@ describe("useFluidHover: gap clicks land on the highlighted row", () => {
     for (const c of clicks) expect(c).not.toHaveBeenCalled();
   });
 
+  it("without `nearest`, a click in the 2px seam between rows lands on the lit row", () => {
+    const { getByTestId, clicks, highlight } = setup({ nearest: false });
+    // Rows 32px tall, 2px apart.
+    [0, 1, 2].forEach((i) => {
+      const top = i * 34;
+      getByTestId(`row-${i}`).getBoundingClientRect = () =>
+        ({ top, bottom: top + 32, left: 0, right: 200, width: 200, height: 32, x: 0, y: top }) as DOMRect;
+    });
+    highlight(0);
+    fireEvent.click(getByTestId("gap"), { clientX: 100, clientY: 33 });
+    expect(clicks[0]).toHaveBeenCalledTimes(1);
+    // Past the last row is empty space, not a seam.
+    highlight(2);
+    fireEvent.click(getByTestId("gap"), { clientX: 100, clientY: 103 });
+    expect(clicks[2]).not.toHaveBeenCalled();
+  });
+
+  it("without `nearest`, the pointer crossing the seam keeps the lit row lit", async () => {
+    const { getByTestId, highlight } = setup({ nearest: false });
+    [0, 1, 2].forEach((i) => {
+      const top = i * 34;
+      getByTestId(`row-${i}`).getBoundingClientRect = () =>
+        ({ top, bottom: top + 32, left: 0, right: 200, width: 200, height: 32, x: 0, y: top }) as DOMRect;
+    });
+    const list = getByTestId("list");
+    const lit = () => list.getAttribute(ACTIVE_INDEX_ATTR);
+    const move = async (target: HTMLElement, y: number) => {
+      fireEvent.mouseMove(target, { clientX: 100, clientY: y });
+      await act(() => new Promise((r) => requestAnimationFrame(() => r(undefined))));
+    };
+    highlight(0);
+    await move(getByTestId("gap"), 33);
+    expect(lit()).toBe("0");
+    await move(getByTestId("row-1"), 40);
+    expect(lit()).toBe("1");
+    // Far from any row: empty space puts it out.
+    await move(getByTestId("gap"), 300);
+    expect(lit()).toBeNull();
+  });
+
   it("`gapClick: false` leaves empty space inert", () => {
     const { getByTestId, clicks, highlight } = setup({ gapClick: false });
     highlight(1);
