@@ -183,6 +183,26 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
       return () => container.removeEventListener(TABLE_HIGHLIGHT_EVENT, claim);
     }, [setActiveIndex]);
 
+    // Rows registering again at new places (a move, an undo putting them
+    // back) count the rects stale until the hook measures again, a frame
+    // later, and the fill went out and faded back in there. While the lit
+    // row still has a rect, the fill keeps it for that frame: a moved row's
+    // fill rides with the row (DataTable), and the next measure lands it.
+    const steady =
+      !hover.isMeasured && hover.activeIndex !== null && hover.itemRects[hover.activeIndex] !== undefined;
+
+    // Rows that move under the keyboard's focus some other way (an undo
+    // putting them back, a sort) take the highlight along too: it stays on
+    // the focused row, not on the place that row left.
+    const shownIndex = hover.activeIndex;
+    useLayoutEffect(() => {
+      const container = containerRef.current;
+      const focused = document.activeElement;
+      if (!keyboardOwns.current || !container || !focused || !container.contains(focused)) return;
+      const index = focused.closest("[data-fluid-hover-index]")?.getAttribute("data-fluid-hover-index");
+      if (index != null && Number(index) !== shownIndex) setActiveIndex(Number(index));
+    });
+
     // A held arrow key repeats faster than the highlight's spring settles,
     // so while it repeats the highlight snaps row to row and stays on the
     // focused one; a single press, and the pointer, still glide.
@@ -359,9 +379,16 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
           onBlur={(e) => {
             const container = containerRef.current;
             if (!container || container.contains(e.relatedTarget as Node)) return;
-            // The pointer keeps the highlight it's over.
-            if (!container.matches(":hover")) setActiveIndex(null);
             setRepeating(false);
+            // A row put back in the page at a new place (moved, or an undo
+            // putting it back) loses focus and gets it again before the
+            // frame paints: only focus still gone a frame later has left.
+            // Cleared at once, the highlight faded out and back in there.
+            requestAnimationFrame(() => {
+              if (container.contains(document.activeElement)) return;
+              // The pointer keeps the highlight it's over.
+              if (!container.matches(":hover")) setActiveIndex(null);
+            });
           }}
         >
           {/* Selected backgrounds, merged per contiguous run */}
@@ -382,7 +409,7 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
             // pass a frame later (rows came or went). Taken at its word,
             // the fill under the pointer left and faded back in: a flicker
             // on the row whose sub-rows were opened or closed.
-            hover={snap.on ? { ...hover, isMeasured: true } : hover}
+            hover={snap.on || steady ? { ...hover, isMeasured: true } : hover}
             // Named, so a table can tell the rows' fill from the header's
             // (DataTable hides this one while a cell's text is edited).
             className={cn(shape.bg, "table-row-highlight")}

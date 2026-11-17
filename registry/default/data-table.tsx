@@ -938,10 +938,14 @@ function DataTable<TData>({
     .join("|");
   // An empty body holds a page's worth of rows (as many as were showing
   // before the filter emptied it), so the pagination under the table stays
-  // put while a filter runs dry.
+  // put while a filter runs dry. With every row deleted there's nothing
+  // left to filter: it holds as many as the page last showed.
+  const shownRows = table.getRowModel().rows.length;
+  const [lastShown, setLastShown] = useState(shownRows);
+  if (shownRows > 0 && shownRows !== lastShown) setLastShown(shownRows);
   const heldRows = Math.max(
     1,
-    Math.min(table.getState().pagination.pageSize, table.getPreFilteredRowModel().rows.length)
+    Math.min(table.getState().pagination.pageSize, table.getPreFilteredRowModel().rows.length || lastShown)
   );
 
   // Loading → loaded: for one fade, the real rows keep the skeletons in
@@ -1926,6 +1930,11 @@ function DataTable<TData>({
     const host = fadeHostRef.current;
     const wrap = wrapRef.current;
     if (!host || !wrap) return;
+    // Screen distances over the scale the table is drawn at: under a
+    // scaled ancestor (a zoomed preview) the rects below are scaled, the
+    // styles they set are not, and the fills over the frozen columns sat
+    // that much too low.
+    const k = wrap.offsetWidth ? wrap.getBoundingClientRect().width / wrap.offsetWidth || 1 : 1;
     {
       // Where the table's own box starts inside the scroll box, for both
       // kinds of band (it moves when the table scrolls up and down).
@@ -1939,7 +1948,7 @@ function DataTable<TData>({
       // frame, and the frozen columns' fills lagged behind their rows.
       const scrollTop = viewport?.scrollTop ?? 0;
       if (container) {
-        const base = container.getBoundingClientRect().top - wrap.getBoundingClientRect().top + scrollTop;
+        const base = (container.getBoundingClientRect().top - wrap.getBoundingClientRect().top) / k + scrollTop;
         if (base !== fadeBase.current) {
           fadeBase.current = base;
           const box = lastHoverBox.current;
@@ -1962,8 +1971,8 @@ function DataTable<TData>({
       const box = wrap.getBoundingClientRect();
       const lefts = wrap.querySelector<HTMLElement>("thead th.ff-pin-l")?.getBoundingClientRect();
       const rights = Array.from(wrap.querySelectorAll<HTMLElement>("thead th.ff-pin-r")).pop()?.getBoundingClientRect();
-      wrap.style.setProperty("--ff-inset-l", `${lefts ? Math.max(0, lefts.left - box.left) : 0}px`);
-      wrap.style.setProperty("--ff-inset-r", `${rights ? Math.max(0, box.right - rights.right) : 0}px`);
+      wrap.style.setProperty("--ff-inset-l", `${lefts ? Math.max(0, lefts.left - box.left) / k : 0}px`);
+      wrap.style.setProperty("--ff-inset-r", `${rights ? Math.max(0, box.right - rights.right) / k : 0}px`);
       // How far the frozen columns reach in, as they are drawn. The widths
       // the columns were fitted to (the root's own --pin-l / --pin-r) fall
       // short for a frozen column that takes the room left over (`w-full`):
@@ -1972,8 +1981,8 @@ function DataTable<TData>({
       // selected or hovered row.
       const lastLeft = Array.from(wrap.querySelectorAll<HTMLElement>("thead th.ff-pin-l")).pop()?.getBoundingClientRect();
       const firstRight = wrap.querySelector<HTMLElement>("thead th.ff-pin-r")?.getBoundingClientRect();
-      if (lastLeft) wrap.style.setProperty("--pin-l", `${Math.max(0, lastLeft.right - box.left)}px`);
-      if (firstRight) wrap.style.setProperty("--pin-r", `${Math.max(0, box.right - firstRight.left)}px`);
+      if (lastLeft) wrap.style.setProperty("--pin-l", `${Math.max(0, lastLeft.right - box.left) / k}px`);
+      if (firstRight) wrap.style.setProperty("--pin-r", `${Math.max(0, box.right - firstRight.left) / k}px`);
       // The selection's copies over the frozen columns. Each sits where
       // the table's own box does when its side is at rest: the left one as
       // if the table weren't scrolled, the right one as if it were scrolled
@@ -1984,18 +1993,18 @@ function DataTable<TData>({
       // rose with the scroll until the frozen columns' fills drew over the
       // header.
       const head = wrap.querySelector("thead th")?.getBoundingClientRect();
-      wrap.style.setProperty("--ff-head", `${head ? Math.max(0, head.bottom - box.top) : 0}px`);
+      wrap.style.setProperty("--ff-head", `${head ? Math.max(0, head.bottom - box.top) / k : 0}px`);
       if (container && viewport) {
         const at = container.getBoundingClientRect();
-        const rest = at.left + viewport.scrollLeft;
+        const rest = viewport.scrollLeft;
         const end = rest - Math.max(0, viewport.scrollWidth - viewport.clientWidth);
         wrap.querySelectorAll<HTMLElement>("[data-pin-mirror]").forEach((mirror) => {
           // The clipping box, not the rider between it and the mirror
           // (which is wherever the scroll has taken it).
           const clip = (mirror.closest(".ff-ride")?.parentElement ?? mirror.parentElement!).getBoundingClientRect();
-          const x = (mirror.dataset.pinMirror === "left" ? rest : end) - clip.left;
+          const x = (at.left - clip.left) / k + (mirror.dataset.pinMirror === "left" ? rest : end);
           // In the table's coordinates: its rider carries the scroll.
-          mirror.style.transform = `translate(${x}px, ${at.top + scrollTop - clip.top}px)`;
+          mirror.style.transform = `translate(${x}px, ${(at.top - clip.top) / k + scrollTop}px)`;
           mirror.style.width = `${(container as HTMLElement).offsetWidth}px`;
         });
       }
@@ -2894,8 +2903,10 @@ function DataTable<TData>({
               // A header takes the hover (the fill, the pointer, the lifted
               // label) only where a click on it does something: it moves,
               // sorts, or its menu has a filter or a freeze to offer. A
-              // data column with none of those is a label.
+              // data column with none of those is a label. The selection
+              // column's header acts too: the whole cell selects all.
               const acts =
+                column.id === "select" ||
                 movable ||
                 column.getCanSort() ||
                 (!!column.accessorFn &&

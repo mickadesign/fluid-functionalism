@@ -85,7 +85,7 @@ export function Board() {
           One table, every shape it takes
         </h1>
         <p className="mt-2 text-site-body text-muted-foreground">
-          8 hard cuts of the DataTable in different data and settings, then its 4 main moves, each followed by a close-up of a detail.
+          8 hard cuts of the DataTable in different data and settings, then its main moves with close-ups between them, ending on select all and ⌘K.
         </p>
       </header>
       <div className="grid grid-cols-1 gap-x-6 gap-y-10 md:grid-cols-2">
