@@ -19,6 +19,7 @@ import { useIcons } from "@/lib/icon-context";
 import { useSize } from "@/lib/size-context";
 import { useSurface } from "@/lib/surface-context";
 import { SURFACE_BG } from "@/lib/surface-classes";
+import { usePopupShape } from "@/lib/shape-context";
 
 // ---------------------------------------------------------------------------
 // Search inside a dropdown menu.
@@ -239,6 +240,7 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
     // field, and the field's parent is often a display:contents group (the
     // menu's radio group) that `bg-inherit` would resolve to transparent.
     const surface = useSurface();
+    const shape = usePopupShape();
     const inputRef = useRef<HTMLInputElement | null>(null);
 
     // Latest value / callback for the imperative handle and the unmount
@@ -377,13 +379,32 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
           sizeClasses.control,
           sizeClasses.gap,
           compact ? "px-2.5" : "px-3",
+          "cursor-text",
           className
         )}
+        // The whole band is the field: a press on its padding or the icon
+        // puts the caret in the input instead of doing nothing.
+        onPointerDown={(e) => {
+          if (e.target === inputRef.current) return;
+          e.preventDefault();
+          inputRef.current?.focus();
+        }}
       >
+        {/* Hover: the rows' fill, inset like a row (the band bleeds 4px into
+            the popup's padding, the rows sit 4px in), as a field's hover
+            fill is. Typing in it (focused), it steps back like Input's. */}
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-1 -z-10 bg-transparent transition-[background-color] duration-80",
+            "group-hover/search:bg-hover group-focus-within/search:bg-transparent!",
+            shape.item
+          )}
+        />
         <SearchIcon
           size={sizeClasses.icon}
           strokeWidth={1.5}
-          className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-focus-within/search:text-foreground group-focus-within/search:stroke-[2]"
+          className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-hover/search:text-foreground group-focus-within/search:text-foreground group-focus-within/search:stroke-[2]"
         />
         <input
           ref={(node) => {
