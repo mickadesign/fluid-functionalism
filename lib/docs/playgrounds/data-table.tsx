@@ -43,7 +43,7 @@ import { useShape } from "@/lib/shape-context";
 import { useSize, typeClass } from "@/lib/size-context";
 import type { PlaygroundProps } from "./types";
 import { RowReveal, ViewTabs } from "./view-tabs";
-import { NewItemDialog, type NewItemValues } from "./new-item-dialog";
+import { NewItemDialog, newRow, useShowAddedRow, type NewItemValues } from "./new-item-dialog";
 import {
   DATA_TABLE_DEFAULT_CODE,
   DATA_TABLE_PAGE_SIZES,
@@ -279,6 +279,8 @@ function buildColumns(o: {
           header: c.label,
           cell: ({ row }) => {
             const text = String(row.original[c.id] ?? "");
+            // Left blank, no link: an empty one would still be a tab stop.
+            if (!text) return null;
             return (
               <a
                 // The path after the domain: every link stays in the docs.
@@ -412,15 +414,6 @@ export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selecti
   return `{ left: [${left.join(", ")}], right: [${right.join(", ")}] }`;
 }
 
-/** A row from the New item dialog: what was filled in, with an id no
- *  other row has. */
-export function newRow<T extends { slug: string }>(values: NewItemValues, rows: readonly T[]) {
-  const base = values.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
-  let slug = base;
-  for (let n = 2; rows.some((r) => r.slug === slug); n++) slug = `${base}-${n}`;
-  return { ...values, slug };
-}
-
 /** The columns' ids as the table draws them: pinned left, the middle in
  *  their order, pinned right. */
 function columnIds(table: { getLeftLeafColumns: () => { id: string }[]; getCenterLeafColumns: () => { id: string }[]; getRightLeafColumns: () => { id: string }[] }) {
@@ -480,7 +473,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
     ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
-    ...(o.newItem ? [`import { NewItemDialog, type NewItemValues } from "./new-item-dialog";`] : []),
+    ...(o.newItem ? [`import { NewItemDialog, newRow, useShowAddedRow, type NewItemValues } from "./new-item-dialog";`] : []),
     ...(grouped ? [`import { TooltipGroup } from "./components";`] : []),
     ...(o.headerIcons
       ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, Tag, Link, File } from "lucide-react";`]
@@ -557,12 +550,16 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     ...(held ? [`const [rows, setRows] = useState(components);`, ``] : []),
     ...(o.newItem
       ? [
+          `const PRIMITIVE_COLOR = { ${Object.entries(PRIMITIVE_COLOR).map(([k, v]) => `${JSON.stringify(k)}: "${v}"`).join(", ")} } as const;`,
           `const TAG_OPTIONS = [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}];`,
-          `// A new row goes on top, on the first page. newRow gives it an id no`,
-          `// other row has.`,
+          `// newRow gives a new row an id no other row has. The table's sort`,
+          `// places it; showAdded brings up its page (clearing the filters and`,
+          `// search if they'd hide it).`,
+          `const showAdded = useShowAddedRow(table);`,
           `const addRow = (values: NewItemValues) => {`,
-          `  setRows((old) => [newRow(values, old), ...old]);`,
-          `  table.setPageIndex(0);`,
+          `  const row = newRow(values, rows);`,
+          `  setRows((old) => [row, ...old]);`,
+          `  showAdded(row.slug);`,
           `};`,
           ``,
         ]
@@ -1126,11 +1123,13 @@ export function DataTablePlayground({
       className={gutterClass(state)}
     />
   );
-  // A row from the New item dialog: at the top, on the first page, an
-  // undoable step like an edit or a delete.
+  // A row from the New item dialog, an undoable step like an edit or a
+  // delete. The table's sort places it; the page it lands on comes up.
+  const showAdded = useShowAddedRow(table);
   const addRow = (values: NewItemValues) => {
-    applyStep(`Added ${values.name}`, (old) => [newRow(values, old), ...old]);
-    table.setPageIndex(0);
+    const row = newRow(values, data);
+    applyStep(`Added ${values.name}`, (old) => [row, ...old]);
+    showAdded(row.slug);
   };
 
   const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews || state.newItem;

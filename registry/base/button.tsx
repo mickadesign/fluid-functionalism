@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { omit } from "@/lib/omit";
 import { useShape } from "@/lib/shape-context";
 import { useSizeVariant } from "@/lib/size-context";
-import { KeyCaps } from "@/lib/key-cap";
+import { KeyCaps, ariaKeyShortcuts } from "@/lib/key-cap";
 
 const buttonVariants = cva(
   [
@@ -239,7 +239,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // The caps sit on the button's own fill: light on a primary button,
     // the usual tint on the others.
     const shortcutCaps = hasShortcut ? (
-      <KeyCaps keys={shortcut} tone={(variant ?? "primary") === "primary" ? "inverted" : "default"} />
+      // Hidden from assistive tech, so the button's name stays its label:
+      // the shortcut reaches it as aria-keyshortcuts instead.
+      <KeyCaps aria-hidden keys={shortcut} tone={(variant ?? "primary") === "primary" ? "inverted" : "default"} />
     ) : null;
     const shape = useShape();
     // The trigger of an open popup holds the pressed look: the pointer has
@@ -370,6 +372,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={rootClassName}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
+        aria-keyshortcuts={hasShortcut ? ariaKeyShortcuts(shortcut) : undefined}
         style={style}
         {...props}
       >

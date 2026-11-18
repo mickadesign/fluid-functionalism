@@ -121,7 +121,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`import { cn } from "@/lib/utils";`);
   if (views) l.push(`import { ${p.title ? "RowReveal, " : ""}ViewTabs } from "@/components/data-table-view-tabs";`);
   if (toast) l.push(`import { UndoToaster, showUndoToast } from "@/components/undo-toast";`);
-  if (p.newItem) l.push(`import { NewItemDialog, type NewItemValues } from "@/components/data-table-new-item";`);
+  if (p.newItem) l.push(`import { NewItemDialog, newRow, useShowAddedRow, type NewItemValues } from "@/components/data-table-new-item";`);
   l.push(``);
   l.push(`type Row = {`);
   l.push(`  slug: string;`);
@@ -203,17 +203,6 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  );`);
   l.push(`}`);
   l.push(``);
-  if (p.newItem) {
-    l.push(`/** A row from the New item dialog: what was filled in, with an id no`);
-    l.push(` *  other row has. */`);
-    l.push(`function newRow(values: NewItemValues, rows: readonly Row[]): Row {`);
-    l.push(`  const base = values.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";`);
-    l.push(`  let slug = base;`);
-    l.push(`  for (let n = 2; rows.some((r) => r.slug === slug); n++) slug = \`\${base}-\${n}\`;`);
-    l.push(`  return { ...values, slug };`);
-    l.push(`}`);
-    l.push(``);
-  }
   if (deletes) {
     l.push(`/** The rows without these slugs${tree ? ", at any depth" : ""}. */`);
     l.push(`function removeRows(list: Row[], slugs: readonly string[]): Row[] {`);
@@ -385,7 +374,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
   c.push(`{`);
   c.push(`  accessorKey: "website",`);
   c.push(`  header: "Website",`);
-  c.push(`  cell: ({ row }) => (`);
+  c.push(`  // Left blank, no link: an empty one would still be a tab stop.`);
+  c.push(`  cell: ({ row }) => row.original.website && (`);
   c.push(`    <a`);
   c.push(`      href={\`https://\${row.original.website}\`}`);
   c.push(`      // A new tab: the table keeps its state (selection, filters, edits).`);
@@ -463,11 +453,13 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`  });`);
   l.push(``);
   if (p.newItem) {
-    l.push(`  // A row from the New item dialog: at the top, on the first page, an`);
-    l.push(`  // undoable step like an edit or a delete.`);
+    l.push(`  // A row from the New item dialog, an undoable step like an edit or a`);
+    l.push(`  // delete. The table's sort places it; the page it lands on comes up.`);
+    l.push(`  const showAdded = useShowAddedRow(table);`);
     l.push(`  const addRow = (values: NewItemValues) => {`);
-    l.push(`    history.apply(\`Added \${values.name}\`, (old) => [newRow(values, old), ...old]);`);
-    l.push(`    table.setPageIndex(0);`);
+    l.push(`    const row = newRow(values, history.rows);`);
+    l.push(`    history.apply(\`Added \${values.name}\`, (old) => [row, ...old]);`);
+    l.push(`    showAdded(row.slug);`);
     l.push(`  };`);
     l.push(``);
   }
@@ -607,7 +599,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
     } else tool.forEach((t) => o.push(`${pad}    ${t}`));
     if (p.newItem) {
       // The New item button closes the row, 8px past the icons, and opens
-      // a dialog with a Name field.
+      // a dialog with a field per column.
       o.push(`      <NewItemDialog`);
       o.push(`        title="New component"`);
       o.push(`        primitiveOptions={PRIMITIVE_COLOR}`);

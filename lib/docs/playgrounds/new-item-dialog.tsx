@@ -7,6 +7,8 @@
 // DatePicker, Combobox, Badge and ScrollArea.
 import {
   Fragment,
+  useCallback,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -142,7 +144,9 @@ export function NewItemDialog({
       props: Math.max(0, Math.round(Number(props) || 0)),
       added: isoDay(added ?? new Date()),
       tags,
-      website: website.trim(),
+      // A pasted URL keeps only what the column shows: the cell adds the
+      // https:// itself.
+      website: website.trim().replace(/^https?:\/\//i, ""),
       summary: summary.trim(),
     });
     setOpen(false);
@@ -345,4 +349,49 @@ export function NewItemDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** A row from the dialog: what was filled in, with an id (`slug`) no
+ *  other row has. */
+export function newRow<T extends { slug: string }>(values: NewItemValues, rows: readonly T[]) {
+  const base = values.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
+  let slug = base;
+  for (let n = 2; rows.some((r) => r.slug === slug); n++) slug = `${base}-${n}`;
+  return { ...values, slug };
+}
+
+/** The table parts useShowAddedRow reads: any useDataTable table fits. */
+interface AddedRowTable {
+  getPrePaginationRowModel: () => { rows: { original: { slug: string } }[] };
+  getState: () => { pagination: { pageSize: number } };
+  setPageIndex: (index: number) => void;
+  resetColumnFilters: () => void;
+  setGlobalFilter: (value: string) => void;
+}
+
+/** Shows a row just added: the page it lands on under the table's sort,
+ *  with the filters and search cleared first when they would hide it.
+ *  Call the returned function with the new row's slug. */
+export function useShowAddedRow(table: AddedRowTable) {
+  // A ref, not state: the look happens after the render that drew the new
+  // row, and clearing the filters draws again for the second look.
+  const pending = useRef<{ slug: string; cleared: boolean } | null>(null);
+  useEffect(() => {
+    const p = pending.current;
+    if (!p) return;
+    const at = table.getPrePaginationRowModel().rows.findIndex((r) => r.original.slug === p.slug);
+    if (at === -1 && !p.cleared) {
+      // The filters or the search hide it: clear them, and look again
+      // once the table has drawn without them.
+      p.cleared = true;
+      table.resetColumnFilters();
+      table.setGlobalFilter("");
+      return;
+    }
+    pending.current = null;
+    if (at !== -1) table.setPageIndex(Math.floor(at / table.getState().pagination.pageSize));
+  });
+  return useCallback((slug: string) => {
+    pending.current = { slug, cleared: false };
+  }, []);
 }

@@ -186,7 +186,13 @@ function appSidebarFile(p: SidebarPreset): string {
     ...(p.sectionActions > 0 ? ["SidebarGroupActions", "SidebarGroupAction"] : []),
     "SidebarMenu",
     "SidebarMenuItem",
-    ...(menuRows || (headerHorizontal ? false : p.headerActions > 0) ? ["SidebarMenuButton"] : []),
+    // Loading rows are skeletons, but the header's and footer's vertical
+    // action rows are still menu buttons.
+    ...(menuRows ||
+    (!headerHorizontal && p.headerActions > 0) ||
+    (p.footerStack !== "horizontal" && p.footerActions > 0)
+      ? ["SidebarMenuButton"]
+      : []),
     ...(!loading && (p.l1Badges || (nests && p.l2Badges)) ? ["SidebarMenuBadge"] : []),
     ...(anyRowActions ? ["SidebarMenuAction"] : []),
     ...(anyRowActions && Math.max(p.l1Actions, nests ? p.l2Actions : 0) > 1
@@ -281,8 +287,8 @@ function appSidebarFile(p: SidebarPreset): string {
   if (hasCallout) {
     l.push(`  const [callouts, setCallouts] = useState(CALLOUTS);`);
     l.push(`  const dismiss = (id: number) => setCallouts((c) => c.filter((x) => x.id !== id));`);
-    l.push(`  // The callout rests one surface step above the rail.`);
-    l.push(`  const level = Math.min(useSurface() + 1, 8);`);
+    l.push(`  // The callout rests one surface step above the rail${p.design === "floating" ? ", and a floating\n  // rail is itself a step above the page" : ""}.`);
+    l.push(`  const level = Math.min(useSurface() + ${p.design === "floating" ? 2 : 1}, 8);`);
     if (p.footerCalloutStacked) {
       l.push(`  const [expanded, setExpanded] = useState(false);`);
       l.push(`  // Front card's measured height — never an animated "auto".`);
