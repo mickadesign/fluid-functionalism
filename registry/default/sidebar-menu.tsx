@@ -618,7 +618,7 @@ const SidebarMenu = forwardRef<HTMLUListElement, SidebarMenuProps>(
             else if (ref) (ref as React.MutableRefObject<HTMLUListElement | null>).current = node;
           }}
           data-sidebar="menu"
-          className={cn("relative flex w-full min-w-0 flex-col select-none", className)}
+          className={cn("relative flex w-full min-w-0 flex-col gap-0.5 select-none", className)}
           {...containerProps}
           {...props}
         >
@@ -1444,7 +1444,7 @@ const SidebarMenuSub = forwardRef<HTMLUListElement, SidebarMenuSubProps>(
             // rects include it) + 1px border + pl-2 lands the sub-row label
             // (+ the row's own pl-2 = 32px) exactly on the parent label's x
             // (px-2 + 16px icon + gap-2 = 32px).
-            "relative ml-[15px] flex min-w-0 flex-col border-l border-border pl-2 select-none",
+            "relative ml-[15px] flex min-w-0 flex-col gap-0.5 border-l border-border pl-2 select-none",
             className
           )}
           {...props}

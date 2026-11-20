@@ -264,7 +264,9 @@ const Table = forwardRef<HTMLTableElement, TableProps>(
               : tr.getBoundingClientRect().bottom - (top ??= container.getBoundingClientRect().top),
         }));
       }
-      const shown = box.opacity >= 0.5;
+      // A table with no row hover (DataTable's rowHover={false}) draws no
+      // fill, so it keeps every rule.
+      const shown = box.opacity >= 0.5 && !container.closest("[data-no-row-hover]");
       for (const { tr, bottom } of ruleEdges.current) {
         const on = shown && bottom >= box.y - 1.5 && bottom <= box.y + box.height + 1.5;
         // Written only when it changes: the attribute restyles the row's cells.

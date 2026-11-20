@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  cloneElement,
   createContext,
   forwardRef,
   memo,
@@ -15,6 +16,7 @@ import {
   useState,
   useSyncExternalStore,
   startTransition,
+  type ComponentProps,
   type CSSProperties,
   type HTMLAttributes,
   type FocusEvent,
@@ -22,11 +24,13 @@ import {
   type MouseEvent,
   type PointerEvent,
   type TouchEvent,
+  type ReactElement,
   type ReactNode,
   type RefObject,
 } from "react";
 import {
   flexRender,
+  functionalUpdate,
   getCoreRowModel,
   getExpandedRowModel,
   getFilteredRowModel,
@@ -35,6 +39,7 @@ import {
   useReactTable,
   type Column,
   type ColumnDef,
+  type ColumnSizingState,
   type Row,
   type RowData,
   type Table as TanStackTable,
@@ -343,6 +348,20 @@ function useDataTable<TData>({
     // from the first page, and a page past the end steps back (both below).
     autoResetPageIndex: false,
     ...options,
+    // A dragged column stops at MIN_COLUMN_WIDTH (TanStack's own floor is
+    // 20px, a header cut to one letter). Only the column being dragged:
+    // measured widths and a reader's saved ones pass as they are.
+    onColumnSizingChange: (updater) => {
+      const clamp = (old: ColumnSizingState) => {
+        const next = functionalUpdate(updater, old);
+        const id = table.getState().columnSizingInfo.isResizingColumn;
+        if (!id || next[id] === undefined || old[id] === undefined) return next;
+        if (next[id] >= MIN_COLUMN_WIDTH || next[id] >= old[id]) return next;
+        return { ...next, [id]: Math.min(old[id], MIN_COLUMN_WIDTH) };
+      };
+      if (options.onColumnSizingChange) options.onColumnSizingChange(clamp);
+      else table.setState((state) => ({ ...state, columnSizing: clamp(state.columnSizing) }));
+    },
     // Every column filters the way DataTableFilters sets it, unless it
     // brings its own filterFn; DataTableSearch has the global filter.
     // A column shown after the widths were read (from the Columns menu)
@@ -564,7 +583,9 @@ interface DataTableProps<TData> {
   /** Adds a handle on each header's right edge: drag it, or focus it and
    *  press ← / →, to set the column's width. Columns start at the widths the
    *  table lays out on its own (or their `size`); the last resizable one takes the
-   *  rest, and a table wider than its box scrolls sideways. Double-click a
+   *  rest, and a table wider than its box scrolls sideways (following a
+   *  column dragged past its edge). No column drags narrower than 64px (or
+   *  its width, if it starts narrower). Double-click a
    *  handle to let its column share the free width again. */
   resizeColumns?: boolean;
   /** Lets data columns be dragged by their header to a new place, or moved
@@ -727,7 +748,8 @@ const EDGE_SCROLL_SPEED = 720;
 const EDGE_SCROLL_MAX_DT = 50;
 // Keyboard resizing moves a column this many px per arrow press.
 const RESIZE_STEP = 16;
-const MIN_COLUMN_WIDTH = 48;
+// The narrowest a column drags or steps to: room for a short header.
+const MIN_COLUMN_WIDTH = 64;
 /** The row-menu column: its 28px button with 4px each side, 4px less in
  *  compact (the button flush right, on the compact controls' line). */
 const ACTIONS_WIDTH = 36;
@@ -1396,7 +1418,7 @@ function DataTable<TData>({
         const fills = [...wrap.querySelectorAll<HTMLElement>("[data-slot=fluid-hover-highlight]")];
         // The rows' fill is the table's width; a header's is one cell's.
         const fill = fills.sort((a, b) => b.offsetWidth - a.offsetWidth)[0];
-        return { fill, rest: [hoverFadeRef.current, pinHoverRef.current] };
+        return { fill, rest: [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current] };
       };
       const hold = () => {
         const { fill, rest } = riders();
@@ -1502,8 +1524,9 @@ function DataTable<TData>({
       if (!shown) return;
       const edge = ref.getBoundingClientRect();
       const x = next.place === "before" ? edge.left : edge.right;
-      // Kept inside the table's box: past it the edge has scrolled away.
-      line.style.left = `${Math.min(Math.max(x, box.left), box.right) - 1}px`;
+      // On the last pixel before the edge, where the resize line sits too,
+      // and kept inside the table's box: past it the edge has scrolled away.
+      line.style.left = `${Math.min(Math.max(Math.round(x) - 1, box.left), box.right - 1)}px`;
     };
     // Near an edge of a table that scrolls sideways, the table scrolls that
     // way, so a column can be carried to one that's out of view (narrow
@@ -1820,6 +1843,27 @@ function DataTable<TData>({
   // nothing sticks.
   const pinWidth = (column: Column<TData, unknown>) =>
     trim(column.id, (resizeColumns ? column.getSize() : fitted?.[column.id]) ?? 0);
+  // While a column drags wider, its edge stays in view: past the box's
+  // right edge (or under the frozen columns there), the table scrolls with
+  // it. Without this the last column grew out of sight and a drag to the
+  // right looked like it did nothing.
+  const resizingId = table.getState().columnSizingInfo.isResizingColumn || null;
+  const resizingWidth = resizingId ? sizing[resizingId] : undefined;
+  useLayoutEffect(() => {
+    const headRow = headRowRef.current;
+    const viewport = wrapRef.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (!resizingId || !headRow || !viewport) return;
+    const th = headRow.querySelector<HTMLElement>(`th[data-column-id="${CSS.escape(resizingId)}"]`);
+    const rightIds = tableRef.current.getRightVisibleLeafColumns().map((c) => c.id);
+    if (!th || rightIds.includes(resizingId)) return;
+    let edge = viewport.getBoundingClientRect().right;
+    for (const id of rightIds) {
+      const pinned = headRow.querySelector<HTMLElement>(`th[data-column-id="${CSS.escape(id)}"]`);
+      if (pinned) edge = Math.min(edge, pinned.getBoundingClientRect().left);
+    }
+    const over = th.getBoundingClientRect().right - edge;
+    if (over > 0) viewport.scrollLeft += over;
+  }, [resizingId, resizingWidth]);
   const pinsKey = sized
     ? [
         ...table.getLeftVisibleLeafColumns().map((c) => `l:${c.id}:${pinWidth(c)}`),
@@ -1904,6 +1948,12 @@ function DataTable<TData>({
   const hoverFadeRef = useRef<HTMLDivElement>(null);
   // And the highlight's own copy over the frozen columns (see its portal).
   const pinHoverRef = useRef<HTMLDivElement>(null);
+  // The fills again over the bottom scroll fade, between the frozen
+  // columns: the fade thins the rows' text into the page, and a selected
+  // or hovered row's fill under it went dark with it, while the frozen
+  // columns' own copies (drawn above the fade) kept theirs.
+  const bottomFillHostRef = useRef<HTMLDivElement>(null);
+  const bottomHoverRef = useRef<HTMLDivElement>(null);
   // The selection over the frozen columns: Table draws a live copy of its
   // fills into each of these, one per frozen side (see the overlay below).
   const [mirrorLeft, setMirrorLeft] = useState<HTMLDivElement | null>(null);
@@ -1915,7 +1965,7 @@ function DataTable<TData>({
   const lastHoverBox = useRef<{ y: number; height: number; opacity: number } | null>(null);
   const placeHoverFade = useCallback((box: { y: number; height: number; opacity: number }) => {
     lastHoverBox.current = box;
-    for (const band of [hoverFadeRef.current, pinHoverRef.current]) {
+    for (const band of [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current]) {
       if (!band) continue;
       band.style.transform = `translateY(${fadeBase.current + box.y}px)`;
       band.style.height = `${box.height}px`;
@@ -1944,7 +1994,7 @@ function DataTable<TData>({
           fadeBase.current = base;
           const box = lastHoverBox.current;
           if (box)
-            for (const band of [hoverFadeRef.current, pinHoverRef.current])
+            for (const band of [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current])
               if (band) band.style.transform = `translateY(${base + box.y}px)`;
         }
       }
@@ -2003,8 +2053,10 @@ function DataTable<TData>({
     const picked = Array.from(wrap.querySelectorAll<HTMLElement>("tbody tr[data-state=selected]:not([data-row-dragging])"));
     const viewport = wrap.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
     const container = wrap.querySelector("table")?.parentElement;
+    const bottomHost = bottomFillHostRef.current;
     if (!picked.length || !viewport || !container) {
       if (host.childElementCount) host.replaceChildren();
+      if (bottomHost?.childElementCount) bottomHost.replaceChildren();
       return;
     }
     const base = fadeBase.current;
@@ -2031,6 +2083,13 @@ function DataTable<TData>({
       })
     );
     host.replaceChildren(...bands);
+    bottomHost?.replaceChildren(
+      ...runs.map(({ top, bottom }) => {
+        const band = document.createElement("div");
+        band.style.cssText = `position:absolute;left:0;right:0;top:${top}px;height:${bottom - top}px;background:var(--active)`;
+        return band;
+      })
+    );
   }, []);
   // After every render (a selection, a sort, a page turn), and when the
   // rows change size or the table scrolls up and down inside its box.
@@ -2138,6 +2197,11 @@ function DataTable<TData>({
     });
     return true;
   };
+  // Whether a key other than Escape was pressed since the last press of
+  // the pointer in the table: Escape after a click (on Select all, say)
+  // clears the selection without leaving a focus ring behind. Any key
+  // makes the browser show the ring on what has focus, Escape included.
+  const keyedSincePointer = useRef(true);
   const onBodyKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     const target = e.target as HTMLElement;
     // Typing in a field (a search, an editable cell) keeps its keys.
@@ -2168,6 +2232,11 @@ function DataTable<TData>({
       table.resetRowSelection();
       selectionAnchors.delete(table.getState);
       rangeHead.current = null;
+      if (!keyedSincePointer.current) {
+        // Focused again, as it was by the click: no ring.
+        target.blur();
+        target.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
+      }
       return;
     }
     // Alt + ↑ / ↓ moves rows a place, as Alt + ← / → moves a column from
@@ -2630,7 +2699,8 @@ function DataTable<TData>({
       const box = wrap.getBoundingClientRect();
       line.style.display = target ? "block" : "none";
       if (target) {
-        line.style.top = `${target.line - 1}px`;
+        // 1px, over the rule between the two rows.
+        line.style.top = `${Math.round(target.line) - 1}px`;
         line.style.left = `${box.left}px`;
         line.style.width = `${box.width}px`;
       }
@@ -2845,6 +2915,12 @@ function DataTable<TData>({
       // table is loading rather than empty.
       aria-busy={loading || undefined}
       onKeyDown={onBodyKeyDown}
+      onPointerDownCapture={() => {
+        keyedSincePointer.current = false;
+      }}
+      onKeyDownCapture={(e) => {
+        if (e.key !== "Escape") keyedSincePointer.current = true;
+      }}
       // Fixed layout keeps the widths you set. The min width is every
       // column's width summed, so past the box the table scrolls instead of
       // crushing the column that takes the rest.
@@ -3060,7 +3136,7 @@ function DataTable<TData>({
                         const from = Math.max(header.getSize(), rendered);
                         table.setColumnSizing((old) => ({
                           ...old,
-                          [column.id]: Math.max(MIN_COLUMN_WIDTH, from + delta),
+                          [column.id]: Math.max(Math.min(from, MIN_COLUMN_WIDTH), from + delta),
                         }));
                       }}
                     />
@@ -3274,6 +3350,19 @@ function DataTable<TData>({
                 <div className="absolute inset-x-0 bottom-0 h-px bg-foreground/[0.08]" />
               </div>
             )}
+            {fill && (
+              // The selection and hover fills over that fade, between the
+              // frozen columns (theirs are drawn above it already): only the
+              // rows' content fades, a selected row keeps its fill. Masked
+              // by the fade's own gradient, so the copy comes in as the fill
+              // under the fade goes out and the two add up to one.
+              <div className="absolute inset-0 opacity-0 transition-opacity duration-80 group-data-more-below/scroll:opacity-100 [clip-path:inset(0_var(--pin-r,0px)_0_var(--pin-l,0px))] [mask-image:linear-gradient(to_top,black,transparent)] [mask-position:bottom] [mask-repeat:no-repeat] [mask-size:100%_var(--ff-fade,48px)]">
+                <div className="ff-ride absolute inset-0">
+                  <div ref={bottomFillHostRef} />
+                  <div ref={bottomHoverRef} data-row-hover="" className="absolute inset-x-0 top-0 bg-hover opacity-0" />
+                </div>
+              </div>
+            )}
             {/* The selection, under the hover as it is behind the table:
                 Table's own fills again, so a row selected between two
                 others merges into them here as it does in the columns
@@ -3385,7 +3474,7 @@ function DataTable<TData>({
             <div
               ref={dropLineRef}
               aria-hidden
-              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden h-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden h-px bg-[var(--fluid-accent,#6B97FF)]"
             />
           </>,
           document.body
@@ -3410,7 +3499,7 @@ function DataTable<TData>({
             <div
               ref={columnLineRef}
               aria-hidden
-              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden w-0.5 rounded-full bg-[var(--fluid-accent,#6B97FF)]"
+              className="pointer-events-none fixed z-[var(--z-popover,60)] hidden w-px bg-[var(--fluid-accent,#6B97FF)]"
               style={{ top: ghost.top, height: ghost.column }}
             />
           </>,
@@ -3429,7 +3518,7 @@ interface ResizeHandleProps {
   onStep: (delta: number, handle: HTMLElement) => void;
 }
 
-/** An 8px grab strip over the header's right edge, showing a 1px rule on
+/** An 8px grab strip over the header's right edge, its full height, showing a 1px rule on
  *  hover, focus and drag. A separator, so keyboard users can size it too. */
 function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: ResizeHandleProps) {
   return (
@@ -3464,9 +3553,11 @@ function ResizeHandle({ label, width, resizing, onStart, onReset, onStep }: Resi
     >
       <span
         className={cn(
-          "absolute inset-y-1.5 left-1/2 w-px -translate-x-1/2 transition-colors duration-80",
-          "in-[th:last-child]:left-auto in-[th:last-child]:right-0 in-[th:last-child]:translate-x-0",
-          "bg-transparent group-hover/resize:bg-foreground/40 group-focus-visible/resize:bg-[var(--focus-ring,#6B97FF)] group-data-resizing/resize:bg-foreground/60"
+          // On a whole pixel, the last one of the column it sizes: centered
+          // with a half-pixel shift, it was smeared across two.
+          "absolute inset-y-0 left-[3px] w-px transition-colors duration-80",
+          "in-[th:last-child]:left-auto in-[th:last-child]:right-0",
+          "bg-transparent group-hover/resize:bg-[var(--fluid-accent,#6B97FF)] group-focus-visible/resize:bg-[var(--focus-ring,#6B97FF)] group-data-resizing/resize:bg-[var(--fluid-accent,#6B97FF)]"
         )}
       />
     </div>
@@ -3786,6 +3877,21 @@ const SelectHit = forwardRef<HTMLSpanElement, SelectHitProps>(
 );
 SelectHit.displayName = "SelectHit";
 
+/** A Tooltip that opens for the pointer only. Arrow keys step focus from
+ *  box to box down the rows, and a bubble on each one they land on (with
+ *  the pointer still resting on the box above) read as two tooltips. */
+function PointerTooltip({ children, ...props }: ComponentProps<typeof Tooltip>) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Tooltip {...props} forceOpen={hovered ? props.forceOpen : false}>
+      {cloneElement(children as ReactElement<HTMLAttributes<HTMLElement>>, {
+        onPointerEnter: () => setHovered(true),
+        onPointerLeave: () => setHovered(false),
+      })}
+    </Tooltip>
+  );
+}
+
 /** A hidden box that gets checked (select all, a range) shows up already
  *  checked: its border doesn't fade out while the box fades in, which
  *  flashed an empty outline on every row at once. The row under the
@@ -4064,8 +4170,10 @@ function selectColumn<TData>(): ColumnDef<TData> {
       return (
         // The tooltip names what the next click does: a dash selects the
         // rest, a check clears it. Its trigger is the hit area, not the
-        // box, so it works whichever primitive the box is built on.
-        <Tooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top" hoverable={false}>
+        // box, so it works whichever primitive the box is built on. For the
+        // pointer only, as the rows' boxes: focused again after Escape
+        // clears a selection, it opened with the pointer far away.
+        <PointerTooltip content={`${all ? "Unselect" : "Select"} all ${count}`} side="top" hoverable={false}>
           <SelectHit className={SELECT_REVEAL} onToggle={() => selectAllRows(table, !all)}>
             <Checkbox
               aria-label="Select all rows"
@@ -4082,12 +4190,12 @@ function selectColumn<TData>(): ColumnDef<TData> {
               }}
             />
           </SelectHit>
-        </Tooltip>
+        </PointerTooltip>
       );
     },
     cell: ({ row, table }) => (
       // Names the next click, with the key that does the same from the row.
-      <Tooltip
+      <PointerTooltip
         // Over the row above: the pointer passes through to it.
         hoverable={false}
         side="top"
@@ -4124,7 +4232,7 @@ function selectColumn<TData>(): ColumnDef<TData> {
           onCheckedChange={(checked) => row.toggleSelected(checked)}
         />
       </SelectHit>
-      </Tooltip>
+      </PointerTooltip>
     ),
   };
 }
@@ -5563,8 +5671,28 @@ function CellTextEditor({
     const room = el.parentElement?.clientWidth ?? 0;
     const text = textWidth(el, el.value || el.placeholder);
     // 8px of padding a side, the 1px hairline, room for the caret.
-    if (text <= room) setWidth(null);
-    else setWidth(Math.min(EXPANDED_MAX, Math.max(room + 18, Math.ceil(text) + 22)));
+    if (text <= room) {
+      setWidth(null);
+      return;
+    }
+    // Raised, it stops short of the frozen columns on the right (or the
+    // box's edge) and wraps instead: past them it slid under the row
+    // menus with the text still being typed.
+    let cap = EXPANDED_MAX;
+    const parent = el.parentElement;
+    const box = el.closest<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (parent && box) {
+      let edge = box.getBoundingClientRect().right;
+      el.closest("tr")
+        ?.querySelectorAll<HTMLElement>(".ff-pin-r")
+        .forEach((pinned) => {
+          if (!pinned.contains(el)) edge = Math.min(edge, pinned.getBoundingClientRect().left);
+        });
+      // From the field's left edge (9px out from its cell's text), 4px
+      // clear of that edge.
+      cap = Math.min(cap, Math.floor(edge - (parent.getBoundingClientRect().left - 9) - 4));
+    }
+    setWidth(Math.max(room + 18, Math.min(cap, Math.ceil(text) + 22)));
   };
   useLayoutEffect(() => {
     const el = ref.current;
@@ -8048,12 +8176,6 @@ function DataTableSelectionBar<TData>({
             aria-label="Selected rows"
             className={cn(
               "flex items-center whitespace-nowrap",
-              // Inverted, like a toast: the page's foreground as the bar's
-              // ground and its background as the bar's text, so it stands
-              // off the rows it floats over in either theme. The two are
-              // read here (--bar-bg, --bar-fg) and handed to everything
-              // inside as its own tokens (see the wrapper below).
-              "[--bar-bg:var(--foreground)] [--bar-fg:var(--background)] bg-(--bar-bg) text-(--bar-fg)",
               // A menu's own insets, 4px around the buttons; the count sits
               // 8px further in than a menu item's label (20px, 18px
               // compact), so it reads with room at the bar's rounded end.
@@ -8063,20 +8185,6 @@ function DataTableSelectionBar<TData>({
               className
             )}
           >
-            {/* The bar's parts are the library's own (a ghost Button, key
-                caps): inside this box the color tokens they read are the
-                bar's, so they invert with it and need no styles of their
-                own. A box of no layout; the tokens are set a level under
-                where --bar-bg and --bar-fg are read, so neither refers to
-                itself. */}
-            <div
-              className={cn(
-                "contents",
-                "[--foreground:var(--bar-fg)] [--background:var(--bar-bg)]",
-                "[--muted-foreground:color-mix(in_oklab,var(--bar-fg)_65%,transparent)]",
-                "[--hover:color-mix(in_oklab,var(--bar-fg)_12%,transparent)] [--active:color-mix(in_oklab,var(--bar-fg)_20%,transparent)]"
-              )}
-            >
             <span aria-live="polite" className="tabular-nums text-foreground">
               {/* Read as one phrase; the digits that roll are for the eye. */}
               <span className="sr-only">{shown} selected</span>
@@ -8113,7 +8221,6 @@ function DataTableSelectionBar<TData>({
                 <XIcon />
               </Button>
             </Tooltip>
-            </div>
           </Elevated>
         </motion.div>
       )}

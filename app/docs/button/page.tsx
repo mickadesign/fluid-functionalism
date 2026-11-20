@@ -40,6 +40,14 @@ import { Plus, ArrowRight, Search } from "lucide-react";
   Search
 </Button>`;
 
+const shortcutCode = `import { Button } from "./components";
+
+{/* The caps take a trailing icon's tighter right padding. They only
+    show the keys: bind them yourself. */}
+<Button shortcut="⌘↵">Add</Button>
+<Button variant="secondary" shortcut="⌘K">Search</Button>
+<Button variant="tertiary" shortcut={["Ctrl", "S"]}>Save</Button>`;
+
 const loadingCode = `import { Button } from "./components";
 import { Loader } from "lucide-react";
 
@@ -120,6 +128,16 @@ export default function ButtonDoc() {
             <Button leadingIcon={Plus}>Create</Button>
             <Button variant="secondary" trailingIcon={ArrowRight}>Next</Button>
             <Button variant="tertiary" leadingIcon={Search} trailingIcon={ArrowRight}>Search</Button>
+          </div>
+        </ComponentPreview>
+      </DocSection>
+
+      <DocSection title="Keyboard Shortcut">
+        <ComponentPreview code={shortcutCode}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button shortcut="⌘↵">Add</Button>
+            <Button variant="secondary" shortcut="⌘K">Search</Button>
+            <Button variant="tertiary" shortcut={["Ctrl", "S"]}>Save</Button>
           </div>
         </ComponentPreview>
       </DocSection>

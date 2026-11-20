@@ -1136,7 +1136,7 @@ const CommandMenuList = forwardRef<HTMLDivElement, CommandMenuListProps>(
                 key={section.id}
                 role="group"
                 aria-labelledby={headingId}
-                className="flex flex-col"
+                className="flex flex-col gap-0.5"
               >
                 {section.heading && (
                   <div

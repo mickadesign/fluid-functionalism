@@ -9,6 +9,7 @@ export const buttonProps: PropDef[] = [
   { name: "active", type: "boolean", default: "false", description: "Forces the pressed/held visual — e.g. while a dropdown or popover the button opened is showing." },
   { name: "leadingIcon", type: "IconComponent", description: "Icon displayed before the label." },
   { name: "trailingIcon", type: "IconComponent", description: "Icon displayed after the label." },
+  { name: "shortcut", type: "string | string[]", description: "Keyboard shortcut shown as key caps after the label (\"⌘↵\"), with a trailing icon's tighter right padding. Display only: bind the keys yourself." },
   { name: "asChild", type: "boolean", default: "false", description: "Merge props onto the child element instead of rendering a <button>." },
   { name: "render", type: "ReactElement", description: "Base UI's spelling of asChild: renders as this element, with the children as its label. Also what the shadcn CLI writes in Base UI projects." },
   { name: "disabled", type: "boolean", default: "false", description: "Disables the button." },
