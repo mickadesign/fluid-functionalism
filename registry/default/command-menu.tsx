@@ -848,7 +848,11 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
         data-slot="command-menu-input"
         className={cn(
           "group/command-input flex shrink-0 items-center",
-          compact ? "h-10 gap-2 px-3" : "h-12 gap-2.5 px-4"
+          // Padding and gap repeat the rows' (list p-1 + item px, item gap),
+          // so the search icon and the text sit on the rows' icon and label
+          // columns.
+          sizeClasses.gap,
+          compact ? "h-10 px-2.5" : "h-12 px-3"
         )}
       >
         {Icon && (
@@ -881,9 +885,8 @@ const CommandMenuInput = forwardRef<HTMLInputElement, CommandMenuInputProps>(
           // the shape radius, and a text input clips its caret to its corners.
           className={cn(
             "min-w-0 flex-1 rounded-none bg-transparent text-foreground placeholder:text-muted-foreground outline-none font-[inherit]",
-            // One notch above the rows' body size: the field is the palette's
-            // title line. The line box keeps the caret in proportion.
-            compact ? "text-[length:var(--fs-subtitle-compact,13px)] leading-5" : "text-[length:var(--fs-subtitle,14px)] leading-6",
+            // The rows' size: field and rows read as one column of text.
+            sizeClasses.text,
             fieldTouchClass,
             className
           )}
