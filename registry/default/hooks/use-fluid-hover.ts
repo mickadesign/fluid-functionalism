@@ -604,6 +604,12 @@ export function useFluidHover<T extends HTMLElement>(
           sessionPendingRef.current = false;
           sessionRef.current += 1;
           setSession(sessionRef.current);
+        } else if (next !== null && next === activeIndexRef.current) {
+          // Entered onto the item already lit (by the keyboard, or a list
+          // that lights its first row on open): the pointer takes that
+          // highlight over, and leaving the item glides it on. Left
+          // pending, the first move off faded it out there and back in.
+          sessionPendingRef.current = false;
         }
         // Empty space put the highlight out: the next item lit fades it in
         // there, as on entering, instead of sliding from the last one.

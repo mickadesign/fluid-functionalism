@@ -1418,7 +1418,7 @@ function DataTable<TData>({
         const fills = [...wrap.querySelectorAll<HTMLElement>("[data-slot=fluid-hover-highlight]")];
         // The rows' fill is the table's width; a header's is one cell's.
         const fill = fills.sort((a, b) => b.offsetWidth - a.offsetWidth)[0];
-        return { fill, rest: [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current] };
+        return { fill, rest: [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current, pinMarkerRef.current] };
       };
       const hold = () => {
         const { fill, rest } = riders();
@@ -1954,6 +1954,12 @@ function DataTable<TData>({
   // columns' own copies (drawn above the fade) kept theirs.
   const bottomFillHostRef = useRef<HTMLDivElement>(null);
   const bottomHoverRef = useRef<HTMLDivElement>(null);
+  // The box and grip the highlight carries, over frozen leading columns
+  // (whose opaque cells hide the highlight's own): this band follows the
+  // highlight as the frozen columns' fill does, and the markers render
+  // into its host.
+  const pinMarkerRef = useRef<HTMLDivElement>(null);
+  const [pinMarkerHost, setPinMarkerHost] = useState<HTMLDivElement | null>(null);
   // The selection over the frozen columns: Table draws a live copy of its
   // fills into each of these, one per frozen side (see the overlay below).
   const [mirrorLeft, setMirrorLeft] = useState<HTMLDivElement | null>(null);
@@ -1965,7 +1971,7 @@ function DataTable<TData>({
   const lastHoverBox = useRef<{ y: number; height: number; opacity: number } | null>(null);
   const placeHoverFade = useCallback((box: { y: number; height: number; opacity: number }) => {
     lastHoverBox.current = box;
-    for (const band of [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current]) {
+    for (const band of [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current, pinMarkerRef.current]) {
       if (!band) continue;
       band.style.transform = `translateY(${fadeBase.current + box.y}px)`;
       band.style.height = `${box.height}px`;
@@ -1994,7 +2000,7 @@ function DataTable<TData>({
           fadeBase.current = base;
           const box = lastHoverBox.current;
           if (box)
-            for (const band of [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current])
+            for (const band of [hoverFadeRef.current, pinHoverRef.current, bottomHoverRef.current, pinMarkerRef.current])
               if (band) band.style.transform = `translateY(${base + box.y}px)`;
         }
       }
@@ -2851,6 +2857,10 @@ function DataTable<TData>({
   const boxColumn = visible.findIndex((c) => c.id === "select");
   const boxAt =
     boxColumn === 0 ? 8 : boxColumn === 1 && visible[0].id === "drag" ? HANDLE_WIDTH + 8 : -1;
+  // A frozen column's cells are opaque and cover the highlight behind the
+  // table, so its box (or grip) is carried over them instead (PinnedMarkers).
+  const boxPinned = boxAt >= 0 && pins.select?.side === "left";
+  const gripPinned = reorderShown && pins.drag?.side === "left";
 
   // The column whose header menu is open. Its header stays pressed, as
   // every trigger does while its popup is open: the layer under the menu
@@ -2894,16 +2904,27 @@ function DataTable<TData>({
         !loading && (reorderShown || boxAt >= 0)
           ? (i) => {
               const row = rows[i];
+              const grip = reorderShown && <HandleMarker top={alignTop} shown={!!row && row.depth === 0} />;
+              const box = boxAt >= 0 && (
+                <SelectMarker
+                  top={alignTop}
+                  left={boxAt}
+                  shown={!!row && row.getCanSelect() && !row.getIsSelected() && !row.getIsSomeSelected()}
+                />
+              );
               return (
                 <>
-                  {reorderShown && <HandleMarker top={alignTop} shown={!!row && row.depth === 0} />}
-                  {boxAt >= 0 && (
-                    <SelectMarker
-                      top={alignTop}
-                      left={boxAt}
-                      shown={!!row && row.getCanSelect() && !row.getIsSelected() && !row.getIsSomeSelected()}
-                    />
-                  )}
+                  {!gripPinned && grip}
+                  {!boxPinned && box}
+                  {pinMarkerHost &&
+                    (gripPinned || boxPinned) &&
+                    createPortal(
+                      <PinnedMarkers index={i} wrap={wrapEl}>
+                        {gripPinned && grip}
+                        {boxPinned && box}
+                      </PinnedMarkers>,
+                      pinMarkerHost
+                    )}
                 </>
               );
             }
@@ -3253,6 +3274,8 @@ function DataTable<TData>({
         // (placeFadeBands) can sit behind the rows without leaving the box.
         data-ff-table=""
         data-no-row-hover={rowHoverOn ? undefined : ""}
+        data-carry-box={boxPinned || undefined}
+        data-carry-grip={gripPinned || undefined}
         className={cn("group/pin isolate w-full", fill && "group/scroll min-h-0 flex-1")}
         // Content fades while there's more to a side, at the line where it
         // meets the pinned columns (the box's own edge when none are):
@@ -3340,6 +3363,20 @@ function DataTable<TData>({
           // height and opacity each frame, and shows only while its side
           // is frozen over content (the pin's own 2px scroll range).
           <div aria-hidden className="pointer-events-none absolute inset-0 z-[11] overflow-hidden">
+            {/* The box and grip the highlight carries over the frozen
+                columns, first: the fills below draw over it as they draw
+                over a row's own box, and the bottom fade covers it as it
+                covers the row. Cut off at the header's bottom. */}
+            <div data-pin-marker-band="" className="absolute inset-0 [clip-path:inset(var(--ff-head,0px)_0_0_0)]">
+              <div className="ff-ride absolute inset-0">
+                <div ref={pinMarkerRef} className="absolute inset-x-0 top-0 opacity-0">
+                  <div
+                    ref={setPinMarkerHost}
+                    className="absolute inset-y-0 left-(--ff-inset-l,0px) w-[calc(var(--pin-l,0px)-var(--ff-inset-l,0px))] overflow-hidden"
+                  />
+                </div>
+              </div>
+            </div>
             {fill && (
               // Filled, the rows scroll inside the box: while there are more
               // under its bottom edge they fade into the page there, over a
@@ -4005,8 +4042,9 @@ const SELECT_REVEAL =
  *  border) while the highlight is on that row: once the pointer takes the
  *  highlight to another row, the focused row's box goes with it rather
  *  than staying behind as a second box. Also on touch screens, and in a
- *  frozen column (`--ff-frozen`): a frozen cell is opaque, scrolled or
- *  not, and covers the carried box. */
+ *  frozen column (`--ff-frozen`) that nothing is carried over: a frozen
+ *  cell is opaque and covers the highlight's box, so DataTable carries it
+ *  over the frozen columns instead (PinnedMarkers) and turns this off. */
 const SELECT_REVEAL_CARRIED =
   `opacity-0 transition-opacity duration-80 group-[.is-active]/row:opacity-(--ff-frozen,0) hover:opacity-100! group-[.is-active:focus-visible]/row:opacity-100 group-[.is-active:has(:focus-visible)]/row:opacity-100 has-[[aria-checked=true],[aria-checked=mixed]]:opacity-100 [@media(hover:none)]:opacity-100 ${SELECT_SNAP}`;
 
@@ -4021,7 +4059,7 @@ function SelectMarker({ shown, left, top }: { shown: boolean; left: number; top:
     <span
       aria-hidden
       className={cn(
-        "absolute flex items-center transition-opacity duration-80 [@media(hover:none)]:hidden",
+        "absolute flex items-center transition-opacity duration-80 group-data-own-box/carry:opacity-0 [@media(hover:none)]:hidden",
         // Where the row's own box sits: on the first line of a row that
         // reads from the top, else in the middle of the row, whatever its
         // height (a fixed 36px slot sat 2px high in a 40px row).
@@ -4041,6 +4079,35 @@ function SelectMarker({ shown, left, top }: { shown: boolean; left: number; top:
   );
 }
 
+/** The carried box and grip over frozen columns. They draw over the row's
+ *  own, so each steps aside wherever the row shows its own instead (the
+ *  darker border or grip): the pointer on the box or the grip, or keyboard
+ *  focus in the row. Read from the DOM on pointer and focus events, never
+ *  from state: those fire far more often than the highlight moves. */
+function PinnedMarkers({ index, wrap, children }: { index: number; wrap: HTMLElement | null; children: ReactNode }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !wrap) return;
+    const update = () => {
+      const tr = wrap.querySelector<HTMLElement>(`tbody tr[data-fluid-hover-index="${index}"]`);
+      const focused = !!tr && (tr.matches(":focus-visible") || !!tr.querySelector(":focus-visible"));
+      el.toggleAttribute("data-own-box", focused || !!tr?.querySelector("[data-select-hit]:hover"));
+      el.toggleAttribute("data-own-grip", !!tr?.querySelector("[data-row-handle]:hover"));
+    };
+    update();
+    // On focusout the focus has already left (and lands with focusin).
+    const events = ["pointerover", "pointerout", "focusin", "focusout"] as const;
+    events.forEach((type) => wrap.addEventListener(type, update));
+    return () => events.forEach((type) => wrap.removeEventListener(type, update));
+  }, [index, wrap]);
+  return (
+    <span ref={ref} className="group/carry absolute inset-0">
+      {children}
+    </span>
+  );
+}
+
 // The row handles' column: 4px, then the 16px handle.
 const HANDLE_WIDTH = 20;
 
@@ -4052,7 +4119,7 @@ function HandleMarker({ shown, top }: { shown: boolean; top: boolean }) {
     <span
       aria-hidden
       className={cn(
-        "absolute left-1 flex w-4 items-center justify-center text-muted-foreground transition-opacity duration-80 [@media(hover:none)]:hidden",
+        "absolute left-1 flex w-4 items-center justify-center text-muted-foreground transition-opacity duration-80 group-data-own-grip/carry:opacity-0 [@media(hover:none)]:hidden",
         // As SelectMarker: the first line, or the row's middle.
         top ? (compact ? "top-0 h-7" : "top-0 h-9") : "inset-y-0",
         !shown && "opacity-0"
@@ -4297,7 +4364,8 @@ function pinProps(pin: PinInfo | undefined) {
       // the pinned cells in DOM order as it scrolled under them; a raised
       // editor (z-30) still covers them, as it covers its neighbors.
       // --ff-frozen: the cell covers what rides behind the table (the box
-      // carried by the highlight), so its own box answers the hover.
+      // carried by the highlight), so its own box answers the hover, unless
+      // the table carries one over the frozen columns (PIN_CSS).
       "sticky z-[2] [--ff-pin:0] [--ff-frozen:1]",
       // The cell's own bottom rule sits in its border, outside the layers
       // below (and out of reach where the cell clips), so the rules of the
@@ -4329,6 +4397,8 @@ const PIN_CSS = `
 [data-ff-table][data-text-editing] .table-row-highlight, [data-ff-table][data-text-editing] [data-row-hover] { visibility: hidden; }
 [data-ff-table][data-no-row-hover] .table-row-highlight { background-color: transparent !important; }
 [data-ff-table][data-no-row-hover] [data-row-hover] { visibility: hidden; }
+[data-ff-table][data-text-editing] [data-pin-marker-band] { visibility: hidden; }
+[data-ff-table][data-carry-box] tbody td[data-column-id=select], [data-ff-table][data-carry-grip] tbody td[data-column-id=drag] { --ff-frozen: 0; }
 [data-ff-table][data-no-row-hover] tbody tr.is-active > td.text-muted-foreground { color: var(--muted-foreground); }
 [data-ff-table][data-text-editing] tbody td[data-column-id=select] [role=checkbox][aria-checked=false], [data-ff-table][data-text-editing] tbody [data-row-handle] { visibility: hidden; }
 .ff-fade-l, .ff-fade-r { opacity: 0; }
@@ -8044,6 +8114,36 @@ function DataTableSelectionBar<TData>({
   const items = typeof actions === "function" ? actions(selected) : (actions ?? []);
   const [menuOpen, setMenuOpen] = useState(false);
   const getRoot = (table as Partial<DataTableExtras>).getRootElement;
+  // The menu hands focus back to what held it when it opened. That is the
+  // Actions button only when it was pressed: from the keyboard (Enter or
+  // Space on it), the button is the right place and its ring the right
+  // mark. Otherwise (a pointer click, or ⌘K while the button still held
+  // focus from an earlier click) the keys belong to the table, and the
+  // ring lit on a button nobody went to. Focus goes to the table's row
+  // instead (its tab stop, where Tab would enter), or nowhere.
+  const actionsRef = useRef<HTMLButtonElement>(null);
+  const keyOpened = useRef(false);
+  const settleFocus = () => {
+    const button = actionsRef.current;
+    if (keyOpened.current || !button) return;
+    function redirect(e: Event) {
+      // Only where focus first lands: later focus is the user's own.
+      document.removeEventListener("focusin", redirect, { capture: true });
+      if (e.target !== button) return;
+      const row = getRoot?.()?.querySelector<HTMLElement>('tbody tr[tabindex="0"]');
+      if (row) row.focus({ preventScroll: true });
+      else (e.target as HTMLElement).blur();
+    }
+    // Focus comes back once the dialog has left (its exit animation).
+    document.addEventListener("focusin", redirect, { capture: true });
+    setTimeout(() => document.removeEventListener("focusin", redirect, { capture: true }), 1000);
+  };
+  const onMenuOpenChange = (next: boolean) => {
+    // Opened by its shortcut, not by the button.
+    if (next) keyOpened.current = false;
+    else settleFocus();
+    setMenuOpen(next);
+  };
 
   // Placed by hand over the table (fixed, so it takes no room and needs no
   // particular parent), written straight to the element on scroll and
@@ -8196,7 +8296,12 @@ function DataTableSelectionBar<TData>({
               <Button
                 variant="ghost"
                 size={compact ? "compact" : "default"}
-                onClick={() => setMenuOpen(true)}
+                ref={actionsRef}
+                // detail 0: pressed from the keyboard, not clicked.
+                onClick={(e) => {
+                  keyOpened.current = e.detail === 0;
+                  setMenuOpen(true);
+                }}
                 aria-keyshortcuts={shortcut ?? undefined}
                 // The key caps end the button like a trailing icon does, so
                 // it takes Button's own trailing inset (12px, 8px compact)
@@ -8233,7 +8338,7 @@ function DataTableSelectionBar<TData>({
       {items.length > 0 && (
         <CommandMenuDialog
           open={menuOpen}
-          onOpenChange={setMenuOpen}
+          onOpenChange={onMenuOpenChange}
           // Bound only while rows are selected, so ⌘K reaches the page's
           // own palette the rest of the time.
           shortcut={count > 0 ? shortcut : null}
