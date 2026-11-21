@@ -30,6 +30,7 @@ const ICON_SETS: Record<Exclude<StarterSettings["icons"], "lucide">, { item: str
   phosphor: { item: "icons-phosphor", exportName: "phosphorIcons" },
   hugeicons: { item: "icons-hugeicons", exportName: "hugeiconsIcons" },
   untitledui: { item: "icons-untitledui", exportName: "untitleduiIcons" },
+  fluid: { item: "icons-fluid", exportName: "fluidIcons" },
 };
 
 /** A file the starter writes. `registry:file` lands at its target as is,
@@ -70,7 +71,7 @@ export const SETTING_LABELS = {
   theme: { system: "System", light: "Light", dark: "Dark" },
   shape: { sharp: "Sharp", rounded: "Rounded", pill: "Pill" },
   size: { default: "Default", compact: "Compact" },
-  icons: { lucide: "Lucide", tabler: "Tabler", phosphor: "Phosphor", hugeicons: "HugeIcons", untitledui: "Untitled UI" },
+  icons: { lucide: "Lucide", tabler: "Tabler", phosphor: "Phosphor", hugeicons: "HugeIcons", untitledui: "Untitled UI", fluid: "Fluid" },
   base: { radix: "Radix", base: "Base UI" },
   accent: Object.fromEntries(Object.entries(ACCENT_PRESETS).map(([k, v]) => [k, v.label])) as {
     [K in keyof typeof ACCENT_PRESETS]: string;

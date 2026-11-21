@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   theme: "system",
   shape: "sharp",
   size: "default",
-  icons: "untitledui",
+  icons: "fluid",
   base: "base",
   accent: "blue",
 };
@@ -43,7 +43,7 @@ export const SETTING_VALUES = {
   theme: ["system", "light", "dark"],
   shape: ["sharp", "rounded", "pill"],
   size: ["default", "compact"],
-  icons: ["lucide", "tabler", "phosphor", "hugeicons", "untitledui"],
+  icons: ["lucide", "tabler", "phosphor", "hugeicons", "untitledui", "fluid"],
   base: ["radix", "base"],
   accent: ACCENT_ORDER,
 } as const satisfies { [K in keyof SiteSettings]: readonly SiteSettings[K][] };

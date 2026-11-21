@@ -10,7 +10,8 @@
 //   - shape: rounded, pill or sharp corners (ShapeProvider).
 //   - size: the 36px default step or the 28px compact one (SizeProvider).
 //   - icons: Lucide, unless you pass another set (icons-tabler,
-//     icons-phosphor, icons-hugeicons, icons-untitledui) or your own map.
+//     icons-phosphor, icons-hugeicons, icons-untitledui, icons-fluid) or
+//     your own map.
 //
 // In a Next.js app router project the root layout is a server component, and
 // an icon map is made of functions, which can't cross into a client

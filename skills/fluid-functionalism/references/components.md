@@ -77,14 +77,14 @@ Wiring for a whole app rather than one component. A new app can start from
 the starter, which installs every component and wires all of this:
 `npx shadcn@latest create -n my-app -t next https://www.fluidfunctionalism.com/r/starter/<settings>.json`,
 where `<settings>` names what differs from the defaults (`radix`, `pill`,
-`compact`, `lucide`/`tabler`/`phosphor`/`hugeicons`, `light`/`dark`), joined
+`compact`, `lucide`/`tabler`/`phosphor`/`hugeicons`/`fluid`, `light`/`dark`), joined
 by dashes, or is `default`. An existing app takes the same components and a
 `components/fluid-root.tsx` wrapper from `/r/setup/<settings>.json`.
 
 | Piece | Registry name | What it does |
 |---|---|---|
 | Fluid Provider | `fluid-provider` | One wrapper for the system: reduced motion that follows the OS, the radius (rounded, pill or sharp), the size step, and the icon set. Render it from a `"use client"` file near the root, since an icon map can't cross from a server layout |
-| Icon sets | `icons-tabler` · `icons-phosphor` · `icons-hugeicons` · `icons-untitledui` | Every icon slot filled from one library. Pass the map to `FluidProvider`'s `icons` prop (or `IconProvider`) |
+| Icon sets | `icons-tabler` · `icons-phosphor` · `icons-hugeicons` · `icons-untitledui` · `icons-fluid` | Every icon slot filled from one library. Pass the map to `FluidProvider`'s `icons` prop (or `IconProvider`). Fluid's corners follow the Radius setting. The full Fluid set, and a skill that draws new icons in the same style, are at https://icons.fluidfunctionalism.com |
 
 Other installable libs and hooks (usually arrive as dependencies):
 `font-weight` (variable weight tokens for the ghost-span pattern),

@@ -250,9 +250,10 @@ everywhere else.
   - Doc pages: call `useIcon("icon-name")` inside the component function for each icon needed
   - Icon prop type is `IconComponent`, not `LucideIcon`
   - **Adding a new icon name**: add it to `IconName` + `defaultIcons` (Lucide) in
-    `registry/default/lib/icon-context.tsx`, **and** to all four maps in the docs-only
-    `lib/docs/icon-map.tsx` (Tabler, Phosphor, HugeIcons, Untitled UI) so the site's
-    library switcher keeps working
+    `registry/default/lib/icon-context.tsx`, **and** to every set in
+    `registry/default/lib/icons-*.tsx` (Tabler, Phosphor, HugeIcons, Untitled UI, Fluid)
+    so the site's library switcher keeps working. `icons-fluid.tsx` is generated
+    elsewhere: never edit it here, ask for it to be regenerated with the new name
   - **Installed vs docs-only**: only the Lucide slot system ships to consumers
     (`icon-context`, deps = `lucide-react` alone). The multi-library map and the I/R
     keyboard shortcuts live in `lib/docs/` and must never be imported from `registry/`
