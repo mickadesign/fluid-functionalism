@@ -23,7 +23,7 @@ import {
 const manifest = JSON.parse(readFileSync(new URL("../registry.json", import.meta.url), "utf-8"));
 const depUrl = buildDepResolver(manifest.items);
 
-/** Every combination of the six settings (2 × 3 × 2 × 5 × 3 × 17 = 3060). */
+/** Every combination of the six settings (2 × 3 × 2 × 6 × 3 × 17 = 3672). */
 function allSettings() {
   let combos = [{}];
   for (const [key, values] of Object.entries(SETTING_VALUES)) {
@@ -38,9 +38,9 @@ describe("starter slug", () => {
     expect(parseStarterSlug(DEFAULT_SLUG)).toEqual({ ok: true, settings: STARTER_DEFAULTS });
   });
 
-  it("round-trips all 3060 combinations", () => {
+  it("round-trips all 3672 combinations", () => {
     const combos = allSettings();
-    expect(combos).toHaveLength(3060);
+    expect(combos).toHaveLength(3672);
     for (const s of combos) {
       expect(parseStarterSlug(starterSlug(s)), starterSlug(s)).toEqual({ ok: true, settings: s });
     }
@@ -85,6 +85,16 @@ describe("starter item", () => {
       expect(deps, name).toContain(name);
     }
     expect(starterRegistryDeps(manifest.items, { ...STARTER_DEFAULTS, icons: "lucide" }).some((d) => d.startsWith("icons-"))).toBe(false);
+  });
+
+  it("installs icons-fluid alone for Fluid, and the providers pass its map", () => {
+    const s = { ...STARTER_DEFAULTS, icons: "fluid" };
+    const deps = starterRegistryDeps(manifest.items, s);
+    expect(deps.filter((d) => d.startsWith("icons-"))).toEqual(["icons-fluid"]);
+    const providers = starterFiles(s).find((f) => f.target.endsWith("providers.tsx")).content;
+    expect(providers).toContain(`import { fluidIcons } from "@/lib/icons-fluid";`);
+    expect(providers).toContain("icons={fluidIcons}");
+    expect(manifest.items.find((i) => i.name === "icons-fluid").registryDependencies).toEqual(["icon-context", "shape-context"]);
   });
 
   it("resolves every dependency to the chosen flavor", () => {

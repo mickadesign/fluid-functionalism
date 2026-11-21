@@ -856,6 +856,26 @@
       ]
     },
     {
+      "name": "icons-fluid",
+      "type": "registry:lib",
+      "title": "Fluid Icon Set",
+      "description": "Fluid glyphs for every icon slot the components look up, with corners that follow the radius (sharp, rounded or pill). Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws Fluid.",
+      "registryDependencies": [
+        "https://www.fluidfunctionalism.com/r/icon-context.json",
+        "https://www.fluidfunctionalism.com/r/shape-context.json"
+      ],
+      "files": [
+        {
+          "path": "registry/default/lib/icons-fluid.tsx",
+          "type": "registry:lib"
+        }
+      ],
+      "docs": "Docs: https://www.fluidfunctionalism.com/docs (Icons). Part of Fluid Functionalism — https://www.fluidfunctionalism.com",
+      "categories": [
+        "lib"
+      ]
+    },
+    {
       "name": "fluid-provider",
       "type": "registry:lib",
       "title": "Fluid Provider",

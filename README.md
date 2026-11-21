@@ -30,7 +30,7 @@ A new app can start with every component installed and wired, from one command:
 npx shadcn@latest create -n my-app -t next https://www.fluidfunctionalism.com/r/starter/default.json
 ```
 
-Replace `default` with the settings you want, joined by dashes: `radix`, `sharp`, `pill`, `compact`, `lucide`/`tabler`/`phosphor`/`hugeicons`, `light`/`dark`. The home page builds this command from your Make them yours settings.
+Replace `default` with the settings you want, joined by dashes: `radix`, `sharp`, `pill`, `compact`, `lucide`/`tabler`/`phosphor`/`hugeicons`/`fluid`, `light`/`dark`. The home page builds this command from your Make them yours settings.
 
 In an existing project, add the registry once:
 
@@ -194,7 +194,9 @@ import { CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
 </IconProvider>
 ```
 
-Or install a whole set (`@fluid/icons-tabler`, `@fluid/icons-phosphor`, `@fluid/icons-hugeicons`, `@fluid/icons-untitledui`) and pass its map to `IconProvider`.
+Or install a whole set (`@fluid/icons-tabler`, `@fluid/icons-phosphor`, `@fluid/icons-hugeicons`, `@fluid/icons-untitledui`, `@fluid/icons-fluid`) and pass its map to `IconProvider`. Fluid's corners follow the Radius setting.
+
+The full Fluid set, and a skill that draws new icons in the same style, are at [icons.fluidfunctionalism.com](https://icons.fluidfunctionalism.com).
 
 ## What makes these different
 

@@ -18,10 +18,11 @@ import {
 
 export type StarterSettings = SiteSettings;
 
-/** The slug's baseline. Shape stays "rounded" even though the site now opens
- *  on sharp: slugs already shared (`default`, `radix-dark`, ...) leave shape
- *  out, so moving the baseline would change what those links install. */
-export const STARTER_DEFAULTS: StarterSettings = { ...DEFAULT_SETTINGS, shape: "rounded" };
+/** The slug's baseline. Shape stays "rounded" and icons "untitledui" even
+ *  though the site now opens on sharp and Fluid: slugs already shared
+ *  (`default`, `radix-dark`, ...) leave both out, so moving the baseline
+ *  would change what those links install. */
+export const STARTER_DEFAULTS: StarterSettings = { ...DEFAULT_SETTINGS, shape: "rounded", icons: "untitledui" };
 
 /** Slug order: the order settings appear in the slug. */
 const KEYS = ["base", "shape", "size", "icons", "theme", "accent"] as const satisfies readonly (keyof StarterSettings)[];

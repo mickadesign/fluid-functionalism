@@ -68,6 +68,7 @@ export const CUSTOM_ITEMS = new Set([
   "icons-phosphor",
   "icons-hugeicons",
   "icons-untitledui",
+  "icons-fluid",
   "fluid-provider",
   "springs",
   "sidebar-menu-grid",
