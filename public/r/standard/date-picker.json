@@ -6,7 +6,7 @@
   "dependencies": [
     "@radix-ui/react-popover@^1.3.1",
     "motion@^14.14.0",
-    "lucide-react@^0.564.0"
+    "lucide-react@^0.577.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/standard/calendar.json",

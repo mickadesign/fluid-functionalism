@@ -7,7 +7,7 @@
     "@radix-ui/react-select@^2.4.1",
     "motion@^14.14.0",
     "class-variance-authority@^0.7.1",
-    "lucide-react@^0.564.0"
+    "lucide-react@^0.577.0"
   ],
   "registryDependencies": [
     "utils",

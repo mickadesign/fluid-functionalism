@@ -5,7 +5,7 @@
   "description": "A yes or no question asked before something runs, such as an agent's tool call. Built on the Banner: its neutral fill, grid and actions, with Deny and Approve giving way to the answer in the same slot.",
   "dependencies": [
     "motion@^14.14.0",
-    "lucide-react@^0.564.0"
+    "lucide-react@^0.577.0"
   ],
   "registryDependencies": [
     "utils",
