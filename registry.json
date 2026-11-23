@@ -544,7 +544,7 @@
       "description": "Utility function for merging Tailwind CSS classes with clsx and tailwind-merge.",
       "dependencies": [
         "clsx",
-        "tailwind-merge"
+        "tailwind-merge@^3.7.1"
       ],
       "files": [
         {

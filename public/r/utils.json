@@ -5,12 +5,12 @@
   "description": "Utility function for merging Tailwind CSS classes with clsx and tailwind-merge.",
   "dependencies": [
     "clsx",
-    "tailwind-merge"
+    "tailwind-merge@^3.7.1"
   ],
   "files": [
     {
       "path": "registry/default/lib/utils.ts",
-      "content": "import { clsx, type ClassValue } from \"clsx\";\nimport { extendTailwindMerge } from \"tailwind-merge\";\n\n// The type-scale role utilities (see /docs/typography) are font sizes, but\n// tailwind-merge can't know that for custom classes — by default anything\n// text-<word> it doesn't recognize is treated as a text *color*, so\n// cn(\"text-body\", \"text-muted-foreground\") would silently drop the size.\nconst twMerge = extendTailwindMerge({\n  extend: {\n    classGroups: {\n      \"font-size\": [\n        // <generated:type-scale>\n        \"text-display\",\n        \"text-title\",\n        \"text-subtitle\",\n        \"text-body\",\n        \"text-caption\",\n        \"text-micro\",\n        \"text-site-display\",\n        \"text-site-title\",\n        \"text-site-subtitle\",\n        \"text-site-body\",\n        \"text-site-caption\",\n        \"text-site-micro\",\n        // </generated:type-scale>\n      ],\n    },\n  },\n});\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs));\n}\n",
+      "content": "import { clsx, type ClassValue } from \"clsx\";\nimport { extendTailwindMerge } from \"tailwind-merge\";\n\n// The type-scale role utilities (see /docs/typography) are font sizes, but\n// tailwind-merge can't know that for custom classes — by default anything\n// text-<word> it doesn't recognize is treated as a text *color*, so\n// cn(\"text-body\", \"text-muted-foreground\") would silently drop the size.\nconst twMerge = extendTailwindMerge({\n  extend: {\n    classGroups: {\n      \"font-size\": [\n        // <generated:type-scale>\n        \"text-display\",\n        \"text-title\",\n        \"text-subtitle\",\n        \"text-body\",\n        \"text-caption\",\n        \"text-micro\",\n        \"text-site-display\",\n        \"text-site-title\",\n        \"text-site-subtitle\",\n        \"text-site-body\",\n        \"text-site-caption\",\n        \"text-site-micro\",\n        // </generated:type-scale>\n      ],\n    },\n    // A later size utility drops an earlier leading, as it did up to\n    // tailwind-merge 3.7.0. 3.7.1 removed this pairing from its defaults.\n    conflictingClassGroups: {\n      \"font-size\": [\"leading\"],\n    },\n  },\n});\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs));\n}\n",
       "type": "registry:lib"
     }
   ],

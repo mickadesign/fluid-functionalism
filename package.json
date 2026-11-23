@@ -65,7 +65,7 @@
     "shadcn": "^3.0.0",
     "shiki": "^3.22.0",
     "sonner": "^2.0.8",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.7.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
