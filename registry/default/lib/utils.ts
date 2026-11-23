@@ -25,6 +25,11 @@ const twMerge = extendTailwindMerge({
         // </generated:type-scale>
       ],
     },
+    // A later size utility drops an earlier leading, as it did up to
+    // tailwind-merge 3.7.0. 3.7.1 removed this pairing from its defaults.
+    conflictingClassGroups: {
+      "font-size": ["leading"],
+    },
   },
 });
 
