@@ -1335,7 +1335,7 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
             // The list is the overlays' offsetParent, so rows and overlays
             // scroll together inside the ScrollArea. Padding collapses when
             // the list is empty (ComboboxEmpty takes over).
-            "relative flex flex-col p-1 outline-none data-[empty]:p-0",
+            "relative flex flex-col gap-0.5 p-1 outline-none data-[empty]:p-0",
             className
           )}
         >

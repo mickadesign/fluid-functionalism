@@ -61,7 +61,7 @@ export function AppSidebar(props: Omit<SidebarProps, "children">) {
         />
         {/* Search + action rows are ONE block: the field reads as the list's
             first row, on the menu rows' own tight rhythm. */}
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-0.5">
           <SidebarSearchField />
           <SidebarMenu>
             <SidebarMenuItem>

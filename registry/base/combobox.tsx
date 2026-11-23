@@ -121,6 +121,8 @@ const ComboboxContext = createContext<ComboboxContextValue | null>(null);
 interface Highlight {
   index: number;
   keyboard: boolean;
+  /** Put there by the list itself (autoHighlight), not by a key. */
+  auto: boolean;
 }
 const ComboboxHighlightContext = createContext<Highlight | null>(null);
 
@@ -354,7 +356,11 @@ function Combobox<
           setHighlight(
             item === undefined
               ? null
-              : { index: details.index, keyboard: details.reason !== "pointer" }
+              : {
+                  index: details.index,
+                  keyboard: details.reason !== "pointer",
+                  auto: details.reason === "none",
+                }
           )
         }
         disabled={disabled}
@@ -974,7 +980,18 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
     // A keyboard (or auto) highlight drives the hover background — the only
     // indicator: the row Enter would pick reads like the row the pointer
     // would pick, with no ring.
+    // While the pointer is over the list, the pointer owns the background.
+    // Crossing the 2px seam between rows, Base UI drops its highlight and
+    // autoHighlight puts it straight back on the first row: followed, the
+    // fill slid up toward that row and faded, then popped in on the row the
+    // pointer reached. Only a real key moves it there.
+    const pointerInside = useRef(false);
+    // A list that closes under the pointer gets no mouseleave.
     useEffect(() => {
+      if (!open) pointerInside.current = false;
+    }, [open]);
+    useEffect(() => {
+      if (pointerInside.current && (!highlight || highlight.auto)) return;
       // A dropped highlight (the input is the stop again) takes the hover
       // background with it — otherwise it would linger on the last row.
       if (!highlight) setActiveIndex(null);
@@ -1057,15 +1074,24 @@ const ComboboxList = forwardRef<HTMLDivElement, ComboboxListProps>(
             else if (ref)
               (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }}
-          onMouseEnter={handlers.onMouseEnter}
-          onMouseMove={handlers.onMouseMove}
-          onMouseLeave={handlers.onMouseLeave}
+          onMouseEnter={() => {
+            pointerInside.current = true;
+            handlers.onMouseEnter();
+          }}
+          onMouseMove={(e) => {
+            pointerInside.current = true;
+            handlers.onMouseMove(e);
+          }}
+          onMouseLeave={() => {
+            pointerInside.current = false;
+            handlers.onMouseLeave();
+          }}
           onClick={handlers.onClick}
           className={cn(
             // The list is the overlays' offsetParent, so rows and overlays
             // scroll together inside the ScrollArea. Padding collapses when
             // the list is empty (ComboboxEmpty takes over).
-            "relative flex flex-col p-1 outline-none data-[empty]:p-0",
+            "relative flex flex-col gap-0.5 p-1 outline-none data-[empty]:p-0",
             className
           )}
         >

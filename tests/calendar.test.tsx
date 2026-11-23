@@ -95,8 +95,10 @@ describe("day states", () => {
   });
 
   it("fills the selected day and keeps its regular weight", () => {
-    render(<Calendar month={new Date(2026, 10, 1)} selected={new Date(2026, 10, 20)} onSelect={() => {}} />);
-    const day = dayButton(/November 20th, 2026/);
+    // A year in the past: on the day the date is today, today's bold would
+    // stack on the selection and the test would fail on that day alone.
+    render(<Calendar month={new Date(2020, 10, 1)} selected={new Date(2020, 10, 20)} onSelect={() => {}} />);
+    const day = dayButton(/November 20th, 2020/);
     expect(day.getAttribute("data-selected")).not.toBeNull();
     expect(day.className).toContain("bg-foreground");
     expect(day.style.fontVariationSettings).not.toContain("550");

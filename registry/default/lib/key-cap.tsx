@@ -23,6 +23,18 @@ export function splitKeys(combo: string): string[] {
   return combo.match(/[⌘⇧⌥⌃]|[^⌘⇧⌥⌃+\s]+|\+$/g) ?? [];
 }
 
+const ARIA_KEY_NAMES: Record<string, string> = {
+  "⌘": "Meta", Cmd: "Meta", "⇧": "Shift", "⌥": "Alt", Option: "Alt", "⌃": "Control", Ctrl: "Control",
+  "↵": "Enter", "⏎": "Enter", Return: "Enter", "⌫": "Backspace", "⎋": "Escape", Esc: "Escape",
+  "↑": "ArrowUp", "↓": "ArrowDown", "←": "ArrowLeft", "→": "ArrowRight", "␣": "Space",
+};
+
+/** Keys as `aria-keyshortcuts` names them ("⌘↵" → "Meta+Enter"), for an
+ *  element whose caps are hidden from assistive tech. */
+export function ariaKeyShortcuts(keys: string | readonly string[]): string {
+  return (typeof keys === "string" ? splitKeys(keys) : keys).map((k) => ARIA_KEY_NAMES[k] ?? k).join("+");
+}
+
 export interface KeyCapProps extends HTMLAttributes<HTMLElement> {
   tone?: keyof typeof tones;
 }

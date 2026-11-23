@@ -83,7 +83,7 @@ function List({ rows }: { rows: string[] }) {
   const hover = useFluidHover(containerRef);
 
   return (
-    <div ref={containerRef} className="relative flex flex-col p-2" {...hover.handlers}>
+    <div ref={containerRef} className="relative flex flex-col gap-0.5 p-2" {...hover.handlers}>
       {/* The highlight reads the hook: it sits on the lit row and fades in
           fresh on every entry instead of sliding over from its last spot. */}
       <FluidHoverHighlight hover={hover} className="rounded-lg" />
@@ -794,7 +794,7 @@ function CostList({ onMeter }: { onMeter: (m: CostMeter) => void }) {
       ref={containerRef}
       // scroll-py-1: a row focused at an edge stops 4px short of it, so its
       // focus ring isn't cut by the scroll box.
-      className="relative flex max-h-64 w-full scroll-py-1 flex-col overflow-y-auto p-2"
+      className="relative flex max-h-64 w-full scroll-py-1 flex-col gap-0.5 overflow-y-auto p-2"
       onMouseEnter={() => {
         insideRef.current = true;
         handlers.onMouseEnter();

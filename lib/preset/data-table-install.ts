@@ -21,7 +21,7 @@ import {
   dataTablePresetHelpers,
 } from "./data-table-options";
 import { buildRows, type ComponentRow } from "@/lib/docs/playgrounds/data-table-rows";
-import { UNDO_TOAST_SOURCE, VIEW_TABS_SOURCE } from "./data-table-sources.generated";
+import { NEW_ITEM_DIALOG_SOURCE, UNDO_TOAST_SOURCE, VIEW_TABS_SOURCE } from "./data-table-sources.generated";
 
 const SITE = "https://www.fluidfunctionalism.com";
 
@@ -59,7 +59,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   // Rows can be deleted from the row menu or the selection bar.
   const deletes = p.rowActions || p.selection;
   // Rows that change (edits, moves, deletes) are undoable steps.
-  const held = deletes || edit || move;
+  const held = deletes || edit || move || p.newItem;
   const toast = deletes || views;
   // The selection bar's actions carry icons too.
   const iconSet = icons || p.selection;
@@ -121,6 +121,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`import { cn } from "@/lib/utils";`);
   if (views) l.push(`import { ${p.title ? "RowReveal, " : ""}ViewTabs } from "@/components/data-table-view-tabs";`);
   if (toast) l.push(`import { UndoToaster, showUndoToast } from "@/components/undo-toast";`);
+  if (p.newItem) l.push(`import { NewItemDialog, newRow, useShowAddedRow, type NewItemValues } from "@/components/data-table-new-item";`);
   l.push(``);
   l.push(`type Row = {`);
   l.push(`  slug: string;`);
@@ -150,6 +151,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`// The select editor's and the filter's options carry the badge colors,`);
   l.push(`// so their menus show each option's dot.`);
   l.push(`const PRIMITIVE_OPTIONS = Object.entries(PRIMITIVE_COLOR).map(([value, color]) => ({ value, color }));`);
+  if (p.newItem) l.push(`/** The tags the New item dialog offers. */`, `const TAG_OPTIONS = ${JSON.stringify(DATA_TABLE_TAG_OPTIONS)};`);
   l.push(``);
   l.push(`// A day as the date editor writes it (Wed Nov 4, the year only outside`);
   l.push(`// this one), so a date reads the same whether its cell edits or not.`);
@@ -372,7 +374,8 @@ function dataTableDemoFile(p: DataTablePreset): string {
   c.push(`{`);
   c.push(`  accessorKey: "website",`);
   c.push(`  header: "Website",`);
-  c.push(`  cell: ({ row }) => (`);
+  c.push(`  // Left blank, no link: an empty one would still be a tab stop.`);
+  c.push(`  cell: ({ row }) => row.original.website && (`);
   c.push(`    <a`);
   c.push(`      href={\`https://\${row.original.website}\`}`);
   c.push(`      // A new tab: the table keeps its state (selection, filters, edits).`);
@@ -449,6 +452,17 @@ function dataTableDemoFile(p: DataTablePreset): string {
   l.push(`    },`);
   l.push(`  });`);
   l.push(``);
+  if (p.newItem) {
+    l.push(`  // A row from the New item dialog, an undoable step like an edit or a`);
+    l.push(`  // delete. The table's sort places it; the page it lands on comes up.`);
+    l.push(`  const showAdded = useShowAddedRow(table);`);
+    l.push(`  const addRow = (values: NewItemValues) => {`);
+    l.push(`    const row = newRow(values, history.rows);`);
+    l.push(`    history.apply(\`Added \${values.name}\`, (old) => [row, ...old]);`);
+    l.push(`    showAdded(row.slug);`);
+    l.push(`  };`);
+    l.push(``);
+  }
 
   if (views) {
     l.push(`  const [views, setViews] = useState<SavedView[]>([]);`);
@@ -538,7 +552,7 @@ function dataTableDemoFile(p: DataTablePreset): string {
   }
   const o: string[] = [];
   o.push(`<div className="flex w-full flex-col gap-2">`);
-  if (p.title || tools > 0 || views) {
+  if (p.title || tools > 0 || views || p.newItem) {
     // The title, then the tools at the right end, on one row.
     // 12px under a title (the stack's 8px plus 4), a step off the table.
     o.push(`  <div className="${p.title ? "mb-1 " : ""}flex flex-wrap items-center gap-1">`);
@@ -573,11 +587,30 @@ function dataTableDemoFile(p: DataTablePreset): string {
     if (p.viewMenu) tool.push(`<DataTableViewOptions table={table} />`);
     if (p.filter === "column") tool.push(`<DataTableSearch table={table} column="name" placeholder="Search components…" />`);
     else if (p.filter === "all") tool.push(`<DataTableSearch table={table} placeholder="Search all columns…" />`);
+    // With the New item button, the tools and it hold one row: an open
+    // search narrows rather than pushing the button onto a line of its own,
+    // and on a narrow screen they move under the title together.
+    const pad = p.newItem ? "  " : "";
+    if (p.newItem) o.push(`    <div className="flex min-w-0 flex-1 basis-72 items-center justify-end gap-1">`);
     if (tool.length > 1) {
-      o.push(`    <TooltipGroup>`);
-      tool.forEach((t) => o.push(`      ${t}`));
-      o.push(`    </TooltipGroup>`);
-    } else tool.forEach((t) => o.push(`    ${t}`));
+      o.push(`${pad}    <TooltipGroup>`);
+      tool.forEach((t) => o.push(`${pad}      ${t}`));
+      o.push(`${pad}    </TooltipGroup>`);
+    } else tool.forEach((t) => o.push(`${pad}    ${t}`));
+    if (p.newItem) {
+      // The New item button closes the row, 8px past the icons, and opens
+      // a dialog with a field per column.
+      o.push(`      <NewItemDialog`);
+      o.push(`        title="New component"`);
+      o.push(`        primitiveOptions={PRIMITIVE_COLOR}`);
+      o.push(`        // The fields follow the columns as they're arranged now.`);
+      o.push(`        order={[...table.getLeftLeafColumns(), ...table.getCenterLeafColumns(), ...table.getRightLeafColumns()].map((c) => c.id)}`);
+      o.push(`        tagOptions={TAG_OPTIONS}`);
+      o.push(`        className="ml-1 shrink-0"`);
+      o.push(`        onAdd={addRow}`);
+      o.push(`      />`);
+      o.push(`    </div>`);
+    }
     o.push(`  </div>`);
   }
   if (views && p.title) {
@@ -723,6 +756,16 @@ export function generateDataTablePresetFiles(p: DataTablePreset): PresetFile[] {
           },
         ]
       : []),
+    ...(p.newItem
+      ? [
+          {
+            path: "components/data-table-new-item.tsx",
+            type: "registry:component" as const,
+            target: "components/data-table-new-item.tsx",
+            content: NEW_ITEM_DIALOG_SOURCE,
+          },
+        ]
+      : []),
     ...(toast
       ? [
           {
@@ -748,8 +791,11 @@ export function dataTablePresetRegistryDeps(p: DataTablePreset): string[] {
     "badge",
     "shape-context",
     "size-context",
-    ...(p.headerIcons || p.selection || views ? ["icon-context"] : []),
-    ...(views || p.rowActions || p.selection || p.editable || p.rowReorder ? ["button"] : []),
+    ...(p.headerIcons || p.selection || views || p.newItem ? ["icon-context"] : []),
+    ...(p.newItem
+      ? ["dialog", "field", "input", "textarea", "select", "switch", "date-picker", "combobox", "scroll-area"]
+      : []),
+    ...(views || p.rowActions || p.selection || p.editable || p.rowReorder || p.newItem ? ["button"] : []),
     ...(views ? ["tabs", "tooltip", "springs"] : []),
     ...(toast ? ["key-cap", "font-weight", "command-menu"] : []),
   ];

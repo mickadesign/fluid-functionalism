@@ -23,6 +23,9 @@ import type { PlaygroundProps } from "./types";
 
 type PlayVariant = "primary" | "secondary" | "tertiary" | "ghost" | "destructive";
 type PlaySize = "compact" | "default";
+// The end of the label holds one thing: an icon or a keyboard shortcut.
+type PlayTrailing = "none" | "icon" | "shortcut";
+const SHORTCUT = "⌘K";
 
 // "Icon only" swaps the text sizes for their square counterparts.
 const ICON_ONLY_SIZE: Record<PlaySize, "icon-compact" | "icon"> = {
@@ -35,7 +38,7 @@ function buildButtonCode(o: {
   size: PlaySize;
   iconOnly: boolean;
   leading: boolean;
-  trailing: boolean;
+  trailing: PlayTrailing;
   label: string;
   loading: boolean;
   active: boolean;
@@ -46,7 +49,8 @@ function buildButtonCode(o: {
   if (o.variant !== "primary") props.push(`variant="${o.variant}"`);
   if (size !== "default") props.push(`size="${size}"`);
   if (!o.iconOnly && o.leading) props.push("leadingIcon={Plus}");
-  if (!o.iconOnly && o.trailing) props.push("trailingIcon={ArrowRight}");
+  if (!o.iconOnly && o.trailing === "icon") props.push("trailingIcon={ArrowRight}");
+  if (!o.iconOnly && o.trailing === "shortcut") props.push(`shortcut="${SHORTCUT}"`);
   if (o.loading) props.push("loading");
   if (o.active) props.push("active");
   if (o.disabled) props.push("disabled");
@@ -97,7 +101,7 @@ export function ButtonPlayground({ children }: PlaygroundProps) {
   const size = sizeOverride ?? globalSize;
   const [iconOnly, setIconOnly] = useState(false);
   const [leading, setLeading] = useState(false);
-  const [trailing, setTrailing] = useState(false);
+  const [trailing, setTrailing] = useState<PlayTrailing>("none");
   const [label, setLabel] = useState<string>(LABELS[0]);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(false);
@@ -126,7 +130,7 @@ export function ButtonPlayground({ children }: PlaygroundProps) {
     setSizeOverride(pick(["compact", "default"] as const));
     setIconOnly(Math.random() > 0.85);
     setLeading(Math.random() > 0.5);
-    setTrailing(Math.random() > 0.75);
+    setTrailing(pick(["none", "none", "icon", "shortcut"] as const));
     setLabel(pick(LABELS));
     setLoading(Math.random() > 0.85);
     setActive(Math.random() > 0.85);
@@ -176,13 +180,17 @@ export function ButtonPlayground({ children }: PlaygroundProps) {
           disabled={iconOnly}
           className={PLAY_SWITCH}
         />
-        <Switch
-          label="Trailing icon"
-          checked={trailing}
-          onToggle={() => setTrailing((v) => !v)}
-          disabled={iconOnly}
-          className={PLAY_SWITCH}
-        />
+        <PlayField label="Trailing" disabled={iconOnly}>
+          <PlaySelect
+            value={trailing}
+            onChange={(v) => setTrailing(v as PlayTrailing)}
+            options={[
+              { value: "none", label: "None" },
+              { value: "icon", label: "Icon" },
+              { value: "shortcut", label: "Shortcut" },
+            ]}
+          />
+        </PlayField>
       </div>
 
 
@@ -216,7 +224,8 @@ export function ButtonPlayground({ children }: PlaygroundProps) {
       variant={variant}
       size={iconOnly ? ICON_ONLY_SIZE[size] : size}
       leadingIcon={!iconOnly && leading ? Plus : undefined}
-      trailingIcon={!iconOnly && trailing ? ArrowRight : undefined}
+      trailingIcon={!iconOnly && trailing === "icon" ? ArrowRight : undefined}
+      shortcut={!iconOnly && trailing === "shortcut" ? SHORTCUT : undefined}
       loading={loading}
       active={active}
       disabled={disabled}

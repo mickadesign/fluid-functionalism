@@ -63,6 +63,9 @@ export interface DataTablePlayState {
   /** The rows' hover fill: by what the table does (on where a row answers
    *  a click, off on one that is only read), or held on or off. */
   rowHover: "auto" | "on" | "off";
+  /** An outline New item button at the right end of the toolbar, after
+   *  the icons. */
+  newItem: boolean;
 }
 
 export type DataTablePreset = DataTablePlayState & PresetGlobals;
@@ -88,6 +91,7 @@ export const DEFAULT_DATA_TABLE_STATE: DataTablePlayState = {
   views: true,
   rowReorder: false,
   rowHover: "auto",
+  newItem: false,
 };
 
 export const DEFAULT_DATA_TABLE_PRESET: DataTablePreset = {
@@ -224,11 +228,19 @@ export const DATA_TABLE_PRESET_FIELDS_J: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_I.slice(-3),
 ];
 
-// Version k adds the rows' hover fill: by the table, on, or off.
-export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+// Version k adds the rows' hover fill: by the table, on, or off. Kept so
+// its codes still decode.
+export const DATA_TABLE_PRESET_FIELDS_K: readonly PresetField[] = [
   ...DATA_TABLE_PRESET_FIELDS_J.slice(0, -3),
   { key: "rowHover", values: ["auto", "on", "off"], bits: 2 },
   ...DATA_TABLE_PRESET_FIELDS_J.slice(-3),
+];
+
+// Version l adds the toolbar's New item button, off by default.
+export const DATA_TABLE_PRESET_FIELDS: readonly PresetField[] = [
+  ...DATA_TABLE_PRESET_FIELDS_K.slice(0, -3),
+  { key: "newItem", values: [false, true], bits: 1 },
+  ...DATA_TABLE_PRESET_FIELDS_K.slice(-3),
 ];
 
 // ── Registration (tag "t") ──────────────────────────────────────────────────
@@ -237,8 +249,8 @@ export const DATA_TABLE_PRESET_DEF: PresetComponentDef = {
   tag: "t",
   label: "DataTable",
   docsPath: "/docs/data-table",
-  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS_I, j: DATA_TABLE_PRESET_FIELDS_J, k: DATA_TABLE_PRESET_FIELDS },
-  currentVersion: "k",
+  versions: { a: DATA_TABLE_PRESET_FIELDS_A, b: DATA_TABLE_PRESET_FIELDS_B, c: DATA_TABLE_PRESET_FIELDS_C, d: DATA_TABLE_PRESET_FIELDS_D, e: DATA_TABLE_PRESET_FIELDS_E, f: DATA_TABLE_PRESET_FIELDS_F, g: DATA_TABLE_PRESET_FIELDS_G, h: DATA_TABLE_PRESET_FIELDS_H, i: DATA_TABLE_PRESET_FIELDS_I, j: DATA_TABLE_PRESET_FIELDS_J, k: DATA_TABLE_PRESET_FIELDS_K, l: DATA_TABLE_PRESET_FIELDS },
+  currentVersion: "l",
   defaults: DEFAULT_DATA_TABLE_PRESET as unknown as PresetComponentDef["defaults"],
   installable: true,
 };
@@ -325,21 +337,23 @@ export function dataTableTagsFor(slug: string): string[] {
 // loading the generator (see lib/preset/outlines.ts). The generator builds
 // its files from the same two flags.
 
-/** The install's helper files: the views' tabs, the undo toast. */
+/** The install's helper files: the views' tabs, the New item dialog, the
+ *  undo toast. */
 export function dataTablePresetHelpers(p: DataTablePreset) {
   const views = p.views && p.filters;
-  return { views, toast: p.rowActions || p.selection || views };
+  return { views, newItem: p.newItem, toast: p.rowActions || p.selection || views };
 }
 
 export const DATA_TABLE_PRESET_NOTE =
   "It is the playground's table as I left it, on its sample rows. Swap ROWS and the columns for my data and keep the rest as it is.";
 
 export function dataTablePresetOutline(p: DataTablePreset) {
-  const { views, toast } = dataTablePresetHelpers(p);
+  const { views, newItem, toast } = dataTablePresetHelpers(p);
   return {
     files: [
       { target: "components/data-table-demo.tsx", exportName: "DataTableDemo" },
       ...(views ? [{ target: "components/data-table-view-tabs.tsx", exportName: "ViewTabs", helper: true }] : []),
+      ...(newItem ? [{ target: "components/data-table-new-item.tsx", exportName: "NewItemDialog", helper: true }] : []),
       ...(toast ? [{ target: "components/undo-toast.tsx", exportName: "showUndoToast", helper: true }] : []),
     ],
     note: DATA_TABLE_PRESET_NOTE,

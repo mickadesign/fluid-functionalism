@@ -1,7 +1,7 @@
 "use client";
 
 import { demoToday } from "@/lib/demo-today";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { spring } from "@/lib/springs";
 import {
@@ -43,6 +43,7 @@ import { useShape } from "@/lib/shape-context";
 import { useSize, typeClass } from "@/lib/size-context";
 import type { PlaygroundProps } from "./types";
 import { RowReveal, ViewTabs } from "./view-tabs";
+import { NewItemDialog, newRow, useShowAddedRow, type NewItemValues } from "./new-item-dialog";
 import {
   DATA_TABLE_DEFAULT_CODE,
   DATA_TABLE_PAGE_SIZES,
@@ -278,6 +279,8 @@ function buildColumns(o: {
           header: c.label,
           cell: ({ row }) => {
             const text = String(row.original[c.id] ?? "");
+            // Left blank, no link: an empty one would still be a tab stop.
+            if (!text) return null;
             return (
               <a
                 // The path after the domain: every link stays in the docs.
@@ -411,6 +414,21 @@ export function pinningCode(o: Pick<PlayState, "pinning" | "pinRight" | "selecti
   return `{ left: [${left.join(", ")}], right: [${right.join(", ")}] }`;
 }
 
+/** The columns' ids as the table draws them: pinned left, the middle in
+ *  their order, pinned right. */
+function columnIds(table: { getLeftLeafColumns: () => { id: string }[]; getCenterLeafColumns: () => { id: string }[]; getRightLeafColumns: () => { id: string }[] }) {
+  return [...table.getLeftLeafColumns(), ...table.getCenterLeafColumns(), ...table.getRightLeafColumns()].map((c) => c.id);
+}
+
+/** With the New item button, the tools and the button hold one row: an
+ *  open search narrows rather than pushing the button onto a line of its
+ *  own, and on a narrow screen they move under the title together. */
+const TOOLS_GROUP_CLASS = "flex min-w-0 flex-1 basis-72 items-center justify-end gap-1";
+
+function ToolsGroup({ on, children }: { on: boolean; children: ReactNode }) {
+  return on ? <div className={TOOLS_GROUP_CLASS}>{children}</div> : <>{children}</>;
+}
+
 export function buildDataTablePlaygroundCode(o: PlayState): string {
   const parts = [
     "useDataTable",
@@ -429,8 +447,8 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
   ];
   // Saved views come with filters: they save what the filters set.
   const views = o.views && o.filters;
-  // Rows that change (edits, moves) live in state.
-  const held = o.editable || o.rowReorder;
+  // Rows that change (edits, moves, new ones) live in state.
+  const held = o.editable || o.rowReorder || o.newItem;
   // Rows moved by hand start unsorted: under a sort, a move first asks to
   // remove it.
   const sorting = o.rowReorder ? "[]" : `[{ id: "added", desc: true }]`;
@@ -442,7 +460,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `      ))}`,
     `    </Tabs>`,
   ];
-  const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views;
+  const toolbar = o.filter !== "none" || o.filters || o.viewMenu || views || o.newItem;
   // Two icons or more on the row share one gliding tooltip bubble.
   const grouped = [o.filters, o.viewMenu, o.filter !== "none"].filter(Boolean).length > 1;
   const filter =
@@ -455,6 +473,7 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `} from "./components";`,
     ...(o.rowActions ? [`import { MenuItem, Badge } from "./components";`] : [`import { Badge } from "./components";`]),
     ...(views ? [`import { Button, Tabs, TabsItem, type TableState } from "./components";`] : []),
+    ...(o.newItem ? [`import { NewItemDialog, newRow, useShowAddedRow, type NewItemValues } from "./new-item-dialog";`] : []),
     ...(grouped ? [`import { TooltipGroup } from "./components";`] : []),
     ...(o.headerIcons
       ? [`import { SquareLibrary, Folder, Star, SlidersHorizontal, Calendar, Tag, Link, File } from "lucide-react";`]
@@ -529,6 +548,22 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
     `];`,
     ``,
     ...(held ? [`const [rows, setRows] = useState(components);`, ``] : []),
+    ...(o.newItem
+      ? [
+          `const PRIMITIVE_COLOR = { ${Object.entries(PRIMITIVE_COLOR).map(([k, v]) => `${JSON.stringify(k)}: "${v}"`).join(", ")} } as const;`,
+          `const TAG_OPTIONS = [${DATA_TABLE_TAG_OPTIONS.map((t) => `"${t}"`).join(", ")}];`,
+          `// newRow gives a new row an id no other row has. The table's sort`,
+          `// places it; showAdded brings up its page (clearing the filters and`,
+          `// search if they'd hide it).`,
+          `const showAdded = useShowAddedRow(table);`,
+          `const addRow = (values: NewItemValues) => {`,
+          `  const row = newRow(values, rows);`,
+          `  setRows((old) => [row, ...old]);`,
+          `  showAdded(row.slug);`,
+          `};`,
+          ``,
+        ]
+      : []),
     `const table = useDataTable({`,
     `  data: ${held ? "rows" : "components"},`,
     `  columns,`,
@@ -582,13 +617,33 @@ export function buildDataTablePlaygroundCode(o: PlayState): string {
                 `    </div>`,
               ]
             : [`    <span className="ml-auto" />`]),
-          ...(grouped ? [`    <TooltipGroup>`] : []),
+          // With the button, the tools and it hold one row (an open search
+          // narrows) and wrap under the title together.
+          ...(o.newItem ? [`    <div className="${TOOLS_GROUP_CLASS}">`] : []),
           ...[
-            ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
-            ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
-            ...(o.filter !== "none" ? [filter] : []),
-          ].map((line) => (grouped ? `  ${line}` : line)),
-          ...(grouped ? [`    </TooltipGroup>`] : []),
+            ...(grouped ? [`    <TooltipGroup>`] : []),
+            ...[
+              ...(o.filters ? [`    <DataTableFilters table={table} />`] : []),
+              ...(o.viewMenu ? [`    <DataTableViewOptions table={table} />`] : []),
+              ...(o.filter !== "none" ? [filter] : []),
+            ].map((line) => (grouped ? `  ${line}` : line)),
+            ...(grouped ? [`    </TooltipGroup>`] : []),
+            ...(o.newItem
+              ? [
+                  `    {/* Opens a form for one row (every field optional); Add hands it to addRow. */}`,
+                  `    <NewItemDialog`,
+                  `      title="New component"`,
+                  `      primitiveOptions={PRIMITIVE_COLOR}`,
+                  `      // The fields follow the columns as they're arranged now.`,
+                  `      order={[...table.getLeftLeafColumns(), ...table.getCenterLeafColumns(), ...table.getRightLeafColumns()].map((c) => c.id)}`,
+                  `      tagOptions={TAG_OPTIONS}`,
+                  `      className="ml-1 shrink-0"`,
+                  `      onAdd={addRow}`,
+                  `    />`,
+                ]
+              : []),
+          ].map((line) => (o.newItem ? `  ${line}` : line)),
+          ...(o.newItem ? [`    </div>`] : []),
           `  </div>`,
         ]
       : []),
@@ -975,6 +1030,7 @@ export function DataTablePlayground({
       title: Math.random() > 0.3,
       views: Math.random() > 0.3,
       rowReorder: Math.random() > 0.7,
+      newItem: Math.random() > 0.5,
       rowHover: pick(["auto", "auto", "auto", "on", "off"] as const),
     });
 
@@ -1067,7 +1123,16 @@ export function DataTablePlayground({
       className={gutterClass(state)}
     />
   );
-  const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews;
+  // A row from the New item dialog, an undoable step like an edit or a
+  // delete. The table's sort places it; the page it lands on comes up.
+  const showAdded = useShowAddedRow(table);
+  const addRow = (values: NewItemValues) => {
+    const row = newRow(values, data);
+    applyStep(`Added ${values.name}`, (old) => [row, ...old]);
+    showAdded(row.slug);
+  };
+
+  const tools = state.filter !== "none" || state.filters || state.viewMenu || showViews || state.newItem;
   // One row: the title on the left (or, without one, the saved views); the
   // Filter button, the Columns button and the search at the right end.
   // Added filters sit on their own row under it, above the table.
@@ -1106,21 +1171,34 @@ export function DataTablePlayground({
           </AnimatePresence>
         </div>
       )}
-      {/* The icons share one tooltip bubble that glides between them. */}
-      <TooltipGroup>
-        {state.filters && <DataTableFilters table={table} />}
-        {state.viewMenu && <DataTableViewOptions table={table} />}
-        {state.filter !== "none" && (
-          <DataTableSearch
-            // Remounts the field when the mode (or the table) flips, so it
-            // starts empty.
-            key={state.filter}
-            table={table}
-            column={state.filter === "column" ? "name" : undefined}
-            placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+      <ToolsGroup on={state.newItem}>
+        {/* The icons share one tooltip bubble that glides between them. */}
+        <TooltipGroup>
+          {state.filters && <DataTableFilters table={table} />}
+          {state.viewMenu && <DataTableViewOptions table={table} />}
+          {state.filter !== "none" && (
+            <DataTableSearch
+              // Remounts the field when the mode (or the table) flips, so it
+              // starts empty.
+              key={state.filter}
+              table={table}
+              column={state.filter === "column" ? "name" : undefined}
+              placeholder={state.filter === "column" ? "Search components…" : "Search all columns…"}
+            />
+          )}
+        </TooltipGroup>
+        {/* The New item button closes the row, 8px past the icons. */}
+        {state.newItem && (
+          <NewItemDialog
+            title="New component"
+            primitiveOptions={PRIMITIVE_COLOR}
+            tagOptions={DATA_TABLE_TAG_OPTIONS}
+            order={columnIds(table)}
+            className="ml-1 shrink-0"
+            onAdd={addRow}
           />
         )}
-      </TooltipGroup>
+      </ToolsGroup>
     </div>
   );
 
@@ -1260,6 +1338,12 @@ export function DataTablePlayground({
           label="Columns menu"
           checked={state.viewMenu}
           onToggle={() => set("viewMenu", !state.viewMenu)}
+          className={PLAY_SWITCH}
+        />
+        <Switch
+          label="New item button"
+          checked={state.newItem}
+          onToggle={() => set("newItem", !state.newItem)}
           className={PLAY_SWITCH}
         />
         <PlayDivider />
