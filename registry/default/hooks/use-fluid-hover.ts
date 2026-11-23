@@ -585,7 +585,10 @@ export function useFluidHover<T extends HTMLElement>(
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!isOwnEvent(e)) return;
+      // A touch screen has no hover: the mouse events a tap sends would
+      // light the tapped item and leave it lit after the finger lifts. A
+      // bare point (a scripted cursor) is not a tap.
+      if (!isOwnEvent(e) || (e.target && window.matchMedia?.("(hover: none)").matches)) return;
       const mouseX = e.clientX;
       const mouseY = e.clientY;
       const target = e.target as Node;

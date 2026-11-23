@@ -282,7 +282,8 @@ export function useFluidHover<T extends HTMLElement>(
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!isOwnEvent(e)) return;
+      // A touch screen has no hover: a tap would leave the item lit.
+      if (!isOwnEvent(e) || window.matchMedia?.("(hover: none)").matches) return;
       pointRef.current = { x: e.clientX, y: e.clientY };
       setActiveIndex(itemAt(e.target as Node));
     },
