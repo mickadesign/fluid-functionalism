@@ -173,7 +173,7 @@ Compositions that install as one item each, with every component they use.
 
 ## Presets
 
-The Sidebar, Card, InputMessage, AskUserQuestions, Dropdown, Combobox, CommandMenu, and DataTable playgrounds encode the configuration you build in the rail into a short code. Nothing is stored: the code is the configuration itself. Install it as one block that composes the component with the options you picked:
+The Sidebar, Card, InputMessage, AskUserQuestions, Dropdown, Combobox, CommandMenu, Calendar, DatePicker, and DataTable playgrounds encode the configuration you build in the rail into a short code. Nothing is stored: the code is the configuration itself. Install it as one block that composes the component with the options you picked:
 
 ```bash
 npx shadcn@latest add https://www.fluidfunctionalism.com/r/preset/<code>.json
@@ -226,7 +226,7 @@ node scripts/build-skill-craft.mjs   # writes the skill's craft reference
 
 Sources live in `registry/`: `radix/` and `base/` hold the two flavors, `default/` the single-source components, hooks, and libs, `blocks/` the compositions. `public/r` is the built output users install from, and it is committed. CI rebuilds it and fails when it drifts from the sources, so run `npm run registry:build` and commit the result with any registry change. The skill's craft reference works the same way: it is generated from the prompt entries in `lib/docs/prompt-entries.ts`, and a test fails when the committed copy has drifted.
 
-Guides in the repo: [motion-guidelines.md](motion-guidelines.md), [component-documentation-guidelines.md](component-documentation-guidelines.md), [preset-guidelines.md](preset-guidelines.md), [tone-of-voice.md](tone-of-voice.md), and [README-guidelines.md](README-guidelines.md) for what this file carries and what it defers.
+Guides in the repo: [motion-guidelines.md](motion-guidelines.md), [component-documentation-guidelines.md](component-documentation-guidelines.md), [preset-guidelines.md](preset-guidelines.md), [changelog-guidelines.md](changelog-guidelines.md), [tone-of-voice.md](tone-of-voice.md), and [README-guidelines.md](README-guidelines.md) for what this file carries and what it defers.
 
 ## Contributing
 
