@@ -5,9 +5,9 @@
   "description": "Refined, composable app sidebar with offcanvas collapse, floating and inset variants, a mobile drawer, cookie-persisted state, keyboard shortcut, and fluid-hover menus with traveling selection, hover, and focus indicators. Base UI flavor.",
   "dependencies": [
     "@base-ui/react@^1.9.0",
-    "motion",
-    "lucide-react",
-    "class-variance-authority"
+    "motion@^14.14.0",
+    "lucide-react@^0.577.0",
+    "class-variance-authority@^0.7.1"
   ],
   "registryDependencies": [
     "utils",

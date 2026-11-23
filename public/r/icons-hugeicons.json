@@ -4,9 +4,9 @@
   "title": "HugeIcons Icon Set",
   "description": "HugeIcons glyphs for every icon slot the components look up. Pass the map to IconProvider (or FluidProvider's icons prop) and every component draws HugeIcons.",
   "dependencies": [
-    "@hugeicons/react",
-    "@hugeicons/core-free-icons",
-    "lucide-react"
+    "@hugeicons/react@^1.1.10",
+    "@hugeicons/core-free-icons@^4.4.0",
+    "lucide-react@^0.577.0"
   ],
   "registryDependencies": [
     "https://www.fluidfunctionalism.com/r/icon-context.json"

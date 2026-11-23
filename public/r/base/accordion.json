@@ -4,9 +4,9 @@
   "title": "Accordion (Base UI)",
   "description": "Collapsible accordion with animated height transitions, spring-animated chevron, and fluid hover in grouped mode. Base UI flavor.",
   "dependencies": [
-    "motion",
+    "motion@^14.14.0",
     "@base-ui/react@^1.9.0",
-    "lucide-react"
+    "lucide-react@^0.577.0"
   ],
   "registryDependencies": [
     "utils",
