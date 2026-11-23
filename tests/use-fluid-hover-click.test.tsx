@@ -381,3 +381,18 @@ describe("useFluidHover: events from a portalled child", () => {
     expect(api().activeIndex).toBe(1);
   });
 });
+
+describe("useFluidHover: touch screens", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("a tap lights nothing, so no row stays lit after the finger lifts", async () => {
+    // A tap sends mouse events too; on a screen without hover they are ignored.
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(hover: none)" }));
+    const { getByTestId } = setup({ nearest: false });
+    fireEvent.mouseEnter(getByTestId("list"));
+    fireEvent.mouseMove(getByTestId("row-1"), { clientX: 100, clientY: 40 });
+    await act(() => new Promise((r) => requestAnimationFrame(() => r(undefined))));
+    expect(getByTestId("list").getAttribute(ACTIVE_INDEX_ATTR)).toBeNull();
+    expect(getByTestId("row-1").hasAttribute(ACTIVE_ATTR)).toBe(false);
+  });
+});

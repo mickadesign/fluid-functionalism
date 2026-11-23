@@ -55,4 +55,15 @@ describe("standard hover", () => {
     fireEvent.click(getByTestId("gap"));
     expect(onRowClick).not.toHaveBeenCalled();
   });
+
+  it("lights nothing on a touch screen, where a tap sends mouse events too", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(hover: none)" }));
+    try {
+      const { getByTestId } = render(<List onRowClick={() => {}} />);
+      fireEvent.mouseMove(getByTestId("row-1"));
+      expect(getByTestId("list").dataset.active).toBe("");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
