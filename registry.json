@@ -1173,7 +1173,8 @@
         "icon-context",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {
@@ -1223,7 +1224,8 @@
         "icon-context",
         "size-context",
         "tokens",
-        "type-scale"
+        "type-scale",
+        "key-cap"
       ],
       "files": [
         {

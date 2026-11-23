@@ -19,7 +19,7 @@ import {
   generateDataTablePresetFiles,
   dataTablePresetRegistryDeps,
 } from "../lib/preset/data-table-install.ts";
-import { UNDO_TOAST_SOURCE, VIEW_TABS_SOURCE } from "../lib/preset/data-table-sources.generated.ts";
+import { NEW_ITEM_DIALOG_SOURCE, UNDO_TOAST_SOURCE, VIEW_TABS_SOURCE } from "../lib/preset/data-table-sources.generated.ts";
 
 // Deterministic PRNG (mulberry32) — seeded, so failures reproduce.
 function rng(seed) {
@@ -115,7 +115,16 @@ describe("data table preset codec", () => {
     expect(back.preset.lines).toBe("wrap");
     expect(back.preset.flavor).toBe("base");
     // Pin the literal string — update ONLY on a deliberate version bump.
-    expect(code).toMatchInlineSnapshot(`"tk18Pt3"`);
+    expect(code).toMatchInlineSnapshot(`"tl2GoPJ"`);
+  });
+
+  // Version "k" codes were published before the New item button (off).
+  it("a version-k code still decodes, without the New item button", () => {
+    const back = decodeDataTablePreset("tk18Pt3");
+    expect(back.ok).toBe(true);
+    expect(back.version).toBe("k");
+    expect(back.preset.lines).toBe("wrap");
+    expect(back.preset.newItem).toBe(false);
   });
 
   // Version "j" codes were published before the row hover option (auto).
@@ -260,6 +269,7 @@ const typecheck = createPresetTypechecker({
   paths: {
     "@/components/data-table-view-tabs": ["./__preset__/components/data-table-view-tabs.tsx"],
     "@/components/undo-toast": ["./__preset__/components/undo-toast.tsx"],
+    "@/components/data-table-new-item": ["./__preset__/components/data-table-new-item.tsx"],
   },
 });
 
@@ -295,6 +305,8 @@ const MATRIX = [
   { headerIcons: true, selection: false },
   { title: false, headerIcons: true, shape: "sharp", size: "compact" },
   { rowHover: "off", editable: true, expandable: true, headerIcons: true, lines: "wrap" },
+  { newItem: true },
+  { newItem: true, title: false, filter: "none", filters: false, viewMenu: false, selection: false, rowActions: false },
 ];
 
 describe("data table preset install generator", () => {
@@ -304,6 +316,7 @@ describe("data table preset install generator", () => {
     const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf-8");
     expect(VIEW_TABS_SOURCE, "run `npm run preset:sources`").toBe(read("lib/docs/playgrounds/view-tabs.tsx"));
     expect(UNDO_TOAST_SOURCE, "run `npm run preset:sources`").toBe(read("lib/docs/undo-toast.tsx"));
+    expect(NEW_ITEM_DIALOG_SOURCE, "run `npm run preset:sources`").toBe(read("lib/docs/playgrounds/new-item-dialog.tsx"));
   });
 
   it("the first file is the one to render, and the helpers come with what uses them", () => {
@@ -311,6 +324,7 @@ describe("data table preset install generator", () => {
     expect(files({})).toEqual(["components/data-table-demo.tsx", "components/data-table-view-tabs.tsx", "components/undo-toast.tsx"]);
     expect(files({ views: false })).toEqual(["components/data-table-demo.tsx", "components/undo-toast.tsx"]);
     expect(files({ views: false, selection: false, rowActions: false })).toEqual(["components/data-table-demo.tsx"]);
+    expect(files({ views: false, selection: false, rowActions: false, newItem: true })).toEqual(["components/data-table-demo.tsx", "components/data-table-new-item.tsx"]);
   });
 
   for (const [i, partial] of MATRIX.entries()) {

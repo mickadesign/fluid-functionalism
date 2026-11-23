@@ -770,7 +770,7 @@ function TimeField({
           id={listId}
           role="listbox"
           aria-label={label}
-          className={cn("relative flex flex-col p-1", slots.some((s) => s.duration !== undefined) ? "min-w-[180px]" : "min-w-[112px]")}
+          className={cn("relative flex flex-col gap-0.5 p-1", slots.some((s) => s.duration !== undefined) ? "min-w-[180px]" : "min-w-[112px]")}
           // Rows never take focus: the field keeps it while the list moves.
           onMouseDown={(e) => e.preventDefault()}
           onMouseEnter={onMouseEnter}
@@ -919,7 +919,7 @@ function PresetList({
       role="group"
       aria-label="Presets"
       data-slot="date-picker-presets"
-      className="relative flex flex-col p-1"
+      className="relative flex flex-col gap-0.5 p-1"
       {...hover.handlers}
       onFocus={(e) => {
         const i = Number((e.target as HTMLElement).getAttribute("data-preset-index"));

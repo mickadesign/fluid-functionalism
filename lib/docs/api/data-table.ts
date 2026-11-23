@@ -17,7 +17,7 @@ export const dataTableProps: PropDef[] = [
   { name: "empty", type: "{ title?, description?, action? }", default: '{ title: "No results" }', description: "What an empty body says. It keeps a page of height, so nothing below moves. With filters set, it offers to clear them." },
   { name: "onRowClick", type: "(row: Row<TData>) => void", description: "Opens a row on click or Space. Clicks on its controls stay with them." },
   { name: "rowHover", type: "boolean", default: "by the table", description: "The hover fill on the row under the pointer. Unset, it shows where a row answers a click (opens, selects, has a menu, moves, edits) and not on a table that is only read." },
-  { name: "resizeColumns", type: "boolean", default: "false", description: "Drag a header's right edge, or press `←` / `→` on it, to set a width. Double-click resets." },
+  { name: "resizeColumns", type: "boolean", default: "false", description: "Drag a header's right edge, or press `←` / `→` on it, to set a width, 64px at the least. Double-click resets." },
   { name: "cellAlign", type: '"auto" | "center" | "top"', default: '"auto"', description: "Where content sits in a row. `auto` goes to the top once a column wraps." },
   { name: "loading", type: "boolean", default: "false", description: "A page of skeleton rows. Each fades out as its cell fades in." },
   { name: "loadingRows", type: "number", default: "the page size", description: "How many skeleton rows to show." },
